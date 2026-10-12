@@ -122,7 +122,7 @@ fun SearchResultCard(
                         if (srcIcon != null && !isSelecting) {
                             Icon(
                                 imageVector = srcIcon,
-                                contentDescription = sourceLabel(session.source),
+                                contentDescription = localizedSourceLabel(session.source),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp),
                             )
@@ -180,7 +180,7 @@ fun SearchResultCard(
                         }
                         session.source?.let { src ->
                             StatusBadge(
-                                text = sourceLabel(src),
+                                text = localizedSourceLabel(src),
                                 status = StatusBadgeType.NEUTRAL,
                             )
                         }

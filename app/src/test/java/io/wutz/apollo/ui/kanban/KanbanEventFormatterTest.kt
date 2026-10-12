@@ -47,6 +47,61 @@ class KanbanEventFormatterTest {
         val formatted = KanbanEventFormatter.format(event)
         assertEquals("Moved to Todo", formatted.label)
         assertEquals("Parent t_parent1 reopened", formatted.detail)
+        assertEquals(KanbanEventDetailMessage.PARENT_ID_REOPENED, formatted.detailMessage)
+        assertEquals(listOf("t_parent1"), formatted.detailArguments)
+    }
+
+    @Test
+    fun testParentReopenedWithoutParentId() {
+        val payload =
+            buildJsonObject {
+                put("status", "todo")
+                put("reason", "parent_reopened")
+            }
+        val event = KanbanDetailEvent(id = 30, kind = "status", payload = payload, createdAt = 1000)
+        val formatted = KanbanEventFormatter.format(event)
+        assertEquals("Parent reopened", formatted.detail)
+        assertEquals(KanbanEventDetailMessage.PARENT_REOPENED, formatted.detailMessage)
+        assertEquals(emptyList<String>(), formatted.detailArguments)
+    }
+
+    @Test
+    fun testFreeFormStatusReasonHasNoDetailMessage() {
+        val payload =
+            buildJsonObject {
+                put("status", "done")
+                put("reason", "completed successfully")
+            }
+        val formatted =
+            KanbanEventFormatter.format(
+                KanbanDetailEvent(id = 31, kind = "status", payload = payload, createdAt = 1000),
+            )
+        assertNull(formatted.detailMessage)
+        assertEquals(emptyList<String>(), formatted.detailArguments)
+    }
+
+    @Test
+    fun testCommentedEventAuthorArguments() {
+        val withAuthor =
+            KanbanEventFormatter.format(
+                KanbanDetailEvent(
+                    id = 32,
+                    kind = "commented",
+                    payload = buildJsonObject { put("author", "reviewer") },
+                    createdAt = 1000,
+                ),
+            )
+        assertEquals("Comment by reviewer", withAuthor.label)
+        assertEquals(KanbanEventMessage.COMMENTED, withAuthor.message)
+        assertEquals(listOf("reviewer"), withAuthor.arguments)
+
+        // No author: English fallback label keeps "someone", arguments stay empty so the UI can translate it.
+        val anonymous =
+            KanbanEventFormatter.format(
+                KanbanDetailEvent(id = 33, kind = "commented", payload = null, createdAt = 1000),
+            )
+        assertEquals("Comment by someone", anonymous.label)
+        assertEquals(emptyList<String>(), anonymous.arguments)
     }
 
     @Test

@@ -62,8 +62,8 @@ open class NotificationReplyReceiver : BroadcastReceiver() {
         NotificationCompat
             .Builder(context, ChatNotificationService.CHAT_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Hermes")
-            .setContentText("Replied")
+            .setContentTitle(context.getString(R.string.notif_title))
+            .setContentText(context.getString(R.string.notif_replied))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .addExtras(

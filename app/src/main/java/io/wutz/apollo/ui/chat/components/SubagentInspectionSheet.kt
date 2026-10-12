@@ -161,7 +161,7 @@ fun SubagentInspectionSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        contentDescription = stringResource(R.string.action_close),
                     )
                 }
             }
@@ -588,7 +588,10 @@ private fun TodoInspectionCard(
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = if (row.isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (row.isExpanded) "Collapse" else "Expand",
+                    contentDescription =
+                        stringResource(
+                            if (row.isExpanded) R.string.action_collapse else R.string.action_expand,
+                        ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
@@ -683,7 +686,7 @@ private fun InspectionItemCard(
 
                 val taskIndexStr = indicator.taskIndex?.let { "#$it " } ?: ""
                 Text(
-                    text = "$taskIndexStr${indicator.goal ?: "Subagent Task"}",
+                    text = "$taskIndexStr${indicator.goal ?: stringResource(R.string.subagent_task_fallback)}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),

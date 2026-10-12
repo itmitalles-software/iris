@@ -96,7 +96,7 @@ private fun SessionInfo.toTreeItem(
             ?: if (isFork && depth > 0) {
                 "branch ${siblingIndex + 1}"
             } else {
-                preview?.takeIf(String::isNotBlank)?.take(80) ?: "Untitled"
+                preview?.takeIf(String::isNotBlank)?.take(80) ?: UNTITLED_SESSION_TITLE
             }
     return SessionTreeItem(
         session = this,

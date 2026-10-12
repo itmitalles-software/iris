@@ -288,7 +288,11 @@ fun EnvVarSection(
                         onClick = { viewModel.removeEnvVar(server.name, key) },
                         enabled = !server.isPluginOwned,
                     ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.action_remove),
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                 }
             }

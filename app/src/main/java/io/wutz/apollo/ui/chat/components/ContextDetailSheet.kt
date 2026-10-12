@@ -89,7 +89,7 @@ fun ContextDetailSheet(
                     color = barColor,
                 )
                 Text(
-                    text = "of ${formatTokens(full)}",
+                    text = stringResource(R.string.context_of_total, formatTokens(full)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -117,7 +117,7 @@ fun ContextDetailSheet(
             Text(
                 text =
                     if (usedTokens != null) {
-                        "$pct% of context window used"
+                        stringResource(R.string.context_window_used_percent, pct)
                     } else {
                         stringResource(R.string.context_window_usage_unavailable)
                     },
@@ -130,8 +130,12 @@ fun ContextDetailSheet(
             ContextRow(label = stringResource(R.string.context_completion_output), value = breakdown.outputTokens)
             ContextRow(label = stringResource(R.string.context_cache_read), value = breakdown.cacheReadTokens)
             ContextRow(label = stringResource(R.string.context_cache_write), value = breakdown.cacheWriteTokens)
-            ContextRow(label = "Reasoning", value = breakdown.reasoningTokens)
-            ContextRow(label = "Messages", value = breakdown.messageCount.toLong(), isCount = true)
+            ContextRow(label = stringResource(R.string.analytics_reasoning), value = breakdown.reasoningTokens)
+            ContextRow(
+                label = stringResource(R.string.context_messages),
+                value = breakdown.messageCount.toLong(),
+                isCount = true,
+            )
 
             Text(
                 text = stringResource(R.string.context_tokens_note),

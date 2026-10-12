@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,7 +46,10 @@ fun LazyListScope.credentialsSection(
                 val hasCreds = state.credentials.any { it.entries?.isNotEmpty() == true }
                 if (hasCreds) {
                     Text(
-                        text = "${state.credentials.sumOf { it.entries?.size ?: 0 }} key(s)",
+                        text =
+                            state.credentials.sumOf { it.entries?.size ?: 0 }.let { count ->
+                                pluralStringResource(R.plurals.credentials_key_count, count, count)
+                            },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

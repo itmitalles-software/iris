@@ -341,5 +341,5 @@ private fun shareLogs(
             putExtra(Intent.EXTRA_TEXT, text)
             type = "text/plain"
         }
-    context.startActivity(Intent.createChooser(sendIntent, "Share logs"))
+    context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.logs_share_chooser)))
 }

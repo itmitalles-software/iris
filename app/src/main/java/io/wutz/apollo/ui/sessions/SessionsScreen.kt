@@ -104,6 +104,7 @@ import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionTreeItem
+import io.wutz.apollo.data.model.UNTITLED_SESSION_TITLE
 import io.wutz.apollo.data.model.flattenSessionsWithBranches
 import io.wutz.apollo.data.model.startable
 import io.wutz.apollo.theme.LocalHermesStatusColors
@@ -128,7 +129,7 @@ import io.wutz.apollo.ui.sessions.components.SessionsBulkActionBar
 import io.wutz.apollo.ui.sessions.components.SessionsDialogs
 import io.wutz.apollo.ui.sessions.components.SessionsStatsRow
 import io.wutz.apollo.ui.sessions.components.automationGroups
-import io.wutz.apollo.ui.sessions.components.sourceLabel
+import io.wutz.apollo.ui.sessions.components.localizedSourceLabel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
@@ -193,7 +194,7 @@ internal fun displayedSessions(state: SessionsUiState): List<SessionTreeItem> =
                         session.title?.takeIf(String::isNotBlank)
                             ?: session.display_name?.takeIf(String::isNotBlank)
                             ?: session.preview?.takeIf(String::isNotBlank)?.take(80)
-                            ?: "Untitled",
+                            ?: UNTITLED_SESSION_TITLE,
                 )
             }
     } else {
@@ -564,7 +565,7 @@ fun SessionsScreen(
                         FilterChip(
                             selected = state.activeSourceFilter == source,
                             onClick = { viewModel.selectSourceFilter(source) },
-                            label = { Text(sourceLabel(source)) },
+                            label = { Text(localizedSourceLabel(source)) },
                             modifier = Modifier.testTag("history_source_chip_$source"),
                         )
                     }
@@ -1011,7 +1012,7 @@ fun SessionsScreen(
                                         }
                                         item(key = "history_header") {
                                             Text(
-                                                text = "History",
+                                                text = stringResource(R.string.screen_history),
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

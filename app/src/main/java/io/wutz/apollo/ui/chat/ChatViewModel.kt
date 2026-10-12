@@ -1963,14 +1963,14 @@ class ChatViewModel(
                 // the message list has been reset by the create.
                 if (pendingGoneSessionNotice) {
                     pendingGoneSessionNotice = false
-                    addSystemMessage("Previous session is no longer available on the server — starting a new chat")
+                    addSystemMessage(SystemNotice.SESSION_EXPIRED_NEW_CHAT)
                 }
                 // Mirror the active session id app-wide so session-scoped
                 // drawer screens (e.g. Processes, issue #532) can issue
                 // session-scoped RPCs. See ActiveSessionHolder.
                 ActiveSessionHolder.set(runtimeId, storageId)
                 _streamingState.update { StreamingState() }
-                addSystemMessage("Session created", persist = true)
+                addSystemMessage(SystemNotice.SESSION_CREATED, persist = true)
                 loadSessions()
                 fetchContextUsage()
 
@@ -2026,7 +2026,7 @@ class ChatViewModel(
                 ActiveSessionHolder.set(runtimeId, storageId)
                 sessionHasServerPresence = false
                 sessionGoneRecoveryInFlight = false
-                addSystemMessage("Session branched", persist = true)
+                addSystemMessage(SystemNotice.SESSION_BRANCHED, persist = true)
                 loadSessionMessages(storageId, generation)
                 loadSessions()
                 fetchContextUsage()
@@ -2206,7 +2206,7 @@ class ChatViewModel(
                         )
                     }
                     streamingController.resetStreaming()
-                    if (status == "interrupted") addSystemMessage("Session interrupted")
+                    if (status == "interrupted") addSystemMessage(SystemNotice.SESSION_INTERRUPTED)
                     mainTurnBusy = false
                 }
                 hardInterrupt?.let { tracked ->
@@ -4650,7 +4650,7 @@ class ChatViewModel(
         if (_uiState.value.isCompressing) return
         val generation = sessionGeneration
         val current = { isCurrentSessionRequest(sessionId, generation) }
-        _uiState.update { it.copy(isCompressing = true, compressionStatus = "⏳ Compressing context...") }
+        _uiState.update { it.copy(isCompressing = true, compressionStatus = SystemNotice.COMPRESSING_CONTEXT) }
         viewModelScope.launch(ioDispatcher) {
             try {
                 val result =
@@ -4809,7 +4809,7 @@ class ChatViewModel(
                 notice.isNotBlank() && message.isNotBlank() -> "$notice (Rewound to: \"$message\")"
                 notice.isNotBlank() -> notice
                 message.isNotBlank() -> "↶ Rewound to: \"$message\""
-                else -> "↶ Rewound"
+                else -> SystemNotice.REWOUND
             }
         if (storageSessionId != null) {
             val generation = sessionGeneration
@@ -4860,7 +4860,7 @@ class ChatViewModel(
                     val killed = wsClient.call(RpcMethods.PROCESS_STOP, ProcessStopParams).killed ?: 0
                     when {
                         killed > 0 -> "Stopped $killed background process${if (killed == 1) "" else "es"}."
-                        else -> "No background processes to stop."
+                        else -> SystemNotice.NO_BACKGROUND_PROCESSES
                     }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
@@ -6808,7 +6808,7 @@ class ChatViewModel(
         val displayQuestions = clarify?.resolvedQuestions.orEmpty()
         _uiState.update { it.copy(clarifyRequest = null) }
 
-        addSystemMessage("Clarify dismissed — no answer sent", persist = true)
+        addSystemMessage(SystemNotice.CLARIFY_DISMISSED, persist = true)
 
         viewModelScope.launch(ioDispatcher) {
             if (serverRequestId != null) {

@@ -1089,7 +1089,7 @@ object ChatWsEventReducer {
                     state =
                         state.copy(
                             isCompressing = true,
-                            compressionStatus = text?.ifBlank { null } ?: "⏳ Compressing context...",
+                            compressionStatus = text?.ifBlank { null } ?: SystemNotice.COMPRESSING_CONTEXT,
                         ),
                     streamingState = streamingState,
                 )

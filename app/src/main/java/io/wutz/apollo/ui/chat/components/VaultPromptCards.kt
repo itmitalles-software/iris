@@ -59,7 +59,7 @@ fun VaultUnlockCard(
     var password by remember(prompt.requestId) { mutableStateOf("") }
     var passwordVisible by remember(prompt.requestId) { mutableStateOf(false) }
 
-    val displayName = prompt.displayName ?: prompt.backend ?: "Password Manager"
+    val displayName = prompt.displayName ?: prompt.backend ?: stringResource(R.string.vault_password_manager)
 
     Surface(
         modifier =
@@ -175,7 +175,7 @@ fun VaultSaveLoginCard(
     var password by remember(prompt.requestId) { mutableStateOf("") }
     var passwordVisible by remember(prompt.requestId) { mutableStateOf(false) }
 
-    val siteLabel = prompt.site ?: prompt.origin ?: "this site"
+    val siteLabel = prompt.site ?: prompt.origin ?: stringResource(R.string.vault_this_site)
 
     Surface(
         modifier =
@@ -305,7 +305,7 @@ fun VaultCodeCard(
 ) {
     var code by remember(prompt.requestId) { mutableStateOf("") }
 
-    val siteLabel = prompt.site ?: "site"
+    val siteLabel = prompt.site ?: stringResource(R.string.vault_site)
     val desc = prompt.hint?.takeIf { it.isNotBlank() } ?: stringResource(R.string.vault_code_desc, siteLabel)
 
     Surface(

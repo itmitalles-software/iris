@@ -813,7 +813,7 @@ internal fun ChatMessage.withLocalTranscriptAnchor(previous: List<ChatMessage>):
 }
 
 internal fun ChatMessage.isSessionStartMarker(): Boolean =
-    role == MessageRole.SYSTEM && (content == "Session created" || content == "Session branched")
+    role == MessageRole.SYSTEM && content in SystemNotice.SESSION_START_MARKERS
 
 private val ChatMessage.canonicalOrder: Long?
     get() =

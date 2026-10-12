@@ -37,6 +37,7 @@ import io.wutz.apollo.ui.chat.ChatSearchState
 import io.wutz.apollo.ui.chat.ImageViewerModel
 import io.wutz.apollo.ui.chat.PendingSendState
 import io.wutz.apollo.ui.chat.SearchTarget
+import io.wutz.apollo.ui.chat.SystemNotice
 import io.wutz.apollo.ui.chat.ToolCallDivider
 import io.wutz.apollo.ui.chat.UserBubble
 import io.wutz.apollo.ui.chat.components.ChatHistoryPrefetch
@@ -173,7 +174,9 @@ fun FullBleedChatList(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = compressionStatus ?: "⏳ Compressing context...",
+                                text =
+                                    compressionStatus?.takeUnless { it == SystemNotice.COMPRESSING_CONTEXT }
+                                        ?: stringResource(R.string.chat_compressing_context),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

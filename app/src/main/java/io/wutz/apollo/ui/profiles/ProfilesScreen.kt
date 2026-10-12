@@ -119,7 +119,7 @@ fun ProfilesScreen(
         title = {
             Text(
                 if (isBuildingProfile) {
-                    "Create Profile"
+                    stringResource(R.string.profiles_builder_action_create)
                 } else {
                     stringResource(R.string.screen_profiles)
                 },
@@ -529,7 +529,8 @@ fun ProfilesScreen(
                                                         text =
                                                             stringResource(
                                                                 R.string.profiles_label_model,
-                                                                profile.model ?: "None",
+                                                                profile.model
+                                                                    ?: stringResource(R.string.profiles_value_none),
                                                             ),
                                                         style = MaterialTheme.typography.bodyMedium,
                                                     )
@@ -537,7 +538,8 @@ fun ProfilesScreen(
                                                         text =
                                                             stringResource(
                                                                 R.string.profiles_label_provider,
-                                                                profile.provider ?: "None",
+                                                                profile.provider
+                                                                    ?: stringResource(R.string.profiles_value_none),
                                                             ),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -729,7 +731,7 @@ fun ProfilesScreen(
                     onValueChange = { newCloneName = it },
                     label = { Text(stringResource(R.string.profiles_label_new_name_input)) },
                     isError = errorMsg != null,
-                    supportingText = errorMsg?.let { { Text(it) } },
+                    supportingText = errorMsg?.let { { Text(stringResource(it)) } },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -823,7 +825,7 @@ fun ProfilesScreen(
                     onValueChange = { newRenameName = it },
                     label = { Text(stringResource(R.string.profiles_label_new_name_input)) },
                     isError = errorMsg != null,
-                    supportingText = errorMsg?.let { { Text(it) } },
+                    supportingText = errorMsg?.let { { Text(stringResource(it)) } },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )

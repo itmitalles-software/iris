@@ -94,7 +94,7 @@ fun ModelPickerDialog(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        contentDescription = stringResource(R.string.action_close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
                     )
@@ -192,7 +192,7 @@ fun ModelPickerDialog(
                                         modifier = Modifier.size(16.dp),
                                     )
                                     Text(
-                                        text = "Pinned",
+                                        text = stringResource(R.string.sessions_pinned_indicator),
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
@@ -355,7 +355,10 @@ private fun ModelItemCard(
                 ) {
                     Icon(
                         imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                        contentDescription = if (isPinned) "Unpin model" else "Pin model",
+                        contentDescription =
+                            stringResource(
+                                if (isPinned) R.string.content_desc_unpin_model else R.string.content_desc_pin_model,
+                            ),
                         tint =
                             if (isPinned) {
                                 MaterialTheme.colorScheme.primary

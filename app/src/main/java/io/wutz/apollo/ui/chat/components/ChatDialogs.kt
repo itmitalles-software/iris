@@ -145,6 +145,7 @@ fun ReloginDialog(
     var password by rememberSaveable { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val unknownError = stringResource(R.string.error_unknown)
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
@@ -203,7 +204,7 @@ fun ReloginDialog(
                         if (success) {
                             onDismiss()
                         } else {
-                            errorMessage = error ?: "Unknown error"
+                            errorMessage = error ?: unknownError
                         }
                     }
                 },

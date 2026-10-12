@@ -1,7 +1,9 @@
 package io.wutz.apollo.ui.model
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.AuxiliaryTaskAssignment
@@ -32,18 +34,18 @@ import kotlinx.coroutines.withContext
 
 data class AuxTaskInfo(
     val key: String,
-    val label: String,
-    val hint: String,
+    @param:StringRes val labelRes: Int,
+    @param:StringRes val hintRes: Int,
 )
 
 val AUX_TASKS =
     listOf(
-        AuxTaskInfo("vision", "Vision", "image/video analysis"),
-        AuxTaskInfo("session_search", "Session search", "past conversation search"),
-        AuxTaskInfo("summarizer", "Compression", "context compression"),
-        AuxTaskInfo("code_exec", "Code execution", "runtime for code blocks"),
-        AuxTaskInfo("computer_use", "Computer use", "desktop/browser automation"),
-        AuxTaskInfo("web_search", "Web search", "live search queries"),
+        AuxTaskInfo("vision", R.string.model_aux_vision, R.string.model_aux_vision_hint),
+        AuxTaskInfo("session_search", R.string.model_aux_session_search, R.string.model_aux_session_search_hint),
+        AuxTaskInfo("summarizer", R.string.model_aux_compression, R.string.model_aux_compression_hint),
+        AuxTaskInfo("code_exec", R.string.model_aux_code_exec, R.string.model_aux_code_exec_hint),
+        AuxTaskInfo("computer_use", R.string.model_aux_computer_use, R.string.model_aux_computer_use_hint),
+        AuxTaskInfo("web_search", R.string.model_aux_web_search, R.string.model_aux_web_search_hint),
     )
 
 data class ModelUiState(

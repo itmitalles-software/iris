@@ -71,8 +71,8 @@ fun CodeTerminalCard(
     collapsibleThreshold: Int = 16,
     isExpanded: Boolean = false,
     onToggleExpand: (() -> Unit)? = null,
-    expandLabel: String = "Show full",
-    collapseLabel: String = "Collapse",
+    expandLabel: String = stringResource(R.string.reasoning_show_full),
+    collapseLabel: String = stringResource(R.string.action_collapse),
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current

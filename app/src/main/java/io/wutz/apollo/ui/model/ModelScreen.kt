@@ -51,6 +51,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -248,12 +249,12 @@ fun ModelScreen(
             text = { Text(state.modelPickerConfirmMessage!!) },
             confirmButton = {
                 Button(onClick = { viewModel.confirmModelPickerExpensive() }) {
-                    Text("Continue")
+                    Text(stringResource(R.string.model_confirm_continue))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissModelPickerConfirm() }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             },
         )
@@ -377,8 +378,13 @@ private fun ModelSettingsSection(
                     )
                 },
                 label = stringResource(R.string.model_main_label),
-                value = if (mainProvider.isNotBlank()) "$mainProvider · $mainModel" else "(unset)",
-                actionLabel = "Change",
+                value =
+                    if (mainProvider.isNotBlank()) {
+                        "$mainProvider · $mainModel"
+                    } else {
+                        stringResource(R.string.model_unset)
+                    },
+                actionLabel = stringResource(R.string.model_action_change),
                 onAction = onSetMainModel,
             )
 
@@ -397,11 +403,15 @@ private fun ModelSettingsSection(
                 label = stringResource(R.string.model_aux_tasks_label),
                 value =
                     if (auxOverrideCount > 0) {
-                        "$auxOverrideCount override · ${AUX_TASKS.size - auxOverrideCount} auto"
+                        stringResource(
+                            R.string.model_aux_summary_overrides,
+                            auxOverrideCount,
+                            AUX_TASKS.size - auxOverrideCount,
+                        )
                     } else {
-                        "${AUX_TASKS.size} tasks · all auto"
+                        pluralStringResource(R.plurals.model_aux_summary_all_auto, AUX_TASKS.size, AUX_TASKS.size)
                     },
-                actionLabel = "Configure",
+                actionLabel = stringResource(R.string.model_action_configure),
                 onAction = onConfigureAux,
             )
 
@@ -418,8 +428,8 @@ private fun ModelSettingsSection(
                     )
                 },
                 label = stringResource(R.string.model_moa_label),
-                value = if (moaEnabled) moaSummary else "not loaded",
-                actionLabel = "Configure",
+                value = if (moaEnabled) moaSummary else stringResource(R.string.model_moa_not_loaded),
+                actionLabel = stringResource(R.string.model_action_configure),
                 onAction = onConfigureMoa,
                 actionEnabled = moaEnabled,
             )
@@ -488,9 +498,7 @@ private fun AuxTasksDialog(
         text = {
             Column {
                 Text(
-                    text =
-                        "Auxiliary tasks handle side-jobs like vision, session" +
-                            " search, and compression. \"auto\" means use the main model.",
+                    text = stringResource(R.string.model_aux_tasks_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -511,12 +519,12 @@ private fun AuxTasksDialog(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
-                                    text = info.label,
+                                    text = stringResource(info.labelRes),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Medium,
                                 )
                                 Text(
-                                    text = info.hint,
+                                    text = stringResource(info.hintRes),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -524,9 +532,13 @@ private fun AuxTasksDialog(
                             Text(
                                 text =
                                     if (isAuto) {
-                                        "auto (use main model)"
+                                        stringResource(R.string.model_aux_auto_main)
                                     } else {
-                                        "${cur.provider} · ${cur.model.ifBlank { "(provider default)" }}"
+                                        "${cur.provider} · ${cur.model.ifBlank {
+                                            stringResource(
+                                                R.string.model_provider_default,
+                                            )
+                                        }}"
                                     },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -536,7 +548,10 @@ private fun AuxTasksDialog(
                             onClick = { onSetTask(info.key) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         ) {
-                            Text("Change", style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                stringResource(R.string.model_action_change),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
@@ -558,7 +573,7 @@ private fun AuxTasksDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         },
     )
 }
@@ -913,7 +928,7 @@ private fun ProviderCard(
                                                     if (isPinned) {
                                                         stringResource(R.string.content_desc_unpin_model)
                                                     } else {
-                                                        "Pin model"
+                                                        stringResource(R.string.content_desc_pin_model)
                                                     },
                                                 tint = MaterialTheme.colorScheme.primary,
                                             )

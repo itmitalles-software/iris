@@ -50,11 +50,11 @@ internal fun TelegramOnboardingDialog(
             Text(
                 text =
                     when (state.onboardingPhase) {
-                        OnboardingPhase.STARTING -> "Starting…"
-                        OnboardingPhase.WAITING -> "Scan QR code"
-                        OnboardingPhase.READY -> "Telegram connected"
-                        OnboardingPhase.APPLYING -> "Saving…"
-                        OnboardingPhase.IDLE -> "Telegram Setup"
+                        OnboardingPhase.STARTING -> stringResource(R.string.action_progress_starting)
+                        OnboardingPhase.WAITING -> stringResource(R.string.tg_onboarding_title_scan)
+                        OnboardingPhase.READY -> stringResource(R.string.tg_onboarding_title_connected)
+                        OnboardingPhase.APPLYING -> stringResource(R.string.tg_onboarding_title_saving)
+                        OnboardingPhase.IDLE -> stringResource(R.string.tg_onboarding_title_setup)
                     },
             )
         },
@@ -116,7 +116,7 @@ internal fun TelegramOnboardingDialog(
                         state.onboardingDetectedOwnerId?.let { ownerId ->
                             if (state.onboardingAllowedIds.contains(ownerId)) {
                                 Text(
-                                    text = "$ownerId (owner detected)",
+                                    text = stringResource(R.string.tg_onboarding_owner_detected, ownerId),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -135,7 +135,7 @@ internal fun TelegramOnboardingDialog(
                                 IconButton(onClick = { onRemoveAllowedId(id) }) {
                                     Icon(
                                         imageVector = Icons.Filled.Close,
-                                        contentDescription = "Remove",
+                                        contentDescription = stringResource(R.string.action_remove),
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
@@ -198,11 +198,11 @@ internal fun TelegramOnboardingDialog(
         dismissButton = {
             when (state.onboardingPhase) {
                 OnboardingPhase.READY -> {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
                 }
 
                 OnboardingPhase.WAITING -> {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
                 }
 
                 OnboardingPhase.IDLE, OnboardingPhase.STARTING, OnboardingPhase.APPLYING -> {}

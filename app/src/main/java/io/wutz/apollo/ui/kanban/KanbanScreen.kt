@@ -63,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -114,6 +115,7 @@ fun KanbanScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val nowSeconds = rememberKanbanNowSeconds(state.tasks.any { it.status.equals("running", ignoreCase = true) })
     val context = LocalContext.current
+    val resources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
 
     var query by remember { mutableStateOf("") }
@@ -194,11 +196,13 @@ fun KanbanScreen(
                                 }
                             } ?: error("Unable to open selected destination")
                         }
-                        viewModel.showToast("Board exported successfully")
+                        viewModel.showToast(resources.getString(R.string.kanban_export_success))
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        viewModel.showToast("Failed to save export: ${e.message}")
+                        viewModel.showToast(
+                            resources.getString(R.string.kanban_export_save_failed, e.message.orEmpty()),
+                        )
                     } finally {
                         pendingExportPath = null
                     }
@@ -269,7 +273,12 @@ fun KanbanScreen(
                                         ) { "Archive cleanup failed (HTTP ${response.code()})" }
                                     },
                                     onCleanupFailure = {
-                                        viewModel.showToast("Temporary import archive cleanup failed: ${it.message}")
+                                        viewModel.showToast(
+                                            resources.getString(
+                                                R.string.kanban_import_cleanup_failed,
+                                                it.message.orEmpty(),
+                                            ),
+                                        )
                                     },
                                 ) {
                                     val importResult = viewModel.importBoard(serverPath)
@@ -277,14 +286,27 @@ fun KanbanScreen(
                                     when (importResult) {
                                         is NetworkResult.Success -> {
                                             val res = importResult.data
-                                            var msg = "Board '${res.name}' imported"
-                                            if (res.renamed) msg += " (as ${res.board})"
+                                            val msg =
+                                                if (res.renamed) {
+                                                    resources.getString(
+                                                        R.string.kanban_import_success_renamed,
+                                                        res.name,
+                                                        res.board,
+                                                    )
+                                                } else {
+                                                    resources.getString(R.string.kanban_import_success, res.name)
+                                                }
                                             viewModel.showToast(msg)
                                             viewModel.loadBoards()
                                         }
 
                                         is NetworkResult.Failure -> {
-                                            viewModel.showToast("Import failed: ${importResult.error.message}")
+                                            viewModel.showToast(
+                                                resources.getString(
+                                                    R.string.kanban_import_failed,
+                                                    importResult.error.message,
+                                                ),
+                                            )
                                         }
                                     }
                                 }
@@ -292,13 +314,18 @@ fun KanbanScreen(
 
                             is NetworkResult.Failure -> {
                                 coroutineContext.ensureActive()
-                                viewModel.showToast("Failed to upload archive: ${uploadResult.error.message}")
+                                viewModel.showToast(
+                                    resources.getString(
+                                        R.string.kanban_import_upload_failed,
+                                        uploadResult.error.message,
+                                    ),
+                                )
                             }
                         }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        viewModel.showToast("Import failed: ${e.message}")
+                        viewModel.showToast(resources.getString(R.string.kanban_import_failed, e.message.orEmpty()))
                     }
                 }
             }
@@ -385,12 +412,19 @@ fun KanbanScreen(
                                                     pendingExportPath = download.file.cacheFile.absolutePath
                                                     exportLauncher.launch("${b.slug}.tar.gz")
                                                 } else {
-                                                    viewModel.showToast("Failed to download board export")
+                                                    viewModel.showToast(
+                                                        resources.getString(R.string.kanban_export_download_failed),
+                                                    )
                                                 }
                                             }
 
                                             is NetworkResult.Failure -> {
-                                                viewModel.showToast("Export failed: ${res.error.message}")
+                                                viewModel.showToast(
+                                                    resources.getString(
+                                                        R.string.kanban_export_failed,
+                                                        res.error.message,
+                                                    ),
+                                                )
                                             }
                                         }
                                     }
@@ -415,7 +449,17 @@ fun KanbanScreen(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text(if (isMultiSelectMode) "Exit Multi-Select" else "Select Multiple") },
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (isMultiSelectMode) {
+                                        R.string.kanban_exit_multi_select
+                                    } else {
+                                        R.string.kanban_select_multiple
+                                    },
+                                ),
+                            )
+                        },
                         onClick = {
                             showBoardMenu = false
                             isMultiSelectMode = !isMultiSelectMode
@@ -989,7 +1033,7 @@ fun KanbanScreen(
                                         .fillMaxWidth(),
                             ) {
                                 Text(
-                                    text = "${selectedTaskIds.size} selected",
+                                    text = stringResource(R.string.kanban_selected_count, selectedTaskIds.size),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                 )

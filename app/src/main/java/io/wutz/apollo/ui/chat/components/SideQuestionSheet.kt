@@ -37,9 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.BtwUiState
 import io.wutz.apollo.ui.chat.MarkdownText
 
@@ -85,7 +87,7 @@ fun SideQuestionSheet(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Side Question",
+                        text = stringResource(R.string.side_question_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -97,7 +99,7 @@ fun SideQuestionSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        contentDescription = stringResource(R.string.action_close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -114,7 +116,7 @@ fun SideQuestionSheet(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "Question",
+                            text = stringResource(R.string.side_question_question),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -148,7 +150,7 @@ fun SideQuestionSheet(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Answering from conversation snapshot...",
+                        text = stringResource(R.string.side_question_loading),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -202,7 +204,7 @@ fun SideQuestionSheet(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                text = "Answer",
+                                text = stringResource(R.string.side_question_answer),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
@@ -214,13 +216,13 @@ fun SideQuestionSheet(
                                             Context.CLIPBOARD_SERVICE,
                                         ) as? ClipboardManager
                                     clipboard?.setPrimaryClip(ClipData.newPlainText("Side Question Answer", answer))
-                                    Toast.makeText(context, "Copied answer", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, R.string.side_question_copied, Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.size(24.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = "Copy answer",
+                                    contentDescription = stringResource(R.string.side_question_copy_answer),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp),
                                 )

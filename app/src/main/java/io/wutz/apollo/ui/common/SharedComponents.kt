@@ -199,7 +199,7 @@ fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "Search…",
+    placeholder: String = stringResource(R.string.common_search_placeholder),
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
     BasicTextField(

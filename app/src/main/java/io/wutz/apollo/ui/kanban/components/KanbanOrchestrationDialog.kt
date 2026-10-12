@@ -259,7 +259,7 @@ private fun ProfileDescriptionEditor(
                     if (profile.isDefault) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "(Default)",
+                            text = stringResource(R.string.kanban_default_marker),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )

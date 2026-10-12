@@ -182,7 +182,7 @@ internal fun MoaConfigDialog(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") }
+                    TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.action_cancel)) }
                     Button(
                         onClick = { onSave(draft) },
                         enabled = !busy,
@@ -190,7 +190,7 @@ internal fun MoaConfigDialog(
                         if (busy) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("Save")
+                            Text(stringResource(R.string.action_save))
                         }
                     }
                 }
@@ -274,7 +274,11 @@ private fun MoaConfigEditor(
 
         // Default preset indicator
         Text(
-            text = "Default: ${draft.default_preset.ifBlank { "(none)" }}",
+            text =
+                stringResource(
+                    R.string.moa_default_preset,
+                    draft.default_preset.ifBlank { stringResource(R.string.moa_preset_none) },
+                ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -296,7 +300,7 @@ private fun MoaConfigEditor(
                 enabled = presetNames.size > 1,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text("Delete", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.action_delete), style = MaterialTheme.typography.labelSmall)
             }
         }
 
@@ -347,10 +351,14 @@ private fun MoaConfigEditor(
                 OutlinedButton(
                     onClick = { onPickReference(index) },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                ) { Text("Change", style = MaterialTheme.typography.labelSmall) }
+                ) { Text(stringResource(R.string.model_action_change), style = MaterialTheme.typography.labelSmall) }
                 if (effectivePreset.reference_models.size > 1) {
                     IconButton(onClick = { onRemoveReference(index) }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(14.dp))
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.action_remove),
+                            modifier = Modifier.size(14.dp),
+                        )
                     }
                 }
             }
@@ -369,7 +377,7 @@ private fun MoaConfigEditor(
 
         // Aggregator
         Text(
-            text = "Aggregator",
+            text = stringResource(R.string.moa_aggregator),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
         )
@@ -386,7 +394,7 @@ private fun MoaConfigEditor(
             OutlinedButton(
                 onClick = onPickAggregator,
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-            ) { Text("Change", style = MaterialTheme.typography.labelSmall) }
+            ) { Text(stringResource(R.string.model_action_change), style = MaterialTheme.typography.labelSmall) }
         }
     }
 }
@@ -405,13 +413,13 @@ private fun MoaSlotPicker(
     Column {
         Text(
             text =
-                "Select model for ${
+                stringResource(
                     if (pickerTarget is MoaPickerTarget.Aggregator) {
-                        "aggregator"
+                        R.string.moa_select_aggregator
                     } else {
-                        "reference model"
-                    }
-                }",
+                        R.string.moa_select_reference
+                    },
+                ),
             style = MaterialTheme.typography.titleSmall,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -486,7 +494,7 @@ private fun MoaSlotPicker(
         }
 
         TextButton(onClick = onCancel) {
-            Text("Back")
+            Text(stringResource(R.string.content_desc_back))
         }
     }
 }

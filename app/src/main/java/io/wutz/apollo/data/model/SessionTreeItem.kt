@@ -1,5 +1,8 @@
 package io.wutz.apollo.data.model
 
+/** Fallback title for sessions without title, name or preview; the UI shows a translated label for it. */
+const val UNTITLED_SESSION_TITLE = "Untitled"
+
 data class SessionTreeItem(
     val session: SessionInfo,
     val depth: Int,
@@ -43,7 +46,7 @@ fun flattenSessionTree(sessions: List<SessionInfo>): List<SessionTreeItem> {
                 ?: if (isBranch) {
                     "branch ${siblingIndex + 1}"
                 } else {
-                    session.preview?.takeIf(String::isNotBlank)?.take(80) ?: "Untitled"
+                    session.preview?.takeIf(String::isNotBlank)?.take(80) ?: UNTITLED_SESSION_TITLE
                 }
         val branchStem = if (depth == 0) null else (if (siblingIndex == siblingCount - 1) "└─" else "├─")
         result +=

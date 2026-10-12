@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -369,7 +370,7 @@ private fun SelfImprovementSection(graph: LearningGraphResponse?) {
                             }
                             node.useCount.takeIf { it > 0 }?.let { uses ->
                                 StatusBadge(
-                                    text = "$uses uses",
+                                    text = pluralStringResource(R.plurals.memory_use_count, uses, uses),
                                     status = StatusBadgeType.INFO,
                                 )
                             }

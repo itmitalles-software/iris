@@ -481,13 +481,17 @@ fun KanbanCreateTaskDialog(
                                         .padding(vertical = 4.dp),
                             ) {
                                 Text(
-                                    text = "Estimated Tokens: ${est.tokens ?: "N/A"}",
+                                    text =
+                                        stringResource(
+                                            R.string.kanban_estimated_tokens_label,
+                                            est.tokens?.toString() ?: stringResource(R.string.common_not_available),
+                                        ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                                 if (!est.complexity.isNullOrBlank()) {
                                     Text(
-                                        text = "Complexity: ${est.complexity}",
+                                        text = stringResource(R.string.kanban_complexity, est.complexity.orEmpty()),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                 }
@@ -519,7 +523,17 @@ fun KanbanCreateTaskDialog(
                             CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
                             Spacer(modifier = Modifier.width(4.dp))
                         }
-                        Text(if (estimate != null) "Re-estimate" else "Estimate tokens")
+                        Text(
+                            stringResource(
+                                if (estimate !=
+                                    null
+                                ) {
+                                    R.string.kanban_reestimate_action
+                                } else {
+                                    R.string.kanban_estimate_tokens
+                                },
+                            ),
+                        )
                     }
                 }
             }

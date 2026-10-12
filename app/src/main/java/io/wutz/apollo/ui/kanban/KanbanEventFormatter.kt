@@ -28,11 +28,23 @@ enum class KanbanEventMessage {
     UNKNOWN,
 }
 
+/** Fixed detail lines that the UI translates; free-form server reasons stay in [FormattedKanbanEvent.detail]. */
+enum class KanbanEventDetailMessage {
+    PARENT_REOPENED,
+    PARENT_ID_REOPENED,
+}
+
+/**
+ * [label] and [detail] are English fallbacks (logs, tests, unknown kinds). The UI localizes [message] with
+ * [arguments] and [detailMessage] with [detailArguments].
+ */
 data class FormattedKanbanEvent(
     val label: String,
     val detail: String? = null,
     val message: KanbanEventMessage = KanbanEventMessage.UNKNOWN,
     val arguments: List<String> = emptyList(),
+    val detailMessage: KanbanEventDetailMessage? = null,
+    val detailArguments: List<String> = emptyList(),
 )
 
 object KanbanEventFormatter {
@@ -91,11 +103,19 @@ object KanbanEventFormatter {
                         "parent_reopened" -> if (parent != null) "Parent $parent reopened" else "Parent reopened"
                         else -> reason
                     }
+                val detailMessage =
+                    when {
+                        reason != "parent_reopened" -> null
+                        parent != null -> KanbanEventDetailMessage.PARENT_ID_REOPENED
+                        else -> KanbanEventDetailMessage.PARENT_REOPENED
+                    }
                 FormattedKanbanEvent(
                     label = "Moved to $targetStatus",
                     detail = detail,
                     message = KanbanEventMessage.MOVED,
                     arguments = listOf(targetStatus),
+                    detailMessage = detailMessage,
+                    detailArguments = listOfNotNull(parent.takeIf { detailMessage != null }),
                 )
             }
 
@@ -109,11 +129,12 @@ object KanbanEventFormatter {
             }
 
             "commented" -> {
-                val author = str("author") ?: "someone"
+                val author = str("author")
                 FormattedKanbanEvent(
-                    label = "Comment by $author",
+                    label = "Comment by ${author ?: "someone"}",
                     message = KanbanEventMessage.COMMENTED,
-                    arguments = listOf(author),
+                    // Empty when the server sent no author; the UI fills in a translated "someone".
+                    arguments = listOfNotNull(author),
                 )
             }
 

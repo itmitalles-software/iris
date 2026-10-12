@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,6 +84,7 @@ fun FilesScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dataScope by AuthManager.dataScopeFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     val uploadLauncher =
         rememberLauncherForActivityResult(
@@ -98,7 +100,7 @@ fun FilesScreen(
                         viewModel.uploadFile(fileName, stream.readBytes(), mimeType)
                     }
                 }.onFailure {
-                    viewModel.showToast("Could not read selected file: ${it.message}")
+                    viewModel.showToast(resources.getString(R.string.file_read_failed_reason, it.message.orEmpty()))
                 }
             },
         )
@@ -498,7 +500,7 @@ private fun openManagedFile(
                 val data = result.data
                 val bytes = data.bytes
                 if (bytes == null) {
-                    viewModel.showToast("Could not decode file")
+                    viewModel.showToast(context.getString(R.string.files_decode_failed))
                     return@downloadFile
                 }
                 runCatching {
@@ -521,12 +523,12 @@ private fun openManagedFile(
                         }
                     context.startActivity(intent)
                 }.onFailure {
-                    viewModel.showToast("Could not open file: ${it.message}")
+                    viewModel.showToast(context.getString(R.string.files_open_failed, it.message.orEmpty()))
                 }
             }
 
             is io.wutz.apollo.data.remote.NetworkResult.Failure -> {
-                viewModel.showToast("Failed to open file: ${result.error.message}")
+                viewModel.showToast(context.getString(R.string.files_open_failed, result.error.message))
             }
         }
     }

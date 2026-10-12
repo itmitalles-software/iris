@@ -232,10 +232,11 @@ fun ComposerToolbar(
         // Model + reasoning pill — wraps its content inside the free space,
         // pushing the mic/action buttons to the far end
         val modelScrollState = rememberScrollState()
+        val reasoningLevelLabels = rememberReasoningLevelLabels()
         val modelLabel =
             currentSessionModel?.let { model ->
                 composerModelLabel(model, showProvider = showModelProvider)
-            } ?: "Model"
+            } ?: stringResource(R.string.chat_composer_model)
         LaunchedEffect(modelLabel) {
             modelScrollState.scrollTo(0)
         }
@@ -308,7 +309,11 @@ fun ComposerToolbar(
                         Text(
                             text =
                                 if (reasoningDisabledForModel) {
-                                    if (fastMode) stringResource(R.string.chat_fast_mode_label) else "No reasoning"
+                                    if (fastMode) {
+                                        stringResource(R.string.chat_fast_mode_label)
+                                    } else {
+                                        stringResource(R.string.chat_reasoning_off_label)
+                                    }
                                 } else {
                                     val targetEffort = pendingReasoningLevel ?: reasoningLevel
                                     val wire = if (pendingReasoningLevel != null) null else reasoningWireLevel
@@ -317,6 +322,7 @@ fun ComposerToolbar(
                                             level = targetEffort,
                                             wireLevel = wire,
                                             defaultLabel = stringResource(R.string.chat_reasoning_default),
+                                            levelLabel = { reasoningLevelLabels[it] ?: it },
                                         )
                                     if (fastMode) {
                                         "${stringResource(
@@ -407,7 +413,7 @@ fun ComposerToolbar(
                         HorizontalDivider()
 
                         Text(
-                            text = "REASONING",
+                            text = stringResource(R.string.chat_reasoning_header),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Bold,
@@ -415,7 +421,7 @@ fun ComposerToolbar(
                         )
                         if (canDisable == false) {
                             Text(
-                                text = "reasoning always on",
+                                text = stringResource(R.string.chat_reasoning_always_on),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
@@ -423,23 +429,13 @@ fun ComposerToolbar(
                         }
                         if (reasoningDisabledForModel) {
                             Text(
-                                text = "no reasoning parameter for this model",
+                                text = stringResource(R.string.chat_reasoning_unsupported),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
                             )
                         }
-                        val allLevels =
-                            listOf(
-                                "none" to "None",
-                                "minimal" to "Minimal",
-                                "low" to "Low",
-                                "medium" to "Med",
-                                "high" to "High",
-                                "xhigh" to "XHigh",
-                                "max" to "Max",
-                                "ultra" to "Ultra",
-                            )
+                        val allLevels = REASONING_LEVELS.map { it to (reasoningLevelLabels[it] ?: it) }
                         allLevels.forEach { (level, label) ->
                             val isNone = level == "none"
                             val noneDisabled = isNone && (canDisable == false || reasoningDisabledForModel)
@@ -481,7 +477,11 @@ fun ComposerToolbar(
                                                     stringResource(
                                                         R.string.chat_reasoning_clamped_desc,
                                                         label,
-                                                        buildReasoningLabel(reasoningWireLevel, defaultLabel = ""),
+                                                        buildReasoningLabel(
+                                                            reasoningWireLevel,
+                                                            defaultLabel = "",
+                                                            levelLabel = { reasoningLevelLabels[it] ?: it },
+                                                        ),
                                                     ),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
@@ -549,7 +549,10 @@ fun ComposerToolbar(
                 ) {
                     Icon(
                         imageVector = if (isListening) Icons.Default.Stop else Icons.Outlined.Mic,
-                        contentDescription = if (isListening) "Stop listening" else "Mic",
+                        contentDescription =
+                            stringResource(
+                                if (isListening) R.string.chat_mic_stop_listening else R.string.chat_mic_desc,
+                            ),
                         tint = if (isConnected) micColors.contentColor else micColors.disabledContentColor,
                     )
                 }
@@ -641,7 +644,7 @@ fun ComposerToolbar(
                                 if (canInterrupt) {
                                     stringResource(R.string.chat_voice_stop_generating)
                                 } else {
-                                    "Stop listening"
+                                    stringResource(R.string.chat_mic_stop_listening)
                                 },
                             tint =
                                 if (isListening && !canInterrupt) {
@@ -655,7 +658,7 @@ fun ComposerToolbar(
                     ActionGlyph.VOICE -> {
                         Icon(
                             imageVector = Icons.Outlined.Mic,
-                            contentDescription = "Mic",
+                            contentDescription = stringResource(R.string.chat_mic_desc),
                             tint = palette.onAction,
                         )
                     }
@@ -721,43 +724,59 @@ internal fun composerModelLabel(
 
 private const val CUSTOM_PROVIDER_PREFIX = "custom:"
 
+/** Reasoning effort wire levels in menu order. */
+private val REASONING_LEVELS = listOf("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")
+
+/** Compact English labels; also the fallback when no localized resolver is passed. */
+private fun englishReasoningLevelLabel(level: String): String =
+    when (level) {
+        "none" -> "None"
+        "minimal" -> "Minimal"
+        "low" -> "Low"
+        "medium" -> "Med"
+        "high" -> "High"
+        "xhigh" -> "XHigh"
+        "max" -> "Max"
+        "ultra" -> "Ultra"
+        else -> level
+    }
+
+/** Localized compact labels for [REASONING_LEVELS]. */
+@Composable
+private fun rememberReasoningLevelLabels(): Map<String, String> =
+    mapOf(
+        "none" to stringResource(R.string.chat_reasoning_level_none),
+        "minimal" to stringResource(R.string.chat_reasoning_level_minimal),
+        "low" to stringResource(R.string.chat_reasoning_level_low),
+        "medium" to stringResource(R.string.chat_reasoning_level_medium),
+        "high" to stringResource(R.string.chat_reasoning_level_high),
+        "xhigh" to stringResource(R.string.chat_reasoning_level_xhigh),
+        "max" to stringResource(R.string.chat_reasoning_level_max),
+        "ultra" to stringResource(R.string.chat_reasoning_level_ultra),
+    )
+
 /**
  * Build a human-readable label from a reasoning effort level.
  *
  * @param level One of: "none", "minimal", "low", "medium", "high",
  *              "xhigh", "max", "ultra", or null for model default.
+ * @param levelLabel Maps a known level to its display label; defaults to compact English labels.
  * @return Display string such as "None", "Low", "XHigh", "Ultra", etc.
  */
 fun buildReasoningLabel(
     level: String?,
     wireLevel: String? = null,
     defaultLabel: String = "Default",
+    levelLabel: (String) -> String = ::englishReasoningLevelLabel,
 ): String {
     val reqLabel =
         when (level) {
             null -> defaultLabel
-            "none" -> "None"
-            "minimal" -> "Minimal"
-            "low" -> "Low"
-            "medium" -> "Med"
-            "high" -> "High"
-            "xhigh" -> "XHigh"
-            "max" -> "Max"
-            "ultra" -> "Ultra"
+            in REASONING_LEVELS -> levelLabel(level)
             else -> level
         }
     if (wireLevel != null && !wireLevel.equals(level, ignoreCase = true) && level != "none") {
-        val wireLabel =
-            when (wireLevel) {
-                "minimal" -> "Minimal"
-                "low" -> "Low"
-                "medium" -> "Med"
-                "high" -> "High"
-                "xhigh" -> "XHigh"
-                "max" -> "Max"
-                "ultra" -> "Ultra"
-                else -> wireLevel
-            }
+        val wireLabel = if (wireLevel != "none" && wireLevel in REASONING_LEVELS) levelLabel(wireLevel) else wireLevel
         return "$reqLabel→$wireLabel"
     }
     return reqLabel

@@ -25,11 +25,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.wutz.apollo.R
 import io.wutz.apollo.theme.CodeDiffAddBg
 import io.wutz.apollo.theme.CodeDiffAddText
 import io.wutz.apollo.theme.CodeDiffDeleteBg
@@ -167,7 +170,7 @@ fun DiffViewCard(
         title = parsed.filePath ?: "diff",
         icon = Icons.AutoMirrored.Filled.InsertDriveFile,
         clipLabel = "diff",
-        copyContentDescription = "Copy diff",
+        copyContentDescription = stringResource(R.string.code_copy_diff),
         onCopy = onCopy,
         headerActions = {
             if (parsed.additionsCount > 0) {
@@ -196,8 +199,8 @@ fun DiffViewCard(
         totalLines = parsed.lines.size,
         isExpanded = expanded,
         onToggleExpand = { expanded = !expanded },
-        expandLabel = "Show full diff (${parsed.lines.size} lines)",
-        collapseLabel = "Collapse diff",
+        expandLabel = pluralStringResource(R.plurals.code_show_full_diff, parsed.lines.size, parsed.lines.size),
+        collapseLabel = stringResource(R.string.code_collapse_diff),
     ) {
         val verticalScrollModifier =
             if (expanded) {
@@ -284,12 +287,12 @@ fun FileViewCard(
         title = filePath?.takeIf { it.isNotBlank() } ?: "file",
         icon = Icons.AutoMirrored.Filled.InsertDriveFile,
         clipLabel = "file",
-        copyContentDescription = "Copy file content",
+        copyContentDescription = stringResource(R.string.code_copy_file),
         onCopy = onCopy,
         headerActions = {
             if (lines.isNotEmpty()) {
                 Text(
-                    text = "${lines.size} lines",
+                    text = pluralStringResource(R.plurals.code_line_count, lines.size, lines.size),
                     style =
                         MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
@@ -302,8 +305,8 @@ fun FileViewCard(
         totalLines = lines.size,
         isExpanded = expanded,
         onToggleExpand = { expanded = !expanded },
-        expandLabel = "Show full file (${lines.size} lines)",
-        collapseLabel = "Collapse file",
+        expandLabel = pluralStringResource(R.plurals.code_show_full_file, lines.size, lines.size),
+        collapseLabel = stringResource(R.string.code_collapse_file),
     ) {
         val verticalScrollModifier =
             if (expanded) {

@@ -99,9 +99,9 @@ internal fun SecurityRiskChip(
     val statusColors = LocalHermesStatusColors.current
     val (chipColor, label) =
         when {
-            riskData.risk == "high" -> statusColors.error to "Risky output"
-            riskData.risk == "medium" -> statusColors.warning to "Caution"
-            else -> statusColors.warning to "Redacted"
+            riskData.risk == "high" -> statusColors.error to stringResource(R.string.tool_risk_high)
+            riskData.risk == "medium" -> statusColors.warning to stringResource(R.string.tool_risk_medium)
+            else -> statusColors.warning to stringResource(R.string.tool_risk_redacted)
         }
 
     Row(

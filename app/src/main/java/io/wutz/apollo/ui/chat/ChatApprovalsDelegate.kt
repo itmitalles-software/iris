@@ -74,7 +74,7 @@ class ChatApprovalsDelegate(
             return
         }
         val description = event.description ?: event.command ?: "Unknown command"
-        val content = "**Approval Required**\n$description"
+        val content = "${SystemNotice.APPROVAL_REQUIRED_HEADING}\n$description"
         val msg =
             ChatMessage(
                 role = MessageRole.SYSTEM,
@@ -142,7 +142,7 @@ class ChatApprovalsDelegate(
         val map = result as? Map<*, *>
         val resolved = (map?.get("resolved") as? Number)?.toInt() ?: 0
         if (resolved > 0) {
-            addSystemMessage("Approval submitted")
+            addSystemMessage(SystemNotice.APPROVAL_SUBMITTED)
         }
     }
 

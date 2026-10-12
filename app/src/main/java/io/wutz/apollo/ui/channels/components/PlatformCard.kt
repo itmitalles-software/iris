@@ -54,38 +54,71 @@ private data class PlatformStateInfo(
     val icon: ImageVector,
 )
 
+@Composable
 private fun platformStateInfo(state: String): PlatformStateInfo =
     when (state) {
         "connected" -> {
-            PlatformStateInfo("Connected", StatusBadgeType.SUCCESS, Icons.Filled.CheckCircle)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_connected),
+                StatusBadgeType.SUCCESS,
+                Icons.Filled.CheckCircle,
+            )
         }
 
         "pending_restart" -> {
-            PlatformStateInfo("Restart to apply", StatusBadgeType.WARNING, Icons.Filled.Refresh)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_pending_restart),
+                StatusBadgeType.WARNING,
+                Icons.Filled.Refresh,
+            )
         }
 
         "gateway_stopped" -> {
-            PlatformStateInfo("Gateway stopped", StatusBadgeType.WARNING, Icons.Filled.RadioButtonChecked)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_gateway_stopped),
+                StatusBadgeType.WARNING,
+                Icons.Filled.RadioButtonChecked,
+            )
         }
 
         "startup_failed" -> {
-            PlatformStateInfo("Start failed", StatusBadgeType.ERROR, Icons.Filled.Warning)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_startup_failed),
+                StatusBadgeType.ERROR,
+                Icons.Filled.Warning,
+            )
         }
 
         "disconnected" -> {
-            PlatformStateInfo("Disconnected", StatusBadgeType.WARNING, Icons.Filled.RadioButtonChecked)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_disconnected),
+                StatusBadgeType.WARNING,
+                Icons.Filled.RadioButtonChecked,
+            )
         }
 
         "not_configured" -> {
-            PlatformStateInfo("Not configured", StatusBadgeType.NEUTRAL, Icons.Filled.RadioButtonChecked)
+            PlatformStateInfo(
+                stringResource(R.string.keys_label_not_configured),
+                StatusBadgeType.NEUTRAL,
+                Icons.Filled.RadioButtonChecked,
+            )
         }
 
         "disabled" -> {
-            PlatformStateInfo("Disabled", StatusBadgeType.NEUTRAL, Icons.Filled.RadioButtonChecked)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_disabled),
+                StatusBadgeType.NEUTRAL,
+                Icons.Filled.RadioButtonChecked,
+            )
         }
 
         "fatal" -> {
-            PlatformStateInfo("Error", StatusBadgeType.ERROR, Icons.Filled.Warning)
+            PlatformStateInfo(
+                stringResource(R.string.channels_state_error),
+                StatusBadgeType.ERROR,
+                Icons.Filled.Warning,
+            )
         }
 
         else -> {

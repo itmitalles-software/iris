@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -16,6 +17,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.wutz.apollo.R
 import io.wutz.apollo.theme.CodeTerminalText
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.theme.SearchHighlightColors
@@ -53,7 +55,7 @@ fun CodeBlockCard(
         testTag = "code_block",
         title = language?.takeIf { it.isNotBlank() }?.uppercase(),
         onCopy = onCopy,
-        copyContentDescription = "Copy code",
+        copyContentDescription = stringResource(R.string.code_copy_code),
     ) {
         Text(
             text =

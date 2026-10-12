@@ -282,7 +282,7 @@ fun GroupChatComposer(
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Send,
-                                        contentDescription = "Send",
+                                        contentDescription = stringResource(R.string.chat_send_desc),
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }

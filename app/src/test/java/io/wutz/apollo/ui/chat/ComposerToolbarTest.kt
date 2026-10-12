@@ -50,4 +50,17 @@ class ComposerToolbarTest {
         assertEquals("High", buildReasoningLabel("high", wireLevel = "high"))
         assertEquals("None", buildReasoningLabel("none", wireLevel = "low"))
     }
+
+    @Test
+    fun buildReasoningLabel_usesLevelResolverForKnownLevels() {
+        val german = mapOf("none" to "Aus", "medium" to "Mittel", "high" to "Hoch", "max" to "Max")
+        val resolve: (String) -> String = { german[it] ?: "?$it" }
+        assertEquals("Hoch", buildReasoningLabel("high", levelLabel = resolve))
+        assertEquals("Aus", buildReasoningLabel("none", levelLabel = resolve))
+        assertEquals("Hoch→Mittel", buildReasoningLabel("high", wireLevel = "medium", levelLabel = resolve))
+        // Unknown levels stay raw and never reach the resolver.
+        assertEquals("turbo", buildReasoningLabel("turbo", levelLabel = { error(it) }))
+        assertEquals("Hoch→turbo", buildReasoningLabel("high", wireLevel = "turbo", levelLabel = resolve))
+        assertEquals("Standard", buildReasoningLabel(null, defaultLabel = "Standard", levelLabel = { error(it) }))
+    }
 }

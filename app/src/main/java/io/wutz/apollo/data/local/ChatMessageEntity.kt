@@ -4,6 +4,7 @@ import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import io.wutz.apollo.ui.chat.SystemNotice
 
 /**
  * Persisted chat message. Maps to the [io.wutz.apollo.ui.chat.ChatMessage]
@@ -63,7 +64,7 @@ data class ChatMessageEntity(
 )
 
 internal fun ChatMessageEntity.isSessionStartMarker(): Boolean =
-    role == "SYSTEM" && (content == "Session created" || content == "Session branched")
+    role == "SYSTEM" && content in SystemNotice.SESSION_START_MARKERS
 
 /** Only the exact session prefix and a nonnegative decimal suffix identify a canonical row. */
 internal fun canonicalMessageOrder(

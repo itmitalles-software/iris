@@ -115,7 +115,7 @@ fun CronJobsScreen(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "Unknown error",
+                    message = state.errorMessage ?: stringResource(R.string.error_unknown),
                     onRetry = { viewModel.loadCronJobs() },
                 )
             }
@@ -319,17 +319,27 @@ fun CronJobsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                     RunDetailRow(
-                        "Status",
+                        stringResource(R.string.cron_detail_status),
                         when (job.lastRunStatus) {
                             "blocked_config" -> stringResource(R.string.cron_status_blocked_config)
                             "no_change" -> stringResource(R.string.cron_status_no_change)
-                            else -> job.lastRunStatus.ifEmpty { "unknown" }
+                            else -> job.lastRunStatus.ifEmpty { stringResource(R.string.cron_status_unknown) }
                         },
                     )
-                    job.last_run_at?.let { if (it.isNotBlank()) RunDetailRow("Last run", it) }
-                    RunDetailRow("Schedule", CronExpressionFormatter.cronToHumanReadable(job.scheduleText))
+                    job.last_run_at?.let {
+                        if (it.isNotBlank()) {
+                            RunDetailRow(
+                                stringResource(R.string.cron_detail_last_run),
+                                it,
+                            )
+                        }
+                    }
+                    RunDetailRow(
+                        stringResource(R.string.cron_edit_field_schedule),
+                        CronExpressionFormatter.cronToHumanReadable(job.scheduleText),
+                    )
                     if (job.last_error != null && job.last_error.isNotBlank()) {
-                        RunDetailRow("Error", job.last_error)
+                        RunDetailRow(stringResource(R.string.cron_status_error), job.last_error)
                     }
                     job.last_fire_error?.let { fireErr ->
                         if (fireErr.detail != null || fireErr.at != null) {
@@ -345,12 +355,26 @@ fun CronJobsScreen(
                             )
                         }
                     }
-                    job.script?.let { if (it.isNotBlank()) RunDetailRow("Script", it) }
-                    job.monitorSource?.let { if (it.isNotBlank()) RunDetailRow("Monitor", it) }
+                    job.script?.let {
+                        if (it.isNotBlank()) {
+                            RunDetailRow(
+                                stringResource(R.string.cron_edit_field_script),
+                                it,
+                            )
+                        }
+                    }
+                    job.monitorSource?.let {
+                        if (it.isNotBlank()) {
+                            RunDetailRow(
+                                stringResource(R.string.cron_detail_monitor),
+                                it,
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selectedJob = null }) { Text("Close") }
+                TextButton(onClick = { selectedJob = null }) { Text(stringResource(R.string.action_close)) }
             },
         )
     }

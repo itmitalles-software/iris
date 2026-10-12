@@ -505,19 +505,21 @@ private fun providerStatusColor(provider: OAuthProvider): Color =
         else -> LocalHermesStatusColors.current.warning
     }
 
+@Composable
 private fun providerStatusLabel(provider: OAuthProvider): String =
     when {
-        provider.status.loggedIn -> "Connected"
-        provider.flow == "external" -> "External — connect via CLI"
-        else -> "Not connected"
+        provider.status.loggedIn -> stringResource(R.string.providers_status_connected)
+        provider.flow == "external" -> stringResource(R.string.providers_status_external)
+        else -> stringResource(R.string.providers_status_not_connected)
     }
 
+@Composable
 private fun deviceStatusLabel(status: String): String? =
     when (status) {
-        "pending" -> "Waiting for authorization…"
-        "approved" -> "Approved"
-        "denied" -> "Denied"
-        "expired" -> "Expired"
-        "error" -> "Error"
+        "pending" -> stringResource(R.string.providers_device_pending)
+        "approved" -> stringResource(R.string.providers_device_approved)
+        "denied" -> stringResource(R.string.providers_device_denied)
+        "expired" -> stringResource(R.string.providers_device_expired)
+        "error" -> stringResource(R.string.providers_device_error)
         else -> null
     }

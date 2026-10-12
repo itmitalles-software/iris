@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.channels
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -70,18 +72,19 @@ private val SLACK_TOKEN_PREFIXES =
 private fun validateEnvField(
     field: EnvVarField,
     value: String,
+    resources: Resources,
 ): String? {
     val trimmed = value.trim()
     if (!trimmed.isNotEmpty()) return null
     val expectedPrefix = SLACK_TOKEN_PREFIXES[field.key]
     if (expectedPrefix != null && !trimmed.startsWith(expectedPrefix)) {
-        return "${field.prompt ?: field.key} must start with $expectedPrefix"
+        return resources.getString(R.string.channels_error_token_prefix, field.prompt ?: field.key, expectedPrefix)
     }
     if (field.key == "SLACK_ALLOWED_USERS") {
         val parts = trimmed.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         val invalid = parts.firstOrNull { it != "*" && !SLACK_MEMBER_ID_RE.matches(it) }
         if (invalid != null) {
-            return "$invalid does not look like a Slack member ID. Use IDs like U01ABC2DEF3."
+            return resources.getString(R.string.channels_error_slack_member_id, invalid)
         }
     }
     return null
@@ -285,7 +288,7 @@ private fun GatewayOfflineBanner(gatewayCommand: String) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "The gateway is not running. Configure channels here, then start the gateway with:",
+                    text = stringResource(R.string.channels_gateway_offline_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -336,7 +339,7 @@ internal fun ConfigureForm(
             label = { Text(field.prompt ?: field.key) },
             placeholder = {
                 if (field.isSet) {
-                    Text(field.redactedValue ?: "******** (Already Configured)")
+                    Text(field.redactedValue ?: stringResource(R.string.channels_already_configured))
                 }
             },
             supportingText = {
@@ -388,12 +391,13 @@ internal fun ConfigureForm(
             )
         }
         Spacer(modifier = Modifier.width(8.dp))
+        val resources = LocalResources.current
         Button(
             onClick = {
                 val errors = mutableMapOf<String, String>()
                 envFields.forEach { field ->
                     val value = inputValues[field.key].orEmpty()
-                    val error = validateEnvField(field, value)
+                    val error = validateEnvField(field, value, resources)
                     if (error != null) errors[field.key] = error
                 }
                 if (errors.isNotEmpty()) {
@@ -430,7 +434,7 @@ private fun AdminSection(envPath: String) {
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
-                text = "Admin",
+                text = stringResource(R.string.channels_admin),
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(modifier = Modifier.height(8.dp))

@@ -308,7 +308,7 @@ fun KanbanTaskScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     MetaRow(stringResource(R.string.kanban_run_number, selectedRun.id), selectedRun.status)
                     selectedRun.profile?.let { MetaRow(stringResource(R.string.kanban_assignee), it) }
-                    selectedRun.stepKey?.let { MetaRow("Step", it) }
+                    selectedRun.stepKey?.let { MetaRow(stringResource(R.string.kanban_meta_step), it) }
                     selectedRun.workerPid?.let { MetaRow("PID", it.toString()) }
                     selectedRun.summary?.let { Text(it) }
                     selectedRun.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -321,7 +321,12 @@ fun KanbanTaskScreen(
                             },
                         )
                         inspection.cpuPercent?.let { MetaRow("CPU", "$it%") }
-                        inspection.memoryRssBytes?.let { MetaRow("Memory", "${it / 1024} KiB") }
+                        inspection.memoryRssBytes?.let {
+                            MetaRow(
+                                stringResource(R.string.kanban_meta_memory),
+                                "${it / 1024} KiB",
+                            )
+                        }
                         inspection.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     }
                 }
@@ -460,13 +465,13 @@ private fun TaskOverviewTab(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
-                        text = "Attributes",
+                        text = stringResource(R.string.kanban_attributes),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    MetaRow(label = "Status", value = task.status.uppercase())
+                    MetaRow(label = stringResource(R.string.kanban_meta_status), value = task.status.uppercase())
 
                     // Editable Assignee
                     Row(
@@ -486,7 +491,7 @@ private fun TaskOverviewTab(
                                 modifier = Modifier.height(32.dp),
                             ) {
                                 Text(
-                                    text = task.assignee ?: "Unassigned",
+                                    text = task.assignee ?: stringResource(R.string.kanban_unassigned_group),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Medium,
                                 )
@@ -515,12 +520,32 @@ private fun TaskOverviewTab(
                         }
                     }
 
-                    task.priority?.let { MetaRow(label = "Priority", value = it.toString()) }
-                    task.tenant?.let { MetaRow(label = "Tenant", value = it) }
-                    task.workspaceKind?.let { MetaRow(label = "Workspace", value = "$it ${task.workspacePath ?: ""}") }
-                    task.workerPid?.let { MetaRow(label = "Worker PID", value = it.toString()) }
-                    task.workflowTemplateId?.let { MetaRow(label = "Workflow", value = it) }
-                    task.currentStepKey?.let { MetaRow(label = "Step", value = it) }
+                    task.priority?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_priority),
+                            value = it.toString(),
+                        )
+                    }
+                    task.tenant?.let { MetaRow(label = stringResource(R.string.kanban_tenant), value = it) }
+                    task.workspaceKind?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_meta_workspace),
+                            value = "$it ${task.workspacePath ?: ""}",
+                        )
+                    }
+                    task.workerPid?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_meta_worker_pid),
+                            value = it.toString(),
+                        )
+                    }
+                    task.workflowTemplateId?.let {
+                        MetaRow(
+                            label = stringResource(R.string.kanban_meta_workflow),
+                            value = it,
+                        )
+                    }
+                    task.currentStepKey?.let { MetaRow(label = stringResource(R.string.kanban_meta_step), value = it) }
 
                     Spacer(modifier = Modifier.height(8.dp))
                     HorizontalDivider()
@@ -742,7 +767,7 @@ private fun TaskOverviewTab(
                     } else {
                         SelectionContainer {
                             MarkdownText(
-                                text = task.body?.ifBlank { "No description provided." } ?: "No description provided.",
+                                text = task.body?.ifBlank { null } ?: stringResource(R.string.kanban_no_description),
                                 textColor = MaterialTheme.colorScheme.onSurface,
                             )
                         }
@@ -762,7 +787,7 @@ private fun TaskOverviewTab(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "Latest Outcome / Summary",
+                            text = stringResource(R.string.kanban_latest_outcome),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -914,11 +939,11 @@ private fun TaskRunsTab(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box {
                     TextButton(onClick = { filterMenuExpanded = true }) {
-                        Text(if (filterType == "status") "Status" else "Outcome")
+                        Text(kanbanRunFilterLabel(filterType))
                     }
                     DropdownMenu(expanded = filterMenuExpanded, onDismissRequest = { filterMenuExpanded = false }) {
                         listOf("status", "outcome").forEach { type ->
-                            DropdownMenuItem(text = { Text(type) }, onClick = {
+                            DropdownMenuItem(text = { Text(kanbanRunFilterLabel(type)) }, onClick = {
                                 filterType = type
                                 filterMenuExpanded = false
                             })
@@ -1069,7 +1094,10 @@ private fun localizedKanbanEventLabel(event: FormattedKanbanEvent): String =
         }
 
         KanbanEventMessage.COMMENTED -> {
-            stringResource(R.string.kanban_event_commented, event.arguments.getOrElse(0) { "someone" })
+            stringResource(
+                R.string.kanban_event_commented,
+                event.arguments.getOrElse(0) { stringResource(R.string.kanban_event_someone) },
+            )
         }
 
         KanbanEventMessage.CLAIMED_REVIEW -> {
@@ -1130,6 +1158,30 @@ private fun localizedKanbanEventLabel(event: FormattedKanbanEvent): String =
     }
 
 @Composable
+private fun localizedKanbanEventDetail(event: FormattedKanbanEvent): String? =
+    when (event.detailMessage) {
+        KanbanEventDetailMessage.PARENT_REOPENED -> {
+            stringResource(R.string.kanban_event_parent_reopened)
+        }
+
+        KanbanEventDetailMessage.PARENT_ID_REOPENED -> {
+            stringResource(R.string.kanban_event_parent_id_reopened, event.detailArguments.getOrElse(0) { "" })
+        }
+
+        null -> {
+            event.detail
+        }
+    }
+
+@Composable
+private fun kanbanRunFilterLabel(type: String): String =
+    when (type) {
+        "status" -> stringResource(R.string.kanban_meta_status)
+        "outcome" -> stringResource(R.string.kanban_run_filter_outcome)
+        else -> type
+    }
+
+@Composable
 private fun TaskActivityTab(
     events: List<io.wutz.apollo.data.model.KanbanDetailEvent>,
     modifier: Modifier = Modifier,
@@ -1171,9 +1223,10 @@ private fun TaskActivityTab(
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        if (!formatted.detail.isNullOrBlank()) {
+                        val detail = localizedKanbanEventDetail(formatted)
+                        if (!detail.isNullOrBlank()) {
                             Text(
-                                text = formatted.detail,
+                                text = detail,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1243,7 +1296,10 @@ private fun TaskFilesTab(
                                 throw e
                             } catch (e: Exception) {
                                 viewModel.showToast(
-                                    resources.getString(R.string.kanban_attachment_error, e.message ?: "Unknown error"),
+                                    resources.getString(
+                                        R.string.kanban_attachment_error,
+                                        e.message ?: resources.getString(R.string.error_unknown),
+                                    ),
                                 )
                             }
                         }
@@ -1302,7 +1358,7 @@ private fun TaskFilesTab(
                         viewModel.showToast(
                             resources.getString(
                                 R.string.kanban_attachment_error,
-                                e.message ?: "Unknown error",
+                                e.message ?: resources.getString(R.string.error_unknown),
                             ),
                         )
                     }
@@ -1365,7 +1421,7 @@ private fun TaskFilesTab(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     att.filename.ifBlank {
-                                        "File #${att.id}"
+                                        stringResource(R.string.kanban_attachment_fallback_name, att.id)
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,

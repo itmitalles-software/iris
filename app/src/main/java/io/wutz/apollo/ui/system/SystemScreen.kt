@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,6 +79,7 @@ fun SystemScreen(
 
     // ── Backup import (issue #786) ────────────────────────────────────────
     val context = LocalContext.current
+    val resources = LocalResources.current
     val importScope = rememberCoroutineScope()
     var pendingImport by remember { mutableStateOf<PendingImport?>(null) }
     val importPickerLauncher =
@@ -101,7 +103,11 @@ fun SystemScreen(
                         pendingImport = it
                         resolvedViewModel.setImportFile(it.name)
                     },
-                    onFailure = { resolvedViewModel.showToast("Could not read selected file: ${it.message}") },
+                    onFailure = {
+                        resolvedViewModel.showToast(
+                            resources.getString(R.string.file_read_failed_reason, it.message.orEmpty()),
+                        )
+                    },
                 )
             }
         }
@@ -194,11 +200,13 @@ fun SystemScreen(
                                 if (bytes != null) {
                                     resolvedViewModel.importArchive(pending.name, bytes, pending.mime)
                                 } else {
-                                    resolvedViewModel.showToast("Could not read selected file")
+                                    resolvedViewModel.showToast(resources.getString(R.string.file_read_failed))
                                 }
                             },
                             onFailure = {
-                                resolvedViewModel.showToast("Could not read selected file: ${it.message}")
+                                resolvedViewModel.showToast(
+                                    resources.getString(R.string.file_read_failed_reason, it.message.orEmpty()),
+                                )
                             },
                         )
                     }
@@ -312,9 +320,13 @@ fun SystemScreen(
                                             }.getOrNull()
                                         }
                                     if (uri != null) {
-                                        resolvedViewModel.showToast("Backup saved to Downloads")
+                                        resolvedViewModel.showToast(
+                                            resources.getString(R.string.system_backup_saved_downloads),
+                                        )
                                     } else {
-                                        resolvedViewModel.showToast("Could not save backup to Downloads")
+                                        resolvedViewModel.showToast(
+                                            resources.getString(R.string.system_backup_save_failed),
+                                        )
                                     }
                                 }
                             }

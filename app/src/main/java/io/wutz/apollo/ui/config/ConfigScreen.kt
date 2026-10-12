@@ -57,6 +57,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -190,7 +191,7 @@ private fun ConfigContent(
                         modifier = Modifier.padding(end = 4.dp),
                     )
                     Text(
-                        if (state.yamlMode) "Form" else "YAML",
+                        if (state.yamlMode) stringResource(R.string.config_mode_form) else "YAML",
                         fontWeight = FontWeight.Medium,
                     )
                 }
@@ -224,7 +225,12 @@ private fun ConfigContent(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "${state.modifiedKeys.size} change(s) pending",
+                            text =
+                                pluralStringResource(
+                                    R.plurals.config_changes_pending,
+                                    state.modifiedKeys.size,
+                                    state.modifiedKeys.size,
+                                ),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Button(
@@ -243,7 +249,10 @@ private fun ConfigContent(
                                     modifier = Modifier.width(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Save", style = MaterialTheme.typography.labelMedium)
+                                Text(
+                                    stringResource(R.string.config_action_save),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
                             }
                         }
                     }
@@ -422,7 +431,7 @@ private fun FormEditor(
             item(key = "search-meta") {
                 val count = visibleRows.size
                 Text(
-                    text = if (count == 1) "1 result" else "$count results",
+                    text = pluralStringResource(R.plurals.config_search_results, count, count),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp),
@@ -476,9 +485,9 @@ private fun FormEditor(
                     Text(
                         text =
                             if (isSearching) {
-                                "No settings match your search."
+                                stringResource(R.string.config_no_search_matches)
                             } else {
-                                "No fields in this category."
+                                stringResource(R.string.config_no_fields_in_category)
                             },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -557,7 +566,12 @@ private fun ConfigTabs(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = category.replaceFirstChar { it.uppercase() },
+                            text =
+                                if (category == "Other") {
+                                    stringResource(R.string.config_category_other)
+                                } else {
+                                    category.replaceFirstChar { it.uppercase() }
+                                },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

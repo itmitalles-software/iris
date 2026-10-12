@@ -192,7 +192,7 @@ fun GifImageThumbnail(
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause GIF" else "Play GIF",
+                        contentDescription = stringResource(if (isPlaying) R.string.gif_pause else R.string.gif_play),
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurface,
                     )

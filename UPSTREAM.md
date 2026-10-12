@@ -25,7 +25,13 @@ Keep this list current. It is the checklist for resolving merge conflicts.
 - **Theme** — new `ThemePreset.APOLLO` (true-black dark, sun-gold accent, light
   counterpart) is the default; the default theme mode is `DARK`. System bar icon
   colors follow the in-app theme instead of the system night mode.
-- **German** — `values-de/` and a `de` entry in the language picker.
+- **German** — `values-de/` and a `de` entry in the language picker. Hardcoded
+  English UI literals across `ui/**` and `notification/` were moved to string
+  resources (block "Apollo i18n" at the end of both `strings.xml`). Fixed local
+  system rows stay English in storage and are translated at display time via
+  `ui/chat/SystemNotice.kt` (#8); formatters take label resolvers
+  (`buildReasoningLabel`, `KanbanModelOverride.displayLabel`,
+  `KanbanEventDetailMessage`, `AuxTaskInfo` resource ids).
 - **Update checker / releases** — release assets are `apollo-<tag>.apk` from
   `wutz-io/apollo-hermes-android`; the release workflow fails early when
   signing secrets are missing.

@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -58,6 +59,7 @@ import com.hrm.latex.renderer.measure.LatexMeasurerState
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.remote.GatewayFileClient
 import io.wutz.apollo.theme.LocalHermesStatusColors
@@ -536,7 +538,7 @@ fun MarkdownText(
                     )
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "Footnotes",
+                            text = stringResource(R.string.markdown_footnotes),
                             color = textColor,
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             modifier = Modifier.padding(bottom = 2.dp),

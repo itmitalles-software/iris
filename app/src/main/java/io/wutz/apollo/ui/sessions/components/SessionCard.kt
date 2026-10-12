@@ -58,6 +58,7 @@ import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionLiveStatus
 import io.wutz.apollo.data.model.SessionTreeItem
+import io.wutz.apollo.data.model.UNTITLED_SESSION_TITLE
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.theme.LocalSpacing
 import io.wutz.apollo.theme.parseProjectColor
@@ -117,6 +118,16 @@ fun sourceLabel(source: String?): String =
         "cron" -> "Cron"
         "bot_room" -> "Bot room"
         else -> source.replace('_', ' ').replaceFirstChar { it.uppercase() }
+    }
+
+/** [sourceLabel] with the descriptive (non-brand) labels translated. */
+@Composable
+fun localizedSourceLabel(source: String?): String =
+    when (source?.lowercase()) {
+        null, "" -> stringResource(R.string.session_source_unknown)
+        "desktop" -> stringResource(R.string.session_source_desktop)
+        "bot_room" -> stringResource(R.string.session_source_bot_room)
+        else -> sourceLabel(source)
     }
 
 fun highlightText(
@@ -193,6 +204,8 @@ fun SessionCard(
     val statusColors = LocalHermesStatusColors.current
     val palette = sessionCardPalette()
     var menuExpanded by remember { mutableStateOf(false) }
+    val shownTitle =
+        if (displayTitle == UNTITLED_SESSION_TITLE) stringResource(R.string.history_untitled) else displayTitle
 
     Card(
         modifier =
@@ -245,9 +258,9 @@ fun SessionCard(
                     Text(
                         text =
                             if (query.isNotBlank()) {
-                                highlightText(displayTitle, query, highlightBackground, highlightForeground)
+                                highlightText(shownTitle, query, highlightBackground, highlightForeground)
                             } else {
-                                AnnotatedString(displayTitle)
+                                AnnotatedString(shownTitle)
                             },
                         style = MaterialTheme.typography.titleMedium.copy(textDirection = TextDirection.Content),
                         fontWeight = FontWeight.SemiBold,
@@ -431,7 +444,7 @@ private fun SessionCardFooter(
                         if (srcIcon != null && showSource) {
                             Icon(
                                 imageVector = srcIcon,
-                                contentDescription = sourceLabel(session.source),
+                                contentDescription = localizedSourceLabel(session.source),
                                 tint = palette.secondary,
                                 modifier = Modifier.size(MetaIconSize),
                             )

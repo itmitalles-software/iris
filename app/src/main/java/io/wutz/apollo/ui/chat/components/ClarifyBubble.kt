@@ -125,7 +125,7 @@ fun ClarifyBubble(
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "Answered: $lockedAnswer",
+                                text = stringResource(R.string.clarify_answered, lockedAnswer),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -135,7 +135,7 @@ fun ClarifyBubble(
                     if (q.multiSelect) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "Select all that apply",
+                            text = stringResource(R.string.clarify_select_all_that_apply),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth(),
@@ -198,7 +198,7 @@ fun ClarifyBubble(
                                 if (q.choices.isEmpty()) {
                                     stringResource(R.string.message_your_response)
                                 } else {
-                                    "Other (optional)"
+                                    stringResource(R.string.clarify_other_optional)
                                 },
                             )
                         },
@@ -268,10 +268,10 @@ fun ClarifyBubble(
                     },
                     enabled = hasAnyInput,
                 ) {
-                    Text(if (isBatch) "Submit All" else "Send")
+                    Text(stringResource(if (isBatch) R.string.clarify_submit_all else R.string.chat_send))
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("Dismiss")
+                    Text(stringResource(R.string.chat_dismiss))
                 }
             }
         }

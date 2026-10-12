@@ -142,7 +142,8 @@ fun ReasoningCard(
                 }
                 Icon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse reasoning" else "Expand reasoning",
+                    contentDescription =
+                        stringResource(if (expanded) R.string.reasoning_collapse else R.string.reasoning_expand),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )

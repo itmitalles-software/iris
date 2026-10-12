@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
@@ -47,6 +48,14 @@ fun KanbanModelOverrideEditor(
     modifier: Modifier = Modifier,
 ) {
     var showPickerDialog by remember { mutableStateOf(false) }
+    val resources = LocalResources.current
+    val effortLabels =
+        mapOf(
+            "none" to stringResource(R.string.kanban_effort_none),
+            "low" to stringResource(R.string.kanban_effort_low),
+            "medium" to stringResource(R.string.kanban_effort_medium),
+            "high" to stringResource(R.string.kanban_effort_high),
+        )
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -89,7 +98,12 @@ fun KanbanModelOverrideEditor(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = override.displayLabel(stringResource(R.string.kanban_model_inherit)),
+                        text =
+                            override.displayLabel(
+                                inheritLabel = stringResource(R.string.kanban_model_inherit),
+                                effortLabel = { effortLabels[it] ?: it },
+                                effortOnly = { resources.getString(R.string.kanban_effort_only, it) },
+                            ),
                         style = MaterialTheme.typography.bodyMedium,
                         color =
                             if (override.isInherited) {

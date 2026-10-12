@@ -65,6 +65,29 @@ class KanbanModelOverrideTest {
     }
 
     @Test
+    fun testDisplayLabelUsesLocalizedResolvers() {
+        val localized = mapOf("none" to "Keiner", "low" to "Niedrig", "medium" to "Mittel", "high" to "Hoch")
+        val withModel = KanbanModelOverride(model = "gpt-4o", provider = "openai", effort = "high")
+        assertEquals(
+            "openai: gpt-4o · Hoch",
+            withModel.displayLabel("Profil erben", effortLabel = { localized.getValue(it) }),
+        )
+
+        val effortOnly = KanbanModelOverride(effort = "low")
+        assertEquals("Effort: Low", effortOnly.displayLabel())
+        assertEquals(
+            "Aufwand: Niedrig",
+            effortOnly.displayLabel(
+                inheritLabel = "Profil erben",
+                effortLabel = { localized.getValue(it) },
+                effortOnly = { "Aufwand: $it" },
+            ),
+        )
+        // Unknown efforts are not passed to the resolver and keep the capitalized raw value.
+        assertEquals("Effort: Xhigh", KanbanModelOverride(effort = "xhigh").displayLabel(effortLabel = { error(it) }))
+    }
+
+    @Test
     fun testFullReasoningScaleAndCapabilities() {
         assertEquals(
             listOf("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"),

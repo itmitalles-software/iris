@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.profiles.components
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -269,9 +270,11 @@ fun ProfileBuilderView(
     }
 }
 
-internal fun validateProfileName(name: String): String? {
+/** Returns the error message resource for an invalid profile name, or null when it is valid. */
+@StringRes
+internal fun validateProfileName(name: String): Int? {
     if (!name.matches(Regex("^[a-zA-Z0-9_-]+$"))) {
-        return "Only letters, numbers, hyphens, and underscores allowed"
+        return R.string.profiles_name_invalid_chars
     }
     return null
 }
@@ -280,7 +283,7 @@ internal fun validateProfileName(name: String): String? {
 private fun IdentityStep(
     name: String,
     onNameChange: (String) -> Unit,
-    nameError: String?,
+    @StringRes nameError: Int?,
     description: String,
     onDescriptionChange: (String) -> Unit,
 ) {
@@ -294,7 +297,7 @@ private fun IdentityStep(
             label = { Text(stringResource(R.string.profiles_builder_label_profile_name)) },
             placeholder = { Text("my-agent-profile") },
             isError = nameError != null,
-            supportingText = nameError?.let { { Text(it) } },
+            supportingText = nameError?.let { { Text(stringResource(it)) } },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
@@ -394,7 +397,7 @@ private fun ModelStep(
                                 if (isSelected) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Selected",
+                                        contentDescription = stringResource(R.string.content_desc_selected),
                                         tint = MaterialTheme.colorScheme.secondary,
                                     )
                                 }

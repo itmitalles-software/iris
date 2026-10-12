@@ -171,7 +171,7 @@ fun SkillsStep(
                     } else {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
+                            contentDescription = stringResource(R.string.chat_action_search),
                         )
                     }
                 }
@@ -211,7 +211,7 @@ fun SkillsStep(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Remove",
+                                    contentDescription = stringResource(R.string.action_remove),
                                     modifier = Modifier.size(16.dp),
                                 )
                             }
@@ -285,11 +285,11 @@ fun SkillsStep(
                                 if (isAdded) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Remove",
+                                        contentDescription = stringResource(R.string.action_remove),
                                         modifier = Modifier.size(16.dp),
                                     )
                                 } else {
-                                    Text("Add")
+                                    Text(stringResource(R.string.action_add))
                                 }
                             }
                         }

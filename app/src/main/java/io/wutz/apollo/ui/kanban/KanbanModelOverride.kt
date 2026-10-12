@@ -30,7 +30,15 @@ data class KanbanModelOverride(
     val isInherited: Boolean
         get() = model.isBlank() && provider.isBlank() && effort.isBlank()
 
-    fun displayLabel(inheritLabel: String = "Inherit profile"): String {
+    /**
+     * [effortLabel] maps a known effort (none/low/medium/high) to its display label and [effortOnly] formats the
+     * label when only an effort is overridden; both default to English for non-UI callers and tests.
+     */
+    fun displayLabel(
+        inheritLabel: String = "Inherit profile",
+        effortLabel: (String) -> String = ::englishEffortLabel,
+        effortOnly: (String) -> String = { "Effort: $it" },
+    ): String {
         if (isInherited) return inheritLabel
         val trimmedModel = model.trim()
         val trimmedProvider = provider.trim()
@@ -45,10 +53,7 @@ data class KanbanModelOverride(
 
         val effortPart =
             when (trimmedEffort.lowercase()) {
-                "none" -> "None"
-                "low" -> "Low"
-                "medium" -> "Medium"
-                "high" -> "High"
+                "none", "low", "medium", "high" -> effortLabel(trimmedEffort.lowercase())
                 "" -> ""
                 else -> trimmedEffort.replaceFirstChar { it.uppercase() }
             }
@@ -56,7 +61,7 @@ data class KanbanModelOverride(
         return if (effortPart.isNotEmpty() && base != inheritLabel) {
             "$base · $effortPart"
         } else if (effortPart.isNotEmpty()) {
-            "Effort: $effortPart"
+            effortOnly(effortPart)
         } else {
             base
         }
@@ -91,3 +96,12 @@ data class KanbanModelOverride(
             )
     }
 }
+
+private fun englishEffortLabel(effort: String): String =
+    when (effort) {
+        "none" -> "None"
+        "low" -> "Low"
+        "medium" -> "Medium"
+        "high" -> "High"
+        else -> effort
+    }
