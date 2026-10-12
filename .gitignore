@@ -31,6 +31,7 @@ ktlint
 # Local workspace artifacts and logs
 *.py
 !.github/scripts/*.py
+!scripts/**/*.py
 .kotlin/
 *.db
 

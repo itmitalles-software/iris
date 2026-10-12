@@ -37,6 +37,12 @@ Keep this list current. It is the checklist for resolving merge conflicts.
 - **Large screens** — `Navigation.kt` (persistent sidebar ≥ 840 dp; drawer
   content extracted into `drawerItems`), `ChatScreen.kt` (`CHAT_MAX_CONTENT_WIDTH`).
 - **Keyboard** — `ComposerKeyboardShortcuts.kt`, hooked into `ChatComposer.kt`.
+- **Design system / brand** — `theme/presets/ApolloScheme.kt` (generated
+  palette), `theme/ApolloType.kt` + `res/font/cinzel.ttf`, typography switch in
+  `Theme.kt`, `ui/common/ApolloBrand.kt`, Apollo-only accents in
+  `UserBubble.kt` and `ToolBubble.kt`, drawer header in `Navigation.kt`,
+  splash themes (`values/themes.xml`, `values-v31/themes.xml`), generated
+  drawables (see `docs/BRANDING.md`).
 - **Small UI fixes** — Apollo mark on landing/login, `auth_login_action_probing`
   label, localized `context_usage_label`.
 - Additional Apollo features are listed in `CHANGELOG.md`.

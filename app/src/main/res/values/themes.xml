@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Apollo defaults to a true-black dark theme; avoid a white flash before Compose draws. -->
+    <!--
+        Apollo launches dark (brand ink with the emblem) so there is no white flash
+        before Compose draws. Android 12+ uses the system splash (values-v31).
+    -->
     <style name="Theme.HermesControl" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@drawable/splash_window</item>
     </style>
 </resources>

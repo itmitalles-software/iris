@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-Android-12 launch background: Apollo ink with the centred emblem. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/apollo_ink" />
+    <item
+        android:width="144dp"
+        android:height="144dp"
+        android:drawable="@drawable/ic_apollo_emblem"
+        android:gravity="center" />
+</layer-list>

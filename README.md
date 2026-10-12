@@ -1,5 +1,6 @@
-<h1 align="center">Apollo</h1>
-<p align="center"><strong>A native Android client for <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a>.</strong><br>
+<p align="center"><img src="docs/brand/apollo-banner.svg" alt="APOLLO — For Hermes Agent — by wutz.io" width="100%"></p>
+
+<p align="center"><strong>A native Android client for <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a>, by <a href="https://wutz.io">wutz.io</a>.</strong><br>
 Your agent keeps running on your own computer. Apollo is the remote control in your pocket.</p>
 
 <p align="center">
@@ -8,18 +9,18 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0">
 </p>
 
-> Apollo is an independent, community-built client. It is **not** affiliated
-> with or endorsed by Nous Research. It is a fork of
-> [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile) by Hy4ri. See
+> Apollo is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research.
+>
+> Apollo is a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile) by Hy4ri. See
 > [UPSTREAM.md](UPSTREAM.md) and [NOTICE](NOTICE).
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/apollo-landing.png" width="200" alt="Apollo sign-in screen">
-  <img src="docs/screenshots/apollo-chat.png" width="200" alt="Apollo chat with Hermes">
-  <img src="docs/screenshots/apollo-sessions.png" width="200" alt="Apollo session history">
-  <img src="docs/screenshots/apollo-settings.png" width="200" alt="Apollo settings">
+  <img src="docs/screenshots/apollo-landing.png" width="200" alt="Apollo welcome screen with emblem and wordmark">
+  <img src="docs/screenshots/apollo-chat.png" width="200" alt="Apollo chat with a tool call and code block">
+  <img src="docs/screenshots/apollo-navigation.png" width="200" alt="Apollo navigation">
+  <img src="docs/screenshots/apollo-about.png" width="200" alt="About Apollo">
 </p>
 
 ## Features
@@ -46,8 +47,10 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
   digital-assistant role.
 - **Large screens and keyboards:** wide layouts keep the chat readable on
   tablets and foldables; Ctrl+Enter sends from a hardware keyboard.
-- **Look and language:** true-black AMOLED dark theme by default, an optional
-  light mode, Material You and six more themes. English and German follow
+- **Look and language:** the Apollo design system (true-black AMOLED dark by
+  default, antique gold accents, classical display type; see
+  [docs/BRANDING.md](docs/BRANDING.md)), an optional light mode, Material You
+  and seven upstream themes. English and German follow
   the system language, with a manual switch in Settings (plus Arabic,
   Chinese, Italian, Korean and Spanish from upstream).
 - **Privacy:** no telemetry, ads or trackers. Credentials live in encrypted
@@ -128,6 +131,7 @@ and multiple servers. Plain `http://` works for trusted networks only.
 - [AGENTS.md](AGENTS.md): rules for (AI) contributors
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture conventions inherited from upstream
 - [DESIGN.md](DESIGN.md): visual and interaction requirements
+- [docs/BRANDING.md](docs/BRANDING.md): Apollo brand, colours, typography and assets
 - [UPSTREAM.md](UPSTREAM.md): fork point and how to merge upstream changes
 - [CHANGELOG.md](CHANGELOG.md)
 
@@ -135,4 +139,6 @@ and multiple servers. Plain `http://` works for trusted networks only.
 
 Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 Copyright 2026 M57 (Hy4ri) and contributors (Hermes Mobile).
-Apollo modifications copyright 2026 wutz.io.
+Apollo modifications, brand and artwork copyright 2026 wutz.io.
+The Cinzel typeface is licensed under the SIL Open Font License 1.1
+([docs/licenses/Cinzel-OFL.txt](docs/licenses/Cinzel-OFL.txt)).

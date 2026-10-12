@@ -8,6 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -59,10 +60,15 @@ import io.wutz.apollo.data.model.Attachment
 import io.wutz.apollo.theme.DarkOnSurface
 import io.wutz.apollo.theme.LightOnSurface
 import io.wutz.apollo.theme.LocalHermesStatusColors
+import io.wutz.apollo.theme.LocalThemePreset
+import io.wutz.apollo.theme.ThemePreset
 import io.wutz.apollo.ui.chat.components.rememberCopyFeedback
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.util.BidiUtils
 import kotlinx.coroutines.launch
+
+private val UserBubbleShape =
+    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp)
 
 /**
  * The user-message bubble — the universal anchor in the full-bleed chat
@@ -142,9 +148,14 @@ fun UserBubble(
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            val primary = MaterialTheme.colorScheme.primary
+            // Apollo: a calm bronze bubble with a gold hairline instead of a solid gold slab.
+            val apolloBubble = LocalThemePreset.current == ThemePreset.APOLLO
+            val primary =
+                if (apolloBubble) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
             val userBubbleTextColor =
-                if (primary.luminance() > 0.5f) {
+                if (apolloBubble) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else if (primary.luminance() > 0.5f) {
                     if (MaterialTheme.colorScheme.onPrimary.luminance() < 0.5f) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
@@ -162,15 +173,19 @@ fun UserBubble(
                     modifier =
                         Modifier
                             .widthIn(max = maxBubbleWidth)
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = 16.dp,
-                                    topEnd = 16.dp,
-                                    bottomStart = 16.dp,
-                                    bottomEnd = 4.dp,
-                                ),
-                            ).background(color = primary)
-                            .testTag("chat_bubble_user"),
+                            .clip(UserBubbleShape)
+                            .background(color = primary)
+                            .then(
+                                if (apolloBubble) {
+                                    Modifier.border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                        shape = UserBubbleShape,
+                                    )
+                                } else {
+                                    Modifier
+                                },
+                            ).testTag("chat_bubble_user"),
                     color = Color.Transparent,
                     tonalElevation = 0.dp,
                 ) {

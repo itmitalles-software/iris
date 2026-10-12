@@ -51,6 +51,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
@@ -69,6 +71,8 @@ import coil3.compose.AsyncImage
 import io.wutz.apollo.R
 import io.wutz.apollo.theme.HermesStatusColors
 import io.wutz.apollo.theme.LocalHermesStatusColors
+import io.wutz.apollo.theme.LocalThemePreset
+import io.wutz.apollo.theme.ThemePreset
 import io.wutz.apollo.ui.chat.components.DiffViewCard
 import io.wutz.apollo.ui.chat.components.FileViewCard
 import io.wutz.apollo.ui.chat.tool.ToolView
@@ -133,6 +137,8 @@ internal fun ToolBubble(
     val chipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     val statusColors = LocalHermesStatusColors.current
+    val apolloAccent = LocalThemePreset.current == ThemePreset.APOLLO
+    val accentColor = MaterialTheme.colorScheme.primary
 
     val view =
         remember(message.content, message.toolName, message.isToolRunning) {
@@ -167,7 +173,19 @@ internal fun ToolBubble(
             Column(
                 modifier =
                     Modifier
-                        .animateContentSize()
+                        .then(
+                            // Apollo: a thin gold edge marks agent actions; brighter while running.
+                            if (apolloAccent) {
+                                Modifier.drawBehind {
+                                    drawRect(
+                                        color = accentColor.copy(alpha = if (message.isToolRunning) 0.9f else 0.45f),
+                                        size = Size(2.dp.toPx(), size.height),
+                                    )
+                                }
+                            } else {
+                                Modifier
+                            },
+                        ).animateContentSize()
                         .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 // ── Header row: icon + tool name ──

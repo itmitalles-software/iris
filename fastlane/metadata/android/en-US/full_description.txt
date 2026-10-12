@@ -1,6 +1,6 @@
 Apollo is a native Android client for Hermes Agent, the open-source AI agent you run on your own computer. The agent keeps running at home; Apollo is the remote control in your pocket.
 
-Apollo is an independent client based on Hermes Mobile. It is not affiliated with Nous Research.
+Apollo is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research. Based on Hermes Mobile.
 
 Features:
 • Live streaming chat with Markdown, code highlighting, tool calls and results

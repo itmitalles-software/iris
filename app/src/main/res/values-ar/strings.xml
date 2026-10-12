@@ -56,7 +56,7 @@
 <string name="billing_topup">شحن الرصيد</string>
 <string name="press_back_again_to_exit">اضغط رجوع مرة أخرى للخروج</string>
 <string name="nav_drawer_title">Apollo</string>
-<string name="nav_drawer_subtitle">التحكم في وكيل الذكاء الاصطناعي</string>
+<string name="nav_drawer_subtitle">For Hermes Agent</string>
 <string name="nav_drawer_section_converse">محادثة</string>
 <string name="nav_drawer_section_automate">أتمتة</string>
 <string name="nav_drawer_section_configure">تهيئة</string>

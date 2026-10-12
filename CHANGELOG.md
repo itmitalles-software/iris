@@ -29,6 +29,17 @@ First Apollo version, forked from Hermes Mobile `dev` at `689a2d30`
   limited to a readable 840 dp.
 - Hardware keyboards: Ctrl+Enter (or Meta+Enter) sends the message.
 
+- Apollo design system and brand (docs/BRANDING.md): antique-gold/bronze
+  palette on true black with marble light mode, Cinzel display type for brand
+  surfaces, the "radiate crown over a Roman A" emblem as adaptive, themed and
+  notification icon, APOLLO wordmark, splash screen with the
+  "APOLLO / For Hermes Agent / by wutz.io" line, brand lockup on landing and
+  About, README banner and store graphics. All assets come from
+  `scripts/brand/generate_brand_assets.py`.
+- Chat accents in the Apollo theme: bronze user bubbles with a gold hairline,
+  gold edge on tool calls (brighter while running).
+- About shows the developer (wutz.io) and the independence notice.
+
 ### Changed
 
 - System bar icons follow the in-app light/dark choice instead of the system

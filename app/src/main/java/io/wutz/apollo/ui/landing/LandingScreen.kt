@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
+import io.wutz.apollo.ui.common.ApolloBrandLockup
 
 @Composable
 fun LandingScreen(
@@ -46,34 +47,7 @@ fun LandingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Hero icon
-            Icon(
-                painter = painterResource(R.drawable.ic_apollo_mark),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(96.dp),
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = stringResource(R.string.landing_title),
-                style =
-                    MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    ),
-                textAlign = TextAlign.Center,
-            )
-
-            Text(
-                text = stringResource(R.string.landing_subtitle),
-                style =
-                    MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                textAlign = TextAlign.Center,
-            )
+            ApolloBrandLockup()
 
             Spacer(modifier = Modifier.height(32.dp))
 

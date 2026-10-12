@@ -49,9 +49,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -60,6 +62,7 @@ import androidx.navigation3.ui.NavDisplay
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.data.ws.HermesWsClient
+import io.wutz.apollo.theme.ApolloWordmarkStyle
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.common.DisableDrawerGestures
 import io.wutz.apollo.ui.common.DrawerGestureController
@@ -297,12 +300,16 @@ fun MainNavigation(sessionId: String? = null) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 2.dp),
         ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_apollo_mark),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = stringResource(R.string.nav_drawer_title),
-                style =
-                    MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
+                text = stringResource(R.string.brand_wordmark),
+                style = ApolloWordmarkStyle.copy(fontSize = 22.sp),
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.width(8.dp))

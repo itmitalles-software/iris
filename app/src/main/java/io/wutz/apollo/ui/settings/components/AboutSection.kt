@@ -19,11 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.BuildConfig
 import io.wutz.apollo.R
 import io.wutz.apollo.data.update.AppUpdateState
+import io.wutz.apollo.ui.common.ApolloBrandLockup
 import io.wutz.apollo.ui.settings.InfoRow
 import io.wutz.apollo.ui.settings.SectionCard
 
@@ -37,20 +37,20 @@ internal fun AboutSection(
     onOpenInstallSettings: () -> Unit = {},
 ) {
     SectionCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.settings_about_app_name),
-                style =
-                    MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-            )
-        }
+        ApolloBrandLockup(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            emblemSize = 88.dp,
+            wordmarkSize = 30f,
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(8.dp))
 
+        InfoRow(
+            label = stringResource(R.string.settings_about_developer),
+            value = stringResource(R.string.brand_website),
+        )
         InfoRow(
             label = stringResource(R.string.settings_about_version),
             value = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",

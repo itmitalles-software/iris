@@ -76,7 +76,7 @@
     <!-- Navigation & Drawer -->
     <string name="press_back_again_to_exit">Zum Beenden erneut zurück drücken</string>
     <string name="nav_drawer_title">Apollo</string>
-    <string name="nav_drawer_subtitle">KI-Agent-Steuerung</string>
+    <string name="nav_drawer_subtitle">For Hermes Agent</string>
     <string name="nav_drawer_section_converse">Unterhalten</string>
     <string name="nav_drawer_section_automate">Automatisieren</string>
     <string name="nav_drawer_section_configure">Konfigurieren</string>
@@ -1921,6 +1921,7 @@
     <string name="share_sign_in_first">Melde dich zuerst bei Hermes an und teile dann erneut.</string>
     <string name="share_nothing_usable">Apollo kann diesen geteilten Inhalt nicht verwenden.</string>
     <string name="theme_preset_apollo">Apollo</string>
+    <string name="settings_about_developer">Entwickler</string>
     <string name="settings_about_upstream_credit">Basiert auf Hermes Mobile von Hy4ri (Apache-2.0): github.com/Hy4ri/hermes-mobile</string>
-    <string name="settings_about_unofficial">Unabhängiger Client. Keine Verbindung zu Nous Research und nicht von Nous Research unterstützt.</string>
+    <string name="settings_about_unofficial">Apollo ist ein unabhängiger Open-Source-Android-Client für Hermes Agent, entwickelt von wutz.io. Nicht mit Nous Research verbunden und nicht von Nous Research unterstützt.</string>
 </resources>

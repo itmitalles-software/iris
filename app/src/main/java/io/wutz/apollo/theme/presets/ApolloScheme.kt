@@ -6,197 +6,140 @@ import io.wutz.apollo.theme.PaletteColors
 import io.wutz.apollo.theme.buildTheme
 
 // ---------------------------------------------------------------------
-// Apollo — the app's default identity. Dark mode is true black (#000000)
-// so OLED panels switch those pixels off; a warm sun-gold accent carries
-// the brand. Light mode is a clean warm-white counterpart with a deeper
-// ochre accent for contrast on light surfaces.
+// Apollo — the app's default identity (see docs/BRANDING.md).
+//
+// Dark: true-black AMOLED floor, anthracite/graphite surfaces (#0B0B0D,
+// #17171B, #25252B), marble-white text and a restrained antique gold
+// (#D4AF72) with bronze secondary and a muted teal "technical" tertiary.
+// Light: warm marble surfaces with a deepened gold for AA contrast.
+// Fixed roles are identical in both modes (Material 3 contract). Every
+// text/surface pair is >= 4.5:1, enforced by ThemePaletteTest.
 // ---------------------------------------------------------------------
-
-// Fixed roles are identical in both modes (Material 3 contract)
-private val FixedGold = Color(0xFFFFDF9E)
-private val FixedGoldDim = Color(0xFFF5C451)
-private val OnFixedGold = Color(0xFF261A00)
-private val OnFixedGoldVariant = Color(0xFF5C4300)
-private val FixedSky = Color(0xFFD4E3FF)
-private val FixedSkyDim = Color(0xFFA4C8FF)
-private val OnFixedSky = Color(0xFF001C38)
-private val OnFixedSkyVariant = Color(0xFF1A4A7A)
-private val FixedLaurel = Color(0xFFB7F1C2)
-private val FixedLaurelDim = Color(0xFF9BD5A7)
-private val OnFixedLaurel = Color(0xFF00210B)
-private val OnFixedLaurelVariant = Color(0xFF175230)
-
-// Dark swatches
-private val DarkFloor = Color(0xFF000000)
-private val DarkContainer = Color(0xFF0E0E0F)
-private val DarkContainerHigh = Color(0xFF19191B)
-private val DarkContainerHighest = Color(0xFF242427)
-private val DarkOutline = Color(0xFF8E8E93)
-private val DarkOutlineVariant = Color(0xFF3A3A3D)
-private val DarkText = Color(0xFFF2F2F2)
-private val DarkTextDim = Color(0xFFB8B8BD)
-private val DarkGold = Color(0xFFFFC857) // primary accent
-private val DarkGoldContainer = Color(0xFF3D2E0A)
-private val DarkOnGoldContainer = Color(0xFFFFE2A3)
-private val DarkSky = Color(0xFF9CC7FF) // secondary accent
-private val DarkSkyContainer = Color(0xFF16273D)
-private val DarkLaurel = Color(0xFF8FD6A0) // tertiary accent + success
-private val DarkLaurelContainer = Color(0xFF12301C)
-private val DarkAmber = Color(0xFFFFB86B)
-private val DarkAmberContainer = Color(0xFF3B2410)
-private val DarkRed = Color(0xFFFF8A80)
-private val DarkRedContainer = Color(0xFF3F1412)
-private val DarkInfo = Color(0xFF8ECEFF)
-private val DarkInfoContainer = Color(0xFF102A3D)
-
-// Light swatches
-private val LightFloor = Color(0xFFFFFDF8)
-private val LightContainerLow = Color(0xFFFAF6EE)
-private val LightContainer = Color(0xFFF4EFE5)
-private val LightContainerHigh = Color(0xFFEEE8DC)
-private val LightContainerHighest = Color(0xFFE7E0D2)
-private val LightOutline = Color(0xFF7A746A)
-private val LightOutlineVariant = Color(0xFFD0C8B9)
-private val LightText = Color(0xFF1C1B18)
-private val LightTextDim = Color(0xFF4D483F)
-private val LightGold = Color(0xFF7A5900) // primary accent (AA on white)
-private val LightGoldContainer = Color(0xFFFFDF9E)
-private val LightOnGoldContainer = Color(0xFF261A00)
-private val LightSky = Color(0xFF2D5F94)
-private val LightSkyContainer = Color(0xFFD4E3FF)
-private val LightLaurel = Color(0xFF2B6B3C)
-private val LightLaurelContainer = Color(0xFFB7F1C2)
-private val LightAmber = Color(0xFF8A5100)
-private val LightAmberContainer = Color(0xFFFFDCBC)
-private val LightRed = Color(0xFFBA1A1A)
-private val LightRedContainer = Color(0xFFFFDAD6)
-private val LightInfo = Color(0xFF00629D)
-private val LightInfoContainer = Color(0xFFCFE5FF)
 
 val ApolloTheme =
     buildTheme(
         dark =
             PaletteColors(
-                primary = DarkGold,
-                onPrimary = DarkFloor,
-                primaryContainer = DarkGoldContainer,
-                onPrimaryContainer = DarkOnGoldContainer,
-                secondary = DarkSky,
-                onSecondary = DarkFloor,
-                secondaryContainer = DarkSkyContainer,
-                onSecondaryContainer = DarkSky,
-                tertiary = DarkLaurel,
-                onTertiary = DarkFloor,
-                tertiaryContainer = DarkLaurelContainer,
-                onTertiaryContainer = DarkLaurel,
-                background = DarkFloor,
-                onBackground = DarkText,
-                surface = DarkFloor,
-                onSurface = DarkText,
-                surfaceVariant = DarkContainerHigh,
-                onSurfaceVariant = DarkTextDim,
-                surfaceDim = DarkFloor,
-                surfaceBright = DarkContainerHighest,
-                primaryFixed = FixedGold,
-                primaryFixedDim = FixedGoldDim,
-                onPrimaryFixed = OnFixedGold,
-                onPrimaryFixedVariant = OnFixedGoldVariant,
-                secondaryFixed = FixedSky,
-                secondaryFixedDim = FixedSkyDim,
-                onSecondaryFixed = OnFixedSky,
-                onSecondaryFixedVariant = OnFixedSkyVariant,
-                tertiaryFixed = FixedLaurel,
-                tertiaryFixedDim = FixedLaurelDim,
-                onTertiaryFixed = OnFixedLaurel,
-                onTertiaryFixedVariant = OnFixedLaurelVariant,
-                surfaceContainerLowest = DarkFloor,
-                surfaceContainerLow = DarkFloor,
-                surfaceContainer = DarkContainer,
-                surfaceContainerHigh = DarkContainerHigh,
-                surfaceContainerHighest = DarkContainerHighest,
-                inverseSurface = DarkText,
-                inverseOnSurface = DarkFloor,
-                inversePrimary = LightGold,
-                outline = DarkOutline,
-                outlineVariant = DarkOutlineVariant,
+                primary = Color(0xFFD4AF72),
+                onPrimary = Color(0xFF1A1408),
+                primaryContainer = Color(0xFF2E2618),
+                onPrimaryContainer = Color(0xFFF0DDB5),
+                secondary = Color(0xFFC79A6E),
+                onSecondary = Color(0xFF1E1308),
+                secondaryContainer = Color(0xFF2B1F15),
+                onSecondaryContainer = Color(0xFFF0D4BA),
+                tertiary = Color(0xFF8EC3BA),
+                onTertiary = Color(0xFF0A1E1B),
+                tertiaryContainer = Color(0xFF14282A),
+                onTertiaryContainer = Color(0xFFC4E6E0),
+                background = Color(0xFF000000),
+                onBackground = Color(0xFFECE8E1),
+                surface = Color(0xFF000000),
+                onSurface = Color(0xFFECE8E1),
+                surfaceVariant = Color(0xFF25252B),
+                onSurfaceVariant = Color(0xFFA8A49C),
+                surfaceDim = Color(0xFF000000),
+                surfaceBright = Color(0xFF2C2C33),
+                primaryFixed = Color(0xFFF1E2C2),
+                primaryFixedDim = Color(0xFFD4AF72),
+                onPrimaryFixed = Color(0xFF2A1F08),
+                onPrimaryFixedVariant = Color(0xFF5A4312),
+                secondaryFixed = Color(0xFFF3DCC6),
+                secondaryFixedDim = Color(0xFFD9AE88),
+                onSecondaryFixed = Color(0xFF2E1906),
+                onSecondaryFixedVariant = Color(0xFF623E1E),
+                tertiaryFixed = Color(0xFFCDE8E3),
+                tertiaryFixedDim = Color(0xFF9FCBC4),
+                onTertiaryFixed = Color(0xFF0C2A26),
+                onTertiaryFixedVariant = Color(0xFF22504A),
+                surfaceContainerLowest = Color(0xFF000000),
+                surfaceContainerLow = Color(0xFF0B0B0D),
+                surfaceContainer = Color(0xFF17171B),
+                surfaceContainerHigh = Color(0xFF1E1E23),
+                surfaceContainerHighest = Color(0xFF25252B),
+                inverseSurface = Color(0xFFECE8E1),
+                inverseOnSurface = Color(0xFF17171B),
+                inversePrimary = Color(0xFF7A5A1E),
+                outline = Color(0xFF7D7972),
+                outlineVariant = Color(0xFF34343B),
                 scrim = Color.Black,
                 status =
                     HermesStatusColors(
-                        success = DarkLaurel,
-                        successContainer = DarkLaurelContainer,
-                        onSuccess = DarkFloor,
-                        warning = DarkAmber,
-                        warningContainer = DarkAmberContainer,
-                        onWarning = DarkFloor,
-                        error = DarkRed,
-                        errorContainer = DarkRedContainer,
-                        onError = DarkFloor,
-                        onErrorContainer = DarkRed,
-                        info = DarkInfo,
-                        infoContainer = DarkInfoContainer,
-                        onInfo = DarkFloor,
+                        success = Color(0xFF93C493),
+                        successContainer = Color(0xFF15261A),
+                        onSuccess = Color(0xFF0B1A0E),
+                        warning = Color(0xFFDDAA5E),
+                        warningContainer = Color(0xFF2E2412),
+                        onWarning = Color(0xFF211503),
+                        error = Color(0xFFE5857A),
+                        errorContainer = Color(0xFF3A1714),
+                        onError = Color(0xFF2A0907),
+                        onErrorContainer = Color(0xFFF6C9C2),
+                        info = Color(0xFF94B9DE),
+                        infoContainer = Color(0xFF15233A),
+                        onInfo = Color(0xFF0B1726),
                     ),
             ),
         light =
             PaletteColors(
-                primary = LightGold,
-                onPrimary = Color.White,
-                primaryContainer = LightGoldContainer,
-                onPrimaryContainer = LightOnGoldContainer,
-                secondary = LightSky,
-                onSecondary = Color.White,
-                secondaryContainer = LightSkyContainer,
-                onSecondaryContainer = LightText,
-                tertiary = LightLaurel,
-                onTertiary = Color.White,
-                tertiaryContainer = LightLaurelContainer,
-                onTertiaryContainer = LightText,
-                background = LightFloor,
-                onBackground = LightText,
-                surface = LightFloor,
-                onSurface = LightText,
-                surfaceVariant = LightContainerHigh,
-                onSurfaceVariant = LightTextDim,
-                surfaceDim = LightContainerHighest,
-                surfaceBright = LightFloor,
-                primaryFixed = FixedGold,
-                primaryFixedDim = FixedGoldDim,
-                onPrimaryFixed = OnFixedGold,
-                onPrimaryFixedVariant = OnFixedGoldVariant,
-                secondaryFixed = FixedSky,
-                secondaryFixedDim = FixedSkyDim,
-                onSecondaryFixed = OnFixedSky,
-                onSecondaryFixedVariant = OnFixedSkyVariant,
-                tertiaryFixed = FixedLaurel,
-                tertiaryFixedDim = FixedLaurelDim,
-                onTertiaryFixed = OnFixedLaurel,
-                onTertiaryFixedVariant = OnFixedLaurelVariant,
-                surfaceContainerLowest = Color.White,
-                surfaceContainerLow = LightContainerLow,
-                surfaceContainer = LightContainer,
-                surfaceContainerHigh = LightContainerHigh,
-                surfaceContainerHighest = LightContainerHighest,
-                inverseSurface = LightText,
-                inverseOnSurface = LightFloor,
-                inversePrimary = DarkGold,
-                outline = LightOutline,
-                outlineVariant = LightOutlineVariant,
+                primary = Color(0xFF765719),
+                onPrimary = Color(0xFFFFFFFF),
+                primaryContainer = Color(0xFFF1E2C2),
+                onPrimaryContainer = Color(0xFF2A1F08),
+                secondary = Color(0xFF83552B),
+                onSecondary = Color(0xFFFFFFFF),
+                secondaryContainer = Color(0xFFF3DCC6),
+                onSecondaryContainer = Color(0xFF2E1906),
+                tertiary = Color(0xFF2B6660),
+                onTertiary = Color(0xFFFFFFFF),
+                tertiaryContainer = Color(0xFFCDE8E3),
+                onTertiaryContainer = Color(0xFF0C2A26),
+                background = Color(0xFFF7F4EE),
+                onBackground = Color(0xFF1B1A17),
+                surface = Color(0xFFF7F4EE),
+                onSurface = Color(0xFF1B1A17),
+                surfaceVariant = Color(0xFFE6E0D4),
+                onSurfaceVariant = Color(0xFF4F4B44),
+                surfaceDim = Color(0xFFDCD6CA),
+                surfaceBright = Color(0xFFFBF9F5),
+                primaryFixed = Color(0xFFF1E2C2),
+                primaryFixedDim = Color(0xFFD4AF72),
+                onPrimaryFixed = Color(0xFF2A1F08),
+                onPrimaryFixedVariant = Color(0xFF5A4312),
+                secondaryFixed = Color(0xFFF3DCC6),
+                secondaryFixedDim = Color(0xFFD9AE88),
+                onSecondaryFixed = Color(0xFF2E1906),
+                onSecondaryFixedVariant = Color(0xFF623E1E),
+                tertiaryFixed = Color(0xFFCDE8E3),
+                tertiaryFixedDim = Color(0xFF9FCBC4),
+                onTertiaryFixed = Color(0xFF0C2A26),
+                onTertiaryFixedVariant = Color(0xFF22504A),
+                surfaceContainerLowest = Color(0xFFFFFFFF),
+                surfaceContainerLow = Color(0xFFF2EEE6),
+                surfaceContainer = Color(0xFFECE7DD),
+                surfaceContainerHigh = Color(0xFFE6E0D4),
+                surfaceContainerHighest = Color(0xFFDFD8CA),
+                inverseSurface = Color(0xFF2E2C28),
+                inverseOnSurface = Color(0xFFF4F0E8),
+                inversePrimary = Color(0xFFD4AF72),
+                outline = Color(0xFF766F64),
+                outlineVariant = Color(0xFFCFC7B8),
                 scrim = Color.Black,
                 status =
                     HermesStatusColors(
-                        success = LightLaurel,
-                        successContainer = LightLaurelContainer,
-                        onSuccess = Color.White,
-                        warning = LightAmber,
-                        warningContainer = LightAmberContainer,
-                        onWarning = Color.White,
-                        error = LightRed,
-                        errorContainer = LightRedContainer,
-                        onError = Color.White,
-                        onErrorContainer = LightText,
-                        info = LightInfo,
-                        infoContainer = LightInfoContainer,
-                        onInfo = Color.White,
+                        success = Color(0xFF2D6A39),
+                        successContainer = Color(0xFFD2EBD3),
+                        onSuccess = Color(0xFFFFFFFF),
+                        warning = Color(0xFF805300),
+                        warningContainer = Color(0xFFF8E0B6),
+                        onWarning = Color(0xFFFFFFFF),
+                        error = Color(0xFFB3261E),
+                        errorContainer = Color(0xFFF9DAD5),
+                        onError = Color(0xFFFFFFFF),
+                        onErrorContainer = Color(0xFF410E0B),
+                        info = Color(0xFF2B5C8C),
+                        infoContainer = Color(0xFFD6E4F5),
+                        onInfo = Color(0xFFFFFFFF),
                     ),
             ),
     )
