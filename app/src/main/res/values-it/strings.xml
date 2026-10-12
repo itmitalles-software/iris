@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Hermes Mobile</string>
+    <string name="app_name">Apollo</string>
     <string name="chat_send_desc">Invia</string>
     <string name="chat_mic_listening">In ascolto…</string>
     <string name="chat_voice_cancel">Annulla</string>
@@ -63,7 +63,7 @@
     <string name="billing_plan">Piano</string>
     <string name="billing_topup">Ricarica</string>
     <string name="press_back_again_to_exit">Premi di nuovo indietro per uscire</string>
-    <string name="nav_drawer_title">Hermes</string>
+    <string name="nav_drawer_title">Apollo</string>
     <string name="nav_drawer_subtitle">Controllo agente AI</string>
     <string name="nav_drawer_section_converse">Conversazione</string>
     <string name="nav_drawer_section_automate">Automazione</string>
@@ -290,7 +290,7 @@
     <string name="settings_action_test_connection">Testa connessione</string>
     <string name="settings_sec_about">Info</string>
     <string name="settings_sec_language">Lingua</string>
-    <string name="settings_about_app_name">Hermes Mobile</string>
+    <string name="settings_about_app_name">Apollo</string>
     <string name="settings_about_version">Versione</string>
     <string name="settings_about_build">Build</string>
     <string name="settings_about_debug">Debug</string>
@@ -309,8 +309,8 @@
     <string name="settings_about_update_retry">Riprova</string>
     <string name="settings_about_rc_updates_title">Controlla aggiornamenti Release Candidate</string>
     <string name="settings_about_rc_updates_desc">Installa build di pre-rilascio RC. Potrebbero essere meno stabili.</string>
-    <string name="settings_support_title">Supporta Hermes Mobile</string>
-    <string name="settings_support_message">Se Hermes Mobile ti fa risparmiare tempo, puoi supportarne lo sviluppo.</string>
+    <string name="settings_support_title">Supporta Apollo</string>
+    <string name="settings_support_message">Se Apollo ti fa risparmiare tempo, puoi supportarne lo sviluppo.</string>
     <string name="settings_support_action">Supportami su Ko-fi</string>
     <string name="settings_summary_profiles">%1$d salvati</string>
     <string name="settings_summary_typing_on">Effetto digitazione attivo</string>
@@ -1274,7 +1274,7 @@
     <string name="auth_login_error_unreachable">Dashboard irraggiungibile — controlla IP e porta</string>
     <string name="auth_login_existing_profiles_title">Usa un profilo connesso esistente:</string>
     <string name="auth_login_use_profile">Entra come %1$s</string>
-    <string name="landing_title">Hermes Mobile</string>
+    <string name="landing_title">Apollo</string>
     <string name="landing_subtitle">Pannello di controllo per Hermes Agent</string>
     <string name="landing_action_auth_login">Accesso</string>
     <string name="auth_init_failed">Impossibile inizializzare le impostazioni dell\'app</string>
@@ -1296,7 +1296,7 @@
     <string name="action_dismiss">Ignora</string>
     <string name="action_done">Fine</string>
     <string name="action_close">Chiudi</string>
-    <string name="update_notice_banner_text">È disponibile Hermes Mobile %1$s</string>
+    <string name="update_notice_banner_text">È disponibile Apollo %1$s</string>
     <string name="update_notice_banner_action">Aggiorna</string>
     <string name="update_dialog_title">Aggiorna a %1$s</string>
     <string name="update_dialog_changelog_header">Novità</string>

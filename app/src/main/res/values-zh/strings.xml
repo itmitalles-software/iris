@@ -1,6 +1,6 @@
 <resources>
     <!-- Simplified Chinese (zh) translation -->
-    <string name="app_name">Hermes Mobile</string>
+    <string name="app_name">Apollo</string>
     <string name="chat_send_desc">发送</string>
     <string name="chat_mic_listening">正在聆听…</string>
     <string name="stt_permission_denied">语音输入需要麦克风权限</string>
@@ -55,7 +55,7 @@
     <string name="billing_plan">套餐</string>
     <string name="billing_topup">充值</string>
     <string name="press_back_again_to_exit">再次返回以退出应用</string>
-    <string name="nav_drawer_title">Hermes</string>
+    <string name="nav_drawer_title">Apollo</string>
     <string name="nav_drawer_subtitle">AI Agent 控制台</string>
     <string name="nav_drawer_section_converse">对话</string>
     <string name="nav_drawer_section_automate">自动化</string>
@@ -222,9 +222,9 @@
     <string name="settings_action_test_connection">测试连接</string>
     <string name="settings_sec_about">关于</string>
     <string name="settings_sec_language">语言</string>
-    <string name="settings_about_app_name">Hermes Mobile</string>
-    <string name="settings_support_title">支持 Hermes Mobile</string>
-    <string name="settings_support_message">如果 Hermes Mobile 为你节省了时间，欢迎支持它的开发。</string>
+    <string name="settings_about_app_name">Apollo</string>
+    <string name="settings_support_title">支持 Apollo</string>
+    <string name="settings_support_message">如果 Apollo 为你节省了时间，欢迎支持它的开发。</string>
     <string name="settings_support_action">在 Ko-fi 上支持我</string>
     <string name="settings_about_version">版本</string>
     <string name="settings_about_build">构建</string>
@@ -1153,7 +1153,7 @@
     <string name="auth_login_error_unreachable">无法访问 dashboard——检查 IP 和端口</string>
     <string name="auth_login_existing_profiles_title">使用已登录的配置：</string>
     <string name="auth_login_use_profile">以 %1$s 身份进入</string>
-    <string name="landing_title">Hermes Mobile</string>
+    <string name="landing_title">Apollo</string>
     <string name="landing_subtitle">Hermes Agent 控制面板</string>
     <string name="landing_action_auth_login">认证登录</string>
     <string name="auth_init_failed">应用设置初始化失败</string>
@@ -1175,7 +1175,7 @@
     <string name="action_dismiss">忽略</string>
     <string name="action_done">完成</string>
     <string name="action_close">关闭</string>
-    <string name="update_notice_banner_text">Hermes Mobile %1$s 已可用</string>
+    <string name="update_notice_banner_text">Apollo %1$s 已可用</string>
     <string name="update_notice_banner_action">更新</string>
     <string name="processes_kill_title">结束进程？</string>
     <string name="processes_kill_desc">停止\"%1$s\"？此操作无法撤销。</string>

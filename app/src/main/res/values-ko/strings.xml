@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Hermes Mobile</string>
+    <string name="app_name">Apollo</string>
 
     <!-- Chat -->
     <string name="chat_send_desc">전송</string>
@@ -51,7 +51,7 @@
 
     <!-- Navigation & Drawer -->
     <string name="press_back_again_to_exit">종료하려면 뒤로가기를 한 번 더 누르세요</string>
-    <string name="nav_drawer_title">헤르메스</string>
+    <string name="nav_drawer_title">Apollo</string>
     <string name="nav_drawer_subtitle">AI 에이전트 제어</string>
     <string name="nav_drawer_section_converse">대화</string>
     <string name="nav_drawer_section_automate">자동화</string>
@@ -227,8 +227,8 @@
     <string name="settings_action_test_connection">연결 테스트</string>
     <string name="settings_sec_about">정보</string>
     <string name="settings_about_app_name">헤르메스 모바일</string>
-    <string name="settings_support_title">Hermes Mobile 후원</string>
-    <string name="settings_support_message">Hermes Mobile이 시간을 절약해 준다면 개발을 후원해 주세요.</string>
+    <string name="settings_support_title">Apollo 후원</string>
+    <string name="settings_support_message">Apollo이 시간을 절약해 준다면 개발을 후원해 주세요.</string>
     <string name="settings_support_action">Ko-fi에서 후원하기</string>
     <string name="settings_about_version">버전</string>
     <string name="settings_about_build">빌드</string>
