@@ -61,8 +61,9 @@ _Last updated: 2026-10-12_
   secrets set).
 - `scripts/server/setup-hermes-for-apollo.sh` is the supported host setup
   (README "Quick setup"). The owner's host runs an equivalent `hermes-serve`
-  user service on 127.0.0.1:9119; the last step, `sudo tailscale serve --bg 9119`,
-  is pending (#2).
+  user service on 127.0.0.1:9119; Tailscale Serve publishes it at
+  the owner's tailnet HTTPS name (tailnet only). Verified end to end with the
+  signed release build (#2 closed).
 
 ## Known issues / follow-ups
 
