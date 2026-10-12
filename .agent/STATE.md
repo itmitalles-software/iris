@@ -65,6 +65,20 @@ _Last updated: 2026-10-12_
   the owner's tailnet HTTPS name (tailnet only). Verified end to end with the
   signed release build (#2 closed).
 
+## 2026-10-13: code review and #5
+
+- #5 fixed in 2f4c1178 + 83d116eb (probe `order=latest` on the first sync of
+  an app-created session; legacy fallback on a failed probe). The cause and fix
+  are posted upstream on Hy4ri/hermes-mobile#1568.
+- Full code review (689a2d30..HEAD, 22 findings): fixed in 0b91499b. Deliberately
+  left: default DARK theme (explicit owner requirement), shared URI-metadata
+  helper and auth-eligibility helper (would widen the upstream diff), variant
+  system rows and the notice-kind design (#10).
+- v0.1.1 released and signed. CI flake class around the singleton WS transport
+  is tracked in #11.
+- Public git history before 0b91499b still contains the owner's tailnet hostname
+  in STATE.md; rewriting history needs the owner's OK.
+
 ## Known issues / follow-ups
 
 Tracked as GitHub issues in the repository.
