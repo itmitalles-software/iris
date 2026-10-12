@@ -8606,6 +8606,71 @@ class ChatViewModelTest {
         }
 
     @Test
+    fun sync_newSessionProbesLatestPagingSoColdStartIdsMatch() =
+        runTest {
+            // Apollo #5: a chat created in the app was never hydrated. Its first sync used the
+            // absolute-position protocol and persisted rest-<sid>-0/1, which never matched the
+            // stable rest-<sid>-<row id> a cold start loads, so every turn rendered twice.
+            val (vm, session) = createViewModelWithSession()
+            every { HermesWsClient.sendMessage(session, "hello", any(), any()) } answers {
+                arg<((String) -> Unit)?>(2)?.invoke("hello-submit")
+                "hello-submit"
+            }
+            assertTrue(vm.sendMessage("hello"))
+            advanceUntilIdle()
+            mockEventsFlow.emit(WsEvent.RpcResult("hello-submit", mapOf("status" to "ok", "user_row_id" to 7)))
+            mockEventsFlow.emit(WsEvent.MessageStart(session))
+            mockEventsFlow.emit(WsEvent.MessageComplete("hi", session))
+            advanceUntilIdle()
+
+            val orders = mutableListOf<String?>()
+            coEvery {
+                ApiClient.hermesApi.getSessionMessages(session, any(), any(), any(), any())
+            } coAnswers {
+                orders += arg<String?>(3)
+                retrofit2.Response.success(
+                    SessionMessagesResponse(
+                        messages =
+                            listOf(
+                                io.wutz.apollo.data.model.SessionMessage(
+                                    id = 7,
+                                    role = "user",
+                                    content = JsonPrimitive("hello"),
+                                ),
+                                io.wutz.apollo.data.model.SessionMessage(
+                                    id = 8,
+                                    role = "assistant",
+                                    content = JsonPrimitive("hi"),
+                                ),
+                            ),
+                        pagination =
+                            io.wutz.apollo.data.model.PaginationInfo(
+                                limit = 150,
+                                offset = 0,
+                                order = "latest",
+                                returned = 2,
+                            ),
+                    ),
+                )
+            }
+
+            vm.syncCurrentSession()
+            advanceUntilIdle()
+
+            assertEquals("first transcript request $orders", "latest", orders.firstOrNull())
+            val restIds =
+                vm.uiState.value.messages
+                    .mapNotNull { it.canonicalRestId }
+                    .toSet()
+            assertEquals(setOf("rest-$session-7", "rest-$session-8"), restIds)
+            assertEquals(
+                1,
+                vm.uiState.value.messages
+                    .count { it.role == MessageRole.USER && it.content == "hello" },
+            )
+        }
+
+    @Test
     fun testSync_latestOrder_grownTranscript_keepsNewestMessage() =
         runTest {
             val (viewModel, _) = createViewModelWithSession()
@@ -11893,7 +11958,9 @@ class ChatViewModelTest {
                                 SessionMessage(id = 20, role = "user", content = JsonPrimitive("probe-first")),
                                 SessionMessage(id = 21, role = "assistant", content = JsonPrimitive("probe-reply")),
                             ),
-                        pagination = PaginationInfo(order = "latest"),
+                        // Absolute-position backend: this case pins the legacy identity rules. With
+                        // order=latest the complete newest page proves row 10 re-issued (#1520) and folds it.
+                        pagination = PaginationInfo(),
                     ),
                 )
             mockEventsFlow.emit(WsEvent.MessageStart(session))

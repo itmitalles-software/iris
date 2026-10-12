@@ -647,6 +647,13 @@ class ChatViewModel(
      * offsets stay absolute and decrease toward 0 (issue #859).
      */
     private var latestPaging = false
+
+    /**
+     * Apollo (#5): whether hydration has probed this session's paging protocol. A session created
+     * in this app is never hydrated, and syncing it with absolute positions persists `rest-<sid>-<n>`
+     * ids that never match the stable row ids a later cold start loads, so every turn showed twice.
+     */
+    private var pagingProtocolProbed = false
     private var isSyncingMessages = false
     private var cacheCursor: ChatPersistenceRepository.Cursor? = null
     private var cacheHasOlder = false
@@ -5703,6 +5710,7 @@ class ChatViewModel(
                         latestResult is NetworkResult.Success &&
                             latestResult.data.pagination?.order == "latest" &&
                             latestResult.data.messages.all { it.id != null }
+                    if (latestResult is NetworkResult.Success) pagingProtocolProbed = true
                     val (result, requestedOffset) =
                         if (useLatest || latestResult is NetworkResult.Failure) {
                             latestResult to 0
@@ -5930,6 +5938,7 @@ class ChatViewModel(
         serverHasOlder = false
         loadedMessageOffset = 0
         latestPaging = false
+        pagingProtocolProbed = false
         isSyncingMessages = false
         streamingController.resetStreaming()
         _streamingState.value = StreamingState()
@@ -6377,26 +6386,49 @@ class ChatViewModel(
                     ?.plus(1)
                     ?: loadedMessageOffset
             }
+        // Apollo (#5): a session created in this app was never hydrated, so its paging protocol is
+        // still unknown. Probe it once like hydration does: absolute positions would persist
+        // rest-<sid>-<n> ids that never match the stable row ids a later cold start loads.
+        val probeLatest = !useLatest && !pagingProtocolProbed
         isSyncingMessages = true
         syncJob =
             viewModelScope.launch {
                 try {
-                    val result =
-                        fetchMessagePage(sessionId, nextOffset, MESSAGE_PAGE_SIZE, if (useLatest) "latest" else null)
+                    var latestOrder = useLatest
+                    var result =
+                        fetchMessagePage(
+                            sessionId,
+                            if (probeLatest) 0 else nextOffset,
+                            MESSAGE_PAGE_SIZE,
+                            if (latestOrder || probeLatest) "latest" else null,
+                        )
                     if (!valid()) return@launch
+                    if (probeLatest && result is NetworkResult.Success) {
+                        pagingProtocolProbed = true
+                        val supportsLatest =
+                            result.data.pagination?.order == "latest" && result.data.messages.all { it.id != null }
+                        if (supportsLatest) {
+                            latestPaging = true
+                            latestOrder = true
+                            loadedMessageOffset = result.data.messages.size
+                        } else {
+                            result = fetchMessagePage(sessionId, nextOffset, MESSAGE_PAGE_SIZE, null)
+                            if (!valid()) return@launch
+                        }
+                    }
                     if (result is NetworkResult.Success) {
                         val offset = result.data.pagination?.offset ?: result.data.offset ?: nextOffset
                         val page =
                             mergeHistoryPage(
                                 valid,
-                                pageIsNewest = useLatest && offset == 0,
+                                pageIsNewest = latestOrder && offset == 0,
                                 pageIsComplete = result.data.messages.size < MESSAGE_PAGE_SIZE,
                             ) { current ->
                                 mapServerMessages(
                                     sessionId,
                                     result.data.messages,
                                     offset,
-                                    useLatest,
+                                    latestOrder,
                                     current,
                                     // Sync fetches recent replies, so confirm live completion identities.
                                     isPagingOlder = false,
