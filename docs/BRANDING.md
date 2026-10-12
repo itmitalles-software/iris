@@ -9,8 +9,9 @@ Apollo is an independent open-source Android client for Hermes Agent, developed 
 | Where | What is shown |
 | --- | --- |
 | Launcher label | `Apollo` only (`app_name`) |
-| Splash (Android 12+) | Emblem plus the brand line "APOLLO / FOR HERMES AGENT / BY WUTZ.IO" (`splash_branding`) |
-| Landing, About | Full lockup `ApolloBrandLockup`: emblem, APOLLO, For Hermes Agent, by wutz.io |
+| Splash (Android 12+) | Emblem plus "APOLLO" (white) and "for hermes agent" (`splash_branding`) |
+| Landing, About | Lockup `ApolloBrandLockup`: emblem, APOLLO wordmark in white (`onSurface`), "for hermes agent" |
+| About details | Developer wutz.io (https://wutz.io) and the independence notice |
 | Navigation header | Mark + APOLLO wordmark, subtitle "For Hermes Agent" |
 | Store / releases | "Apollo", developer "wutz.io", releases named "Apollo vX.Y.Z — by wutz.io" |
 

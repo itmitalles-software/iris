@@ -353,8 +353,7 @@
     <string name="settings_sec_language">Language</string>
     <string name="settings_about_app_name">Apollo</string>
     <string name="brand_wordmark" translatable="false">APOLLO</string>
-    <string name="brand_tagline" translatable="false">For Hermes Agent</string>
-    <string name="brand_credit" translatable="false">by wutz.io</string>
+    <string name="brand_lockup_subtitle" translatable="false">for hermes agent</string>
     <string name="brand_website" translatable="false">https://wutz.io</string>
     <string name="settings_about_developer">Developer</string>
     <string name="settings_about_upstream_credit">Based on Hermes Mobile by Hy4ri (Apache-2.0): github.com/Hy4ri/hermes-mobile</string>

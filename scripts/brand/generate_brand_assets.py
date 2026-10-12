@@ -6,7 +6,7 @@ Outputs (paths relative to the repository root):
   app/src/main/res/drawable/ic_notification.xml
   app/src/main/res/drawable/ic_apollo_mark.xml       (tintable emblem)
   app/src/main/res/drawable/ic_apollo_emblem.xml     (full-colour emblem)
-  app/src/main/res/drawable/splash_branding.xml      (Android 12+ splash brand line)
+  app/src/main/res/drawable/splash_branding.xml      (Android 12+ splash: APOLLO / for hermes agent)
   docs/brand/*.svg                                   (icon, mark, wordmark, banner, feature graphic)
 
 The wordmark and tagline outlines come from Cinzel (SIL OFL 1.1, bundled at
@@ -284,11 +284,10 @@ def android_assets(font: TTFont) -> None:
                 + path_xml(d, fill=fill)
                 + "    </group>\n")
 
-    splash = (placed("APOLLO", 0.16, 20, 14, f"#FF{GOLD[1:]}")
-              + placed("FOR HERMES AGENT", 0.22, 7, 44, f"#FF{MARBLE[1:]}")
-              + placed("BY WUTZ.IO", 0.22, 6, 60, f"#FF{MUTED[1:]}"))
+    splash = (placed("APOLLO", 0.16, 20, 18, f"#FF{MARBLE[1:]}")
+              + placed("for hermes agent", 0.12, 9, 50, f"#FF{MUTED[1:]}"))
     # Glyph outlines stay long even when rounded; the image renders once per cold start.
-    branding = vector(200, 80, 200, 80, splash, comment="APOLLO / For Hermes Agent / by wutz.io (splash brand line).")
+    branding = vector(200, 80, 200, 80, splash, comment="APOLLO / for hermes agent (splash brand line).")
     branding = branding.replace(
         'xmlns:android="http://schemas.android.com/apk/res/android"',
         'xmlns:android="http://schemas.android.com/apk/res/android"\n    xmlns:tools="http://schemas.android.com/tools"\n'

@@ -24,9 +24,9 @@ import io.wutz.apollo.R
 import io.wutz.apollo.theme.ApolloWordmarkStyle
 
 /**
- * Apollo's full brand lockup: emblem, APOLLO wordmark, "For Hermes Agent"
- * and "by wutz.io" (docs/BRANDING.md). Used on the landing screen and in
- * About; the launcher only shows "Apollo".
+ * Apollo's brand lockup: emblem, APOLLO wordmark and "for hermes agent"
+ * (docs/BRANDING.md). Used on the landing screen and in About; the launcher
+ * only shows "Apollo".
  */
 @Composable
 fun ApolloBrandLockup(
@@ -48,18 +48,12 @@ fun ApolloBrandLockup(
         Text(
             text = stringResource(R.string.brand_wordmark),
             style = ApolloWordmarkStyle.copy(fontSize = wordmarkSize.sp),
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             modifier = Modifier.semantics { heading() },
         )
         Text(
-            text = stringResource(R.string.brand_tagline),
-            style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 0.12.em),
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = stringResource(R.string.brand_credit),
+            text = stringResource(R.string.brand_lockup_subtitle),
             style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.1.em),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
