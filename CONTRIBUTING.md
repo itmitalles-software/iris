@@ -1,6 +1,11 @@
-# Contributing to Hermes Mobile
+# Contributing to Apollo
 
-Thank you for your interest in contributing to Hermes Mobile! To maintain high code quality and consistency, we ask all contributors to follow the workflow and guidelines outlined below.
+Thank you for your interest in contributing to Apollo! To maintain high code quality and consistency, we ask all contributors to follow the workflow and guidelines outlined below.
+
+> Apollo is a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile).
+> Fixes that are not Apollo-specific help more people when contributed
+> upstream first; Apollo merges them back (see [UPSTREAM.md](UPSTREAM.md)).
+> Every new user-visible string needs English and German text.
 
 ---
 
@@ -9,9 +14,9 @@ Thank you for your interest in contributing to Hermes Mobile! To maintain high c
 A quick duplicate check saves your time and keeps the PR queue clean:
 
 ```bash
-gh search prs --repo Hy4ri/hermes-mobile --state open "<your feature>"
-gh search prs --repo Hy4ri/hermes-mobile --state closed "<your feature>"
-gh search issues --repo Hy4ri/hermes-mobile --state open "<your feature>"
+gh search prs --repo wutz-io/apollo-hermes-android --state open "<your feature>"
+gh search prs --repo wutz-io/apollo-hermes-android --state closed "<your feature>"
+gh search issues --repo wutz-io/apollo-hermes-android --state open "<your feature>"
 ```
 
 If an open PR already covers it, review or improve that one instead of opening a competing duplicate. For larger work, comment on the issue to signal you're on it.
@@ -20,19 +25,19 @@ If an open PR already covers it, review or improve that one instead of opening a
 
 ## PR Workflow
 
-Every change must go through a pull request (PR) targeting the `dev` staging branch. Do not push directly to `main` or `dev`.
+Every change must go through a pull request (PR) targeting `main`.
 
 **Keep PRs focused: one feature or one fix per PR.** Unrelated changes belong in separate PRs so each one stays easy to review, test, and revert.
 
 1. **Pick or open an issue** to discuss the changes you want to make.
-2. **Create a branch** off `dev` using the following naming convention:
+2. **Create a branch** off `main` using the following naming convention:
    - Features: `feat/short-description` (optionally `feat/issue-N-description`)
    - Bug fixes: `fix/short-description` (optionally `fix/issue-N-description`)
    - CI/chore: `ci/...`, `chore/...`
 3. **Implement your changes** and format them locally (see Code Style).
-4. **Submit a PR** targeting the `dev` branch, filling the PR template.
+4. **Submit a PR** targeting `main`, filling the PR template.
 5. **Ensure all CI checks pass** (ktlint, Android Lint, unit tests, build).
-6. **Rebase onto `dev` before merge.** Run `git fetch origin dev && git rebase origin/dev`, resolve conflicts carefully, and re-run verification on the rebased result. Maintainers squash-merge; green CI does not by itself authorize a merge.
+6. **Rebase onto `main` before merge** and re-run verification on the rebased result.
 
 ### Fixing a blocked PR description
 
@@ -94,11 +99,10 @@ If you use AI coding tools (including agents) to contribute:
 
 ## Translations
 
-Translations for Hermes Mobile are managed through [Hosted Weblate](https://hosted.weblate.org/projects/hermes-mobile/hermes-mobile/).
-
-- Source strings are located in `app/src/main/res/values/strings.xml`.
-- Localized strings are stored in `app/src/main/res/values-<locale>/strings.xml`.
-- You can contribute translations directly on Weblate without modifying code or opening manual PRs.
+English (`values/`) and German (`values-de/`) are maintained in this repository and must both be updated
+with every new string. Arabic, Chinese, Italian, Korean and Spanish come from upstream Hermes Mobile's
+[Weblate project](https://hosted.weblate.org/projects/hermes-mobile/hermes-mobile/) and arrive with upstream merges;
+Apollo-only strings fall back to English there.
 
 ---
 
@@ -160,7 +164,7 @@ Before submitting your PR, please verify:
 
 - [ ] I searched open/closed PRs + issues for duplicates (see *Before You Start*).
 - [ ] PR is focused on one feature or one fix (no unrelated changes).
-- [ ] Branch is rebased onto current `dev` (`git rebase origin/dev`).
+- [ ] Branch is rebased onto current `main` (`git rebase origin/main`).
 - [ ] `./gradlew ktlintCheck` passes (ran `ktlintFormat` first — no hand edits).
 - [ ] `checkColorLiterals` passes (no hardcoded Color literals outside theme/).
 - [ ] `./gradlew testDebugUnitTest` passes locally (or CI unit-tests job is green).

@@ -34,7 +34,7 @@ jobs:
   pr-template:
     name: PR Template
     # Repo owner's PRs skip the template gate (skipped counts as pass downstream).
-    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'Hy4ri'
+    if: github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions:
@@ -282,7 +282,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: hermescontrol-debug-apk
+          name: apollo-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

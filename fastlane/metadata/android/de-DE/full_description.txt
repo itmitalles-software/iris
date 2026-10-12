@@ -1,0 +1,17 @@
+Apollo ist ein nativer Android-Client für Hermes Agent, den Open-Source-KI-Agenten, der auf deinem eigenen Rechner läuft. Der Agent bleibt zu Hause, Apollo ist die Fernbedienung für die Hosentasche.
+
+Apollo ist ein unabhängiger Client auf Basis von Hermes Mobile und steht in keiner Verbindung zu Nous Research.
+
+Funktionen:
+• Live-Chat mit Streaming, Markdown, Syntax-Highlighting, Tool-Aufrufen und Ergebnissen
+• Tool-Freigaben und Rückfragen im Chat oder direkt aus der Benachrichtigung beantworten
+• Sessions und Projekte durchsuchen, fortsetzen und organisieren
+• Bilder, PDFs und Dateien anhängen oder aus jeder App an Apollo teilen
+• Cronjobs, Kanban-Boards, Webhooks und Live-Logs
+• Modelle, Provider, Profile, Skills, MCP-Server, Plugins und Toolsets verwalten
+• Nutzungs- und Token-Statistiken
+• Benachrichtigungen für abgeschlossene Aufgaben und offene Freigaben, mit Direktantwort
+• Tiefschwarzes AMOLED-Dark-Theme, optionaler Light Mode und Material You
+• Deutsch und Englisch, passend zur Systemsprache
+
+Datenschutz: keine Werbung, keine Tracker, keine Telemetrie. Apollo verbindet sich nur mit deinem eigenen Hermes-Server, idealerweise über Tailscale mit HTTPS, und speichert Zugangsdaten verschlüsselt.

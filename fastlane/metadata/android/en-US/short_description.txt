@@ -1,1 +1,1 @@
-Remote control for your Hermes AI agent
+Native Android client for your self-hosted Hermes Agent

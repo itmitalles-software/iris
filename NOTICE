@@ -1,0 +1,15 @@
+Apollo — native Android client for Hermes Agent
+Copyright 2026 wutz.io
+
+This product is a modified fork of Hermes Mobile
+(https://github.com/Hy4ri/hermes-mobile), Copyright 2026 M57 (Hy4ri) and
+contributors, licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Apollo keeps the upstream Git history. Every change made after the fork
+point is recorded in this repository's Git history; UPSTREAM.md names the
+fork point and summarizes the modifications (package rename to
+io.wutz.apollo, Apollo branding, German localization and further features).
+
+Apollo is an independent client. It is not affiliated with, endorsed by, or
+sponsored by Nous Research or the Hermes Mobile project. "Hermes Agent" is
+referenced only to describe compatibility.

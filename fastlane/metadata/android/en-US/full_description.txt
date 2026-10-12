@@ -1,15 +1,17 @@
-A native Android companion app for Hermes Agent — the open-source, multi-platform AI assistant by Nous Research.
+Apollo is a native Android client for Hermes Agent, the open-source AI agent you run on your own computer. The agent keeps running at home; Apollo is the remote control in your pocket.
 
-Manage your Hermes agent directly from your phone over your trusted LAN, without needing to pull out a laptop or switch to another messaging platform.
+Apollo is an independent client based on Hermes Mobile. It is not affiliated with Nous Research.
 
 Features:
-• Real-time chat via WebSocket with markdown rendering
-• Switch between AI models and providers on the fly
-• Monitor system logs with filtering
-• Manage profiles and settings
-• Pull-to-refresh for live updates
-• Notification support for incoming messages
-• Material You dynamic theming (Android 12+)
-• Works entirely on your trusted LAN — no internet required
+• Live streaming chat with Markdown, code highlighting, tool calls and results
+• Answer tool approvals and agent questions in the chat or from a notification
+• Browse, search, resume and organize sessions and projects
+• Attach images, PDFs and files, or share them into Apollo from any app
+• Cron jobs, Kanban boards, webhooks and live logs
+• Manage models, providers, profiles, skills, MCP servers, plugins and toolsets
+• Usage and token statistics
+• Notifications for finished tasks and pending approvals, with inline reply
+• True-black AMOLED dark theme, optional light mode and Material You
+• English and German, following your system language
 
-All network communication uses cleartext HTTP/WebSocket by design, since the app is intended for trusted local networks only.
+Privacy: no ads, no trackers, no telemetry. Apollo connects only to your own Hermes server — ideally over Tailscale with HTTPS — and stores credentials in encrypted storage.

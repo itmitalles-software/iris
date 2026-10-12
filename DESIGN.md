@@ -1,4 +1,4 @@
-# Hermes Mobile Design System
+# Apollo Design System
 
 ## Scope and sources of truth
 
@@ -33,7 +33,7 @@ Android layout dimensions use `dp`; text sizes, line heights, and tracking use `
 | Motion | [Motion.kt](app/src/main/java/com/m57/hermescontrol/theme/Motion.kt) |
 
 ## Overview
-Hermes Mobile (`com.m57.hermescontrol`) is a native Android client for the Hermes Agent platform. Prioritize useful information density, clear touch interactions, and timely, honest feedback over decorative visual noise. Density must not compromise accessibility.
+Apollo (`io.wutz.apollo`, a fork of Hermes Mobile) is a native Android client for the Hermes Agent platform. Prioritize useful information density, clear touch interactions, and timely, honest feedback over decorative visual noise. Density must not compromise accessibility.
 
 The visual language follows Material 3 guidelines strictly adapted for developer utilities:
 - **Tone**: Technical, focused, utilitarian, crisp.
