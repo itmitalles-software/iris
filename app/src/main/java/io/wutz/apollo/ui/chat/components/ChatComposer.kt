@@ -65,6 +65,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -412,6 +413,11 @@ fun ChatInputBar(
                                         .focusRequester(inputFocusRequester)
                                         .onFocusChanged { focusState ->
                                             inputFocused = focusState.isFocused
+                                        }.onPreviewKeyEvent { event ->
+                                            // Apollo: Ctrl+Enter sends from a hardware keyboard.
+                                            if (!event.isComposerSendShortcut()) return@onPreviewKeyEvent false
+                                            if (canSend) onSend()
+                                            true
                                         }.testTag("chat_input")
                                         .then(
                                             if (receiveContentListener != null) {

@@ -71,6 +71,7 @@ import io.wutz.apollo.data.ws.toJsonElement
 import io.wutz.apollo.notification.ReplyNotificationTracker
 import io.wutz.apollo.notification.captureTurnBoundary
 import io.wutz.apollo.notification.correlationScopeId
+import io.wutz.apollo.share.SharedContent
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
 import io.wutz.apollo.ui.common.ActionProgressController
@@ -3976,6 +3977,12 @@ class ChatViewModel(
     ) = attachmentsDelegate.addAttachment(uri, name, mimeType, size)
 
     fun addAttachments(attachments: List<Attachment>) = attachmentsDelegate.addAttachments(attachments)
+
+    /** Stages share-sheet content in the composer; the user reviews and sends it. */
+    fun stageSharedContent(content: SharedContent) {
+        attachmentsDelegate.addAttachments(content.attachments)
+        content.text?.let { text -> _uiState.update { it.copy(pendingPrefillText = text) } }
+    }
 
     /** Clipboard reads are asynchronous: bind them to this exact session generation and server. */
     internal fun captureAttachmentTarget(): ChatAttachmentTarget? {

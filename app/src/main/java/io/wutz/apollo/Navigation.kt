@@ -3,8 +3,10 @@ package io.wutz.apollo
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,20 +28,27 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -194,6 +203,9 @@ private fun appEntryProvider(
     }
 }
 
+private val EXPANDED_WIDTH = 840.dp
+private val SIDEBAR_WIDTH = 300.dp
+
 @Composable
 fun MainNavigation(sessionId: String? = null) {
     val token by AuthManager.tokenFlow.collectAsState()
@@ -218,7 +230,23 @@ fun MainNavigation(sessionId: String? = null) {
             DrawerGestureController(drawerState, scope)
         }
 
-    val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
+    // Apollo: tablets, unfolded foldables and large landscape windows get a
+    // persistent sidebar instead of the modal drawer; the menu button then
+    // shows or hides that sidebar.
+    val windowWidthDp =
+        with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.width
+                .toDp()
+        }
+    val isExpandedWidth = hasToken && windowWidthDp >= EXPANDED_WIDTH
+    var sidebarVisible by rememberSaveable { mutableStateOf(true) }
+
+    val openDrawer: () -> Unit =
+        if (isExpandedWidth) {
+            { sidebarVisible = !sidebarVisible }
+        } else {
+            { scope.launch { drawerState.open() } }
+        }
 
     val context = LocalContext.current
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
@@ -250,114 +278,139 @@ fun MainNavigation(sessionId: String? = null) {
         NavigationController.goBack()
     }
 
-    CompositionLocalProvider(LocalDrawerGestureController provides gestureController) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = gestureController.enabled,
-            drawerContent = {
-                ModalDrawerSheet(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                ) {
-                    val connectionStatus by HermesWsClient.connectionStatus.collectAsState()
-                    val statusColor =
-                        when (connectionStatus) {
-                            ConnectionStatus.CONNECTED -> LocalHermesStatusColors.current.success
+    val drawerItems: @Composable ColumnScope.() -> Unit = {
+        val connectionStatus by HermesWsClient.connectionStatus.collectAsState()
+        val statusColor =
+            when (connectionStatus) {
+                ConnectionStatus.CONNECTED -> LocalHermesStatusColors.current.success
 
-                            ConnectionStatus.CONNECTING,
-                            ConnectionStatus.RECONNECTING,
-                            -> LocalHermesStatusColors.current.warning
+                ConnectionStatus.CONNECTING,
+                ConnectionStatus.RECONNECTING,
+                -> LocalHermesStatusColors.current.warning
 
-                            ConnectionStatus.DISCONNECTED,
-                            ConnectionStatus.NO_NETWORK,
-                            ConnectionStatus.AUTH_EXPIRED,
-                            -> LocalHermesStatusColors.current.error
-                        }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 2.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.nav_drawer_title),
-                            style =
-                                MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(10.dp)
-                                    .background(color = statusColor, shape = CircleShape),
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.nav_drawer_subtitle),
-                        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp, end = 16.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                    for (section in DrawerSection.entries) {
-                        Text(
-                            text = stringResource(section.titleRes).uppercase(),
-                            modifier =
-                                Modifier.padding(
-                                    start = 16.dp,
-                                    top = 8.dp,
-                                    bottom = 4.dp,
-                                    end = 16.dp,
-                                ),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        ScreenRegistry.ALL_SCREENS
-                            .filter { it.drawerSection == section && hasToken }
-                            .forEach { entry ->
-                                NavigationDrawerItem(
-                                    icon = { Icon(entry.icon, contentDescription = null) },
-                                    label = { Text(stringResource(entry.labelRes)) },
-                                    selected = currentScreen == entry.key,
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        NavigationController.navigateTo(entry.key)
-                                    },
-                                    colors =
-                                        NavigationDrawerItemDefaults.colors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        ),
-                                )
-                            }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            },
-        ) {
-            Scaffold(
-                contentWindowInsets = WindowInsets.navigationBars,
-            ) { paddingValues ->
-                NavDisplay(
-                    backStack = backStack,
-                    onBack = { NavigationController.goBack() },
-                    entryProvider =
-                        appEntryProvider(sessionId, openDrawer),
-                    modifier =
-                        Modifier
-                            .padding(paddingValues)
-                            .consumeWindowInsets(paddingValues)
-                            .fillMaxSize(),
-                )
+                ConnectionStatus.DISCONNECTED,
+                ConnectionStatus.NO_NETWORK,
+                ConnectionStatus.AUTH_EXPIRED,
+                -> LocalHermesStatusColors.current.error
             }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 2.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.nav_drawer_title),
+                style =
+                    MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                    ),
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .size(10.dp)
+                        .background(color = statusColor, shape = CircleShape),
+            )
+        }
+        Text(
+            text = stringResource(R.string.nav_drawer_subtitle),
+            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp, end = 16.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        for (section in DrawerSection.entries) {
+            Text(
+                text = stringResource(section.titleRes).uppercase(),
+                modifier =
+                    Modifier.padding(
+                        start = 16.dp,
+                        top = 8.dp,
+                        bottom = 4.dp,
+                        end = 16.dp,
+                    ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+            )
+            ScreenRegistry.ALL_SCREENS
+                .filter { it.drawerSection == section && hasToken }
+                .forEach { entry ->
+                    NavigationDrawerItem(
+                        icon = { Icon(entry.icon, contentDescription = null) },
+                        label = { Text(stringResource(entry.labelRes)) },
+                        selected = currentScreen == entry.key,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            NavigationController.navigateTo(entry.key)
+                        },
+                        colors =
+                            NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                    )
+                }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+    val screenContent: @Composable () -> Unit = {
+        Scaffold(
+            contentWindowInsets = WindowInsets.navigationBars,
+        ) { paddingValues ->
+            NavDisplay(
+                backStack = backStack,
+                onBack = { NavigationController.goBack() },
+                entryProvider =
+                    appEntryProvider(sessionId, openDrawer),
+                modifier =
+                    Modifier
+                        .padding(paddingValues)
+                        .consumeWindowInsets(paddingValues)
+                        .fillMaxSize(),
+            )
+        }
+    }
+
+    CompositionLocalProvider(LocalDrawerGestureController provides gestureController) {
+        if (isExpandedWidth) {
+            PermanentNavigationDrawer(
+                drawerContent = {
+                    AnimatedVisibility(visible = sidebarVisible) {
+                        Row {
+                            PermanentDrawerSheet(
+                                modifier =
+                                    Modifier
+                                        .width(SIDEBAR_WIDTH)
+                                        .verticalScroll(rememberScrollState()),
+                                content = drawerItems,
+                            )
+                            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
+                },
+                content = screenContent,
+            )
+        } else {
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                gesturesEnabled = gestureController.enabled,
+                drawerContent = {
+                    ModalDrawerSheet(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        content = drawerItems,
+                    )
+                },
+                content = screenContent,
+            )
         }
     }
 }

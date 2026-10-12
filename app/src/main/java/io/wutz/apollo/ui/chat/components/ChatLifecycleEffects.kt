@@ -30,6 +30,7 @@ import io.wutz.apollo.R
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.notification.ReplyNotificationTracker
 import io.wutz.apollo.notification.correlationScopeId
+import io.wutz.apollo.share.ShareInbox
 import io.wutz.apollo.ui.chat.ChatMessage
 import io.wutz.apollo.ui.chat.ChatViewModel
 import io.wutz.apollo.ui.chat.ClarifyUi
@@ -68,6 +69,8 @@ fun ChatLifecycleEffects(
         val request = NavigationController.consumePendingChatNavigation()
         if (newChatRequest != null) {
             viewModel.startNewChat(newChatRequest.project)
+            // Share-sheet content lands in the fresh chat after its reset.
+            ShareInbox.consume()?.let(viewModel::stageSharedContent)
             return@LaunchedEffect
         }
         val target = request?.sessionId ?: sessionId

@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -156,6 +158,9 @@ internal fun canStartAttachmentSave(
     pendingSavePath: String?,
     savingAttachmentPath: String?,
 ): Boolean = pendingSavePath == null && savingAttachmentPath == null
+
+/** Apollo: maximum width of the chat column on large screens. */
+private val CHAT_MAX_CONTENT_WIDTH = 840.dp
 
 /**
  * Chat screen — the primary conversation surface of Hermes Control.
@@ -643,7 +648,10 @@ fun ChatScreen(
                 Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
-                    .imePadding(),
+                    .imePadding()
+                    // Apollo: keep a readable line length on tablets and unfolded foldables.
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .widthIn(max = CHAT_MAX_CONTENT_WIDTH),
         ) {
             ChatConnectionBanner(
                 connectionStatus = state.connectionStatus,

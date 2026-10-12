@@ -3,6 +3,7 @@ package io.wutz.apollo
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,6 +24,8 @@ import io.wutz.apollo.data.update.UpdateNoticeManager
 import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.notification.NotificationHelper
 import io.wutz.apollo.notification.NotificationReplyReceiver
+import io.wutz.apollo.share.ShareInbox
+import io.wutz.apollo.share.ShareIntentParser
 import io.wutz.apollo.theme.HermesControlTheme
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.LoadingState
@@ -62,6 +65,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         consumeNotificationIntent(intent)
+        // A recreated activity (rotation, language switch) still holds the
+        // original share intent; only the first creation consumes it.
+        if (savedInstanceState == null) consumeShareIntent(intent)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -129,6 +135,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         consumeNotificationIntent(intent)
+        consumeShareIntent(intent)
     }
 
     override fun onResume() {
@@ -156,6 +163,37 @@ class MainActivity : ComponentActivity() {
         // idle connection when the user really leaves the app or locks the phone.
         if (!isChangingConfigurations) NotificationHelper.setAppForeground(this, false)
         super.onStop()
+    }
+
+    /**
+     * Stage share-sheet content in a new chat (never sent automatically).
+     * Signed-out users get a hint instead, so content cannot linger and
+     * surface in an unrelated chat later.
+     */
+    private fun consumeShareIntent(intent: Intent?) {
+        if (intent == null) return
+        if (intent.action != Intent.ACTION_SEND && intent.action != Intent.ACTION_SEND_MULTIPLE) return
+        val content =
+            ShareIntentParser.parse(
+                intent = intent,
+                ownAuthority = "$packageName.fileprovider",
+                resolver = ShareIntentParser.contentResolverDescriber(contentResolver),
+            )
+        intent.action = null
+        if (content == null) {
+            Toast.makeText(this, R.string.share_nothing_usable, Toast.LENGTH_LONG).show()
+            return
+        }
+        ShareInbox.offer(content)
+        lifecycleScope.launch {
+            AuthManager.initializationState.first { it == AuthManager.InitializationState.Ready }
+            if (AuthManager.isGatedMode() || !AuthManager.getToken().isNullOrBlank()) {
+                NavigationController.openNewChat()
+            } else {
+                ShareInbox.consume()
+                Toast.makeText(this@MainActivity, R.string.share_sign_in_first, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun consumeNotificationIntent(intent: Intent?) {

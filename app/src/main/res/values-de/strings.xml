@@ -373,7 +373,7 @@
     <string name="settings_about_rc_updates_desc">Pre-Release-RC-Builds installieren. Sie können weniger stabil sein.</string>
     <string name="settings_support_title">Hermes Mobile unterstützen (Upstream)</string>
     <string name="settings_support_message">Apollo basiert auf Hermes Mobile von Hy4ri. Wenn es dir Zeit spart, unterstütze gern das Upstream-Projekt.</string>
-    <string name="settings_support_action">Unterstütze mich auf Ko-fi</string>
+    <string name="settings_support_action">Hy4ri auf Ko-fi unterstützen</string>
 
     <!-- Settings list summaries (drill-down) -->
     <string name="settings_summary_profiles">%1$d gespeichert</string>
@@ -557,7 +557,7 @@
     <string name="kanban_task_actions">Aufgabenaktionen</string>
     <string name="kanban_reclaim_task">Aufgabe zurückholen</string>
     <string name="kanban_no_comments">Noch keine Kommentare.</string>
-    <string name="kanban_write_comment">Kommentar schreiben...</string>
+    <string name="kanban_write_comment">Kommentar schreiben…</string>
     <string name="kanban_note_requeue">Notiz &amp; erneut einreihen</string>
     <string name="kanban_comment">Kommentieren</string>
     <string name="kanban_worker_log">Worker-Log-Ausgabe</string>
@@ -1155,7 +1155,7 @@
     <string name="plugins_hide_from_sidebar">In Seitenleiste ausblenden</string>
     <string name="plugins_tab_installed">Installiert</string>
     <string name="plugins_tab_catalog">Katalog</string>
-    <string name="plugins_catalog_search_placeholder">Katalog-Plugins durchsuchen...</string>
+    <string name="plugins_catalog_search_placeholder">Katalog-Plugins durchsuchen…</string>
     <string name="plugins_catalog_empty_title">Keine Katalog-Plugins gefunden</string>
     <string name="plugins_catalog_empty_desc">Keine Plugins passen zu deinem Filter oder deiner Suche</string>
     <string name="plugins_catalog_update">Aktualisieren</string>
@@ -1372,7 +1372,7 @@
     <string name="keys_status_configured">Konfiguriert</string>
     <string name="keys_status_not_set">Nicht gesetzt</string>
     <string name="keys_add_key_placeholder">z. B. OPENAI_API_KEY</string>
-    <string name="keys_add_value_placeholder">z. B. sk-...</string>
+    <string name="keys_add_value_placeholder">z. B. sk-…</string>
     <string name="keys_action_open_url">Provider-Dokumentation öffnen</string>
     <string name="keys_filter_all">Alle</string>
 
@@ -1428,7 +1428,7 @@
     <string name="auth_login_username_label">Benutzername</string>
     <string name="auth_login_password_label">Passwort</string>
     <string name="auth_login_action_connect">Verbinden</string>
-    <string name="auth_login_action_probing">Dashboard wird geprüft…</string>
+    <string name="auth_login_action_probing">Server prüfen</string>
     <string name="auth_login_probing_dashboard">Dashboard-Konfiguration wird geprüft…</string>
     <string name="auth_login_error_token_required">Sitzungs-Token ist erforderlich</string>
     <string name="auth_login_error_username_required">Benutzername ist erforderlich</string>
@@ -1558,17 +1558,18 @@
     <string name="context_cache_read">Cache-Lesen</string>
     <string name="context_cache_write">Cache-Schreiben</string>
     <string name="context_completion_output">Completion (Ausgabe)</string>
+    <string name="context_usage_label">%1$s / %2$s Kontext</string>
     <string name="context_compressed">komprimiert ×%1$s</string>
     <string name="context_prompt_input">Prompt (Eingabe)</string>
     <string name="context_tokens_note">Die Token-Zahlen unten sind kumulierte Sitzungswerte und zeigen nicht die aktuelle Auslastung des Kontextfensters.</string>
     <string name="context_window">Kontextfenster</string>
     <string name="context_window_usage_unavailable">Auslastung des Kontextfensters nicht verfügbar</string>
     <string name="gif_play">GIF abspielen</string>
-    <string name="kanban_filter_placeholder">Aufgaben nach Titel, Status oder Bearbeiter filtern...</string>
+    <string name="kanban_filter_placeholder">Aufgaben nach Titel, Status oder Bearbeiter filtern…</string>
     <string name="logs_clipboard_label">Hermes-Logs</string>
-    <string name="logs_search_placeholder">Logs durchsuchen...</string>
+    <string name="logs_search_placeholder">Logs durchsuchen…</string>
     <string name="mcp_no_match">Keine Server passen zu &quot;%1$s&quot;</string>
-    <string name="mcp_search_placeholder">MCP-Server suchen...</string>
+    <string name="mcp_search_placeholder">MCP-Server suchen…</string>
     <string name="memory_learned_skills">Gelernte Skills</string>
     <string name="memory_memories_facts">Erinnerungen &amp; Fakten</string>
     <string name="memory_recent_events">Letzte Selbstverbesserungs-Ereignisse des Agenten</string>
@@ -1591,7 +1592,7 @@
     <string name="moa_preset_label">Preset:</string>
     <string name="moa_presets_note">Presets erscheinen als Modelle unter dem Provider Mixture of Agents.</string>
     <string name="moa_reference_models">Referenzmodelle</string>
-    <string name="moa_search_providers">Provider suchen...</string>
+    <string name="moa_search_providers">Provider suchen…</string>
     <string name="moa_set_default">Als Standard festlegen</string>
     <string name="moa_title">Mixture of Agents</string>
     <string name="model_aux_tasks_label">Hilfsaufgaben</string>
@@ -1603,9 +1604,9 @@
     <string name="model_new_sessions">gilt für neue Sitzungen</string>
     <string name="model_picker_loading">Modelle werden geladen…</string>
     <string name="model_picker_no_models">Keine Modelle verfügbar.</string>
-    <string name="model_picker_search">Modelle und Provider suchen...</string>
+    <string name="model_picker_search">Modelle und Provider suchen…</string>
     <string name="model_reset_all_auto">Alle auf Auto zurücksetzen</string>
-    <string name="model_search_placeholder">Modelle suchen...</string>
+    <string name="model_search_placeholder">Modelle suchen…</string>
     <string name="model_set_aux">Hilfsmodell festlegen: %1$s</string>
     <string name="model_set_main">Hauptmodell festlegen</string>
     <string name="model_settings">Modelleinstellungen</string>
@@ -1613,8 +1614,8 @@
     <string name="platform_disconnect_confirm_title">%1$s trennen?</string>
     <string name="platform_disconnect_desc">Plattform trennen</string>
     <string name="platform_setup_qr">Mit QR-Code einrichten</string>
-    <string name="plugins_repo_placeholder">owner/repo, owner/repo/subdir oder https://...</string>
-    <string name="plugins_search_placeholder">Plugins suchen...</string>
+    <string name="plugins_repo_placeholder">owner/repo, owner/repo/subdir oder https://…</string>
+    <string name="plugins_search_placeholder">Plugins suchen…</string>
     <string name="profile_builder_placeholder">Beschreibe den Zweck dieses Profils</string>
     <string name="profile_command">Befehl: %1$s</string>
     <string name="profile_remove_server">Server entfernen</string>
@@ -1649,7 +1650,7 @@
     <string name="system_checkpoint_prune">Checkpoint-Bereinigung</string>
     <string name="system_config_migrate">Konfigurationsmigration</string>
     <string name="system_curator_run">Curator-Lauf</string>
-    <string name="system_more_lines">... %1$d weitere Zeile(n)</string>
+    <string name="system_more_lines">… %1$d weitere Zeile(n)</string>
     <string name="system_prompt_size_check">Prompt-Größenprüfung</string>
     <string name="system_security_audit">Sicherheitsaudit</string>
     <string name="system_skills_update">Skills-Update</string>
@@ -1677,9 +1678,9 @@
     <string name="task_progress_open_details">Aufgabendetails öffnen</string>
     <string name="tool_duration">Dauer: %1$s</string>
     <string name="tool_redacted">· geschwärzt</string>
-    <string name="toolsets_search_placeholder">Toolsets suchen...</string>
+    <string name="toolsets_search_placeholder">Toolsets suchen…</string>
     <string name="webhooks_delete_subscription">Abonnement löschen</string>
-    <string name="webhooks_placeholder">Was dieser Webhook tut...</string>
+    <string name="webhooks_placeholder">Was dieser Webhook tut…</string>
     <string name="webhooks_receiver_url">Empfänger-URL: %1$s</string>
     <string name="webhooks_secret_configured">Secret konfiguriert</string>
     <string name="system_dump">Dump</string>
@@ -1917,6 +1918,8 @@
     <string name="trust_user_cas_restart_required">Starte den App-Prozess neu, um diese Änderung zu übernehmen.</string>
 
     <string name="language_german">Deutsch</string>
+    <string name="share_sign_in_first">Melde dich zuerst bei Hermes an und teile dann erneut.</string>
+    <string name="share_nothing_usable">Apollo kann diesen geteilten Inhalt nicht verwenden.</string>
     <string name="theme_preset_apollo">Apollo</string>
     <string name="settings_about_upstream_credit">Basiert auf Hermes Mobile von Hy4ri (Apache-2.0): github.com/Hy4ri/hermes-mobile</string>
     <string name="settings_about_unofficial">Unabhängiger Client. Keine Verbindung zu Nous Research und nicht von Nous Research unterstützt.</string>

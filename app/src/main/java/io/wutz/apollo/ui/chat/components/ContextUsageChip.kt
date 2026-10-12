@@ -89,11 +89,11 @@ fun ContextUsageChip(
         ) {
             Text(
                 text =
-                    if (usedTokens != null) {
-                        "${formatTokens(usedTokens)} / ${formatTokens(full)} context"
-                    } else {
-                        "— / ${formatTokens(full)} context"
-                    },
+                    stringResource(
+                        R.string.context_usage_label,
+                        usedTokens?.let(::formatTokens) ?: "—",
+                        formatTokens(full),
+                    ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
