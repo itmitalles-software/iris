@@ -1,0 +1,41 @@
+package io.wutz.apollo.data.ws
+
+import io.wutz.apollo.data.model.ProjectInfo
+import io.wutz.apollo.data.model.ProjectsListResponse
+import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.data.ws.contract.HermesRpcCaller
+import io.wutz.apollo.data.ws.contract.ProjectsListParams
+import io.wutz.apollo.data.ws.contract.RpcMethods
+import io.wutz.apollo.data.ws.contract.TypedRpcCaller
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.JsonObject
+
+/** Supplies the profile's named projects so history rows can show which one a chat belongs to. */
+interface ProjectsSource {
+    /** The project list, or null when the backend can't answer (offline, older server). */
+    suspend fun fetchProjects(): List<ProjectInfo>?
+}
+
+/** [ProjectsSource] backed by the gateway's `projects.list` JSON-RPC. */
+class HermesProjectsSource(
+    // Only ask a live socket: an offline request would be queued and force a reconnect on
+    // every refresh. The view model refetches when the connection comes back.
+    private val isConnected: () -> Boolean = { HermesWsClient.connectionStatus.value == ConnectionStatus.CONNECTED },
+    private val caller: TypedRpcCaller = HermesRpcCaller,
+) : ProjectsSource {
+    override suspend fun fetchProjects(): List<ProjectInfo>? {
+        if (!isConnected()) return null
+        return try {
+            val element = caller.call(RpcMethods.PROJECTS_LIST, ProjectsListParams)
+            if (element is JsonObject && element.containsKey("projects")) {
+                OkHttpProvider.json.decodeFromJsonElement(ProjectsListResponse.serializer(), element).projects
+            } else {
+                null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+}

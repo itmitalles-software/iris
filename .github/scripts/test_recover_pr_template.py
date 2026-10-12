@@ -169,7 +169,7 @@ class RecoveryTests(unittest.TestCase):
             "invalid_body": lambda g: g.pr.update(body="not a template"),
             "invalid_title": lambda g: g.pr.update(title="not conventional"),
             "missing_screenshot": lambda g: g.files.append(
-                {"filename": "app/src/main/java/com/m57/hermescontrol/ui/chat/Chat.kt"}
+                {"filename": "app/src/main/java/io/wutz/apollo/ui/chat/Chat.kt"}
             ),
             "no_run": lambda g: g.runs.clear(),
             "stale_sha": lambda g: g.runs[0].update(head_sha="old"),

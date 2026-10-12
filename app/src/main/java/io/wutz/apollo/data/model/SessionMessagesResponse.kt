@@ -1,0 +1,175 @@
+package io.wutz.apollo.data.model
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
+
+@Serializable
+data class SessionMessagesResponse(
+    val messages: List<SessionMessage>,
+    val offset: Int? = null,
+    val total: Int? = null,
+    val pagination: PaginationInfo? = null,
+)
+
+/**
+ * Echo of the backend's pagination state for GET /api/sessions/{id}/messages
+ * (hermes_cli/web_routers/sessions.py). Absent on legacy backends that
+ * predate the `order` param — its presence also proves `order=latest` was
+ * honored (issue #859).
+ */
+@Serializable
+data class PaginationInfo(
+    val limit: Int? = null,
+    val offset: Int? = null,
+    val order: String? = null,
+    val returned: Int? = null,
+)
+
+@Serializable
+data class SessionMessage(
+    // The gateway's AUTOINCREMENT row id (hermes_state_common.py
+    // messages.id) — stable, unique and never reused. Used as the chat-list
+    // stable key under newest-anchored paging (issue #859).
+    val id: Int? = null,
+    val role: String? = null,
+    val content: JsonElement? = null,
+    val timestamp: JsonElement? = null,
+    val type: String? = null,
+    val reasoning: JsonElement? = null,
+    val reasoning_text: JsonElement? = null,
+    val tool_call_id: String? = null,
+    /**
+     * User-visible projection supplied by the backend for rows whose physical
+     * [content] is model-facing scaffolding (notably compaction summaries).
+     * Prefer this for rendering whenever present.
+     */
+    val display_content: JsonElement? = null,
+    /**
+     * Timeline-marker tag (backend NS-656 lineage, issue #904): markers like
+     * `model_switch` / `personality_switch` / `auto_continue` ride as
+     * role=user rows so strict providers accept them mid-conversation, but
+     * they are NOT user turns. Nullable/additive — old backends omit it.
+     */
+    val display_kind: String? = null,
+    /** Display-only metadata for the marker (e.g. delegation result counts). */
+    val display_metadata: JsonElement? = null,
+    /** Token count recorded by the backend. */
+    val token_count: JsonElement? = null,
+    /**
+     * Public interim commentary projected by the backend for assistant rows
+     * (agent/history_commentary.py, issue #1284). Rendered as assistant text
+     * ahead of the reply. Absent on older gateways.
+     */
+    val display_commentary: JsonElement? = null,
+    /**
+     * [reasoning] with the flattened commentary removed. When present (even
+     * empty) it wins over the raw reasoning so commentary is not shown twice.
+     */
+    val display_reasoning: JsonElement? = null,
+) {
+    val timestampText: String?
+        get() = (timestamp as? JsonPrimitive)?.content
+
+    /** Emoji reactions persisted on this row (`display_metadata.reactions`). */
+    val reactions: List<MessageReaction>
+        get() = parseMessageReactions(display_metadata)
+
+    val tokenCount: Int?
+        get() {
+            val prim = token_count as? JsonPrimitive ?: return null
+            return prim.intOrNull ?: prim.content.toIntOrNull()
+        }
+
+    val timestampEpochMs: Long?
+        get() {
+            val prim = timestamp as? JsonPrimitive ?: return null
+            val asLong = prim.longOrNull
+            if (asLong != null) {
+                return if (asLong < 10_000_000_000L) asLong * 1000L else asLong
+            }
+            val asDouble = prim.doubleOrNull
+            if (asDouble != null) {
+                return (asDouble * 1000L).toLong()
+            }
+            return null
+        }
+
+    val contentText: String
+        get() = content?.transcriptText().orEmpty()
+
+    val displayContentText: String?
+        get() = display_content?.transcriptText()
+
+    val reasoningText: String
+        get() =
+            when (val r = reasoning ?: reasoning_text) {
+                is JsonPrimitive -> r.content
+                null -> ""
+                else -> r.toString()
+            }
+
+    /** True when the backend projected reasoning; it is then authoritative, even if empty. */
+    val hasDisplayReasoning: Boolean
+        get() = (display_reasoning as? JsonPrimitive)?.isString == true
+
+    /** [display_reasoning] when projected, else raw reasoning (older gateways). */
+    val displayReasoningText: String
+        get() = (display_reasoning as? JsonPrimitive)?.takeIf { it.isString }?.content ?: reasoningText
+
+    /** Nonblank public commentary items, in order. */
+    val displayCommentary: List<String>
+        get() =
+            (display_commentary as? JsonArray)
+                ?.mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content?.trim() }
+                ?.filter { it.isNotEmpty() }
+                .orEmpty()
+
+    /**
+     * Visible assistant text: interim commentary, then the reply. Commentary that
+     * merely repeats the reply (some providers persist it as content) renders once.
+     */
+    val visibleText: String
+        get() {
+            val reply = displayContentText ?: contentText
+            val commentary = displayCommentary
+            if (commentary.isEmpty()) return reply
+            val joined = commentary.joinToString("\n\n")
+            if (reply.isBlank()) return joined
+
+            fun normalized(value: String) = value.replace(WHITESPACE, " ").trim()
+            if (normalized(joined) == normalized(reply)) return reply
+            return "$joined\n\n$reply"
+        }
+
+    val toolCallId: String
+        get() = tool_call_id.orEmpty()
+}
+
+// #1432: model-facing multipart payloads contain inline image bytes, not displayable JSON.
+private fun JsonElement.transcriptText(): String =
+    when (this) {
+        is JsonPrimitive -> {
+            content
+        }
+
+        is JsonArray -> {
+            mapNotNull { part ->
+                val block = part as? JsonObject ?: return@mapNotNull null
+                val type = block["type"]
+                if (type != null && (type as? JsonPrimitive)?.content != "text") return@mapNotNull null
+                (block["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            }.joinToString("\n")
+        }
+
+        else -> {
+            toString()
+        }
+    }
+
+private val WHITESPACE = Regex("\\s+")

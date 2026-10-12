@@ -42,12 +42,12 @@ ux:
           - "app/src/main/**/ui/**"
           - "app/src/main/**/theme/**"
           - "app/src/main/res/**"
-          - "app/src/main/java/com/m57/hermescontrol/MainActivity.kt"
-          - "app/src/main/java/com/m57/hermescontrol/Navigation*.kt"
-          - "app/src/main/java/com/m57/hermescontrol/ScreenRegistry.kt"
-          - "app/src/main/java/com/m57/hermescontrol/HermesControlApp.kt"
-          - "app/src/main/java/com/m57/hermescontrol/ExternalActivityLifecycleGuard.kt"
-          - "app/src/main/java/com/m57/hermescontrol/util/**"
+          - "app/src/main/java/io/wutz/apollo/MainActivity.kt"
+          - "app/src/main/java/io/wutz/apollo/Navigation*.kt"
+          - "app/src/main/java/io/wutz/apollo/ScreenRegistry.kt"
+          - "app/src/main/java/io/wutz/apollo/HermesControlApp.kt"
+          - "app/src/main/java/io/wutz/apollo/ExternalActivityLifecycleGuard.kt"
+          - "app/src/main/java/io/wutz/apollo/util/**"
 
 # ── networking (WS, REST, remote, updates) ────────────────────────
 networking:

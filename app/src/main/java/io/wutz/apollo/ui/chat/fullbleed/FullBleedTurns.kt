@@ -1,0 +1,285 @@
+package io.wutz.apollo.ui.chat.fullbleed
+
+import io.wutz.apollo.ui.chat.ChatMessage
+import io.wutz.apollo.ui.chat.DisplayKind
+import io.wutz.apollo.ui.chat.MessageRole
+import io.wutz.apollo.ui.chat.SearchMatch
+import io.wutz.apollo.ui.chat.SearchTarget
+
+/**
+ * Turn model for the full-bleed chat renderer (issue #866).
+ *
+ * A turn is a unit of conversation for spacing + header purposes:
+ * - [ChatTurn.User]: one user message — always its own turn (bubble anchor).
+ * - [ChatTurn.Agent]: everything between user messages — assistant prose,
+ *   tool rows, and system events, in original order.
+ */
+sealed interface ChatTurn {
+    /** User message — always its own turn (bubble anchor). */
+    data class User(
+        val message: ChatMessage,
+    ) : ChatTurn
+
+    /** One agent turn: prose, tool rows, and system events in order. */
+    data class Agent(
+        val entries: List<AgentEntry>,
+    ) : ChatTurn
+}
+
+sealed interface AgentEntry {
+    data class Prose(
+        val message: ChatMessage,
+    ) : AgentEntry
+
+    data class ToolRow(
+        val message: ChatMessage,
+    ) : AgentEntry
+
+    data class SystemEvent(
+        val message: ChatMessage,
+    ) : AgentEntry
+}
+
+/** Empty assistant placeholders carry no user-visible prose and need no list item. */
+internal fun ChatMessage.hasVisibleAgentContent(): Boolean = content.isNotBlank() || !attachments.isNullOrEmpty()
+
+/**
+ * Stable content prefix the backend uses for its max-iterations runtime nudge
+ * (`handle_max_iterations` in run_agent.py → chat_completion_helpers.py, text
+ * sourced from `agent.context_compressor.MAX_ITERATIONS_SUMMARY_REQUEST`). The
+ * backend persists it as a plain `role="user"` row with NO `display_kind`
+ * (SessionDB projection strips underscore metadata flags), so on the mobile
+ * side it would otherwise render as a fake user bubble. Treat it as a system
+ * event so it gets the distinct system design instead.
+ */
+private const val MAX_ITERATIONS_SYSTEM_MARKER =
+    "You've reached the maximum number of tool-calling iterations allowed."
+
+internal fun ChatMessage.isSyntheticSystemRow(): Boolean =
+    role == MessageRole.USER &&
+        displayKind == null &&
+        content.startsWith(MAX_ITERATIONS_SYSTEM_MARKER)
+
+private const val HIDDEN_TOOL_NAME = "react_to_message"
+
+/** Tool rows that never get a transcript bubble. */
+internal fun ChatMessage.isHiddenTool(): Boolean = role == MessageRole.TOOL && toolName == HIDDEN_TOOL_NAME
+
+internal fun ChatMessage.isTimelineMarker(): Boolean = displayKind != null && displayKind !in DisplayKind.nonMarkerKinds
+
+/**
+ * Split a flat message list into turns for the full-bleed renderer.
+ *
+ * Each USER message closes the current agent turn (if any) and opens a User
+ * turn; all non-user messages belong to the surrounding agent turn. A new
+ * agent turn starts after each user turn or at the start of the list.
+ */
+fun groupIntoTurns(messages: List<ChatMessage>): List<ChatTurn> {
+    val turns = mutableListOf<ChatTurn>()
+    val agentEntries = mutableListOf<AgentEntry>()
+
+    fun flushAgent() {
+        if (agentEntries.isNotEmpty()) {
+            turns += ChatTurn.Agent(agentEntries.toList())
+            agentEntries.clear()
+        }
+    }
+
+    messages.forEach { message ->
+        when {
+            // Timeline markers (display_kind) ride as role=user rows but are
+            // NOT user turns — group them as system-style timeline entries so
+            // they render as centered chips, not fake user bubbles (issue #904).
+            // Steer messages (display_kind == "steer") are genuine user turns.
+            // The backend's max-iterations nudge is a role=user row with NO
+            // display_kind (it's stripped on persistence); detect it by its
+            // stable content prefix and route it as a system event too, tagging
+            // it so the timeline chip can name it.
+            message.isTimelineMarker() -> {
+                agentEntries += AgentEntry.SystemEvent(message)
+            }
+
+            message.isSyntheticSystemRow() -> {
+                agentEntries +=
+                    AgentEntry.SystemEvent(message.copy(displayKind = DisplayKind.MAX_ITERATIONS_REACHED))
+            }
+
+            message.role == MessageRole.USER -> {
+                flushAgent()
+                turns += ChatTurn.User(message)
+            }
+
+            MessageRole.ASSISTANT == message.role -> {
+                agentEntries += AgentEntry.Prose(message)
+            }
+
+            message.isHiddenTool() -> {
+                // Reaction tool calls have no useful bubble; the reaction itself is the feedback.
+            }
+
+            MessageRole.TOOL == message.role -> {
+                agentEntries += AgentEntry.ToolRow(message)
+            }
+
+            MessageRole.SYSTEM == message.role -> {
+                agentEntries += AgentEntry.SystemEvent(message)
+            }
+        }
+    }
+    flushAgent()
+    return turns
+}
+
+/**
+ * Like [groupIntoTurns] but folds the in-flight streaming assistant message
+ * into the current agent turn, so it renders as part of the turn (reasoning
+ * hoist, turn headers, spacing) instead of as a detached tail item.
+ *
+ * Defensive: if the streaming message's id is already present in [messages]
+ * (commit race — the message landed while the UI still held the streaming
+ * copy), it is not appended again; a duplicate prose entry would produce a
+ * LazyColumn duplicate-key crash.
+ */
+fun groupIntoTurnsWithStreaming(
+    messages: List<ChatMessage>,
+    streamingMessage: ChatMessage?,
+): List<ChatTurn> = appendStreamingTurn(groupIntoTurns(messages), messages.mapTo(HashSet()) { it.id }, streamingMessage)
+
+/** Reuse every settled turn; only the last agent turn needs a changing streaming entry. */
+internal fun appendStreamingTurn(
+    settled: List<ChatTurn>,
+    settledIds: Set<String>,
+    streamingMessage: ChatMessage?,
+): List<ChatTurn> {
+    if (streamingMessage == null || streamingMessage.id in settledIds) return settled
+    val prose = AgentEntry.Prose(streamingMessage)
+    val last = settled.lastOrNull()
+    return if (last is ChatTurn.Agent) {
+        settled.dropLast(1) + ChatTurn.Agent(last.entries + prose)
+    } else {
+        settled + ChatTurn.Agent(listOf(prose))
+    }
+}
+
+/**
+ * Map every visible chat message id to its LazyColumn item index in the
+ * full-bleed renderer.
+ *
+ * The lazy list does NOT have one item per message: each agent turn with a
+ * reasoning block emits an extra `reasoning-<id>` item BEFORE its prose, empty
+ * assistant placeholders emit no prose item, and tool rows / system events are
+ * items too. Scrolling a search match by raw message index therefore lands on
+ * the WRONG item whenever reasoning or tool rows precede the target — the
+ * classic "match is above/below the view" bug.
+ *
+ * Mirrors the item emission order in [FullBleedChatList] exactly:
+ * user turn → 1 item; agent turn → optional reasoning item, then one item per
+ * visible entry, including later reasoning-only rows at their own positions.
+ * [leadingItems] accounts for fixed items emitted before the
+ * turns. The history spinner is an overlay and consumes no index.
+ *
+ * @return messageId → LazyColumn item index of the message's content item
+ *   (prose items for agent messages; user items for user messages).
+ */
+fun messageIdToLazyIndex(
+    turns: List<ChatTurn>,
+    leadingItems: Int = 0,
+): Map<String, Int> =
+    fullBleedItemKeys(turns)
+        .mapIndexedNotNull { index, key ->
+            if (key.startsWith("user-") || key.startsWith("prose-")) {
+                key.substringAfter('-') to index + leadingItems
+            } else {
+                null
+            }
+        }.toMap()
+
+fun searchMatchToLazyIndex(
+    turns: List<ChatTurn>,
+    messages: List<ChatMessage>,
+    match: SearchMatch,
+): Int? {
+    val message = messages.getOrNull(match.messageIndex) ?: return null
+    val prefix =
+        when (match.target) {
+            SearchTarget.CONTENT -> if (message.role == MessageRole.USER) "user" else "prose"
+            SearchTarget.REASONING -> "reasoning"
+            SearchTarget.TOOL -> "tool"
+        }
+    val keys = fullBleedItemKeys(turns)
+    keys.indexOf("$prefix-${message.id}").takeIf { it >= 0 }?.let { return it }
+    // Non-hoisted reasoning renders inside its message's prose row, not as its own row.
+    return if (match.target == SearchTarget.REASONING) {
+        keys.indexOf("prose-${message.id}").takeIf { it >= 0 }
+    } else {
+        null
+    }
+}
+
+/** Lazy row identities, including hoisted reasoning and grouped tool/system entries. */
+internal fun fullBleedItemKeys(turns: List<ChatTurn>): List<String> =
+    buildList {
+        turns.forEach { turn ->
+            when (turn) {
+                is ChatTurn.User -> {
+                    add("user-${turn.message.id}")
+                }
+
+                is ChatTurn.Agent -> {
+                    val hoisted =
+                        turn.entries
+                            .filterIsInstance<AgentEntry.Prose>()
+                            .firstOrNull { it.message.reasoningText.isNotBlank() }
+                    hoisted?.let { add("reasoning-${it.message.id}") }
+                    turn.entries.forEach { entry ->
+                        when (entry) {
+                            is AgentEntry.Prose -> {
+                                if (entry.message.hasVisibleAgentContent()) {
+                                    add("prose-${entry.message.id}")
+                                } else if (entry != hoisted && entry.message.reasoningText.isNotBlank()) {
+                                    add("reasoning-${entry.message.id}")
+                                }
+                            }
+
+                            is AgentEntry.ToolRow -> {
+                                add("tool-${entry.message.id}")
+                            }
+
+                            is AgentEntry.SystemEvent -> {
+                                add("sys-${entry.message.id}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+/**
+ * Resolve the message id of the CURRENT search match once, so per-item
+ * highlight lookups are O(1) id comparisons instead of O(n) linear scans
+ * (`messages.indexOfFirst` per rendered bubble was O(n²) per search update).
+ */
+fun currentMatchMessageId(
+    messages: List<ChatMessage>,
+    searchMatchIndices: List<Int>,
+    currentSearchMatchIndex: Int,
+): String? {
+    if (currentSearchMatchIndex < 0 || currentSearchMatchIndex >= searchMatchIndices.size) return null
+    val messageIndex = searchMatchIndices[currentSearchMatchIndex]
+    if (messageIndex < 0 || messageIndex >= messages.size) return null
+    return messages[messageIndex].id
+}
+
+/**
+ * Message ids that contain at least one search match. Bubbles outside this
+ * set skip their highlight scan entirely (they used to re-run it on every
+ * search-state change even with zero hits).
+ */
+fun matchedMessageIds(
+    messages: List<ChatMessage>,
+    searchMatchIndices: List<Int>,
+): Set<String> =
+    searchMatchIndices
+        .mapNotNull { messages.getOrNull(it)?.id }
+        .toSet()

@@ -37,7 +37,7 @@ TYPE_FOR_PREFIX = {
 }
 TITLE = re.compile(r"^(feat|fix|refactor|docs|test|ci|chore|perf|i18n|build)(\([^)\n]+\))?!?: \S")
 UI_PATHS = re.compile(
-    r"^app/src/main/(java/com/m57/hermescontrol/(ui|theme)/.+\.kt|res/drawable[^/]*/.+)$"
+    r"^app/src/main/(java/io/wutz/apollo/(ui|theme)/.+\.kt|res/drawable[^/]*/.+)$"
 )
 MEDIA = re.compile(
     r"!\[[^\]]*\]\(\s*\S+|<img\b[^>]*\bsrc=|<video\b|"

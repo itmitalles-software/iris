@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.m57.hermescontrol"
+    namespace = "io.wutz.apollo"
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
     sourceSets.getByName("androidTest").assets.srcDir("$projectDir/src/test/resources/tls")
 
@@ -19,7 +19,7 @@ android {
     compileSdk = 37
     buildToolsVersion = "37.0.0"
     defaultConfig {
-        applicationId = "com.m57.hermescontrol"
+        applicationId = "io.wutz.apollo"
         minSdk = 26
         targetSdk = 37
         // Version overrides passed from CI via -PversionName / -PversionCode
@@ -264,7 +264,7 @@ tasks.register<Exec>("ktlintFormat") {
 
 // Resolve paths at configuration time (config-cache compatible).
 val colorGuardSrcDir = layout.projectDirectory
-    .dir("src/main/java/com/m57/hermescontrol")
+    .dir("src/main/java/io/wutz/apollo")
 val colorGuardExemptions = listOf(
     "/theme/",
     "PairingScreen.kt",

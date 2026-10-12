@@ -1,0 +1,388 @@
+package io.wutz.apollo.ui.settings
+
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import io.wutz.apollo.R
+import io.wutz.apollo.ui.common.HermesScaffold
+import io.wutz.apollo.ui.common.NavIcon
+import io.wutz.apollo.ui.settings.components.AboutSection
+import io.wutz.apollo.ui.settings.components.AppearanceSection
+import io.wutz.apollo.ui.settings.components.BehaviorSection
+import io.wutz.apollo.ui.settings.components.ChatSection
+import io.wutz.apollo.ui.settings.components.ConnectionSection
+import io.wutz.apollo.ui.settings.components.LanguageSection
+import io.wutz.apollo.ui.settings.components.ServerTrustSection
+import io.wutz.apollo.ui.settings.components.TestConnectionButton
+import io.wutz.apollo.ui.settings.components.TestResultCard
+import io.wutz.apollo.ui.settings.components.VaultItemsSection
+import io.wutz.apollo.ui.settings.components.VaultSourcesSection
+import io.wutz.apollo.ui.settings.components.VaultUnlockDialog
+
+/**
+ * Drill-down sub-pages for Settings. Each is its own NavKey destination
+ * (see Navigation.kt) so the native back stack handles navigation — no
+ * manual routing. The SettingsViewModel stays the single source of truth.
+ *
+ * All sub-pages pass `drawerGesturesEnabled = false` to [HermesScaffold] so the
+ * modal drawer's swipe gestures are disabled and the drawer auto-closes when a
+ * sub-page is entered — the single source of truth introduced in issue #619.
+ */
+
+@Composable
+internal fun SettingsConnectionPage(
+    onBack: () -> Unit,
+    onLogout: () -> Unit,
+    onOpenDrawer: (() -> Unit)? = null,
+    showLogout: Boolean = true,
+    viewModel: SettingsViewModel = viewModel { SettingsViewModel() },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_connection)) },
+        navigationIcon = onOpenDrawer?.let { NavIcon.Menu(it) } ?: NavIcon.Back(onBack),
+        // Global Connections enables drawer navigation; settings drill-down disables it (issue #619).
+        drawerGesturesEnabled = onOpenDrawer != null,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            ConnectionSection(
+                state = state,
+                viewModel = viewModel,
+                passwordVisible = passwordVisible,
+                onPasswordVisibilityToggle = { passwordVisible = !passwordVisible },
+            )
+
+            TestResultCard(testResult = state.testResult)
+            TestConnectionButton(
+                isTesting = state.isTesting,
+                onTest = viewModel::testConnection,
+            )
+
+            androidx.compose.material3.OutlinedButton(
+                onClick = {
+                    io.wutz.apollo.NavigationController.navigateTo(
+                        io.wutz.apollo.ClientCertificatesScreen,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(R.string.mtls_title)) }
+
+            ServerTrustSection()
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            if (showLogout) {
+                Button(
+                    onClick = {
+                        viewModel.logout()
+                        onLogout()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                        ),
+                ) {
+                    Text(stringResource(R.string.settings_logout))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SettingsAppearancePage(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel { SettingsViewModel() },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_appearance)) },
+        navigationIcon = NavIcon.Back(onBack),
+        drawerGesturesEnabled = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AppearanceSection(
+                themePreference = state.themePreference,
+                onThemeChange = viewModel::onThemeChange,
+                useDynamicColors = state.useDynamicColors,
+                onUseDynamicColorsChange = viewModel::onUseDynamicColorsChange,
+                themePreset = state.themePreset,
+                onThemePresetChange = viewModel::onThemePresetChange,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SettingsLanguagePage(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel { SettingsViewModel() },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_language)) },
+        navigationIcon = NavIcon.Back(onBack),
+        drawerGesturesEnabled = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            LanguageSection(
+                appLanguage = state.appLanguage,
+                onAppLanguageChange = viewModel::onAppLanguageChange,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SettingsChatPage(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel { SettingsViewModel() },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_chat)) },
+        navigationIcon = NavIcon.Back(onBack),
+        drawerGesturesEnabled = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            ChatSection(
+                busySendMode = state.busySendMode,
+                onBusySendModeChange = viewModel::onBusySendModeChange,
+                typingEffectEnabled = state.typingEffectEnabled,
+                onTypingEffectEnabledChange = viewModel::onTypingEffectEnabledChange,
+                typingEffectDelayMs = state.typingEffectDelayMs,
+                onTypingEffectDelayMsChange = viewModel::onTypingEffectDelayMsChange,
+                chatFontScale = state.chatFontScale,
+                onChatFontScaleChange = viewModel::onChatFontScaleChange,
+                messageStatsEnabled = state.messageStatsEnabled,
+                onMessageStatsEnabledChange = viewModel::onMessageStatsEnabledChange,
+                showUserMessageTokens = state.showUserMessageTokens,
+                onUserMessageTokensChange = viewModel::onUserMessageTokensChange,
+                showAssistantMessageTokens = state.showAssistantMessageTokens,
+                onAssistantMessageTokensChange = viewModel::onAssistantMessageTokensChange,
+                showTokensPerSecond = state.showTokensPerSecond,
+                onTokensPerSecondChange = viewModel::onTokensPerSecondChange,
+                showModelProvider = state.showModelProvider,
+                onShowModelProviderChange = viewModel::onShowModelProviderChange,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SettingsBehaviorPage(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel { SettingsViewModel() },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_behavior)) },
+        navigationIcon = NavIcon.Back(onBack),
+        drawerGesturesEnabled = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            BehaviorSection(
+                autoReconnect = state.autoReconnect,
+                onAutoReconnectChange = viewModel::onAutoReconnectChange,
+                keepConnectedInBackground = state.keepConnectedInBackground,
+                onKeepConnectedInBackgroundChange = viewModel::onKeepConnectedInBackgroundChange,
+                notifySessionCompletions = state.notifySessionCompletions,
+                onNotifySessionCompletionsChange = viewModel::onNotifySessionCompletionsChange,
+                restoreLastSession = state.restoreLastSession,
+                onRestoreLastSessionChange = viewModel::onRestoreLastSessionChange,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SettingsAboutPage(
+    onBack: () -> Unit,
+    viewModel: AppUpdateViewModel =
+        viewModel {
+            val app =
+                this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
+                    ?: error("Application not available")
+            // Explicit factory lambda: the default AndroidViewModelFactory
+            // resolves ctors via reflection, which cannot see Kotlin
+            // default-arg synthetic constructors — opening About crashed with
+            // NoSuchMethodException AppUpdateViewModel.<init>(Application).
+            AppUpdateViewModel(app)
+        },
+) {
+    val updateState by viewModel.state.collectAsStateWithLifecycle()
+    val currentUpdateState by androidx.compose.runtime.rememberUpdatedState(updateState)
+    val checkReleaseCandidateUpdates by viewModel.checkReleaseCandidateUpdates.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer =
+            androidx.lifecycle.LifecycleEventObserver { _, event ->
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                    if (currentUpdateState is
+                            io.wutz.apollo.data.update.AppUpdateState.NeedsUnknownSourcesPermission
+                    ) {
+                        viewModel.resumeInstallAfterPermission()
+                    } else {
+                        viewModel.reconcileInstallerReturn()
+                    }
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_about)) },
+        navigationIcon = NavIcon.Back(onBack),
+        drawerGesturesEnabled = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            AboutSection(
+                updateState = updateState,
+                checkReleaseCandidateUpdates = checkReleaseCandidateUpdates,
+                onCheckUpdate = viewModel::checkForUpdate,
+                onStartUpdate = viewModel::startUpdate,
+                onCheckReleaseCandidateUpdatesChange = viewModel::setCheckReleaseCandidateUpdates,
+                onOpenInstallSettings = {
+                    val intent =
+                        Intent(
+                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:${context.packageName}"),
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SettingsVaultPage(
+    onBack: () -> Unit,
+    viewModel: SettingsVaultViewModel = viewModel { SettingsVaultViewModel() },
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.toastMessage) {
+        state.toastMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearToast()
+        }
+    }
+
+    HermesScaffold(
+        title = { Text(stringResource(R.string.settings_sec_vault)) },
+        navigationIcon = NavIcon.Back(onBack),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        drawerGesturesEnabled = false,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            VaultSourcesSection(
+                sources = state.sources,
+                isActionInProgress = state.isActionInProgress,
+                onToggleSource = viewModel::toggleSource,
+                onUnlockClick = viewModel::showUnlockDialog,
+                onLockClick = { source -> viewModel.lockSource(source.name) },
+                onLockAllClick = { viewModel.lockSource(null) },
+            )
+
+            VaultItemsSection(items = state.items)
+        }
+
+        state.unlockDialogSource?.let { source ->
+            VaultUnlockDialog(
+                source = source,
+                onConfirm = { password -> viewModel.unlockSource(source.name, password) },
+                onDismiss = viewModel::dismissUnlockDialog,
+            )
+        }
+    }
+}

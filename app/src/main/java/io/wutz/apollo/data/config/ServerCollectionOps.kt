@@ -1,0 +1,68 @@
+package io.wutz.apollo.data.config
+
+import io.wutz.apollo.data.remote.CleartextPolicy
+import io.wutz.apollo.data.remote.ServerEndpoint
+
+fun ServerStoreState.addOrUpdate(profile: ConnectionProfile): ServerStoreState {
+    val updated = connectionProfiles.filter { it.id != profile.id } + profile
+    return copy(connectionProfiles = updated)
+}
+
+fun ServerStoreState.migrateConnectionAuthParam(): ServerStoreState {
+    if (connectionProfiles.none { it.wsAuthParam == null }) return this
+    return copy(
+        connectionProfiles =
+            connectionProfiles.map { profile ->
+                if (profile.wsAuthParam == null) profile.copy(wsAuthParam = wsAuthParam) else profile
+            },
+    )
+}
+
+fun ServerStoreState.selfHealed(): ServerStoreState {
+    val hasActive = connectionProfiles.any { it.id == selectedProfileId }
+    val newSelected = if (selectedProfileId != null && !hasActive) null else selectedProfileId
+
+    return copy(
+        selectedProfileId = newSelected,
+    )
+}
+
+val ServerStoreState.resolvedBaseUrl: String
+    get() {
+        val selected = connectionProfiles.firstOrNull { it.id == selectedProfileId }
+        if (selected != null) {
+            // Prefer the selected profile's own URL, but fall back to the
+            // top-level login URL (and only then to legacy loopback) so a profile
+            // whose baseUrl was never stamped still shows the gateway used to
+            // authenticate, not the hardcoded 127.0.0.1:9119 (issue #647).
+            return selected.resolveBaseUrl(baseUrl)
+        }
+        return baseUrl
+            ?.let {
+                ServerEndpoint
+                    .parse(
+                        it,
+                        CleartextPolicy.ALLOW_WITH_WARNING,
+                    ).baseUrl
+                    .toString()
+            }
+            ?: ServerEndpoint.fromLegacy(host, port).baseUrl.toString()
+    }
+
+val ServerStoreState.resolvedHost: String
+    get() =
+        ServerEndpoint
+            .parse(
+                resolvedBaseUrl,
+                CleartextPolicy.ALLOW_WITH_WARNING,
+            ).baseUrl
+            .host
+
+val ServerStoreState.resolvedPort: Int
+    get() =
+        ServerEndpoint
+            .parse(
+                resolvedBaseUrl,
+                CleartextPolicy.ALLOW_WITH_WARNING,
+            ).baseUrl
+            .port

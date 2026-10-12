@@ -10,13 +10,13 @@
 
 # ── Gson / Serialization ─────────────────────────────────────────────────
 # Keep all data model classes — Gson uses reflection to access fields
--keep class com.m57.hermescontrol.data.model.** { *; }
--keep class com.m57.hermescontrol.data.ws.JsonRpc* { *; }
--keep class com.m57.hermescontrol.data.ws.WsEvent* { *; }
--keep class com.m57.hermescontrol.data.ws.WsMethods { *; }
--keep class com.m57.hermescontrol.ui.chat.ChatMessage { *; }
--keep class com.m57.hermescontrol.ui.chat.MessageRole { *; }
--keep class com.m57.hermescontrol.ui.chat.ToolStatus { *; }
+-keep class io.wutz.apollo.data.model.** { *; }
+-keep class io.wutz.apollo.data.ws.JsonRpc* { *; }
+-keep class io.wutz.apollo.data.ws.WsEvent* { *; }
+-keep class io.wutz.apollo.data.ws.WsMethods { *; }
+-keep class io.wutz.apollo.ui.chat.ChatMessage { *; }
+-keep class io.wutz.apollo.ui.chat.MessageRole { *; }
+-keep class io.wutz.apollo.ui.chat.ToolStatus { *; }
 
 # Generic type signatures used by serialization
 -keepattributes Signature
@@ -51,7 +51,7 @@
 -dontwarn androidx.compose.**
 
 # ── BuildConfig ───────────────────────────────────────────────────────────
--keep class com.m57.hermescontrol.BuildConfig { *; }
+-keep class io.wutz.apollo.BuildConfig { *; }
 
 # ── Navigation (NavKey Names) ─────────────────────────────────────────────
 # Keep screen object class names because their simpleNames are used for bottom nav selection and storage.

@@ -1,0 +1,948 @@
+package io.wutz.apollo.data.local
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.annotation.VisibleForTesting
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
+import io.wutz.apollo.data.config.ConnectionProfile
+import io.wutz.apollo.data.config.ServerStore
+import io.wutz.apollo.data.config.ServerStoreMigration
+import io.wutz.apollo.data.config.ServerStoreSerializer
+import io.wutz.apollo.data.config.ServerUrlMigration
+import io.wutz.apollo.data.config.migrateConnectionAuthParam
+import io.wutz.apollo.data.config.resolvedBaseUrl
+import io.wutz.apollo.data.config.resolvedHost
+import io.wutz.apollo.data.config.resolvedPort
+import io.wutz.apollo.data.model.BusySendMode
+import io.wutz.apollo.data.model.PinnedModel
+import io.wutz.apollo.data.remote.CleartextPolicy
+import io.wutz.apollo.data.remote.CookieManager
+import io.wutz.apollo.data.remote.ServerEndpoint
+import io.wutz.apollo.data.remote.ServerHeaders
+import io.wutz.apollo.data.session.ActiveSessionHolder
+import io.wutz.apollo.theme.ThemePreference
+import io.wutz.apollo.theme.ThemePreset
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/**
+ * Singleton that manages encrypted storage of the Hermes dashboard token
+ * and connection settings.
+ *
+ * Must call [init] with a Context before any other method.
+ */
+object AuthManager {
+    private const val PREFS_FILE = "hermes_secure_prefs"
+    private const val KEY_ACTIVE_PROFILE_ID = "active_profile_id"
+
+    const val DEFAULT_PROFILE_ID = "default"
+    const val DEFAULT_PROFILE_NAME = "Default"
+    private const val KEY_SELECTED_PROFILE_ID = "selected_profile_id"
+    private const val KEY_SESSION_COOKIE = "session_cookie"
+    private const val KEY_LEGACY_TOKEN = "auth_token"
+    private const val KEY_LEGACY_DEFAULT_MIGRATED = "legacy_default_migrated"
+
+    @Volatile
+    private var prefsDeferred: Deferred<SharedPreferences>? = null
+
+    @Volatile
+    private var _serverStore: ServerStore? = null
+
+    @Volatile
+    private var appScope: CoroutineScope? = null
+
+    val serverStore: ServerStore
+        get() =
+            _serverStore ?: throw IllegalStateException(
+                "AuthManager not initialized. Call init(context) first.",
+            )
+
+    private val _themePreferenceFlow = MutableStateFlow<ThemePreference>(ThemePreference.SYSTEM)
+    val themePreferenceFlow: StateFlow<ThemePreference> = _themePreferenceFlow.asStateFlow()
+
+    private val _useDynamicColorsFlow = MutableStateFlow<Boolean>(false)
+    val useDynamicColorsFlow: StateFlow<Boolean> = _useDynamicColorsFlow.asStateFlow()
+
+    private val _themePresetFlow = MutableStateFlow<ThemePreset>(ThemePreset.DEFAULT)
+    val themePresetFlow: StateFlow<ThemePreset> = _themePresetFlow.asStateFlow()
+
+    private val _chatFontScaleFlow = MutableStateFlow<Float>(1.0f)
+    val chatFontScaleFlow: StateFlow<Float> = _chatFontScaleFlow.asStateFlow()
+
+    private val _tokenFlow = MutableStateFlow<String?>(null)
+    val tokenFlow: StateFlow<String?> = _tokenFlow.asStateFlow()
+
+    /** Current profile scope (mirrors serverStore.selectedProfileId). */
+    private val _selectedProfileFlow = MutableStateFlow<String?>(null)
+    val selectedProfileFlow: StateFlow<String?> = _selectedProfileFlow.asStateFlow()
+
+    /**
+     * Active server-side Hermes profile scope (e.g. "default" / "meow").
+     *
+     * DISTINCT from [selectedProfileId] (which selects a LOCAL connection
+     * profile — a server + its token). The active profile is the scope
+     * injected as REST `?profile=` and WS `params.profile`. It deliberately
+     * does NOT route through [ServerStoreState.selfHealed]: server profile
+     * ids are not guaranteed to exist in the local connection list, and
+     * clamping them silently reset the scope to "default" — the live
+     * profile-switch bug (logcat 2026-08-06: session.create carried
+     * profile=default right after switching to meow).
+     */
+    private val _activeProfileId = MutableStateFlow<String?>(null)
+    val activeProfileId: StateFlow<String?> = _activeProfileId.asStateFlow()
+
+    private val _baseUrlFlow = MutableStateFlow("")
+    val baseUrlFlow: StateFlow<String> = _baseUrlFlow.asStateFlow()
+
+    private val contextScope = CoroutineScope(Dispatchers.Default)
+
+    /**
+     * The single source of truth for connection state: server URL + token +
+     * selected profile. Emits on login, logout, profile switch, or URL change,
+     * so reactive consumers (screens, switch coordinator) re-home off ONE
+     * flow instead of tracking the pieces separately.
+     */
+    val contextFlow: StateFlow<ProfileContext?> =
+        combine(tokenFlow, baseUrlFlow, selectedProfileFlow) { token, baseUrl, profileId ->
+            if (baseUrl.isBlank()) {
+                null
+            } else {
+                ProfileContext(baseUrl = baseUrl, token = token, profileId = profileId)
+            }
+        }.stateIn(
+            scope = contextScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null,
+        )
+
+    private val _authGenerationFlow = MutableStateFlow(0L)
+    val authGenerationFlow: StateFlow<Long> = _authGenerationFlow.asStateFlow()
+
+    fun invalidateAuthGeneration() {
+        _authGenerationFlow.value = _authGenerationFlow.value + 1
+    }
+
+    /**
+     * Canonical observable data-scope identity covering connection profile, base URL,
+     * active server-side Hermes profile, and in-memory auth generation.
+     */
+    val dataScopeFlow: StateFlow<DataScope?> =
+        combine(
+            selectedProfileFlow,
+            baseUrlFlow,
+            activeProfileId,
+            authGenerationFlow,
+        ) { selectedProfile, baseUrl, activeProfile, authGen ->
+            val cleanUrl = baseUrl.trimEnd('/')
+            if (cleanUrl.isBlank()) {
+                null
+            } else {
+                DataScope(
+                    connectionProfileId = selectedProfile ?: DEFAULT_PROFILE_ID,
+                    baseUrl = cleanUrl,
+                    activeProfileId = activeProfile?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE_ID,
+                    inMemoryAuthGeneration = authGen,
+                )
+            }
+        }.stateIn(
+            scope = contextScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null,
+        )
+
+    /**
+     * Initialise the encrypted preferences.
+     * Call this once from Application.onCreate() or MainActivity.onCreate().
+     */
+    enum class InitializationState { Loading, Ready, Failed }
+
+    private val _initializationState = MutableStateFlow(InitializationState.Loading)
+    val initializationState: StateFlow<InitializationState> = _initializationState.asStateFlow()
+
+    @Volatile
+    private var initialization: Deferred<Unit>? = null
+
+    @Volatile
+    private var readyPrefs: SharedPreferences? = null
+
+    private var cachedDatabasePassword: ByteArray? = null
+
+    // Issue #1171: publish readiness only after persisted profiles and credentials are loaded.
+    fun init(context: Context) {
+        synchronized(this) {
+            if (initialization != null && _initializationState.value != InitializationState.Failed) return
+            val previousJob = appScope?.coroutineContext?.get(kotlinx.coroutines.Job)
+            appScope?.cancel()
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            appScope = scope
+            _initializationState.value = InitializationState.Loading
+            readyPrefs = null
+            val prefs = CompletableDeferred<SharedPreferences>(scope.coroutineContext[kotlinx.coroutines.Job])
+            prefsDeferred = prefs
+            initialization =
+                scope.async {
+                    try {
+                        previousJob?.join()
+                        val dataStore =
+                            androidx.datastore.core.DataStoreFactory.create(
+                                serializer = ServerStoreSerializer,
+                                migrations = listOf(ServerStoreMigration(context), ServerUrlMigration()),
+                                scope = scope,
+                            ) { context.filesDir.resolve("server_store.json") }
+                        val store = ServerStore.create(dataStore, scope)
+                        _serverStore = store
+                        ensureDefaultProfile()
+                        store.update { it.migrateConnectionAuthParam() }
+                        val masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+                        val p =
+                            EncryptedSharedPreferences.create(
+                                PREFS_FILE,
+                                masterKey,
+                                context.applicationContext,
+                                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                            )
+                        migrateLegacyDefaultIfNeeded(p)
+                        ServerHeaders.initialize(p)
+                        synchronized(this@AuthManager) {
+                            readyPrefs = p
+                            cachedToken = getTokenInternal(p)
+                            tokenInitialized = true
+                            _tokenFlow.value = cachedToken
+                            _activeProfileId.value =
+                                p.getString(KEY_ACTIVE_PROFILE_ID, null)?.takeIf { it.isNotBlank() }
+                        }
+                        prefs.complete(p)
+                        val state = store.getLatestState()
+                        store.update { current ->
+                            val selected = current.connectionProfiles.firstOrNull { it.id == current.selectedProfileId }
+                            current.copy(wsAuthParam = selected?.wsAuthParam ?: current.wsAuthParam)
+                        }
+                        _selectedProfileFlow.value = state.selectedProfileId
+                        _baseUrlFlow.value = state.resolvedBaseUrl
+                        val profileId = normalizedProfileId(state.selectedProfileId)
+                        CookieManager.initialize(context, prefs, profileId)
+                        CookieManager.useStore(profileId)
+                        _themePreferenceFlow.value = state.themePreference
+                        _useDynamicColorsFlow.value = state.useDynamicColors
+                        _themePresetFlow.value = state.themePreset
+                        _chatFontScaleFlow.value = state.chatFontScale
+                        scope.launch {
+                            store.stateFlow.collect { latest ->
+                                _themePreferenceFlow.value = latest.themePreference
+                                _useDynamicColorsFlow.value = latest.useDynamicColors
+                                _themePresetFlow.value = latest.themePreset
+                                _chatFontScaleFlow.value = latest.chatFontScale
+                                syncCookieStoreForProfile(latest.selectedProfileId)
+                            }
+                        }
+                        _initializationState.value = InitializationState.Ready
+                    } catch (e: CancellationException) {
+                        prefs.cancel(e)
+                        throw e
+                    } catch (e: Exception) {
+                        prefs.completeExceptionally(e)
+                        _initializationState.value = InitializationState.Failed
+                        throw e
+                    }
+                }
+        }
+    }
+
+    /** Suspend without blocking the caller or imposing a keystore startup deadline. */
+    suspend fun awaitInitialization() {
+        checkNotNull(initialization) { "AuthManager.init(context) must be called first" }.await()
+    }
+
+    internal suspend fun awaitPrefs(): SharedPreferences {
+        awaitInitialization()
+        return requirePrefs()
+    }
+
+    /** Synchronous APIs are ready-only; entry points must await initialization first. */
+    private fun requirePrefs(): SharedPreferences =
+        checkNotNull(readyPrefs) { "AuthManager is not ready. Await initialization before accessing credentials." }
+
+    fun setWsAuthParam(param: String) {
+        serverStore.update { state ->
+            state.copy(
+                wsAuthParam = param,
+                connectionProfiles =
+                    state.connectionProfiles.map { profile ->
+                        if (profile.id == state.selectedProfileId) profile.copy(wsAuthParam = param) else profile
+                    },
+            )
+        }
+    }
+
+    /**
+     * True when the active connection profile authenticated against a gated
+     * dashboard (non-loopback bind → session-cookie auth) instead of loopback
+     * token mode. Derived from [ServerStoreState.wsAuthParam], which
+     * [io.wutz.apollo.ui.authlogin.AuthLoginViewModel.connect] sets to
+     * "ticket" on gated (basic-auth) login and "token" on loopback.
+     *
+     * Critical: gated dashboards 401 any request carrying an
+     * `Authorization: Bearer` header — even alongside a valid session cookie
+     * (verified live 2026-07-23). So REST requests in gated mode MUST rely on
+     * the session cookie in the shared [CookieManager] jar and MUST NOT stamp a
+     * Bearer header. This is the fix for the "token expired" error that broke
+     * every REST tab (skills/cron/config/...) while the WS chat (ticket auth)
+     * kept working.
+     */
+    fun isGatedMode(): Boolean = serverStore.getLatestState().wsAuthParam == "ticket"
+
+    // ── Session Cookie (for gated/dashboard REST API) ────────────────────
+
+    /**
+     * In gated mode (basic auth), the dashboard authenticates REST API
+     * requests via the `hermes_session_at` cookie, not via
+     * `Authorization: Bearer`. The cookie is now owned by the shared
+     * [CookieManager]/[PersistentCookieJar] (issue #470) which attaches it
+     * automatically on every REST call, follows redirects, and persists it
+     * encrypted. This accessor is a thin read-through to that store.
+     */
+    fun getSessionCookie(): String? = CookieManager.getSessionCookie()
+
+    fun setSessionCookie(cookie: String?) {
+        CookieManager.setSessionCookie(cookie, endpoint())
+    }
+
+    /**
+     * Evict expired (non-session) cookies for the active server scope to
+     * bound cookie growth (issue #470 step 7).
+     */
+    fun pruneServerCache() {
+        CookieManager.pruneServerCache()
+    }
+
+    // ── Database Master Password ─────────────────────────────────────────
+
+    suspend fun getDatabasePassword(): ByteArray =
+        withContext(Dispatchers.IO) {
+            val prefs = awaitPrefs()
+            synchronized(this@AuthManager) {
+                cachedDatabasePassword?.let { return@synchronized it.copyOf() }
+                val stored = prefs.getString("db_password", null)
+                val password =
+                    if (stored == null) {
+                        ByteArray(32).also { bytes ->
+                            java.security.SecureRandom().nextBytes(bytes)
+                            val encoded =
+                                java.util.Base64
+                                    .getEncoder()
+                                    .encodeToString(bytes)
+                            // Never create a database using a key that was not durably saved.
+                            check(prefs.edit().putString("db_password", encoded).commit()) {
+                                "Unable to persist database key"
+                            }
+                        }
+                    } else {
+                        java.util.Base64
+                            .getDecoder()
+                            .decode(stored)
+                    }
+                cachedDatabasePassword = password
+                password.copyOf()
+            }
+        }
+
+    // ── Connection Profiles ──────────────────────────────────────────────
+
+    fun getConnectionProfiles(): List<ConnectionProfile> = serverStore.getLatestState().connectionProfiles
+
+    fun saveConnectionProfiles(profiles: List<ConnectionProfile>) {
+        serverStore.update { it.copy(connectionProfiles = profiles) }
+    }
+
+    /**
+     * Guarantees the selected profile is never null (issue #478).
+     *
+     * - If a profile is already selected (default or otherwise), nothing is changed.
+     * - If nothing is selected but other profiles exist, the first one is selected.
+     * - If there are no profiles at all (fresh install / legacy standalone), a [DEFAULT_PROFILE_ID]
+     *   profile is created from the current top-level host/port and selected.
+     *
+     * This never injects a Default profile into an existing user's profile list, and never
+     * clobbers a user's explicit selection.
+     */
+    fun ensureDefaultProfile() {
+        val state = serverStore.getLatestState()
+        val hasDefault = state.connectionProfiles.any { it.id == DEFAULT_PROFILE_ID }
+        val needsSelection = state.selectedProfileId.isNullOrBlank()
+
+        if (!needsSelection && (hasDefault || state.connectionProfiles.isNotEmpty())) return
+
+        if (state.connectionProfiles.isEmpty()) {
+            // Fresh install / legacy standalone: create the Default profile and select it.
+            serverStore.update { s ->
+                s.copy(
+                    connectionProfiles =
+                        listOf(
+                            ConnectionProfile(
+                                id = DEFAULT_PROFILE_ID,
+                                name = DEFAULT_PROFILE_NAME,
+                                baseUrl = s.resolvedBaseUrl,
+                            ),
+                        ),
+                    selectedProfileId = DEFAULT_PROFILE_ID,
+                )
+            }
+            return
+        }
+
+        // Profiles exist but nothing is selected: pick the first one so selection is non-null.
+        if (needsSelection) {
+            serverStore.update { s -> s.copy(selectedProfileId = s.connectionProfiles.first().id) }
+        }
+    }
+
+    /** Ensure a profile is selected (the default one if nothing else), so callers never see null. */
+    fun ensureDefaultSelected() {
+        ensureDefaultProfile()
+        if (getSelectedProfileId().isNullOrBlank()) {
+            setSelectedProfileId(DEFAULT_PROFILE_ID)
+        }
+    }
+
+    /**
+     * One-time migration: fold the legacy standalone ([KEY_LEGACY_TOKEN]) credentials into the
+     * new default [ConnectionProfile]. Runs once per install, guarded by
+     * [KEY_LEGACY_DEFAULT_MIGRATED].
+     */
+    private fun migrateLegacyDefaultIfNeeded(p: SharedPreferences) {
+        if (p.getBoolean(KEY_LEGACY_DEFAULT_MIGRATED, false)) return
+        val legacyToken = p.getString(KEY_LEGACY_TOKEN, null)
+        ensureDefaultProfile()
+        p
+            .edit()
+            .apply {
+                if (!legacyToken.isNullOrBlank()) {
+                    putString("token_$DEFAULT_PROFILE_ID", legacyToken)
+                }
+                remove(KEY_LEGACY_TOKEN)
+                putBoolean(KEY_LEGACY_DEFAULT_MIGRATED, true)
+            }.apply()
+    }
+
+    // ── Pinned Models ────────────────────────────────────────────────────
+
+    fun getPinnedModels(): List<PinnedModel> = serverStore.getLatestState().pinnedModels
+
+    fun savePinnedModels(pinned: List<PinnedModel>) {
+        serverStore.update { it.copy(pinnedModels = pinned) }
+    }
+
+    // ── Hidden Profiles (Local On-Device Filtering) ──────────────────────
+
+    fun getHiddenProfiles(): List<String> = serverStore.getLatestState().hiddenProfiles
+
+    fun isProfileHidden(name: String): Boolean = serverStore.getLatestState().hiddenProfiles.contains(name)
+
+    fun hideProfile(name: String) {
+        serverStore.update { s ->
+            s.copy(hiddenProfiles = (s.hiddenProfiles + name).distinct())
+        }
+    }
+
+    fun unhideProfile(name: String) {
+        serverStore.update { s ->
+            s.copy(hiddenProfiles = s.hiddenProfiles.filter { it != name })
+        }
+    }
+
+    fun setHiddenProfiles(hidden: List<String>) {
+        serverStore.update { it.copy(hiddenProfiles = hidden.distinct()) }
+    }
+
+    fun getProfileToken(profileId: String): String? = requirePrefs().getString("token_$profileId", null)
+
+    fun setProfileToken(
+        profileId: String,
+        token: String?,
+    ) {
+        requirePrefs().edit().putString("token_$profileId", token).apply()
+        if (getSelectedProfileId() == profileId || profileId == DEFAULT_PROFILE_ID) {
+            if (token == null) ActiveSessionHolder.clear()
+            // B7 (Jul 08 2026, kanban t_470): sync in-memory cachedToken
+            // to prevent stale tokens during ticket refresh
+            synchronized(this) {
+                cachedToken = if (getSelectedProfileId() == profileId) token else getTokenInternal(requirePrefs())
+                tokenInitialized = true
+                _tokenFlow.value = cachedToken
+            }
+        }
+    }
+
+    fun getSelectedProfileId(): String? {
+        val id = serverStore.getLatestState().selectedProfileId
+        return if (id.isNullOrBlank()) null else id
+    }
+
+    fun setSelectedProfileId(id: String?) {
+        val normalizedId = id?.takeIf { it.isNotBlank() }
+        val changed = getSelectedProfileId() != normalizedId
+        if (changed) {
+            ActiveSessionHolder.clear()
+            setActiveProfileId(null)
+        }
+        serverStore.update { state ->
+            val selected = state.connectionProfiles.firstOrNull { it.id == normalizedId }
+            state.copy(
+                selectedProfileId = normalizedId,
+                wsAuthParam = selected?.wsAuthParam ?: state.wsAuthParam,
+            )
+        }
+        // Keep contextFlow truthful: the base URL resolves per selected
+        // profile, so a connection-profile switch must re-emit the NEW
+        // server's URL (previously stale — reactive consumers saw the old
+        // server's URL after a switch).
+        _baseUrlFlow.value = serverStore.getLatestState().resolvedBaseUrl
+        _selectedProfileFlow.value = normalizedId
+        synchronized(this) {
+            tokenInitialized = false
+        }
+        _tokenFlow.value = getToken()
+        // B7 (Jul 08 2026, kanban t_470): keep cookie scope aligned with active profile.
+        appScope?.launch { syncCookieStoreForProfile(normalizedId) }
+    }
+
+    /**
+     * Set the active server-side Hermes profile scope.
+     *
+     * Unlike [setSelectedProfileId], this does NOT touch the server store —
+     * it is prefs-backed and immune to [ServerStoreState.selfHealed], so a
+     * server profile that has no local [ConnectionProfile] (the normal case)
+     * survives the switch instead of being clamped to null/default.
+     *
+     * NOTE: read the value via [activeProfileId].value — a JVM getter named
+     * `getActiveProfileId()` would collide with the property's generated
+     * getter (same name, different return type) and silently resolve to the
+     * property getter at runtime (ClassCastException: ReadonlyStateFlow ->
+     * String, 2026-08-06 CI).
+     */
+    fun setActiveProfileId(id: String?) {
+        val normalized = id?.takeIf { it.isNotBlank() }
+        // Flow first, persistence best-effort: a caller racing cold startup
+        // still gets the correct in-memory scope instead of an exception, and
+        // the write lands once initialization is Ready (#1171).
+        _activeProfileId.value = normalized
+        runCatching {
+            requirePrefs().edit().putString(KEY_ACTIVE_PROFILE_ID, normalized).apply()
+        }
+    }
+
+    private fun normalizedProfileId(profileId: String?): String =
+        profileId?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE_ID
+
+    /**
+     * Swaps the cookie jar's ACTIVE store to the given profile's. Idempotent
+     * (no-op when the store is already active). Suspends because switching
+     * store reads/writes the encrypted prefs.
+     *
+     * Internal so the switch coordinator can AWAIT the swap before re-dialing
+     * the WebSocket — a dial that races it mints the WS ticket with the
+     * PREVIOUS server's cookie → 401 → dead socket (split-brain follow-up,
+     * reproduced live 2026-08-12).
+     */
+    internal suspend fun syncCookieStoreForProfile(profileId: String?) {
+        if (!CookieManager.isInitialized()) return
+        val normalizedId = normalizedProfileId(profileId)
+        if (CookieManager.cookieJar.currentServer() != normalizedId) {
+            CookieManager.useStore(normalizedId)
+        }
+    }
+
+    // ── Token ────────────────────────────────────────────────────────────
+
+    @Volatile
+    private var cachedToken: String? = null
+
+    @Volatile
+    private var tokenInitialized: Boolean = false
+
+    // For testing purposes
+    fun resetTokenCacheForTest() {
+        synchronized(this) {
+            cachedToken = null
+            tokenInitialized = false
+        }
+    }
+
+    @VisibleForTesting
+    suspend fun resetAndAwaitForTest() {
+        val previousJob = appScope?.coroutineContext?.get(kotlinx.coroutines.Job)
+        resetAuthStateForTest()
+        previousJob?.join()
+    }
+
+    // For testing purposes
+    fun resetAuthStateForTest() {
+        synchronized(this) {
+            cachedToken = null
+            tokenInitialized = false
+            _serverStore = null
+            prefsDeferred = null
+            initialization?.cancel()
+            initialization = null
+            readyPrefs = null
+            cachedDatabasePassword?.fill(0)
+            cachedDatabasePassword = null
+            _initializationState.value = InitializationState.Loading
+            _tokenFlow.value = null
+            _selectedProfileFlow.value = null
+            appScope?.let {
+                try {
+                    it.cancel()
+                } catch (_: Exception) {
+                }
+            }
+            appScope = null
+        }
+        _activeProfileId.value = null
+        _baseUrlFlow.value = ""
+    }
+
+    @VisibleForTesting
+    fun setBaseUrlForTest(baseUrl: String) {
+        _baseUrlFlow.value = baseUrl
+    }
+
+    fun getToken(): String? {
+        if (tokenInitialized) return cachedToken
+        synchronized(this) {
+            if (tokenInitialized) return cachedToken
+            val token = resolveConnectionToken(getSelectedProfileId(), ::getProfileToken)
+            cachedToken = token
+            tokenInitialized = true
+            return token
+        }
+    }
+
+    private fun getTokenInternal(p: SharedPreferences): String? {
+        val selectedId = serverStore.getLatestState().selectedProfileId
+        return resolveConnectionToken(selectedId) { id -> p.getString("token_$id", null) }
+    }
+
+    /**
+     * Connection credentials never cross server boundaries (#1512). Only an
+     * absent selection resolves to the default connection; a selected server
+     * without credentials must authenticate independently.
+     */
+    internal fun resolveConnectionToken(
+        selectedId: String?,
+        tokenFor: (String) -> String?,
+    ): String? {
+        val id = selectedId?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE_ID
+        return if (selectedId.isNullOrBlank()) tokenFor(DEFAULT_PROFILE_ID) else tokenFor(id)
+    }
+
+    fun setToken(token: String?) {
+        if (token == null) {
+            invalidateAuthGeneration()
+        }
+        val selectedId =
+            getSelectedProfileId() ?: run {
+                ensureDefaultSelected()
+                DEFAULT_PROFILE_ID
+            }
+        setProfileToken(selectedId, token)
+        synchronized(this) {
+            cachedToken = token
+            tokenInitialized = true
+        }
+    }
+
+    // ── Server endpoint ──────────────────────────────────────────────────
+
+    fun getBaseUrl(): String = serverStore.getLatestState().resolvedBaseUrl
+
+    fun currentDataScope(): DataScope? {
+        val rawUrl = runCatching { getBaseUrl() }.getOrNull() ?: _baseUrlFlow.value
+        val cleanUrl = rawUrl.trimEnd('/')
+        if (cleanUrl.isBlank()) return null
+        val connectionProfileId =
+            runCatching { getSelectedProfileId() }.getOrNull()
+                ?: _selectedProfileFlow.value
+                ?: DEFAULT_PROFILE_ID
+        val activeProfile = _activeProfileId.value?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE_ID
+        return DataScope(
+            connectionProfileId = connectionProfileId,
+            baseUrl = cleanUrl,
+            activeProfileId = activeProfile,
+            inMemoryAuthGeneration = _authGenerationFlow.value,
+        )
+    }
+
+    fun endpoint(): ServerEndpoint =
+        ServerEndpoint.parse(
+            getBaseUrl(),
+            CleartextPolicy.ALLOW_WITH_WARNING,
+        )
+
+    fun endpointForBuild(): ServerEndpoint = ServerEndpoint.parseForBuild(getBaseUrl())
+
+    fun setBaseUrl(baseUrl: String) {
+        val normalized =
+            ServerEndpoint
+                .parse(
+                    baseUrl,
+                    CleartextPolicy.ALLOW_WITH_WARNING,
+                ).baseUrl
+                .toString()
+        _baseUrlFlow.value = normalized
+        val selectedId =
+            getSelectedProfileId() ?: run {
+                ensureDefaultSelected()
+                DEFAULT_PROFILE_ID
+            }
+        serverStore.update { state ->
+            val profiles =
+                state.connectionProfiles.map { profile ->
+                    if (profile.id == selectedId) {
+                        profile.copy(
+                            host = "",
+                            port = 0,
+                            baseUrl = normalized,
+                        )
+                    } else {
+                        profile
+                    }
+                }
+            // Also cache the login URL at the top level so that getBaseUrl() and
+            // the store-level resolvedBaseUrl (used by the profile list display)
+            // reflect the URL actually authenticated against, never the hardcoded
+            // loopback default. Fixes issue #647: a Default profile whose own
+            // baseUrl was never stamped must still resolve to this URL, not
+            // 127.0.0.1:9119.
+            state.copy(
+                baseUrl = normalized,
+                connectionProfiles = profiles,
+            )
+        }
+    }
+
+    /** Convenience accessors for the resolved host/port (WebSocket + chat). */
+    fun getHost(): String = serverStore.getLatestState().resolvedHost
+
+    fun getPort(): Int = serverStore.getLatestState().resolvedPort
+
+    // ── Auto-reconnect ───────────────────────────────────────────────────
+
+    fun isAutoReconnect(): Boolean = serverStore.getLatestState().autoReconnect
+
+    fun setAutoReconnect(enabled: Boolean) {
+        serverStore.update { it.copy(autoReconnect = enabled) }
+    }
+
+    // ── Restore last session on startup (issue #1102) ─────────────────────
+
+    private fun currentSessionScopeKey(): String {
+        val connId = getSelectedProfileId()?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE_ID
+        val serverProfile = activeProfileId.value?.takeIf { it.isNotBlank() } ?: DEFAULT_PROFILE_ID
+        return "$connId:$serverProfile"
+    }
+
+    fun isRestoreLastSession(): Boolean = serverStore.getLatestState().restoreLastSession
+
+    fun setRestoreLastSession(enabled: Boolean) {
+        serverStore.update { it.copy(restoreLastSession = enabled) }
+    }
+
+    fun getLastOpenedSessionId(): String? = serverStore.getLatestState().lastOpenedSessionIds[currentSessionScopeKey()]
+
+    fun setLastOpenedSessionId(sessionId: String?) {
+        val key = currentSessionScopeKey()
+        serverStore.update { state ->
+            val updated =
+                if (sessionId != null) {
+                    state.lastOpenedSessionIds + (key to sessionId)
+                } else {
+                    state.lastOpenedSessionIds - key
+                }
+            state.copy(lastOpenedSessionIds = updated)
+        }
+    }
+
+    fun clearLastOpenedSessionId() {
+        setLastOpenedSessionId(null)
+    }
+
+    fun clearLastOpenedSessionIdsForConnection(connectionProfileId: String) {
+        serverStore.update { state ->
+            val prefix = "$connectionProfileId:"
+            val updated = state.lastOpenedSessionIds.filterKeys { !it.startsWith(prefix) }
+            state.copy(lastOpenedSessionIds = updated)
+        }
+    }
+
+    // ── Theme preference ──────────────────────────────────────────────────
+
+    fun getThemePreference(): ThemePreference = serverStore.getLatestState().themePreference
+
+    fun setThemePreference(theme: ThemePreference) {
+        serverStore.update { it.copy(themePreference = theme) }
+    }
+
+    fun isUseDynamicColors(): Boolean = serverStore.getLatestState().useDynamicColors
+
+    fun setUseDynamicColors(value: Boolean) {
+        serverStore.update { it.copy(useDynamicColors = value) }
+    }
+
+    fun getThemePreset(): ThemePreset = serverStore.getLatestState().themePreset
+
+    fun setThemePreset(preset: ThemePreset) {
+        serverStore.update { it.copy(themePreset = preset) }
+    }
+
+    /** Canonical build-allowed Retrofit base URL. */
+    fun baseUrl(): String = endpointForBuild().baseUrl.toString()
+
+    /** Canonical WebSocket URL with an encoded token or short-lived ticket. */
+    fun wsUrl(): String {
+        val raw = serverStore.getLatestState().wsAuthParam
+        val authParam = if (raw.isBlank()) "token" else raw
+        return endpointForBuild().webSocketUrl(
+            authParameter = authParam,
+            credential = getToken().orEmpty(),
+        )
+    }
+
+    // ── Typing Effect ───────────────────────────────────────────────────
+
+    fun isTypingEffectEnabled(): Boolean = serverStore.getLatestState().typingEffectEnabled
+
+    fun getBusySendMode(): BusySendMode = serverStore.getLatestState().busySendMode
+
+    fun setBusySendMode(mode: BusySendMode) {
+        serverStore.update { it.copy(busySendMode = mode) }
+    }
+
+    fun setTypingEffectEnabled(enabled: Boolean) {
+        serverStore.update { it.copy(typingEffectEnabled = enabled) }
+    }
+
+    // ── App display language ───────────────────────────────────────────
+    // "system" follows the device locale; any other value is a BCP-47 code.
+
+    fun getAppLanguage(): String = serverStore.getLatestState().appLanguage
+
+    fun setAppLanguage(code: String) {
+        serverStore.update { it.copy(appLanguage = code) }
+    }
+
+    fun getTypingEffectDelayMs(): Int = serverStore.getLatestState().typingEffectDelayMs
+
+    fun setTypingEffectDelayMs(delayMs: Int) {
+        serverStore.update { it.copy(typingEffectDelayMs = delayMs) }
+    }
+
+    // ── Message stats ───────────────────────────────────────────────────
+
+    fun isMessageStatsEnabled(): Boolean = serverStore.getLatestState().messageStatsEnabled
+
+    fun setMessageStatsEnabled(enabled: Boolean) {
+        serverStore.update { it.copy(messageStatsEnabled = enabled) }
+    }
+
+    fun isUserMessageTokensEnabled(): Boolean = serverStore.getLatestState().showUserMessageTokens
+
+    fun setUserMessageTokensEnabled(enabled: Boolean) {
+        serverStore.update { it.copy(showUserMessageTokens = enabled) }
+    }
+
+    fun isAssistantMessageTokensEnabled(): Boolean = serverStore.getLatestState().showAssistantMessageTokens
+
+    fun setAssistantMessageTokensEnabled(enabled: Boolean) {
+        serverStore.update { it.copy(showAssistantMessageTokens = enabled) }
+    }
+
+    fun isTokensPerSecondEnabled(): Boolean = serverStore.getLatestState().showTokensPerSecond
+
+    fun setTokensPerSecondEnabled(enabled: Boolean) {
+        serverStore.update { it.copy(showTokensPerSecond = enabled) }
+    }
+
+    fun isModelProviderShown(): Boolean = serverStore.getLatestState().showModelProvider
+
+    fun setModelProviderShown(shown: Boolean) {
+        serverStore.update { it.copy(showModelProvider = shown) }
+    }
+
+    fun isKeepConnectedInBackground(): Boolean = serverStore.getLatestState().keepConnectedInBackground
+
+    fun setKeepConnectedInBackground(enabled: Boolean) {
+        serverStore.update { it.copy(keepConnectedInBackground = enabled) }
+    }
+
+    fun isNotifySessionCompletions(): Boolean = serverStore.getLatestState().notifySessionCompletions
+
+    fun setNotifySessionCompletions(enabled: Boolean) {
+        serverStore.update { it.copy(notifySessionCompletions = enabled) }
+    }
+
+    // ── Chat Font Scale (issue #1004) ───────────────────────────────────
+
+    fun getChatFontScale(): Float = serverStore.getLatestState().chatFontScale
+
+    fun setChatFontScale(scale: Float) {
+        serverStore.update { it.copy(chatFontScale = scale) }
+        _chatFontScaleFlow.value = scale
+    }
+
+    // ── In-app update check (issue #867) ─────────────────────────────────
+
+    /**
+     * Whether the user opted into release-candidate updates. Stable-only by
+     * default; when true the update check also considers pre-release RC tags.
+     */
+    fun isCheckingReleaseCandidateUpdates(): Boolean = serverStore.getLatestState().checkReleaseCandidateUpdates
+
+    fun setCheckReleaseCandidateUpdates(enabled: Boolean) {
+        serverStore.update { it.copy(checkReleaseCandidateUpdates = enabled) }
+    }
+
+    /** App version the silent update check last completed for (null = never). */
+    fun getUpdateCheckDoneForVersion(): String? = serverStore.getLatestState().updateCheckDoneForVersion
+
+    fun setUpdateCheckDoneForVersion(version: String) {
+        serverStore.update { it.copy(updateCheckDoneForVersion = version) }
+    }
+
+    /** Latest release tag the launch check (issue #890) persisted. */
+    fun getLastKnownLatestTag(): String? = serverStore.getLatestState().lastKnownLatestTag
+
+    fun setLastKnownLatestTag(tag: String) {
+        serverStore.update { it.copy(lastKnownLatestTag = tag) }
+    }
+
+    /** Timestamp of the last background update check. */
+    fun getLastUpdateCheckTimestamp(): Long = serverStore.getLatestState().lastUpdateCheckTimestamp
+
+    fun setLastUpdateCheckTimestamp(timestamp: Long) {
+        serverStore.update { it.copy(lastUpdateCheckTimestamp = timestamp) }
+    }
+
+    /** Release tag dismissed by the user. */
+    fun getDismissedUpdateTag(): String? = serverStore.getLatestState().dismissedUpdateTag
+
+    fun setDismissedUpdateTag(tag: String?) {
+        serverStore.update { it.copy(dismissedUpdateTag = tag) }
+    }
+}

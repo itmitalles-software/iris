@@ -1,0 +1,29 @@
+package io.wutz.apollo.data.remote
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+
+@Serializable
+private data class PasswordLoginPayload(
+    val provider: String,
+    val username: String,
+    val password: String,
+    val next: String,
+)
+
+/** JSON serialization for authentication requests and responses. */
+object AuthPayloads {
+    fun passwordLogin(
+        username: String,
+        password: String,
+        provider: String = "basic",
+    ): String =
+        OkHttpProvider.json.encodeToString(
+            PasswordLoginPayload(
+                provider = provider,
+                username = username,
+                password = password,
+                next = "",
+            ),
+        )
+}

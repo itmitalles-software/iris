@@ -1,0 +1,123 @@
+package io.wutz.apollo.data.ws
+
+import io.wutz.apollo.data.model.ConnectorConnectResult
+import io.wutz.apollo.data.model.ConnectorError
+import io.wutz.apollo.data.model.ConnectorListResult
+import io.wutz.apollo.data.ws.contract.ConnectorOwner
+import io.wutz.apollo.data.ws.contract.ConnectorsConnectParams
+import io.wutz.apollo.data.ws.contract.ConnectorsListParams
+import io.wutz.apollo.data.ws.contract.HermesRpcCaller
+import io.wutz.apollo.data.ws.contract.RpcMethods
+import io.wutz.apollo.data.ws.contract.TypedRpcCaller
+import kotlinx.coroutines.CancellationException
+
+/**
+ * Repository interface for connector operations: `connectors.list` and `connectors.connect` (issue #1091).
+ * Public injectable interface enabling isolated testing in ViewModels and controllers.
+ */
+interface ConnectorRepository {
+    /**
+     * Request connector catalog and authorization status for [sessionId].
+     */
+    suspend fun listConnectors(sessionId: String): ConnectorListResult
+
+    /**
+     * Initiate authorization flow for [connectors] slugs in [sessionId].
+     * If [reconnect] is true, restarts authorization flow even if already connected.
+     */
+    suspend fun connect(
+        sessionId: String,
+        connectors: List<String>,
+        reconnect: Boolean = false,
+    ): ConnectorConnectResult
+
+    companion object : ConnectorRepository by HermesConnectorRepository() {
+        private val SLUG_REGEX = Regex("^[a-z0-9][a-z0-9_-]*$")
+
+        fun isValidSlug(slug: String?): Boolean {
+            if (slug.isNullOrBlank()) return false
+            return SLUG_REGEX.matches(slug)
+        }
+
+        /** `owner` discriminated union required by connector RPCs since hermes-agent v0.21.5 (#1281). */
+        fun sessionOwner(sessionId: String): Map<String, String> = mapOf("type" to "session", "session_id" to sessionId)
+    }
+}
+
+/**
+ * Default implementation of [ConnectorRepository] backed by [HermesWsClient].
+ */
+class HermesConnectorRepository(
+    private val caller: TypedRpcCaller = HermesRpcCaller,
+) : ConnectorRepository {
+    override suspend fun listConnectors(sessionId: String): ConnectorListResult {
+        if (sessionId.isBlank()) {
+            return ConnectorListResult.Error(
+                ConnectorError.InvalidParams("session_id required"),
+            )
+        }
+
+        return try {
+            val params = ConnectorsListParams(owner = ConnectorOwner.session(sessionId))
+            val result = caller.call(RpcMethods.CONNECTORS_LIST, params)
+            ConnectorParser.parseListResult(result)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HermesWsClient.HermesRpcException) {
+            ConnectorListResult.Error(
+                ConnectorParser.mapRpcError(code = e.code, message = e.message ?: "", data = e.data),
+            )
+        } catch (_: Exception) {
+            ConnectorListResult.Error(
+                ConnectorError.NetworkError("Failed to communicate with gateway."),
+            )
+        }
+    }
+
+    override suspend fun connect(
+        sessionId: String,
+        connectors: List<String>,
+        reconnect: Boolean,
+    ): ConnectorConnectResult {
+        if (sessionId.isBlank()) {
+            return ConnectorConnectResult.Error(
+                ConnectorError.InvalidParams("session_id required"),
+            )
+        }
+
+        if (connectors.isEmpty()) {
+            return ConnectorConnectResult.Error(
+                ConnectorError.InvalidParams("connectors must be nonempty slugs; reconnect must be boolean"),
+            )
+        }
+
+        for (slug in connectors) {
+            if (!ConnectorRepository.isValidSlug(slug)) {
+                return ConnectorConnectResult.Error(
+                    ConnectorError.InvalidParams("connectors must be nonempty slugs; reconnect must be boolean"),
+                )
+            }
+        }
+
+        return try {
+            val params =
+                ConnectorsConnectParams(
+                    owner = ConnectorOwner.session(sessionId),
+                    connectors = connectors,
+                    reconnect = reconnect,
+                )
+            val result = caller.call(RpcMethods.CONNECTORS_CONNECT, params)
+            ConnectorParser.parseConnectResult(result)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HermesWsClient.HermesRpcException) {
+            ConnectorConnectResult.Error(
+                ConnectorParser.mapRpcError(code = e.code, message = e.message ?: "", data = e.data),
+            )
+        } catch (_: Exception) {
+            ConnectorConnectResult.Error(
+                ConnectorError.NetworkError("Failed to communicate with gateway."),
+            )
+        }
+    }
+}

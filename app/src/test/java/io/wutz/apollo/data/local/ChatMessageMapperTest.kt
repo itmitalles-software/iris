@@ -1,0 +1,251 @@
+package io.wutz.apollo.data.local
+
+import io.wutz.apollo.ui.chat.ChatMessage
+import io.wutz.apollo.ui.chat.MessageProvenance
+import io.wutz.apollo.ui.chat.MessageRole
+import io.wutz.apollo.ui.chat.ToolStatus
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ChatMessageMapperTest {
+    @Test
+    fun entityToUiModel_mapsAllPropertiesCorrectly() {
+        val entity =
+            ChatMessageEntity(
+                id = "msg-1",
+                sessionId = "session-a",
+                role = "TOOL",
+                content = "Tool output",
+                reasoningText = "Thinking",
+                timestamp = 1000L,
+                toolName = "search",
+                toolStatus = "RUNNING",
+                isStreaming = true,
+                tokenCount = 42,
+                tps = 55.5,
+            )
+
+        val ui = entity.toUiModel()
+
+        assertEquals("msg-1", ui.id)
+        assertEquals(MessageRole.TOOL, ui.role)
+        assertEquals("Tool output", ui.content)
+        assertEquals("Thinking", ui.reasoningText)
+        assertEquals(1000L, ui.timestamp)
+        assertEquals("search", ui.toolName)
+        assertEquals(ToolStatus.RUNNING, ui.toolStatus)
+        assertTrue(ui.isStreaming)
+        assertEquals(42, ui.tokenCount)
+        assertEquals(55.5, ui.tps ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun uiModelToEntity_mapsAllPropertiesCorrectly() {
+        val ui =
+            ChatMessage(
+                id = "msg-2",
+                role = MessageRole.SYSTEM,
+                content = "System prompt",
+                reasoningText = "",
+                timestamp = 2000L,
+                toolName = null,
+                toolStatus = null,
+                isStreaming = false,
+                tokenCount = 100,
+                tps = 24.8,
+            )
+
+        val entity = ui.toEntity("session-b")
+
+        assertEquals("msg-2", entity.id)
+        assertEquals("session-b", entity.sessionId)
+        assertEquals("SYSTEM", entity.role)
+        assertEquals("System prompt", entity.content)
+        assertEquals("", entity.reasoningText)
+        assertEquals(2000L, entity.timestamp)
+        assertNull(entity.toolName)
+        assertNull(entity.toolStatus)
+        assertFalse(entity.isStreaming)
+        assertEquals(100, entity.tokenCount)
+        assertEquals(24.8, entity.tps ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun entityToUiModel_mapsRolesCorrectly() {
+        assertEquals(MessageRole.USER, createEntityWithRole("USER").toUiModel().role)
+        assertEquals(MessageRole.ASSISTANT, createEntityWithRole("ASSISTANT").toUiModel().role)
+        assertEquals(MessageRole.SYSTEM, createEntityWithRole("SYSTEM").toUiModel().role)
+        assertEquals(MessageRole.TOOL, createEntityWithRole("TOOL").toUiModel().role)
+    }
+
+    @Test
+    fun entityToUiModel_mapsUnknownRoleToAssistant() {
+        assertEquals(MessageRole.ASSISTANT, createEntityWithRole("UNKNOWN").toUiModel().role)
+        assertEquals(MessageRole.ASSISTANT, createEntityWithRole("").toUiModel().role)
+    }
+
+    @Test
+    fun entityToUiModel_mapsToolStatusCorrectly() {
+        assertEquals(ToolStatus.RUNNING, createEntityWithToolStatus("RUNNING").toUiModel().toolStatus)
+        assertEquals(ToolStatus.COMPLETED, createEntityWithToolStatus("COMPLETED").toUiModel().toolStatus)
+        assertEquals(ToolStatus.FAILED, createEntityWithToolStatus("FAILED").toUiModel().toolStatus)
+    }
+
+    @Test
+    fun entityToUiModel_mapsUnknownToolStatusToNull() {
+        assertNull(createEntityWithToolStatus("UNKNOWN").toUiModel().toolStatus)
+        assertNull(createEntityWithToolStatus("").toUiModel().toolStatus)
+        assertNull(createEntityWithToolStatus(null).toUiModel().toolStatus)
+    }
+
+    private fun createEntityWithRole(role: String): ChatMessageEntity =
+        ChatMessageEntity(
+            id = "id",
+            sessionId = "session",
+            role = role,
+            content = "content",
+            timestamp = 0L,
+        )
+
+    private fun createEntityWithToolStatus(status: String?): ChatMessageEntity =
+        ChatMessageEntity(
+            id = "id",
+            sessionId = "session",
+            role = "TOOL",
+            content = "content",
+            timestamp = 0L,
+            toolStatus = status,
+        )
+
+    @Test
+    fun entityToUiModelCarriesReasoningText() {
+        val entity =
+            ChatMessageEntity(
+                id = "msg-1",
+                sessionId = "session-a",
+                role = "assistant",
+                content = "Answer",
+                reasoningText = "Let me think step by step",
+                timestamp = 1000L,
+            )
+
+        val ui = entity.toUiModel()
+
+        assertEquals("Let me think step by step", ui.reasoningText)
+        assertEquals("Answer", ui.content)
+    }
+
+    @Test
+    fun uiModelToEntityCarriesReasoningText() {
+        val ui =
+            ChatMessage(
+                id = "msg-2",
+                role = MessageRole.ASSISTANT,
+                content = "Answer",
+                reasoningText = "Chain of thought",
+                timestamp = 2000L,
+            )
+
+        val entity = ui.toEntity("session-b")
+
+        assertEquals("Chain of thought", entity.reasoningText)
+        assertEquals("session-b", entity.sessionId)
+    }
+
+    @Test
+    fun roundTripPreservesReasoningText() {
+        val ui =
+            ChatMessage(
+                id = "msg-3",
+                role = MessageRole.ASSISTANT,
+                content = "Answer",
+                reasoningText = "r",
+                timestamp = 3000L,
+            )
+
+        val roundTripped = ui.toEntity("s").toUiModel()
+
+        assertEquals("r", roundTripped.reasoningText)
+    }
+
+    @Test
+    fun roundTripPreservesDisplayKind() {
+        val ui =
+            ChatMessage(
+                id = "msg-4",
+                role = MessageRole.USER,
+                content = "[System: ...changed to gpt-5...]",
+                displayKind = "model_switch",
+                timestamp = 4000L,
+            )
+
+        val roundTripped = ui.toEntity("s").toUiModel()
+
+        assertEquals("model_switch", roundTripped.displayKind)
+        assertEquals(MessageRole.USER, roundTripped.role)
+    }
+
+    @Test
+    fun roundTripPreservesLocalPendingProvenance() {
+        val roundTripped =
+            ChatMessage(
+                id = "pending",
+                role = MessageRole.USER,
+                content = "not submitted",
+                messageProvenance = MessageProvenance.LOCAL_PENDING,
+            ).toEntity("s").toUiModel()
+        assertEquals(MessageProvenance.LOCAL_PENDING, roundTripped.messageProvenance)
+    }
+
+    @Test
+    fun unknownPersistedProvenanceDoesNotInventDeliveryEvidence() {
+        val entity =
+            ChatMessageEntity(
+                id = "legacy",
+                sessionId = "s",
+                role = "USER",
+                content = "ambiguous",
+                timestamp = 1L,
+                messageProvenance = "future-value",
+            )
+        assertEquals(MessageProvenance.UNKNOWN, entity.toUiModel().messageProvenance)
+    }
+
+    @Test
+    fun roundTripWithoutDisplayKindStaysNull() {
+        val ui =
+            ChatMessage(
+                id = "msg-5",
+                role = MessageRole.USER,
+                content = "plain user text",
+                timestamp = 5000L,
+            )
+
+        val roundTripped = ui.toEntity("s").toUiModel()
+
+        assertNull(roundTripped.displayKind)
+    }
+
+    @Test
+    fun sessionStartMarkerDoesNotAcquireLocalOrder() {
+        val entity =
+            ChatMessageEntity(
+                id = "uuid-session-created",
+                sessionId = "s",
+                role = "SYSTEM",
+                content = "Session created",
+                timestamp = 1000L,
+                sortGroup = 1,
+                sortOrder = 5L,
+            )
+
+        val ui = entity.toUiModel()
+
+        assertNull(ui.localOrder)
+        assertEquals(MessageRole.SYSTEM, ui.role)
+        assertEquals("Session created", ui.content)
+    }
+}

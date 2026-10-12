@@ -1,0 +1,1061 @@
+package io.wutz.apollo.data.remote
+
+import io.wutz.apollo.data.model.AchievementsResponse
+import io.wutz.apollo.data.model.ActionResponse
+import io.wutz.apollo.data.model.ActionStatusResponse
+import io.wutz.apollo.data.model.ActiveProfileResponse
+import io.wutz.apollo.data.model.AddMcpServerRequest
+import io.wutz.apollo.data.model.AgentPluginInstallBody
+import io.wutz.apollo.data.model.AnalyticsResponse
+import io.wutz.apollo.data.model.AudioTranscriptionRequest
+import io.wutz.apollo.data.model.AudioTranscriptionResponse
+import io.wutz.apollo.data.model.AuxiliaryModelsResponse
+import io.wutz.apollo.data.model.BackupTriggerRequest
+import io.wutz.apollo.data.model.BulkDeleteRequest
+import io.wutz.apollo.data.model.BulkDeleteResponse
+import io.wutz.apollo.data.model.CheckpointsResponse
+import io.wutz.apollo.data.model.ConfigSchemaResponse
+import io.wutz.apollo.data.model.ConfigUpdateRequest
+import io.wutz.apollo.data.model.CreateCronJobRequest
+import io.wutz.apollo.data.model.CreateProfileRequest
+import io.wutz.apollo.data.model.CreateTaskBody
+import io.wutz.apollo.data.model.CreateWebhookRequest
+import io.wutz.apollo.data.model.CredentialPoolAddRequest
+import io.wutz.apollo.data.model.CredentialPoolResponse
+import io.wutz.apollo.data.model.CronBlueprintListResponse
+import io.wutz.apollo.data.model.CronJob
+import io.wutz.apollo.data.model.CuratorResponse
+import io.wutz.apollo.data.model.DebugShareRequest
+import io.wutz.apollo.data.model.DebugShareResponse
+import io.wutz.apollo.data.model.DeleteWebhookResponse
+import io.wutz.apollo.data.model.DeliveryTargetsResponse
+import io.wutz.apollo.data.model.DoctorResponse
+import io.wutz.apollo.data.model.EmptySessionsCountResponse
+import io.wutz.apollo.data.model.EmptySessionsDeleteResponse
+import io.wutz.apollo.data.model.EnvVarConfig
+import io.wutz.apollo.data.model.EnvVarDeleteRequest
+import io.wutz.apollo.data.model.EnvVarRevealRequest
+import io.wutz.apollo.data.model.EnvVarRevealResponse
+import io.wutz.apollo.data.model.EnvVarUpdate
+import io.wutz.apollo.data.model.GatewayMigrationPlan
+import io.wutz.apollo.data.model.GatewayMigrationStartResponse
+import io.wutz.apollo.data.model.HealthStatus
+import io.wutz.apollo.data.model.HookCreateRequest
+import io.wutz.apollo.data.model.HookDeleteRequest
+import io.wutz.apollo.data.model.HookResponse
+import io.wutz.apollo.data.model.InstantiateBlueprintRequest
+import io.wutz.apollo.data.model.KanbanBoardResponse
+import io.wutz.apollo.data.model.KanbanBoardsResponse
+import io.wutz.apollo.data.model.LatestDescendantResponse
+import io.wutz.apollo.data.model.LearningGraphResponse
+import io.wutz.apollo.data.model.LogResponse
+import io.wutz.apollo.data.model.ManagedDirectoryCreate
+import io.wutz.apollo.data.model.ManagedFileActionResponse
+import io.wutz.apollo.data.model.ManagedFileDelete
+import io.wutz.apollo.data.model.ManagedFileRead
+import io.wutz.apollo.data.model.ManagedFileUpload
+import io.wutz.apollo.data.model.ManagedFilesListResponse
+import io.wutz.apollo.data.model.McpCatalogInstallRequest
+import io.wutz.apollo.data.model.McpCatalogResponse
+import io.wutz.apollo.data.model.McpOAuthFlowResponse
+import io.wutz.apollo.data.model.McpServer
+import io.wutz.apollo.data.model.McpServerTestResponse
+import io.wutz.apollo.data.model.McpServerToggleRequest
+import io.wutz.apollo.data.model.McpServersReplaceRequest
+import io.wutz.apollo.data.model.McpServersResponse
+import io.wutz.apollo.data.model.MemoryProviderConfigResponse
+import io.wutz.apollo.data.model.MemoryProviderConfigUpdateRequest
+import io.wutz.apollo.data.model.MemoryProviderConfigUpdateResponse
+import io.wutz.apollo.data.model.MemoryProviderSetupRequest
+import io.wutz.apollo.data.model.MemoryProviderSetupResponse
+import io.wutz.apollo.data.model.MemoryResetRequest
+import io.wutz.apollo.data.model.MemoryResetResponse
+import io.wutz.apollo.data.model.MemoryResponse
+import io.wutz.apollo.data.model.MessagingPlatformResponse
+import io.wutz.apollo.data.model.MessagingPlatformTestResult
+import io.wutz.apollo.data.model.MessagingPlatformUpdate
+import io.wutz.apollo.data.model.MessagingPlatformUpdateResponse
+import io.wutz.apollo.data.model.MoaConfigResponse
+import io.wutz.apollo.data.model.ModelAssignmentRequest
+import io.wutz.apollo.data.model.ModelAssignmentResponse
+import io.wutz.apollo.data.model.ModelInfoResponse
+import io.wutz.apollo.data.model.ModelOptionsResponse
+import io.wutz.apollo.data.model.ModelsAnalyticsResponse
+import io.wutz.apollo.data.model.OAuthCancelResponse
+import io.wutz.apollo.data.model.OAuthPollResponse
+import io.wutz.apollo.data.model.OAuthProvidersResponse
+import io.wutz.apollo.data.model.OAuthStartResponse
+import io.wutz.apollo.data.model.OAuthSubmitRequest
+import io.wutz.apollo.data.model.OAuthSubmitResponse
+import io.wutz.apollo.data.model.PairingApproveRequest
+import io.wutz.apollo.data.model.PairingResponse
+import io.wutz.apollo.data.model.PairingRevokeRequest
+import io.wutz.apollo.data.model.PluginCatalogResponse
+import io.wutz.apollo.data.model.PluginProvidersPutRequest
+import io.wutz.apollo.data.model.PluginsHubResponse
+import io.wutz.apollo.data.model.PortalResponse
+import io.wutz.apollo.data.model.ProfileDescribeAutoRequest
+import io.wutz.apollo.data.model.ProfileDescribeAutoResponse
+import io.wutz.apollo.data.model.ProfileSetupCommandResponse
+import io.wutz.apollo.data.model.ProfileSoulResponse
+import io.wutz.apollo.data.model.ProfilesResponse
+import io.wutz.apollo.data.model.PruneRequest
+import io.wutz.apollo.data.model.RawConfigResponse
+import io.wutz.apollo.data.model.RecentUnlock
+import io.wutz.apollo.data.model.RenameProfileRequest
+import io.wutz.apollo.data.model.SaveSkillContentRequest
+import io.wutz.apollo.data.model.ScanStatus
+import io.wutz.apollo.data.model.SessionDetailResponse
+import io.wutz.apollo.data.model.SessionInfo
+import io.wutz.apollo.data.model.SessionListResponse
+import io.wutz.apollo.data.model.SessionMessagesAroundResponse
+import io.wutz.apollo.data.model.SessionMessagesResponse
+import io.wutz.apollo.data.model.SessionRenameRequest
+import io.wutz.apollo.data.model.SessionSearchResponse
+import io.wutz.apollo.data.model.SessionStatsResponse
+import io.wutz.apollo.data.model.SessionTimelineResponse
+import io.wutz.apollo.data.model.SetActiveProfileRequest
+import io.wutz.apollo.data.model.Skill
+import io.wutz.apollo.data.model.SkillContentResponse
+import io.wutz.apollo.data.model.SkillHubInstallRequest
+import io.wutz.apollo.data.model.SkillHubSearchResponse
+import io.wutz.apollo.data.model.SkillHubSourcesResponse
+import io.wutz.apollo.data.model.SkillHubUninstallRequest
+import io.wutz.apollo.data.model.SkillScanResponse
+import io.wutz.apollo.data.model.StatusResponse
+import io.wutz.apollo.data.model.SystemStatsResponse
+import io.wutz.apollo.data.model.TelegramOnboardingApplyRequest
+import io.wutz.apollo.data.model.TelegramOnboardingApplyResponse
+import io.wutz.apollo.data.model.TelegramOnboardingStartRequest
+import io.wutz.apollo.data.model.TelegramOnboardingStartResponse
+import io.wutz.apollo.data.model.TelegramOnboardingStatusResponse
+import io.wutz.apollo.data.model.ToggleSkillRequest
+import io.wutz.apollo.data.model.Toolset
+import io.wutz.apollo.data.model.ToolsetConfigResponse
+import io.wutz.apollo.data.model.ToolsetEnvUpdateRequest
+import io.wutz.apollo.data.model.ToolsetEnvUpdateResponse
+import io.wutz.apollo.data.model.ToolsetPostSetupRequest
+import io.wutz.apollo.data.model.ToolsetPostSetupResponse
+import io.wutz.apollo.data.model.ToolsetProviderSelectRequest
+import io.wutz.apollo.data.model.ToolsetProviderSelectResponse
+import io.wutz.apollo.data.model.ToolsetToggleRequest
+import io.wutz.apollo.data.model.TtsSpeakRequest
+import io.wutz.apollo.data.model.TtsSpeakResponse
+import io.wutz.apollo.data.model.UpdateCheckResponse
+import io.wutz.apollo.data.model.UpdateCronJobRequest
+import io.wutz.apollo.data.model.UpdateProfileDescriptionRequest
+import io.wutz.apollo.data.model.UpdateProfileModelRequest
+import io.wutz.apollo.data.model.UpdateProfileSoulRequest
+import io.wutz.apollo.data.model.UpdateRawConfigRequest
+import io.wutz.apollo.data.model.UpdateReceiptResponse
+import io.wutz.apollo.data.model.WebhookSubscription
+import io.wutz.apollo.data.model.WebhookToggleSubscriptionRequest
+import io.wutz.apollo.data.model.WebhooksResponse
+import io.wutz.apollo.data.model.WebhooksToggleRequest
+import kotlinx.serialization.json.JsonElement
+import okhttp3.ResponseBody
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.HTTP
+import retrofit2.http.Multipart
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Part
+import retrofit2.http.Path
+import retrofit2.http.Query
+import retrofit2.http.Streaming
+
+interface HermesApiService : KanbanApiService {
+    @GET("api/skills/content")
+    suspend fun getSkillContent(
+        @Query("name") name: String,
+    ): Response<SkillContentResponse>
+
+    @PUT("api/skills/content")
+    suspend fun saveSkillContent(
+        @Body body: SaveSkillContentRequest,
+    ): Response<Unit>
+
+    @GET("api/status")
+    suspend fun getStatus(): Response<StatusResponse>
+
+    @GET("api/health")
+    suspend fun getHealth(): Response<HealthStatus>
+
+    @GET("api/sessions")
+    suspend fun getSessions(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+        @Query("order") order: String = "recent",
+        @Query("source") source: String? = null,
+        @Query("exclude_sources") excludeSources: String? = null,
+        // exclude (backend default) | include | only (issue #1496)
+        @Query("archived") archived: String? = null,
+    ): Response<SessionListResponse>
+
+    @GET("api/sessions/search")
+    suspend fun searchSessions(
+        @Query("q") q: String,
+        @Query("profile") profile: String? = null,
+        @Query("source") source: String? = null,
+        @Query("exclude_sources") excludeSources: String? = null,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+    ): Response<SessionSearchResponse>
+
+    @GET("api/sessions/{id}/messages")
+    suspend fun getSessionMessages(
+        // Preserve slashes in session IDs — backend generates IDs containing '/' characters (issue #468).
+        // Contract: The server-generated sessionId must only contain URL-safe characters (no ?, #, or spaces).
+        @Path("id", encoded = true) sessionId: String,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int = 0,
+        // Issue #859: order=latest pages back from the newest message (offset
+        // measured from the end, page returned chronologically). Omitted on
+        // legacy backends that don't know the param — they ignore it.
+        @Query("order") order: String? = null,
+        @Query("include_compacted") includeCompacted: Boolean? = true,
+        @Query("profile") profile: String? = null,
+    ): Response<SessionMessagesResponse>
+
+    @GET("api/sessions/{id}/timeline")
+    suspend fun getSessionTimeline(
+        @Path("id", encoded = true) sessionId: String,
+        @Query("profile") profile: String? = null,
+        @Query("limit") limit: Int = 500,
+        @Query("after_row_id") afterRowId: Int = 0,
+    ): Response<SessionTimelineResponse>
+
+    @GET("api/sessions/{id}/messages/around")
+    suspend fun getSessionMessagesAround(
+        @Path("id", encoded = true) sessionId: String,
+        @Query("row_id") rowId: Int,
+        @Query("profile") profile: String? = null,
+        @Query("limit") limit: Int = 120,
+    ): Response<SessionMessagesAroundResponse>
+
+    @GET("api/sessions/stats")
+    suspend fun getSessionStats(): Response<SessionStatsResponse>
+
+    // Rename is PATCH /api/sessions/{id} with {title} — the backend never
+    // registered PUT .../rename (404; issue #785). Desktop uses the same PATCH.
+    @PATCH("api/sessions/{id}")
+    suspend fun renameSession(
+        // Preserve slashes in session IDs — backend generates IDs containing '/' characters (issue #468).
+        // Contract: The server-generated sessionId must only contain URL-safe characters (no ?, #, or spaces).
+        @Path("id", encoded = true) sessionId: String,
+        @Body body: SessionRenameRequest,
+    ): Response<Unit>
+
+    // Pin/unpin rides the same PATCH /api/sessions/{id} — body carries only
+    // {pinned} (backend SessionRename model, any subset accepted).
+    @PATCH("api/sessions/{id}")
+    suspend fun setSessionPinned(
+        @Path("id", encoded = true) sessionId: String,
+        @Body body: SessionRenameRequest,
+    ): Response<Unit>
+
+    // Archive/unarchive rides the same PATCH /api/sessions/{id} — body carries only
+    // {archived} (backend SessionRename model, any subset accepted; issue #1496).
+    @PATCH("api/sessions/{id}")
+    suspend fun setSessionArchived(
+        @Path("id", encoded = true) sessionId: String,
+        @Body body: SessionRenameRequest,
+    ): Response<Unit>
+
+    @POST("api/sessions/bulk-delete")
+    suspend fun bulkDeleteSessions(
+        @Body body: BulkDeleteRequest,
+    ): Response<BulkDeleteResponse>
+
+    @DELETE("api/sessions/{id}")
+    suspend fun deleteSession(
+        // Preserve slashes in session IDs — backend generates IDs containing '/' characters (issue #468).
+        // Contract: The server-generated sessionId must only contain URL-safe characters (no ?, #, or spaces).
+        @Path("id", encoded = true) sessionId: String,
+    ): Response<Unit>
+
+    @POST("api/sessions/prune")
+    suspend fun pruneSessions(
+        @Body body: PruneRequest,
+    ): Response<Unit>
+
+    // ── Admin: Empty-session cleanup + branch resolution (issue #787) ──
+    @GET("api/sessions/empty/count")
+    suspend fun getEmptySessionCount(): Response<EmptySessionsCountResponse>
+
+    @DELETE("api/sessions/empty")
+    suspend fun deleteEmptySessions(): Response<EmptySessionsDeleteResponse>
+
+    @GET("api/sessions/{id}/latest-descendant")
+    suspend fun getLatestDescendant(
+        @Path("id", encoded = true) sessionId: String,
+    ): Response<LatestDescendantResponse>
+
+    @GET("api/sessions/{id}")
+    suspend fun getSessionDetail(
+        // Preserve slashes in session IDs — backend generates IDs containing '/' characters (issue #468).
+        // Contract: The server-generated sessionId must only contain URL-safe characters (no ?, #, or spaces).
+        @Path("id", encoded = true) sessionId: String,
+        @Query("profile") profile: String? = null,
+    ): Response<SessionDetailResponse>
+
+    @GET("api/sessions/{id}")
+    suspend fun getSessionInfo(
+        @Path("id", encoded = true) sessionId: String,
+        @Query("profile") profile: String? = null,
+    ): Response<SessionInfo>
+
+    @GET("api/model/info")
+    suspend fun getModelInfo(
+        @Query("profile") profile: String? = null,
+    ): Response<ModelInfoResponse>
+
+    @GET("api/system/stats")
+    suspend fun getSystemStats(): Response<SystemStatsResponse>
+
+    @GET("api/analytics/usage")
+    suspend fun getAnalytics(
+        @Query("days") days: Int,
+        @Query("profile") profile: String? = null,
+    ): Response<AnalyticsResponse>
+
+    @GET("api/analytics/models")
+    suspend fun getModelsAnalytics(
+        @Query("days") days: Int,
+        @Query("profile") profile: String? = null,
+    ): Response<ModelsAnalyticsResponse>
+
+    @GET("api/skills")
+    suspend fun getSkills(): Response<List<Skill>>
+
+    @GET("api/skills/hub/search")
+    suspend fun searchSkillsHub(
+        @Query("q") q: String,
+        @Query("source") source: String? = null,
+        @Query("limit") limit: Int? = null,
+    ): Response<SkillHubSearchResponse>
+
+    @GET("api/skills/hub/preview")
+    suspend fun previewHubSkill(
+        @Query("identifier") identifier: String,
+    ): Response<SkillContentResponse>
+
+    @GET("api/skills/hub/scan")
+    suspend fun scanHubSkill(
+        @Query("identifier") identifier: String,
+    ): Response<SkillScanResponse>
+
+    @POST("api/skills/hub/install")
+    suspend fun installHubSkill(
+        @Body body: SkillHubInstallRequest,
+    ): Response<ActionResponse>
+
+    @POST("api/skills/hub/uninstall")
+    suspend fun uninstallHubSkill(
+        @Body body: SkillHubUninstallRequest,
+    ): Response<ActionResponse>
+
+    @GET("api/skills/hub/sources")
+    suspend fun getSkillHubSources(): Response<SkillHubSourcesResponse>
+
+    @PUT("api/skills/toggle")
+    suspend fun toggleSkill(
+        @Body body: ToggleSkillRequest,
+    ): Response<Unit>
+
+    @GET("api/cron/jobs")
+    suspend fun getCronJobs(): Response<List<CronJob>>
+
+    @POST("api/cron/jobs/{id}/pause")
+    suspend fun pauseCronJob(
+        @Path("id") id: String,
+    ): Response<Unit>
+
+    @POST("api/cron/jobs/{id}/resume")
+    suspend fun resumeCronJob(
+        @Path("id") id: String,
+    ): Response<Unit>
+
+    @GET("api/cron/jobs/{id}")
+    suspend fun getCronJob(
+        @Path("id") id: String,
+    ): Response<CronJob>
+
+    @POST("api/cron/jobs")
+    suspend fun createCronJob(
+        @Body body: CreateCronJobRequest,
+    ): Response<CronJob>
+
+    @PUT("api/cron/jobs/{id}")
+    suspend fun updateCronJob(
+        @Path("id") id: String,
+        @Body body: UpdateCronJobRequest,
+    ): Response<CronJob>
+
+    @POST("api/cron/jobs/{id}/trigger")
+    suspend fun triggerCronJob(
+        @Path("id") id: String,
+    ): Response<Unit>
+
+    @DELETE("api/cron/jobs/{id}")
+    suspend fun deleteCronJob(
+        @Path("id") id: String,
+    ): Response<Unit>
+
+    @GET("api/cron/blueprints")
+    suspend fun getCronBlueprints(): Response<CronBlueprintListResponse>
+
+    @POST("api/cron/blueprints/instantiate")
+    suspend fun instantiateBlueprint(
+        @Body body: InstantiateBlueprintRequest,
+    ): Response<CronJob>
+
+    @GET("api/cron/delivery-targets")
+    suspend fun getCronDeliveryTargets(): Response<DeliveryTargetsResponse>
+
+    @POST("api/gateway/start")
+    suspend fun startGateway(): Response<Unit>
+
+    @POST("api/gateway/stop")
+    suspend fun stopGateway(): Response<Unit>
+
+    @POST("api/gateway/restart")
+    suspend fun restartGateway(): Response<Unit>
+
+    @GET("api/gateway/migrate/plan")
+    suspend fun getGatewayMigrationPlan(): Response<GatewayMigrationPlan>
+
+    @POST("api/gateway/migrate")
+    suspend fun startGatewayMigration(): Response<GatewayMigrationStartResponse>
+
+    @GET("api/profiles")
+    suspend fun getProfiles(): Response<ProfilesResponse>
+
+    @POST("api/profiles")
+    suspend fun createProfile(
+        @Body body: CreateProfileRequest,
+    ): Response<Unit>
+
+    @GET("api/profiles/active")
+    suspend fun getActiveProfile(): Response<ActiveProfileResponse>
+
+    @POST("api/profiles/active")
+    suspend fun setActiveProfile(
+        @Body body: SetActiveProfileRequest,
+    ): Response<Unit>
+
+    @GET("api/profiles/{name}/soul")
+    suspend fun getProfileSoul(
+        @Path("name") name: String,
+    ): Response<ProfileSoulResponse>
+
+    @PUT("api/profiles/{name}/soul")
+    suspend fun updateProfileSoul(
+        @Path("name") name: String,
+        @Body body: UpdateProfileSoulRequest,
+    ): Response<Unit>
+
+    @PUT("api/profiles/{name}/model")
+    suspend fun updateProfileModel(
+        @Path("name") name: String,
+        @Body body: UpdateProfileModelRequest,
+    ): Response<Unit>
+
+    @PUT("api/profiles/{name}/description")
+    suspend fun updateProfileDescription(
+        @Path("name") name: String,
+        @Body body: UpdateProfileDescriptionRequest,
+    ): Response<Unit>
+
+    @PATCH("api/profiles/{name}")
+    suspend fun renameProfile(
+        @Path("name") name: String,
+        @Body body: RenameProfileRequest,
+    ): Response<Unit>
+
+    @DELETE("api/profiles/{name}")
+    suspend fun deleteProfile(
+        @Path("name") name: String,
+    ): Response<Unit>
+
+    @POST("api/profiles/{name}/describe-auto")
+    suspend fun describeProfileAuto(
+        @Path("name") name: String,
+        @Body body: ProfileDescribeAutoRequest,
+    ): Response<ProfileDescribeAutoResponse>
+
+    @GET("api/profiles/{name}/setup-command")
+    suspend fun getProfileSetupCommand(
+        @Path("name") name: String,
+    ): Response<ProfileSetupCommandResponse>
+
+    @GET("api/tools/toolsets")
+    suspend fun getToolsets(): Response<List<Toolset>>
+
+    @PUT("api/tools/toolsets/{name}")
+    suspend fun toggleToolset(
+        @Path("name") name: String,
+        @Body body: ToolsetToggleRequest,
+    ): Response<Unit>
+
+    // ── Per-toolset management (issue #782) ────────────────────────────
+    @GET("api/tools/toolsets/{name}/config")
+    suspend fun getToolsetConfig(
+        @Path("name") name: String,
+    ): Response<ToolsetConfigResponse>
+
+    @PUT("api/tools/toolsets/{name}/provider")
+    suspend fun selectToolsetProvider(
+        @Path("name") name: String,
+        @Body body: ToolsetProviderSelectRequest,
+    ): Response<ToolsetProviderSelectResponse>
+
+    @PUT("api/tools/toolsets/{name}/env")
+    suspend fun saveToolsetEnv(
+        @Path("name") name: String,
+        @Body body: ToolsetEnvUpdateRequest,
+    ): Response<ToolsetEnvUpdateResponse>
+
+    @POST("api/tools/toolsets/{name}/post-setup")
+    suspend fun runToolsetPostSetup(
+        @Path("name") name: String,
+        @Body body: ToolsetPostSetupRequest,
+    ): Response<ToolsetPostSetupResponse>
+
+    @GET("api/plugins/hermes-achievements/achievements")
+    suspend fun getAchievements(): Response<AchievementsResponse>
+
+    @GET("api/plugins/hermes-achievements/scan-status")
+    suspend fun getAchievementScanStatus(): Response<ScanStatus>
+
+    @POST("api/plugins/hermes-achievements/rescan")
+    suspend fun rescanAchievements(): Response<AchievementsResponse>
+
+    @POST("api/plugins/hermes-achievements/reset-state")
+    suspend fun resetAchievementState(): Response<Unit>
+
+    @GET("api/plugins/hermes-achievements/recent-unlocks")
+    suspend fun getRecentUnlocks(): Response<List<RecentUnlock>>
+
+    @GET("api/config/raw")
+    suspend fun getRawConfig(): Response<RawConfigResponse>
+
+    @PUT("api/config/raw")
+    suspend fun updateRawConfig(
+        @Body body: UpdateRawConfigRequest,
+    ): Response<Unit>
+
+    @GET("api/config")
+    suspend fun getConfig(): Response<Map<String, JsonElement>>
+
+    @GET("api/config")
+    suspend fun getSavedConfig(
+        @Query("profile") profile: String? = null,
+        @Query("include_defaults") includeDefaults: Boolean = false,
+    ): Response<Map<String, JsonElement>>
+
+    @GET("api/config/schema")
+    suspend fun getConfigSchema(): Response<ConfigSchemaResponse>
+
+    @GET("api/config/defaults")
+    suspend fun getConfigDefaults(): Response<Map<String, JsonElement>>
+
+    @PUT("api/config")
+    suspend fun updateConfig(
+        @Body body: ConfigUpdateRequest,
+    ): Response<Unit>
+
+    @GET("api/mcp/servers")
+    suspend fun getMcpServers(): Response<McpServersResponse>
+
+    @PUT("api/mcp/servers/{name}/enabled")
+    suspend fun toggleMcpServer(
+        @Path("name") name: String,
+        @Body body: McpServerToggleRequest,
+    ): Response<Unit>
+
+    @POST("api/mcp/servers/{name}/test")
+    suspend fun testMcpServer(
+        @Path("name") name: String,
+    ): Response<McpServerTestResponse>
+
+    @DELETE("api/mcp/servers/{name}")
+    suspend fun deleteMcpServer(
+        @Path("name") name: String,
+    ): Response<Unit>
+
+    @POST("api/mcp/servers")
+    suspend fun addMcpServer(
+        @Body body: AddMcpServerRequest,
+    ): Response<McpServer>
+
+    @PUT("api/mcp/servers")
+    suspend fun replaceMcpServers(
+        @Body body: McpServersReplaceRequest,
+    ): Response<Unit>
+
+    @POST("api/mcp/servers/{name}/auth")
+    suspend fun authMcpServer(
+        @Path("name") name: String,
+    ): Response<McpOAuthFlowResponse>
+
+    @GET("api/mcp/oauth/flows/{flow_id}")
+    suspend fun getMcpOAuthFlowStatus(
+        @Path("flow_id") flowId: String,
+    ): Response<McpOAuthFlowResponse>
+
+    @GET("api/mcp/catalog")
+    suspend fun getMcpCatalog(): Response<McpCatalogResponse>
+
+    @POST("api/mcp/catalog/install")
+    suspend fun installMcpCatalogEntry(
+        @Body body: McpCatalogInstallRequest,
+    ): Response<ActionResponse>
+
+    @GET("api/webhooks")
+    suspend fun getWebhooks(): Response<WebhooksResponse>
+
+    @POST("api/webhooks/enable")
+    suspend fun toggleWebhooks(
+        @Body body: WebhooksToggleRequest,
+    ): Response<Unit>
+
+    @POST("api/webhooks")
+    suspend fun createWebhook(
+        @Body body: CreateWebhookRequest,
+    ): Response<WebhookSubscription>
+
+    @DELETE("api/webhooks/{name}")
+    suspend fun deleteWebhook(
+        @Path("name") name: String,
+    ): Response<DeleteWebhookResponse>
+
+    @PUT("api/webhooks/{name}/enabled")
+    suspend fun setWebhookEnabled(
+        @Path("name") name: String,
+        @Body body: WebhookToggleSubscriptionRequest,
+    ): Response<Unit>
+
+    @GET("api/model/options")
+    suspend fun getModelOptions(
+        @Query("refresh") refresh: Boolean = false,
+        @Query("include_unconfigured") includeUnconfigured: Boolean = false,
+    ): Response<ModelOptionsResponse>
+
+    @GET("api/model/auxiliary")
+    suspend fun getAuxiliaryModels(): Response<AuxiliaryModelsResponse>
+
+    @GET("api/model/moa")
+    suspend fun getMoaModels(): Response<MoaConfigResponse>
+
+    @PUT("api/model/moa")
+    suspend fun saveMoaModels(
+        @Body body: MoaConfigResponse,
+    ): Response<MoaConfigResponse>
+
+    @POST("api/model/set")
+    suspend fun setModelAssignment(
+        @Body body: ModelAssignmentRequest,
+    ): Response<ModelAssignmentResponse>
+
+    @GET("api/logs")
+    suspend fun getLogs(
+        @Query("file") file: String = "agent",
+        @Query("lines") lines: Int = 100,
+        @Query("level") level: String = "ALL",
+        @Query("component") component: String = "all",
+    ): Response<LogResponse>
+
+    @GET("api/dashboard/plugins/hub")
+    suspend fun getPlugins(): Response<PluginsHubResponse>
+
+    @GET("api/dashboard/plugins/catalog")
+    suspend fun getPluginCatalog(): Response<PluginCatalogResponse>
+
+    @POST("api/dashboard/agent-plugins/install")
+    suspend fun installPlugin(
+        @Body body: AgentPluginInstallBody,
+    ): Response<Unit>
+
+    @POST("api/dashboard/agent-plugins/{name}/update")
+    suspend fun updatePlugin(
+        @Path("name", encoded = true) name: String,
+        @Body body: io.wutz.apollo.data.model.PluginUpdateRequest,
+    ): Response<io.wutz.apollo.data.model.PluginUpdateResult>
+
+    @POST("api/dashboard/agent-plugins/{name}/enable")
+    suspend fun enablePlugin(
+        @Path("name", encoded = true) name: String,
+    ): Response<Unit>
+
+    @POST("api/dashboard/agent-plugins/{name}/disable")
+    suspend fun disablePlugin(
+        @Path("name", encoded = true) name: String,
+    ): Response<Unit>
+
+    @GET("api/dashboard/plugins/rescan")
+    suspend fun rescanPlugins(): Response<Unit>
+
+    @PUT("api/dashboard/plugin-providers")
+    suspend fun savePluginProviders(
+        @Body body: PluginProvidersPutRequest,
+    ): Response<Unit>
+
+    @POST("api/dashboard/plugins/{name}/visibility")
+    suspend fun setPluginVisibility(
+        @Path("name", encoded = true) name: String,
+        @Body body: Map<String, Boolean>,
+    ): Response<Unit>
+
+    @GET("api/messaging/platforms")
+    suspend fun getMessagingPlatforms(
+        @Query("profile") profile: String? = null,
+    ): Response<MessagingPlatformResponse>
+
+    @PUT("api/messaging/platforms/{platform_id}")
+    suspend fun configurePlatform(
+        @Path("platform_id") platformId: String,
+        @Body config: MessagingPlatformUpdate,
+    ): Response<MessagingPlatformUpdateResponse>
+
+    @POST("api/messaging/platforms/{platform_id}/test")
+    suspend fun testMessagingPlatform(
+        @Path("platform_id") platformId: String,
+    ): Response<MessagingPlatformTestResult>
+
+    @POST("api/messaging/telegram/onboarding/start")
+    suspend fun startTelegramOnboarding(
+        @Body body: TelegramOnboardingStartRequest,
+    ): Response<TelegramOnboardingStartResponse>
+
+    @GET("api/messaging/telegram/onboarding/{pairing_id}")
+    suspend fun getTelegramOnboardingStatus(
+        @Path("pairing_id") pairingId: String,
+    ): Response<TelegramOnboardingStatusResponse>
+
+    @POST("api/messaging/telegram/onboarding/{pairing_id}/apply")
+    suspend fun applyTelegramOnboarding(
+        @Path("pairing_id") pairingId: String,
+        @Body body: TelegramOnboardingApplyRequest,
+    ): Response<TelegramOnboardingApplyResponse>
+
+    @HTTP(method = "DELETE", path = "api/messaging/telegram/onboarding/{pairing_id}", hasBody = false)
+    suspend fun cancelTelegramOnboarding(
+        @Path("pairing_id") pairingId: String,
+    ): Response<Unit>
+
+    // ── DM pairing management (issue #776) ──────────────────────────────
+    // Approve/revoke messaging users who requested access via pairing
+    // codes. Pending requests are approved by `request_id` (as returned by
+    // GET /api/pairing); the `code` field is the one-time code a user
+    // relays from their DM.
+
+    @GET("api/pairing")
+    suspend fun getPairing(): Response<PairingResponse>
+
+    @POST("api/pairing/approve")
+    suspend fun approvePairing(
+        @Body body: PairingApproveRequest,
+    ): Response<Unit>
+
+    @POST("api/pairing/revoke")
+    suspend fun revokePairing(
+        @Body body: PairingRevokeRequest,
+    ): Response<Unit>
+
+    @POST("api/pairing/clear-pending")
+    suspend fun clearPendingPairing(): Response<Unit>
+
+    // ── OAuth provider management (issue #534) ──────────────────────────
+    // Auth: the dashboard gates /start, /submit, /disconnect, /cancel via
+    // `_require_token`, which accepts either `X-Hermes-Session-Token` OR the
+    // legacy `Authorization: Bearer <token>`. ApiClient already injects the
+    // Bearer token on every request, so no extra header code is needed here.
+    // (poll is tokenless — read-only session state.)
+
+    @GET("api/providers/oauth")
+    suspend fun getOAuthProviders(): Response<OAuthProvidersResponse>
+
+    @DELETE("api/providers/oauth/{provider_id}")
+    suspend fun disconnectOAuthProvider(
+        @Path("provider_id") providerId: String,
+    ): Response<Unit>
+
+    @POST("api/providers/oauth/{provider_id}/start")
+    suspend fun startOAuthLogin(
+        @Path("provider_id") providerId: String,
+    ): Response<OAuthStartResponse>
+
+    @POST("api/providers/oauth/{provider_id}/submit")
+    suspend fun submitOAuthCode(
+        @Path("provider_id") providerId: String,
+        @Body body: OAuthSubmitRequest,
+    ): Response<OAuthSubmitResponse>
+
+    @GET("api/providers/oauth/{provider_id}/poll/{session_id}")
+    suspend fun pollOAuthSession(
+        @Path("provider_id") providerId: String,
+        @Path("session_id") sessionId: String,
+    ): Response<OAuthPollResponse>
+
+    @HTTP(method = "DELETE", path = "api/providers/oauth/sessions/{session_id}", hasBody = false)
+    suspend fun cancelOAuthSession(
+        @Path("session_id") sessionId: String,
+    ): Response<OAuthCancelResponse>
+
+    @GET("api/env")
+    suspend fun getEnvVars(): Response<Map<String, EnvVarConfig>>
+
+    @PUT("api/env")
+    suspend fun updateEnvVar(
+        @Body body: EnvVarUpdate,
+    ): Response<Unit>
+
+    @POST("api/env/reveal")
+    suspend fun revealEnvVar(
+        @Body request: EnvVarRevealRequest,
+    ): Response<EnvVarRevealResponse>
+
+    @HTTP(method = "DELETE", path = "api/env", hasBody = true)
+    suspend fun deleteEnvVar(
+        @Body request: EnvVarDeleteRequest,
+    ): Response<Unit>
+
+    // Backend requires a JSON body (BackupRequest) — bodyless POST 422s.
+    @POST("api/ops/backup")
+    suspend fun triggerBackup(
+        @Body body: BackupTriggerRequest,
+    ): Response<ActionResponse>
+
+    @POST("api/ops/doctor")
+    suspend fun runDoctor(): Response<DoctorResponse>
+
+    @GET("api/plugins/kanban/boards")
+    suspend fun getKanbanBoards(): Response<KanbanBoardsResponse>
+
+    @GET("api/plugins/kanban/board")
+    suspend fun getKanbanBoard(): Response<KanbanBoardResponse>
+
+    @POST("api/plugins/kanban/boards/{slug}/switch")
+    suspend fun switchKanbanBoard(
+        @Path("slug") slug: String,
+    ): Response<Unit>
+
+    @PATCH("api/plugins/kanban/tasks/{id}")
+    suspend fun updateKanbanTask(
+        @Path("id") taskId: String,
+        @Body body: Map<String, String?>,
+    ): Response<Unit>
+
+    @POST("api/plugins/kanban/tasks")
+    suspend fun createKanbanTask(
+        @Query("board") board: String?,
+        @Body task: CreateTaskBody,
+    ): Response<Unit>
+
+    // ── Admin: Hermes update ──────────────────────────────────────────
+    @GET("api/hermes/update/check")
+    suspend fun checkHermesUpdate(
+        @Query("force") force: Boolean = false,
+    ): Response<UpdateCheckResponse>
+
+    @POST("api/hermes/update")
+    suspend fun updateHermes(): Response<ActionResponse>
+
+    // ── Admin: Hermes update receipt (issue #958) ──
+    // Returns the durable record of the last `hermes update` run. 404 when no
+    // receipt exists yet (handled as "no info to show", not an error).
+    @GET("api/hermes/update/receipt")
+    suspend fun getUpdateReceipt(): Response<UpdateReceiptResponse>
+
+    // ── Admin: Portal ─────────────────────────────────────────────────
+    @GET("api/portal")
+    suspend fun getPortal(): Response<PortalResponse>
+
+    // ── Admin: Curator ────────────────────────────────────────────────
+    @GET("api/learning/graph")
+    suspend fun getLearningGraph(
+        @Query("profile") profile: String? = null,
+    ): Response<LearningGraphResponse>
+
+    @GET("api/curator")
+    suspend fun getCurator(): Response<CuratorResponse>
+
+    @PUT("api/curator/paused")
+    suspend fun setCuratorPaused(
+        @Body body: Map<String, Boolean>,
+    ): Response<ActionResponse>
+
+    @POST("api/curator/run")
+    suspend fun runCurator(): Response<ActionResponse>
+
+    // ── Admin: Memory ─────────────────────────────────────────────────
+    @GET("api/memory")
+    suspend fun getMemory(): Response<MemoryResponse>
+
+    @GET("api/memory/providers/{name}/config")
+    suspend fun getMemoryProviderConfig(
+        @Path("name") name: String,
+    ): Response<MemoryProviderConfigResponse>
+
+    @PUT("api/memory/providers/{name}/config")
+    suspend fun updateMemoryProviderConfig(
+        @Path("name") name: String,
+        @Body body: MemoryProviderConfigUpdateRequest,
+    ): Response<MemoryProviderConfigUpdateResponse>
+
+    @POST("api/memory/providers/{name}/setup")
+    suspend fun setupMemoryProvider(
+        @Path("name") name: String,
+        @Body body: MemoryProviderSetupRequest,
+    ): Response<MemoryProviderSetupResponse>
+
+    @POST("api/memory/reset")
+    suspend fun resetMemory(
+        @Body body: MemoryResetRequest,
+    ): Response<MemoryResetResponse>
+
+    // ── Admin: Credential pool ────────────────────────────────────────
+    @GET("api/credentials/pool")
+    suspend fun getCredentialPool(): Response<CredentialPoolResponse>
+
+    @POST("api/credentials/pool")
+    suspend fun addCredentialPoolEntry(
+        @Body body: CredentialPoolAddRequest,
+    ): Response<ActionResponse>
+
+    @DELETE("api/credentials/pool/{provider}/{index}")
+    suspend fun removeCredentialPoolEntry(
+        @Path("provider") provider: String,
+        @Path("index") index: Int,
+    ): Response<ActionResponse>
+
+    // ── Admin: Operations ─────────────────────────────────────────────
+    @POST("api/ops/security-audit")
+    suspend fun runSecurityAudit(): Response<ActionResponse>
+
+    @POST("api/ops/prompt-size")
+    suspend fun runPromptSize(): Response<ActionResponse>
+
+    @POST("api/ops/dump")
+    suspend fun runDump(): Response<ActionResponse>
+
+    @POST("api/ops/config-migrate")
+    suspend fun runConfigMigrate(): Response<ActionResponse>
+
+    @POST("api/skills/hub/update")
+    suspend fun updateSkillsFromHub(
+        @Body body: Map<String, String> = emptyMap(),
+    ): Response<ActionResponse>
+
+    // ── Admin: Backup download ────────────────────────────────────────
+    // @Streaming: backups are 300+ MB — Retrofit's default buffering of
+    // ResponseBody OOMs the app (observed crash with a 327MB archive).
+    @Streaming
+    @GET("api/ops/backup/download")
+    suspend fun downloadBackup(
+        @Query("archive") archive: String,
+    ): Response<ResponseBody>
+
+    // ── Admin: Backup import ──────────────────────────────────────────
+    // Multipart upload (issue #786): the path-based POST /api/ops/import
+    // is useless on a phone (server-side path typed into the app); the
+    // desktop's upload contract is the real one — file + force.
+    @Multipart
+    @POST("api/ops/import-upload")
+    suspend fun importUpload(
+        @Part("force") force: okhttp3.RequestBody,
+        @Part file: okhttp3.MultipartBody.Part,
+    ): Response<ActionResponse>
+
+    // ── Admin: Debug share ────────────────────────────────────────────
+    @POST("api/ops/debug-share")
+    suspend fun runDebugShare(
+        @Body body: DebugShareRequest,
+    ): Response<DebugShareResponse>
+
+    // ── Admin: Checkpoints ────────────────────────────────────────────
+    @GET("api/ops/checkpoints")
+    suspend fun getCheckpoints(): Response<CheckpointsResponse>
+
+    @POST("api/ops/checkpoints/prune")
+    suspend fun pruneCheckpoints(): Response<ActionResponse>
+
+    // ── Admin: Shell hooks ────────────────────────────────────────────
+    @GET("api/ops/hooks")
+    suspend fun getHooks(): Response<HookResponse>
+
+    @POST("api/ops/hooks")
+    suspend fun createHook(
+        @Body body: HookCreateRequest,
+    ): Response<ActionResponse>
+
+    @HTTP(method = "DELETE", path = "api/ops/hooks", hasBody = true)
+    suspend fun deleteHook(
+        @Body body: HookDeleteRequest,
+    ): Response<ActionResponse>
+
+    // ── Admin: Action status (log viewer) ────────────────────────────
+    @GET("api/actions/{name}/status")
+    suspend fun getActionStatus(
+        @Path("name") name: String,
+        @Query("lines") lines: Int = 200,
+    ): Response<ActionStatusResponse>
+
+    // ── Managed Files ──────────────────────────────────────────────────
+    // Backed by hermes_cli/web_server.py /api/files* endpoints. The mobile app
+    // talks to the dashboard (9119) and authenticates with the standard
+    // Bearer/session-cookie middleware, so no ?token= query param is needed.
+    @GET("api/files")
+    suspend fun listManagedFiles(
+        @Query("path") path: String? = null,
+    ): Response<ManagedFilesListResponse>
+
+    @GET("api/files/read")
+    suspend fun readManagedFile(
+        @Query("path") path: String,
+    ): Response<ManagedFileRead>
+
+    @POST("api/files/upload")
+    suspend fun uploadManagedFile(
+        @Body body: ManagedFileUpload,
+    ): Response<ManagedFileActionResponse>
+
+    @Multipart
+    @POST("api/files/upload-stream")
+    suspend fun uploadManagedFileStream(
+        @Part("path") path: okhttp3.RequestBody,
+        @Part("overwrite") overwrite: okhttp3.RequestBody,
+        @Part file: okhttp3.MultipartBody.Part,
+    ): Response<ManagedFileActionResponse>
+
+    @POST("api/files/mkdir")
+    suspend fun createManagedDirectory(
+        @Body body: ManagedDirectoryCreate,
+    ): Response<ManagedFileActionResponse>
+
+    @HTTP(method = "DELETE", path = "api/files", hasBody = true)
+    suspend fun deleteManagedFile(
+        @Body body: ManagedFileDelete,
+    ): Response<ManagedFileActionResponse>
+
+    // ── Audio: server-side transcription ────────────────────────────────
+    // The dashboard's voice relay (hermes_cli/web_routers/audio.py) — the
+    // same endpoint the desktop client's voice notes use. The clip rides
+    // inline as a base64 data URL; the server resolves STT through the
+    // active profile's configured provider.
+    @POST("api/audio/transcribe")
+    suspend fun transcribeAudio(
+        @Body body: AudioTranscriptionRequest,
+    ): Response<AudioTranscriptionResponse>
+
+    @POST("api/audio/speak")
+    suspend fun speakText(
+        @Body request: TtsSpeakRequest,
+        @Query("profile") profile: String? = null,
+    ): Response<TtsSpeakResponse>
+}

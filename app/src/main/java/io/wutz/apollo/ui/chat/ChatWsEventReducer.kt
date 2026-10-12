@@ -1,0 +1,1480 @@
+package io.wutz.apollo.ui.chat
+
+import io.wutz.apollo.data.model.deltaFrom
+import io.wutz.apollo.data.model.mergeWith
+import io.wutz.apollo.data.model.parseUsageSnapshot
+import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.data.ws.WsEvent
+import io.wutz.apollo.data.ws.toJsonElement
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
+private fun List<ChatMessage>.upsertById(message: ChatMessage): List<ChatMessage> = (this + message).dedupeById()
+
+private fun Long.toIntOrNullSafely(): Int? = takeIf { it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() }?.toInt()
+
+private fun Double?.validTpsOrNull(): Double? = takeIf { it != null && it.isFinite() && it > 0.0 }
+
+internal fun applyUsageSnapshot(
+    state: ChatUiState,
+    snapshot: io.wutz.apollo.data.model.UsageSnapshotResponse,
+): ChatUiState {
+    val validTps = snapshot.avgTps?.takeIf { it.isFinite() && it > 0.0 }
+    return state.copy(
+        sessionUsage = snapshot.mergeWith(state.sessionUsage),
+        compressionCount = snapshot.compressions ?: state.compressionCount,
+        usedContextTokens = snapshot.contextUsed?.takeIf { it > 0L } ?: state.usedContextTokens,
+        fullContextTokens = snapshot.contextMax?.takeIf { it > 0L } ?: state.fullContextTokens,
+        latestTps = validTps ?: state.latestTps,
+    )
+}
+
+/**
+ * Strips this turn's sealed-orphan prefix from the final message text.
+ *
+ * Issue #842: `message.complete` carries the FULL final assistant text, which
+ * often repeats the interim commentary that was already sealed into its own
+ * bubble(s) at each `tool.start`. When the complete text begins with the
+ * concatenation of those sealed contents, the prefix is removed so the final
+ * bubble shows only the not-yet-rendered part — every narration line appears
+ * exactly once (sealed orphan bubbles + stripped answer), matching the
+ * persisted transcript. Returns the text unchanged when there is no overlap
+ * (commentary that is NOT carried in the final row stays in its orphan
+ * bubbles and the final bubble keeps its full text).
+ */
+private fun stripSealedOrphanPrefix(
+    text: String,
+    messages: List<ChatMessage>,
+    sealedOrphanIds: List<String>,
+): String {
+    if (sealedOrphanIds.isEmpty()) return text
+    val prefix =
+        sealedOrphanIds
+            .mapNotNull { id -> messages.firstOrNull { it.id == id }?.content }
+            .joinToString("")
+    if (prefix.isEmpty() || !text.startsWith(prefix)) return text
+    return text.removePrefix(prefix)
+}
+
+/**
+ * Pure state reducer for WebSocket events.
+ *
+ * Transforms [ChatUiState] in response to each [WsEvent] and returns a
+ * [ReducerResult] containing the new state plus any side-effects the
+ * ViewModel should execute (persistence, navigation, etc.).
+ *
+ * This is a pure function — no I/O, no mutable state, no dependencies on
+ * Android or ViewModel classes. Easy to unit test.
+ */
+object ChatWsEventReducer {
+    /**
+     * Projects retained terminal state without consulting any live streaming buffers.
+     * Only `inflight.assistant` may become assistant prose; stale UI text, reasoning,
+     * and message ids are deliberately excluded.
+     */
+    fun reduceRetainedReplyFailure(
+        state: ChatUiState,
+        inflight: Map<String, Any?>,
+        currentSessionId: String,
+    ): ReducerResult {
+        if (inflight["status"] != "error") return ReducerResult(state, StreamingState())
+        val assistant = (inflight["assistant"] as? String).orEmpty()
+        val payload = inflight.toMutableMap().apply { put("partial", assistant.isNotBlank()) }
+        val cleanState =
+            state.copy(
+                isAgentTyping = false,
+                isThinking = false,
+                thinkingText = "",
+                streamingMessage = null,
+            )
+        return reduce(
+            cleanState,
+            StreamingState(),
+            WsEvent.MessageComplete(
+                text = assistant,
+                sessionId = currentSessionId,
+                // Retained inflight has no completion identity; suppress the event's random default.
+                completionId = "",
+                rawPayload = payload,
+            ),
+            currentSessionId,
+        )
+    }
+
+    fun reduce(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent,
+        currentSessionId: String? = null,
+    ): ReducerResult {
+        val eventSessionId =
+            when (event) {
+                is WsEvent.MessageStart -> event.sessionId
+                is WsEvent.MessageToken -> event.sessionId
+                is WsEvent.ThinkingDelta -> event.sessionId
+                is WsEvent.ReasoningDelta -> event.sessionId
+                is WsEvent.MessageComplete -> event.sessionId
+                is WsEvent.MessageDone -> event.sessionId
+                is WsEvent.ToolStart -> event.sessionId
+                is WsEvent.ToolComplete -> event.sessionId
+                is WsEvent.ToolOutputRisk -> event.sessionId
+                is WsEvent.ClarifyRequest -> event.sessionId
+                is WsEvent.ClarifyExpire -> event.sessionId
+                is WsEvent.ToolProgress -> event.sessionId
+                is WsEvent.ToolGenerating -> event.sessionId
+                is WsEvent.SubagentEvent -> event.sessionId
+                is WsEvent.ReviewSummary -> event.sessionId
+                is WsEvent.BtwComplete -> event.sessionId
+                is WsEvent.SessionUsage -> event.sessionId
+                is WsEvent.TranscriptResyncRequired -> event.sessionId
+                is WsEvent.MessageReactionUpdated -> event.sessionId
+                is WsEvent.VaultUnlockRequest -> event.sessionId
+                is WsEvent.VaultUnlockExpire -> event.sessionId
+                is WsEvent.VaultSaveLoginRequest -> event.sessionId
+                is WsEvent.VaultSaveLoginExpire -> event.sessionId
+                is WsEvent.VaultCodeRequest -> event.sessionId
+                is WsEvent.VaultCodeExpire -> event.sessionId
+                is WsEvent.StatusUpdate -> event.sessionId
+                else -> null
+            }
+        if (eventSessionId != null && (currentSessionId == null || eventSessionId != currentSessionId)) {
+            return ReducerResult(state = state, streamingState = streamingState)
+        }
+        val result = reduceInternal(state, streamingState, event)
+        val hydratedTodos =
+            if (result.state.todos.isEmpty() && result.state.messages.isNotEmpty()) {
+                hydrateTodosFromMessages(result.state.messages)
+            } else {
+                result.state.todos
+            }
+        return if (hydratedTodos !== result.state.todos) {
+            result.copy(state = result.state.copy(todos = hydratedTodos))
+        } else {
+            result
+        }
+    }
+
+    private fun reduceInternal(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent,
+    ): ReducerResult =
+        when (event) {
+            is WsEvent.GatewayReady -> onGatewayReady(state, streamingState)
+
+            is WsEvent.MessageStart -> onMessageStart(state, streamingState, event)
+
+            is WsEvent.MessageToken -> onMessageToken(state, streamingState, event)
+
+            is WsEvent.ThinkingDelta -> onThinkingDelta(state, streamingState, event)
+
+            is WsEvent.ReasoningDelta -> onReasoningDelta(state, streamingState, event)
+
+            is WsEvent.ReasoningAvailable -> onReasoningAvailable(state, streamingState, event)
+
+            is WsEvent.MessageComplete -> onMessageComplete(state, streamingState, event)
+
+            is WsEvent.MessageDone -> onMessageDone(state, streamingState)
+
+            is WsEvent.ToolStart -> onToolStart(state, streamingState, event)
+
+            is WsEvent.ToolComplete -> onToolComplete(state, streamingState, event)
+
+            is WsEvent.ToolOutputRisk -> onToolOutputRisk(state, streamingState, event)
+
+            is WsEvent.ToolProgress -> onToolProgress(state, streamingState, event)
+
+            is WsEvent.ToolGenerating -> onToolGenerating(state, streamingState, event)
+
+            is WsEvent.SubagentEvent -> onSubagentEvent(state, streamingState, event)
+
+            is WsEvent.ClarifyRequest -> onClarifyRequest(state, streamingState, event)
+
+            is WsEvent.ClarifyExpire -> onClarifyExpire(state, streamingState, event)
+
+            is WsEvent.ReviewSummary -> onReviewSummary(state, streamingState, event)
+
+            is WsEvent.BtwComplete -> onBtwComplete(state, streamingState, event)
+
+            is WsEvent.SessionUsage -> onSessionUsage(state, streamingState, event)
+
+            is WsEvent.TodoUpdated -> onTodoUpdated(state, streamingState, event)
+
+            is WsEvent.RpcError -> onRpcError(state, streamingState, event)
+
+            is WsEvent.GatewayError -> onGatewayError(state, streamingState, event)
+
+            is WsEvent.BackgroundComplete -> onBackgroundComplete(state, streamingState, event)
+
+            is WsEvent.SessionUpdated -> onSessionUpdated(state, streamingState)
+
+            is WsEvent.SessionTitle -> onSessionTitle(state, streamingState, event)
+
+            // Runtime invalidation needs ViewModel context (runtime binding, queue, resume path).
+            is WsEvent.SessionReclaimed -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.StatusUpdate -> onStatusUpdate(state, streamingState, event)
+
+            is WsEvent.ConnectionRequest,
+            is WsEvent.ConnectionUpdate,
+            -> ReducerResult(state, streamingState)
+
+            is WsEvent.Unknown -> onUnknown(state, streamingState)
+
+            // SessionInfo is a no-op in the original code
+            is WsEvent.SessionInfo -> ReducerResult(state = state, streamingState = streamingState)
+
+            // RpcResult is handled by the ViewModel (needs pending request context)
+            is WsEvent.RpcResult -> ReducerResult(state = state, streamingState = streamingState)
+
+            // Server requests are dispatched by ChatViewModel to the existing
+            // prompt delegates; the reducer must remain side-effect free.
+            is WsEvent.ServerRequest -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.ServerRequestCancelled -> ReducerResult(state = state, streamingState = streamingState)
+
+            // ApprovalRequest is handled by the ViewModel (needs active session + WS client)
+            is WsEvent.ApprovalRequest -> ReducerResult(state = state, streamingState = streamingState)
+
+            // SudoRequest / SecretRequest are handled by the ViewModel (issue #524)
+            is WsEvent.SudoRequest -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.SudoExpire -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.SecretRequest -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.SecretExpire -> ReducerResult(state = state, streamingState = streamingState)
+
+            // Vault prompts are handled by the ViewModel (issue #1090)
+            is WsEvent.VaultUnlockRequest,
+            is WsEvent.VaultUnlockExpire,
+            is WsEvent.VaultSaveLoginRequest,
+            is WsEvent.VaultSaveLoginExpire,
+            is WsEvent.VaultCodeRequest,
+            is WsEvent.VaultCodeExpire,
+            -> ReducerResult(state = state, streamingState = streamingState)
+
+            // ReactionEvent is handled by the ViewModel — purely cosmetic animation
+            is WsEvent.ReactionEvent -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.MessageReactionUpdated -> onMessageReaction(state, streamingState, event)
+
+            // Change events (issue #784) are consumed by their screens' ViewModels
+            is WsEvent.ChangeEvent -> ReducerResult(state = state, streamingState = streamingState)
+
+            // TranscriptResyncRequired is handled by ChatViewModel directly (refetch history on replay gap)
+            is WsEvent.TranscriptResyncRequired -> ReducerResult(state = state, streamingState = streamingState)
+        }
+
+    // ── GatewayReady ──────────────────────────────────────────────────
+
+    private fun onGatewayReady(
+        state: ChatUiState,
+        streamingState: StreamingState,
+    ): ReducerResult = ReducerResult(state = state, streamingState = streamingState)
+
+    // ── MessageStart ──────────────────────────────────────────────────
+
+    private fun onMessageStart(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageStart,
+    ): ReducerResult {
+        val previousFailureMessageId = state.replyFailureProjection?.messageId
+        val turnState =
+            state.copy(
+                messages =
+                    if (previousFailureMessageId == null) {
+                        state.messages
+                    } else {
+                        state.messages.filterNot { it.id == previousFailureMessageId }
+                    },
+                replyFailure = null,
+                replyFailureProjection = null,
+            )
+        val msg =
+            ChatMessage(
+                role = MessageRole.ASSISTANT,
+                content = "",
+                // Issue #755: never seed a new message with the previous
+                // message's reasoning — the card must start blank and only
+                // fill once real reasoning deltas arrive.
+                reasoningText = "",
+                isStreaming = true,
+            )
+        val effects = mutableListOf<ReducerEffect>()
+
+        val cleanedSubagents =
+            if (turnState.subagentIndicators.all { it.isComplete || it.isFailed }) {
+                emptyList()
+            } else {
+                turnState.subagentIndicators
+            }
+
+        // Build new state: finalize any orphan streaming message, then set the new one
+        var orphan: ChatMessage? = null
+        val preState =
+            if (streamingState.streamingMessage?.content?.isNotEmpty() == true) {
+                val finalized =
+                    streamingState.streamingMessage.copy(
+                        isStreaming = false,
+                        finishTimestamp = System.currentTimeMillis(),
+                        tokenCount = null,
+                        tps = null,
+                    )
+                orphan = finalized
+                turnState.copy(
+                    messages = turnState.messages.upsertById(finalized),
+                    isAgentTyping = true,
+                    subagentIndicators = cleanedSubagents,
+                )
+            } else {
+                turnState.copy(
+                    isAgentTyping = true,
+                    subagentIndicators = cleanedSubagents,
+                )
+            }
+        val newStreamingState =
+            StreamingState(
+                streamingMessage = msg,
+                // Issue #755: the new message starts with a clean reasoning
+                // slate — no isReasoning flag, no inherited reasoning text.
+                isReasoning = false,
+                reasoningText = "",
+                turnUsageBaseline =
+                    if (streamingState.turnUsageBaselineCaptured) {
+                        streamingState.turnUsageBaseline
+                    } else {
+                        state.sessionUsage
+                    },
+                turnUsageBaselineCaptured = true,
+            )
+        val newState = preState
+        val sid = newState.currentSessionId
+        if (orphan != null && sid != null) {
+            effects.add(ReducerEffect.PersistMessage(orphan, sid))
+        }
+
+        return ReducerResult(state = newState, streamingState = newStreamingState, effects = effects)
+    }
+
+    // ── MessageToken ──────────────────────────────────────────────────
+
+    private fun onMessageToken(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageToken,
+    ): ReducerResult {
+        // Token accumulation is done by the ViewModel (streaming buffer + flush timer).
+        // The reducer only signals that new content arrived — ViewModel owns the timer.
+        return ReducerResult(state = state, streamingState = streamingState)
+    }
+
+    // ── ThinkingDelta ─────────────────────────────────────────────────
+
+    private fun onThinkingDelta(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ThinkingDelta,
+    ): ReducerResult {
+        val currentContent = streamingState.thinkingText + event.token
+        return ReducerResult(
+            state = state,
+            streamingState =
+                streamingState.copy(
+                    isThinking = true,
+                    thinkingText = currentContent,
+                ),
+        )
+    }
+
+    // ── ReasoningDelta ────────────────────────────────────────────────
+    private fun onReasoningDelta(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ReasoningDelta,
+    ): ReducerResult {
+        val currentContent = streamingState.reasoningText + event.token
+        return ReducerResult(
+            state = state,
+            streamingState =
+                streamingState.copy(
+                    isReasoning = true,
+                    reasoningText = currentContent,
+                ),
+        )
+    }
+
+    // ── ReasoningAvailable ────────────────────────────────────────────
+    private fun onReasoningAvailable(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ReasoningAvailable,
+    ): ReducerResult {
+        // The gateway sends the FULL reasoning trace in reasoning.available
+        // (payload `text`) once reasoning finishes streaming. When the text
+        // is present, use it as the authoritative fill — it survives even if
+        // per-token reasoning.delta events were dropped or wiped by a
+        // mid-turn tool.start. Attach it to the live streaming message so
+        // message.complete carries it into the finalized bubble.
+        val text = event.text
+        return if (!text.isNullOrBlank() && streamingState.streamingMessage != null) {
+            // Issue #842: the gateway ALSO re-sends the agent's interim
+            // NARRATION as reasoning.available ~40ms before each tool.start
+            // (the commentary already rendered as the message body, echoed
+            // verbatim). Attaching the echo as reasoning would make every
+            // narration bubble render its own text twice (body + Reasoning
+            // card). Real reasoning never equals the message content, so the
+            // exact-content echo is skipped and the reasoning.delta trace
+            // (already in streamingState) stays authoritative.
+            val content = streamingState.streamingMessage.content
+            if (text.trim() == content.trim()) {
+                ReducerResult(
+                    state = state,
+                    streamingState = streamingState.copy(isReasoning = true),
+                )
+            } else {
+                ReducerResult(
+                    state = state,
+                    streamingState =
+                        streamingState.copy(
+                            isReasoning = true,
+                            reasoningText = text,
+                            streamingMessage = streamingState.streamingMessage.copy(reasoningText = text),
+                        ),
+                )
+            }
+        } else {
+            ReducerResult(
+                state = state,
+                streamingState = streamingState.copy(isReasoning = true),
+            )
+        }
+    }
+
+    // ── MessageComplete ───────────────────────────────────────────────
+
+    private fun onMessageComplete(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageComplete,
+    ): ReducerResult {
+        val failure = replyFailureFromPayload(event.rawPayload, event.text)
+        if (failure != null) return onReplyFailure(state, streamingState, event, failure)
+        if (GatewayNotice.isInterruptSentinel(event.text)) return onInterruptNotice(state, streamingState, event)
+        val finalSnapshot = event.rawPayload?.let(::parseUsageSnapshot)
+        val usageState = finalSnapshot?.let { applyUsageSnapshot(state, it) } ?: state
+        val turnUsage = finalSnapshot?.deltaFrom(streamingState.turnUsageBaseline)
+        val streaming = streamingState.interruptedMessage ?: streamingState.streamingMessage
+        // Prefer the authoritative reasoning carried in the message.complete
+        // payload (the gateway's assembled full trace), then fall back to
+        // whatever reasoning.delta deltas accumulated during streaming.
+        // Fixes: a mid-turn tool.start wiping the streaming reasoning used
+        // to leave the finalized bubble with no reasoning card at all.
+        val reasoning =
+            event.reasoning
+                ?.takeIf { it.isNotBlank() }
+                ?: streamingState.reasoningText.ifBlank { streaming?.reasoningText ?: "" }
+        // Issue #842: the complete payload carries the FULL final text, which
+        // often repeats commentary already sealed into its own bubble(s) at
+        // each tool.start. Strip the sealed prefix so the final bubble shows
+        // only the part not already rendered — every narration line appears
+        // exactly once, matching the persisted transcript (sealed orphans +
+        // stripped answer). Turns whose final text does NOT contain the
+        // commentary are left untouched (orphans stay, final keeps its text).
+        val text = stripSealedOrphanPrefix(event.text, usageState.messages, streamingState.sealedOrphanIds)
+        // Edge: the complete payload was entirely covered by sealed orphans
+        // (the interim text already rendered as its own bubble(s)) — nothing
+        // new to show, so don't add an empty final bubble. Usage is applied
+        // above before this return because the final snapshot is still needed
+        // as the next turn's cumulative baseline.
+        if (text.isBlank()) {
+            val effects = mutableListOf<ReducerEffect>()
+            val sid = state.currentSessionId
+            var updatedTargetMsg: ChatMessage? = null
+            val updatedMessages =
+                if (!event.completionId.isNullOrBlank()) {
+                    val lastAssistantIdx =
+                        usageState.messages
+                            .indexOfLast {
+                                it.role == MessageRole.ASSISTANT &&
+                                    (streamingState.sealedOrphanIds.contains(it.id) || it.id == streaming?.id)
+                            }.takeIf { it >= 0 }
+                    if (lastAssistantIdx != null) {
+                        usageState.messages.toMutableList().also { list ->
+                            val updated = list[lastAssistantIdx].copy(completionId = event.completionId)
+                            list[lastAssistantIdx] = updated
+                            updatedTargetMsg = updated
+                        }
+                    } else {
+                        usageState.messages
+                    }
+                } else {
+                    usageState.messages
+                }
+            if (sid != null && updatedTargetMsg != null) {
+                effects.add(ReducerEffect.PersistMessage(updatedTargetMsg, sid))
+            }
+            effects.add(ReducerEffect.RefreshSessions)
+            effects.add(ReducerEffect.RefreshContextUsage)
+            return ReducerResult(
+                state = usageState.copy(messages = updatedMessages, isAgentTyping = false),
+                streamingState = StreamingState(),
+                effects = effects,
+            )
+        }
+        // #1285: bind the committed final row only when this bubble carries the whole reply body;
+        // a stripped commentary prefix means the local bubble is not that row's exact content.
+        val finalRowId = parsePersistedTurn(event.rawPayload)?.finalAssistantRowId?.takeIf { text == event.text }
+        val tps = turnUsage?.avgTps.validTpsOrNull() ?: usageState.latestTps.validTpsOrNull()
+        val tokenCount =
+            if (turnUsage?.outputTokens != null) {
+                turnUsage.outputTokens.toIntOrNullSafely()
+            } else {
+                TokenEstimator.estimate(text).takeIf { it > 0 }
+            }
+        val msg =
+            streaming?.copy(
+                content = text,
+                isStreaming = false,
+                reasoningText = reasoning,
+                finishTimestamp = System.currentTimeMillis(),
+                tokenCount = tokenCount,
+                tps = tps,
+                completionId = event.completionId,
+                serverRowId = finalRowId ?: streaming.serverRowId,
+            ) ?: ChatMessage(
+                role = MessageRole.ASSISTANT,
+                content = text,
+                reasoningText = reasoning,
+                finishTimestamp = System.currentTimeMillis(),
+                tokenCount = tokenCount,
+                tps = tps,
+                completionId = event.completionId,
+                serverRowId = finalRowId,
+            )
+        val effects = mutableListOf<ReducerEffect>()
+        val sid = state.currentSessionId
+        if (sid != null) {
+            effects.add(ReducerEffect.PersistMessage(msg, sid))
+        }
+        effects.add(ReducerEffect.RefreshSessions)
+        // Refresh the context meter immediately on completion instead of
+        // waiting for the next 5s session-sync poll.
+        effects.add(ReducerEffect.RefreshContextUsage)
+        // Mobile-only media fix (issue #724): the WS stream delivers the raw
+        // `MEDIA:<host-path>` directive. Turn it into real attachments (images
+        // inline, every other file tappable) via the gateway /api/files/download
+        // endpoint — works on a remote phone too.
+        if (msg.role == MessageRole.ASSISTANT && sid != null) {
+            effects.add(ReducerEffect.AttachHostMedia(sid, msg.id))
+        }
+        return ReducerResult(
+            state =
+                usageState.copy(
+                    messages = usageState.messages.upsertById(msg),
+                    isAgentTyping = false,
+                    clarifyRequest = null,
+                ),
+            streamingState = StreamingState(),
+            effects = effects,
+        )
+    }
+
+    // Keep terminal diagnostics out of normal assistant messages and persistence.
+    private fun onReplyFailure(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageComplete,
+        failure: ReplyFailure,
+    ): ReducerResult {
+        val usageState = event.rawPayload?.let(::parseUsageSnapshot)?.let { applyUsageSnapshot(state, it) } ?: state
+        val streaming = streamingState.streamingMessage
+        val text =
+            if (event.rawPayload?.get("partial") == true) {
+                event.text
+                    .takeIf { it.isNotBlank() }
+                    ?.let { stripSealedOrphanPrefix(it, state.messages, streamingState.sealedOrphanIds) }
+                    ?: streaming?.content.orEmpty()
+            } else {
+                streaming?.content.orEmpty()
+            }
+        val reasoning = streamingState.reasoningText.ifBlank { streaming?.reasoningText.orEmpty() }
+        val existingProjection = state.replyFailureProjection
+        val completionId = event.completionId?.takeIf { it.isNotBlank() } ?: existingProjection?.completionId
+        val sessionIdentity = state.currentSessionId ?: event.sessionId.orEmpty()
+        val failureId =
+            existingProjection?.failureId
+                ?: event.completionId?.takeIf { it.isNotBlank() }?.let { "reply-failure-$sessionIdentity-$it" }
+                ?: failure.id
+        val projectionMessageId =
+            existingProjection?.messageId
+                ?: streaming?.id
+                ?: event.completionId?.takeIf { it.isNotBlank() }?.let { "reply-failure-message-$it" }
+                ?: if (text.isNotBlank() || reasoning.isNotBlank()) "reply-failure-message-$failureId" else null
+        val projection = ReplyFailureProjection(projectionMessageId, failureId, completionId)
+        val existingProjectedMessage =
+            projectionMessageId?.let { id -> usageState.messages.firstOrNull { it.id == id } }
+        val partial =
+            if (text.isNotBlank() || reasoning.isNotBlank()) {
+                val base =
+                    streaming
+                        ?: existingProjectedMessage
+                        ?: ChatMessage(
+                            id = checkNotNull(projectionMessageId),
+                            role = MessageRole.ASSISTANT,
+                            content = "",
+                        )
+                base.copy(
+                    id = checkNotNull(projectionMessageId),
+                    content = text,
+                    reasoningText = reasoning,
+                    isStreaming = false,
+                    finishTimestamp = System.currentTimeMillis(),
+                    completionId = completionId,
+                )
+            } else {
+                null
+            }
+        val messagesWithoutOldProjection =
+            existingProjection?.messageId?.let { oldId -> usageState.messages.filterNot { it.id == oldId } }
+                ?: usageState.messages
+        val projectedMessages =
+            partial?.let { messagesWithoutOldProjection.upsertById(it) } ?: messagesWithoutOldProjection
+        // A failed partial is a transient projection of gateway `inflight`, not a
+        // successful transcript row. Persisting it would erase failure provenance on
+        // hydration and make a later session reopen look healthy.
+        val effects = listOf(ReducerEffect.RefreshSessions, ReducerEffect.RefreshContextUsage)
+        return ReducerResult(
+            state =
+                usageState.copy(
+                    messages = projectedMessages,
+                    replyFailure = failure.copy(id = failureId),
+                    replyFailureProjection = projection,
+                    isAgentTyping = false,
+                    isThinking = false,
+                    streamingMessage = null,
+                    clarifyRequest = null,
+                ),
+            streamingState = StreamingState(),
+            effects = effects,
+        )
+    }
+
+    // ── MessageDone ───────────────────────────────────────────────────
+
+    private fun onMessageDone(
+        state: ChatUiState,
+        streamingState: StreamingState,
+    ): ReducerResult {
+        val streaming =
+            streamingState.streamingMessage
+                ?: return ReducerResult(
+                    state = state.copy(isAgentTyping = false),
+                    streamingState = streamingState.takeIf { it.interruptedMessage != null } ?: StreamingState(),
+                )
+        val reasoning =
+            if (streamingState.reasoningText.isNotBlank()) {
+                streamingState.reasoningText
+            } else {
+                streaming.reasoningText
+            }
+        val tokenCount = TokenEstimator.estimate(streaming.content).takeIf { it > 0 }
+        val msg =
+            streaming.copy(
+                isStreaming = false,
+                reasoningText = reasoning,
+                finishTimestamp = System.currentTimeMillis(),
+                tokenCount = streaming.tokenCount ?: tokenCount,
+                tps = streaming.tps ?: state.latestTps?.takeIf { it > 0.0 },
+            )
+        val effects = mutableListOf<ReducerEffect>()
+        val sid = state.currentSessionId
+        if (sid != null) {
+            effects.add(ReducerEffect.PersistMessage(msg, sid))
+        }
+        // Mobile-only media fix (issue #724): attach any `MEDIA:<path>` file
+        // carried in the finalized assistant message as a real attachment. See
+        // the ReducerEffect.AttachHostMedia KDoc for the rationale.
+        if (msg.role == MessageRole.ASSISTANT && sid != null) {
+            effects.add(ReducerEffect.AttachHostMedia(sid, msg.id))
+        }
+        return ReducerResult(
+            state =
+                state.copy(
+                    messages = state.messages.upsertById(msg),
+                    isAgentTyping = false,
+                ),
+            streamingState = StreamingState(),
+            effects = effects,
+        )
+    }
+
+    // ── ToolStart ─────────────────────────────────────────────────────
+
+    private fun onToolStart(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ToolStart,
+    ): ReducerResult {
+        val contentJson =
+            event.data?.let {
+                OkHttpProvider.json.encodeToString(it.toJsonElement())
+            } ?: ""
+        val toolMessage =
+            ChatMessage(
+                role = MessageRole.TOOL,
+                content = contentJson,
+                toolName = event.name,
+                toolStatus = ToolStatus.RUNNING,
+                // Issue #842: keep the gateway's call id so REST transcript
+                // rows (which carry the same `tool_call_id`) can be matched
+                // 1:1 against this live bubble during merges.
+                toolCallId = event.data?.get("tool_id") as? String ?: "",
+            )
+
+        // Finalize any orphan streaming message (issue #771 + #842): interim
+        // text streamed BEFORE the tool is sealed as its own bubble (desktop
+        // parity). The sealed id is tracked in StreamingState so
+        // onMessageComplete can strip the repeated prefix — the complete
+        // payload often re-carries the same commentary text.
+        var orphanToPersist: ChatMessage? = null
+        val newState =
+            if (streamingState.streamingMessage?.content?.isNotEmpty() == true) {
+                val reasoning =
+                    if (streamingState.reasoningText.isNotBlank()) {
+                        streamingState.reasoningText
+                    } else {
+                        streamingState.streamingMessage.reasoningText
+                    }
+                val finalized =
+                    streamingState.streamingMessage.copy(
+                        isStreaming = false,
+                        reasoningText = reasoning,
+                        finishTimestamp = System.currentTimeMillis(),
+                        tokenCount = null,
+                        tps = null,
+                    )
+                orphanToPersist = finalized
+                state.copy(
+                    messages = state.messages.upsertById(finalized),
+                )
+            } else {
+                state
+            }
+        val sid = newState.currentSessionId
+        val effects = mutableListOf<ReducerEffect>()
+        if (sid != null) {
+            if (orphanToPersist != null) {
+                effects.add(ReducerEffect.PersistMessage(orphanToPersist, sid))
+            }
+            effects.add(ReducerEffect.PersistMessage(toolMessage, sid))
+        }
+
+        // Issue #771: KEEP the streaming state across a tool call when the
+        // stream has nothing to seal yet (a reasoning-model turn streams its
+        // thinking BEFORE the tool starts) — wiping it made the reasoning
+        // bubble vanish mid-turn. When an orphan WAS sealed (interim text
+        // before the tool), the streaming message is done — null it, keep the
+        // reasoning text in shared state, and remember the sealed orphan so
+        // message.complete can strip the repeated prefix.
+        val finalStreamingState =
+            if (orphanToPersist != null) {
+                streamingState.copy(
+                    streamingMessage = null,
+                    sealedOrphanIds = streamingState.sealedOrphanIds + orphanToPersist.id,
+                )
+            } else {
+                streamingState
+            }
+
+        val parsedTodos = if (event.name == "todo") extractTodosFromMap(event.data) else null
+        val nextTodos = parsedTodos ?: newState.todos
+
+        return ReducerResult(
+            state =
+                newState.copy(
+                    messages = newState.messages + toolMessage,
+                    isAgentTyping = true,
+                    todos = nextTodos,
+                ),
+            streamingState = finalStreamingState,
+            effects = effects,
+        )
+    }
+
+    // ── ToolComplete ──────────────────────────────────────────────────
+
+    private fun onToolComplete(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ToolComplete,
+    ): ReducerResult {
+        val contentJson =
+            event.data?.let {
+                OkHttpProvider.json.encodeToString(it.toJsonElement())
+            } ?: ""
+        val messages = state.messages.toMutableList()
+        val toolIdx = findToolIndex(messages, event.name, event.data?.get("tool_id") as? String, ToolStatus.RUNNING)
+        if (toolIdx < 0) return ReducerResult(state = state, streamingState = streamingState)
+
+        val updated =
+            messages[toolIdx].copy(
+                toolStatus = ToolStatus.COMPLETED,
+                content = contentJson,
+                isHistoricalCache = false,
+            )
+        messages[toolIdx] = updated
+
+        val effects = mutableListOf<ReducerEffect>()
+        val sid = state.currentSessionId
+        if (sid != null) {
+            effects.add(ReducerEffect.PersistMessage(updated, sid))
+        }
+
+        val parsedTodos = if (event.name == "todo") extractTodosFromMap(event.data) else null
+        val nextTodos = parsedTodos ?: state.todos
+
+        return ReducerResult(
+            state = state.copy(messages = messages, todos = nextTodos),
+            streamingState = streamingState,
+            effects = effects,
+        )
+    }
+
+    // ── ToolOutputRisk ────────────────────────────────────────────────
+
+    /**
+     * Attaches [ToolOutputRiskData] to the matching tool message.
+     *
+     * Finds the matching stable tool ID first. If the event has no ID or no ID
+     * match exists, it falls back to the tool name for legacy payloads. It
+     * prefers RUNNING tools and then falls back to COMPLETED tools because the
+     * risk event may arrive after tool.complete.
+     */
+    private fun onToolOutputRisk(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ToolOutputRisk,
+    ): ReducerResult {
+        val riskData =
+            ToolOutputRiskData(
+                risk = event.risk,
+                findings = event.findings,
+                redacted = event.redacted,
+            )
+
+        val messages = state.messages.toMutableList()
+
+        // Prefer RUNNING tool, fall back to COMPLETED. Stable tool IDs win over
+        // name matching so overlapping calls to the same tool stay isolated.
+        var toolIdx = findToolIndex(messages, event.name, event.toolId, ToolStatus.RUNNING)
+        if (toolIdx < 0) {
+            toolIdx = findToolIndex(messages, event.name, event.toolId, ToolStatus.COMPLETED)
+        }
+        if (toolIdx < 0) return ReducerResult(state = state, streamingState = streamingState)
+
+        messages[toolIdx] = messages[toolIdx].copy(toolOutputRiskData = riskData)
+
+        // No persist — risk data is transient (not stored in SQLite)
+        return ReducerResult(
+            state = state.copy(messages = messages),
+            streamingState = streamingState,
+        )
+    }
+
+    // ── ClarifyRequest ────────────────────────────────────────────────
+
+    private fun onClarifyRequest(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ClarifyRequest,
+    ): ReducerResult {
+        val questions =
+            if (event.questions.isNotEmpty()) {
+                event.questions.map {
+                    ClarifyQuestionUi(
+                        qid = it.qid,
+                        question = it.question,
+                        choices = it.choices,
+                        multiSelect = it.multiSelect,
+                    )
+                }
+            } else {
+                // Legacy single-question payload: keep questions empty so the wire
+                // layer can tell legacy apart from a true batch. UI synthesizes
+                // via ClarifyUi.resolvedQuestions; wire uses text/options/questionId.
+                emptyList()
+            }
+
+        return ReducerResult(
+            state =
+                state.copy(
+                    clarifyRequest =
+                        ClarifyUi(
+                            text = event.text.orEmpty(),
+                            options = event.options.orEmpty(),
+                            clarifyId = event.clarifyId,
+                            questionId = event.questionId,
+                            multiSelect = event.multiSelect,
+                            questions = questions,
+                            serverRequestId = event.serverRequestId,
+                            lockedAnswers = event.lockedAnswers,
+                        ),
+                    isAgentTyping = false,
+                ),
+        )
+    }
+
+    private fun onClarifyExpire(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ClarifyExpire,
+    ): ReducerResult =
+        if (event.clarifyId == null || state.clarifyRequest?.clarifyId == event.clarifyId) {
+            ReducerResult(
+                state = state.copy(clarifyRequest = null),
+                streamingState = streamingState,
+            )
+        } else {
+            ReducerResult(state = state, streamingState = streamingState)
+        }
+
+    // ── ReviewSummary (Self-improvement background review) ──────────────
+
+    private fun onReviewSummary(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ReviewSummary,
+    ): ReducerResult {
+        if (event.text.isBlank()) return ReducerResult(state = state, streamingState = streamingState)
+        val systemMessage =
+            ChatMessage(
+                role = MessageRole.SYSTEM,
+                content = event.text,
+            )
+        return ReducerResult(
+            state = state.copy(messages = state.messages + systemMessage),
+            streamingState = streamingState,
+        )
+    }
+
+    // ── BtwComplete (Side question completed) ─────────────────────────────
+
+    private fun onBtwComplete(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.BtwComplete,
+    ): ReducerResult {
+        val currentBtw = state.btwState
+        val updatedBtw =
+            if (currentBtw != null) {
+                currentBtw.copy(
+                    taskId = event.taskId.ifBlank { currentBtw.taskId },
+                    question = event.question.ifBlank { currentBtw.question },
+                    answer = event.text,
+                    isLoading = false,
+                )
+            } else {
+                BtwUiState(
+                    taskId = event.taskId,
+                    question = event.question,
+                    answer = event.text,
+                    isLoading = false,
+                )
+            }
+        return ReducerResult(
+            state = state.copy(btwState = updatedBtw),
+            streamingState = streamingState,
+        )
+    }
+
+    // ── RpcError ──────────────────────────────────────────────────────
+
+    private fun onRpcError(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.RpcError,
+    ): ReducerResult =
+        ReducerResult(
+            state =
+                state.copy(
+                    isLoading = false,
+                    errorMessage = "Error: ${event.error}",
+                ),
+            streamingState = streamingState,
+        )
+
+    // ── GatewayError ──────────────────────────────────────────────────
+    // Backend/unhandled failure surfaced by the gateway (issue #527).
+    // Mirrors onRpcError: surfaces the message in the existing error banner.
+    private fun onGatewayError(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.GatewayError,
+    ): ReducerResult =
+        ReducerResult(
+            state =
+                state.copy(
+                    isAgentTyping = false,
+                    isLoading = false,
+                    errorMessage = "Backend error: ${event.message ?: "Unknown gateway error"}",
+                ),
+            streamingState = StreamingState(),
+        )
+
+    // ── BackgroundComplete ────────────────────────────────────────────
+    // A scheduled/background job finished (issue #527). The ViewModel turns
+    // this into a non-blocking snackbar. No state mutation beyond passing it
+    // through; the ViewModel owns the snackbar trigger.
+    private fun onBackgroundComplete(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.BackgroundComplete,
+    ): ReducerResult {
+        val message =
+            when (val label = event.data?.get("label")) {
+                is String -> label
+                else -> event.data?.get("name") as? String
+            }?.let { "Background job finished: $it" }
+                ?: "Background job finished"
+        return ReducerResult(
+            state = state.copy(backgroundCompleteMessage = message),
+            streamingState = streamingState,
+        )
+    }
+
+    // ── SessionUpdated / StatusUpdate / Unknown ───────────────────────
+
+    private fun onSessionUpdated(
+        state: ChatUiState,
+        streamingState: StreamingState,
+    ): ReducerResult = ReducerResult(state = state, streamingState = streamingState)
+
+    /** Issue #1463: payload id is the STORED key, so match it against the stored `currentSessionId`. */
+    private fun onSessionTitle(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.SessionTitle,
+    ): ReducerResult {
+        val isCurrent = state.currentSessionId == event.storedSessionId
+        val rowKnown = state.sessions.any { it.id == event.storedSessionId }
+        if (!isCurrent && !rowKnown) return ReducerResult(state = state, streamingState = streamingState)
+        return ReducerResult(
+            state =
+                state.copy(
+                    chatTitle = if (isCurrent) event.title else state.chatTitle,
+                    sessions =
+                        state.sessions.map {
+                            if (it.id == event.storedSessionId) it.copy(title = event.title) else it
+                        },
+                ),
+            streamingState = streamingState,
+        )
+    }
+
+    private fun onStatusUpdate(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.StatusUpdate,
+    ): ReducerResult {
+        val kind = event.data?.get("kind") as? String
+        val text = (event.data?.get("text") as? String)?.trim()
+        return when (kind) {
+            // In-progress compaction is live state: the tail indicator shows only while it runs.
+            "compressing", "compacting" -> {
+                ReducerResult(
+                    state =
+                        state.copy(
+                            isCompressing = true,
+                            compressionStatus = text?.ifBlank { null } ?: "⏳ Compressing context...",
+                        ),
+                    streamingState = streamingState,
+                )
+            }
+
+            // #1433: the done edge is a transcript event, seated where it happened, never a floating tail row.
+            "compacted" -> {
+                appendGatewayNotice(state.copy(isCompressing = false, compressionStatus = null), streamingState, text)
+            }
+
+            "ready" -> {
+                ReducerResult(
+                    state = state.copy(isCompressing = false, compressionStatus = null),
+                    streamingState = streamingState,
+                )
+            }
+
+            // Durable notices the desktop/TUI also paint into the transcript.
+            "goal", "loop", "warn", "fallback" -> {
+                appendGatewayNotice(state, streamingState, text)
+            }
+
+            else -> {
+                ReducerResult(state = state, streamingState = streamingState)
+            }
+        }
+    }
+
+    /**
+     * Appends a gateway notice as a persisted SYSTEM row (#1433). SYSTEM rows are permanently local, so
+     * `inTranscriptOrder` anchors them after their preceding confirmed row instead of the transcript tail.
+     * A replayed event (reconnect `session.events.since`) re-sends the same text within the current turn;
+     * skip it rather than stacking a duplicate.
+     */
+    private fun appendGatewayNotice(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        text: String?,
+        extraEffects: List<ReducerEffect> = emptyList(),
+    ): ReducerResult {
+        if (text.isNullOrBlank()) {
+            return ReducerResult(state = state, streamingState = streamingState, effects = extraEffects)
+        }
+        val turnStart = state.messages.indexOfLast { it.isUserTurnBoundary() } + 1
+        val duplicate =
+            state.messages.drop(turnStart).any { it.role == MessageRole.SYSTEM && it.content == text }
+        if (duplicate) return ReducerResult(state = state, streamingState = streamingState, effects = extraEffects)
+        val notice = ChatMessage(role = MessageRole.SYSTEM, content = text)
+        val sid = state.currentSessionId
+        return ReducerResult(
+            state = state.copy(messages = state.messages + notice),
+            streamingState = streamingState,
+            effects = extraEffects + listOfNotNull(sid?.let { ReducerEffect.PersistMessage(notice, it) }),
+        )
+    }
+
+    /**
+     * A turn whose final text is a gateway interrupt sentinel ends with a notice, not assistant prose (#1433).
+     * For the repetition-loop sentinel the gateway hides the looped partial; drop it here too, including a
+     * copy already sealed by Stop, or it lingers as a live-only row that jumps to the tail on every merge.
+     */
+    private fun onInterruptNotice(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageComplete,
+    ): ReducerResult {
+        val usageState = event.rawPayload?.let(::parseUsageSnapshot)?.let { applyUsageSnapshot(state, it) } ?: state
+        val text = event.text.trim()
+        val effects = mutableListOf<ReducerEffect>()
+        var messages = usageState.messages
+        if (text == GatewayNotice.REPETITION_LOOP_INTERRUPTED) {
+            val looped = setOfNotNull(streamingState.interruptedMessage?.id, streamingState.streamingMessage?.id)
+            if (looped.isNotEmpty()) {
+                messages = messages.filterNot { it.id in looped }
+                looped.forEach { effects += ReducerEffect.DeleteLocalMessage(it) }
+            }
+        } else {
+            // Other exits keep any real partial the user already saw.
+            streamingState.streamingMessage
+                ?.takeIf { it.content.isNotBlank() || it.reasoningText.isNotBlank() }
+                ?.copy(isStreaming = false, finishTimestamp = System.currentTimeMillis())
+                ?.let { partial ->
+                    messages = messages.upsertById(partial)
+                    usageState.currentSessionId?.let { effects += ReducerEffect.PersistMessage(partial, it) }
+                }
+        }
+        effects += ReducerEffect.RefreshSessions
+        effects += ReducerEffect.RefreshContextUsage
+        val settled = usageState.copy(messages = messages, isAgentTyping = false, clarifyRequest = null)
+        return appendGatewayNotice(settled, StreamingState(), text, effects)
+    }
+
+    /** Paints a live tapback on the row whose gateway id matches; unmatched rows arrive with the next REST load. */
+    private fun onMessageReaction(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageReactionUpdated,
+    ): ReducerResult {
+        if (state.messages.none { it.serverRowId == event.rowId }) {
+            return ReducerResult(state = state, streamingState = streamingState)
+        }
+        val messages =
+            state.messages.map {
+                if (it.serverRowId == event.rowId) it.copy(reactions = event.reactions) else it
+            }
+        return ReducerResult(state = state.copy(messages = messages), streamingState = streamingState)
+    }
+
+    private fun onUnknown(
+        state: ChatUiState,
+        streamingState: StreamingState,
+    ): ReducerResult = ReducerResult(state = state, streamingState = streamingState)
+
+    private fun onToolProgress(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ToolProgress,
+    ): ReducerResult {
+        val messages = state.messages.toMutableList()
+        val toolIdx = findToolIndex(messages, event.name, event.toolId, ToolStatus.RUNNING)
+        if (toolIdx < 0) return ReducerResult(state = state, streamingState = streamingState)
+
+        messages[toolIdx] =
+            messages[toolIdx].copy(
+                progressPreview = event.preview ?: "",
+                isHistoricalCache = false,
+            )
+        return ReducerResult(
+            state = state.copy(messages = messages),
+            streamingState = streamingState,
+        )
+    }
+
+    private fun onToolGenerating(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.ToolGenerating,
+    ): ReducerResult {
+        val messages = state.messages.toMutableList()
+        val toolIdx = findToolIndex(messages, event.name, event.toolId, ToolStatus.RUNNING)
+        if (toolIdx < 0) return ReducerResult(state = state, streamingState = streamingState)
+
+        messages[toolIdx] = messages[toolIdx].copy(progressPreview = "", isHistoricalCache = false)
+        return ReducerResult(
+            state = state.copy(messages = messages),
+            streamingState = streamingState,
+        )
+    }
+
+    /** Match an explicit stable ID exclusively; use name matching only when legacy events omit the ID. */
+    private fun findToolIndex(
+        messages: List<ChatMessage>,
+        name: String?,
+        toolId: String?,
+        status: ToolStatus,
+    ): Int {
+        if (!toolId.isNullOrBlank()) {
+            val byId =
+                messages.indexOfLast {
+                    it.role == MessageRole.TOOL &&
+                        it.toolCallId == toolId &&
+                        it.toolStatus == status
+                }
+            // An explicit identity must never claim a different historical invocation.
+            return byId
+        }
+
+        return messages.indexOfLast {
+            it.role == MessageRole.TOOL &&
+                it.toolName == name &&
+                it.toolStatus == status
+        }
+    }
+
+    private fun onSubagentEvent(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.SubagentEvent,
+    ): ReducerResult {
+        val goal = event.payload?.get("goal") as? String
+        val taskIndex = (event.payload?.get("task_index") as? Number)?.toInt()
+        val taskCount = (event.payload?.get("task_count") as? Number)?.toInt()
+        val text = event.payload?.get("text") as? String
+        val status = event.payload?.get("status") as? String
+        val summary = event.payload?.get("summary") as? String
+        val durationSeconds = (event.payload?.get("duration_seconds") as? Number)?.toDouble()
+        val model = event.payload?.get("model") as? String
+        val subagentId =
+            event.payload?.get(
+                "subagent_id",
+            ) as? String ?: event.payload?.get("child_session_id") as? String
+
+        val indicators = state.subagentIndicators.toMutableList()
+        val idx =
+            if (subagentId != null) {
+                indicators.indexOfLast { it.subagentId == subagentId }
+            } else if (goal != null) {
+                indicators.indexOfLast { it.goal == goal }
+            } else {
+                -1
+            }
+
+        val existingLogs = if (idx >= 0) indicators[idx].logs else emptyList()
+        val newLogs = existingLogs.toMutableList()
+        if (!text.isNullOrBlank() && newLogs.lastOrNull()?.text != text) {
+            newLogs.add(SubagentLogLine(text = text, isError = status == "failed"))
+        }
+        if (event.type == "subagent.complete" && !summary.isNullOrBlank() && newLogs.lastOrNull()?.text != summary) {
+            newLogs.add(SubagentLogLine(text = summary, isSummary = true))
+        }
+        val trimmedLogs = newLogs.takeLast(30)
+
+        val finalStatus =
+            if (event.type == "subagent.complete") {
+                status ?: "completed"
+            } else {
+                status ?: (if (idx >= 0) indicators[idx].status else "running")
+            }
+
+        val indicator =
+            SubagentIndicator(
+                type = event.type,
+                goal = goal ?: (if (idx >= 0) indicators[idx].goal else null),
+                taskIndex = taskIndex ?: (if (idx >= 0) indicators[idx].taskIndex else null),
+                taskCount = taskCount ?: (if (idx >= 0) indicators[idx].taskCount else null),
+                text = summary ?: text ?: (if (idx >= 0) indicators[idx].text else null),
+                status = finalStatus,
+                summary = summary ?: (if (idx >= 0) indicators[idx].summary else null),
+                subagentId = subagentId ?: (if (idx >= 0) indicators[idx].subagentId else null),
+                logs = trimmedLogs,
+                durationSeconds = durationSeconds ?: (if (idx >= 0) indicators[idx].durationSeconds else null),
+                model = model ?: (if (idx >= 0) indicators[idx].model else null),
+                lastEventTimestamp = System.currentTimeMillis(),
+            )
+
+        if (idx >= 0) {
+            indicators[idx] = indicator
+        } else {
+            indicators.add(indicator)
+        }
+
+        return ReducerResult(
+            state = state.copy(subagentIndicators = indicators),
+            streamingState = streamingState,
+        )
+    }
+
+    private fun onTodoUpdated(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.TodoUpdated,
+    ): ReducerResult {
+        if (event.sessionId != null && state.currentSessionId != null && event.sessionId != state.currentSessionId) {
+            return ReducerResult(state = state, streamingState = streamingState)
+        }
+        return ReducerResult(
+            state = state.copy(todos = event.todos),
+            streamingState = streamingState,
+        )
+    }
+
+    private fun onSessionUsage(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.SessionUsage,
+    ): ReducerResult {
+        val snapshot =
+            parseUsageSnapshot(event.data)
+                ?: return ReducerResult(state = state, streamingState = streamingState)
+        return ReducerResult(state = applyUsageSnapshot(state, snapshot), streamingState = streamingState)
+    }
+}
+
+/**
+ * Result of reducing one event.
+ *
+ * @param state The new UI state after applying the event.
+ * @param streamingState The new streaming state after applying the event.
+ * @param effects Side-effects the ViewModel should execute.
+ */
+data class ReducerResult(
+    val state: ChatUiState,
+    val streamingState: StreamingState = StreamingState(),
+    val effects: List<ReducerEffect> = emptyList(),
+)
+
+/**
+ * Side-effects that the reducer cannot perform itself (needs I/O or ViewModel context).
+ */
+sealed class ReducerEffect {
+    data class PersistMessage(
+        val message: ChatMessage,
+        val sessionId: String,
+    ) : ReducerEffect()
+
+    data object CreateNewSession : ReducerEffect()
+
+    data object LoadSessions : ReducerEffect()
+
+    data object RefreshSessions : ReducerEffect()
+
+    data object RefreshContextUsage : ReducerEffect()
+
+    /** Drop a never-confirmed local row from Room (the DAO refuses rows that carry a REST identity). */
+    data class DeleteLocalMessage(
+        val messageId: String,
+    ) : ReducerEffect()
+
+    /**
+     * Ask the ViewModel to turn any `MEDIA:<host-path>` directives in the
+     * just-finalized assistant message into real [Attachment]s (images inline,
+     * every other file type tappable) and strip the directives from the text.
+     *
+     * Why: the gateway's WebSocket stream delivers the raw `MEDIA:<path>`
+     * directive (the same one the desktop app resolves via `mediaExternalUrl`
+     * to the authenticated `/api/files/download` endpoint, which streams the
+     * host file over HTTP). Attaching them lets the renderer show images inline
+     * and offer every other file as a fetchable attachment — even on a remote
+     * phone (real HTTP, unlike a host-local file read). Mirrors desktop's
+     * `mediaExternalUrl`; mobile-only, backend untouched. See issue #724.
+     */
+    data class AttachHostMedia(
+        val sessionId: String,
+        val messageId: String,
+    ) : ReducerEffect()
+}
+
+@Suppress("UNCHECKED_CAST")
+fun extractTodosFromMap(data: Map<String, Any?>?): List<TodoItem>? {
+    if (data == null) return null
+    val rawList =
+        (data["todos"] as? List<*>)
+            ?: ((data["args"] as? Map<String, Any?>)?.get("todos") as? List<*>)
+            ?: ((data["parameters"] as? Map<String, Any?>)?.get("todos") as? List<*>)
+            ?: ((data["result"] as? Map<String, Any?>)?.get("todos") as? List<*>)
+            ?: return null
+
+    val items = mutableListOf<TodoItem>()
+    for (elem in rawList) {
+        val map = elem as? Map<String, Any?> ?: continue
+        val id = (map["id"] as? String) ?: continue
+        val content = (map["content"] as? String) ?: (map["text"] as? String) ?: ""
+        val status = (map["status"] as? String) ?: "pending"
+        val parent = (map["parent"] as? String)?.takeIf { it.isNotBlank() }
+        items.add(TodoItem(id = id, content = content, status = status, parent = parent))
+    }
+    return items.takeIf { it.isNotEmpty() }
+}
+
+fun extractTodosFromJson(content: String): List<TodoItem>? {
+    if (content.isBlank()) return null
+    return try {
+        val element = OkHttpProvider.json.parseToJsonElement(content)
+        val obj = element as? JsonObject ?: return null
+        val todosArray =
+            (obj["todos"] as? JsonArray)
+                ?: ((obj["args"] as? JsonObject)?.get("todos") as? JsonArray)
+                ?: ((obj["result"] as? JsonObject)?.get("todos") as? JsonArray)
+                ?: ((obj["parameters"] as? JsonObject)?.get("todos") as? JsonArray)
+                ?: return null
+
+        todosArray
+            .mapNotNull { item ->
+                val itemObj = item as? JsonObject ?: return@mapNotNull null
+                val id = (itemObj["id"] as? JsonPrimitive)?.content ?: return@mapNotNull null
+                val contentStr =
+                    (itemObj["content"] as? JsonPrimitive)?.content
+                        ?: (itemObj["text"] as? JsonPrimitive)?.content ?: ""
+                val status = (itemObj["status"] as? JsonPrimitive)?.content ?: "pending"
+                val parent = (itemObj["parent"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+                TodoItem(id = id, content = contentStr, status = status, parent = parent)
+            }.takeIf { it.isNotEmpty() }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+fun hydrateTodosFromMessages(messages: List<ChatMessage>): List<TodoItem> {
+    for (msg in messages.asReversed()) {
+        if (msg.role == MessageRole.TOOL && (msg.toolName == "todo" || msg.content.contains("\"todos\""))) {
+            val todos = extractTodosFromJson(msg.content)
+            if (!todos.isNullOrEmpty()) {
+                return todos
+            }
+        }
+    }
+    return emptyList()
+}

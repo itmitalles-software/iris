@@ -1,0 +1,903 @@
+package io.wutz.apollo.ui.plugins
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.local.DataScope
+import io.wutz.apollo.data.local.SwrCache
+import io.wutz.apollo.data.model.AgentPluginInstallBody
+import io.wutz.apollo.data.model.EnvVarUpdate
+import io.wutz.apollo.data.model.PluginCatalogEntry
+import io.wutz.apollo.data.model.PluginInfo
+import io.wutz.apollo.data.model.PluginProvidersPutRequest
+import io.wutz.apollo.data.model.PluginUpdateRequest
+import io.wutz.apollo.data.model.PluginUpdateResult
+import io.wutz.apollo.data.model.PluginsHubResponse
+import io.wutz.apollo.data.model.ProviderOption
+import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.NetworkResult
+import io.wutz.apollo.data.remote.safeApiCall
+import io.wutz.apollo.data.ws.AgentPluginRow
+import io.wutz.apollo.data.ws.PluginManageRepository
+import io.wutz.apollo.data.ws.PluginRemovalRepository
+import io.wutz.apollo.data.ws.PluginSettingField
+import io.wutz.apollo.data.ws.PluginSettingFieldType
+import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.safeLaunchAction
+import io.wutz.apollo.ui.common.safeLaunchLoad
+import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
+
+enum class PluginsTab {
+    INSTALLED,
+    CATALOG,
+}
+
+data class PluginUpdateConsent(
+    val name: String,
+    val result: PluginUpdateResult,
+    val scope: DataScope?,
+)
+
+data class PluginsUiState(
+    val selectedTab: PluginsTab = PluginsTab.INSTALLED,
+    val isLoading: Boolean = false,
+    val plugins: List<PluginInfo> = emptyList(),
+    val orphanPlugins: List<PluginInfo> = emptyList(),
+    val errorMessage: String? = null,
+    val toastMessage: String? = null,
+    // Install state
+    val installUrl: String = "",
+    val installForce: Boolean = false,
+    val installEnable: Boolean = true,
+    val installBusy: Boolean = false,
+    // Provider selection state
+    val memoryProvider: String = "",
+    val memoryOptions: List<ProviderOption> = emptyList(),
+    val contextEngine: String = "compressor",
+    val contextOptions: List<ProviderOption> = emptyList(),
+    val providerBusy: Boolean = false,
+    // Plugin row operation state
+    val rowBusy: String? = null,
+    // Confirm remove dialog
+    val removeConfirmPlugin: String? = null,
+    val updateConsent: PluginUpdateConsent? = null,
+    // Active plugin detail with settings & diagnostics
+    val activeDetailPlugin: PluginInfo? = null,
+    val isPluginDetailLoading: Boolean = false,
+    val pluginDetailRow: AgentPluginRow? = null,
+    val pluginDetailEdits: Map<String, String> = emptyMap(),
+    val isPluginDetailSaving: Boolean = false,
+    // Rescan
+    val rescanBusy: Boolean = false,
+    // Catalog state
+    val catalogEntries: List<PluginCatalogEntry> = emptyList(),
+    val isCatalogLoading: Boolean = false,
+    val catalogErrorMessage: String? = null,
+    val catalogInstallingName: String? = null,
+    val catalogQuery: String = "",
+    val catalogTierFilter: String? = null,
+) {
+    /** Built-in memory provider sentinel — empty string means "use config defaults" */
+    val isMemoryBuiltin: Boolean
+        get() = memoryProvider.isEmpty()
+
+    companion object {
+        const val MEMORY_PROVIDER_BUILTIN = ""
+    }
+}
+
+class PluginsViewModel(
+    private val pluginRemoval: PluginRemovalRepository = PluginRemovalRepository(),
+    private val pluginManage: PluginManageRepository = PluginManageRepository(),
+) : ViewModel(),
+    ToastHost {
+    private val _uiState = MutableStateFlow(PluginsUiState())
+    val uiState: StateFlow<PluginsUiState> = _uiState.asStateFlow()
+
+    private val pluginsCache = SwrCache<String, PluginsHubResponse>()
+    private var scopeGeneration = 0
+
+    fun clearScopeOwnedState() {
+        scopeGeneration++
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                plugins = emptyList(),
+                orphanPlugins = emptyList(),
+                errorMessage = null,
+                memoryProvider = "",
+                memoryOptions = emptyList(),
+                contextEngine = "compressor",
+                contextOptions = emptyList(),
+                providerBusy = false,
+                rowBusy = null,
+                removeConfirmPlugin = null,
+                updateConsent = null,
+                activeDetailPlugin = null,
+                pluginDetailRow = null,
+                pluginDetailEdits = emptyMap(),
+                rescanBusy = false,
+            )
+        }
+    }
+
+    fun loadPlugins(forceRefresh: Boolean = false) {
+        safeLaunchSwrLoad(
+            cache = pluginsCache,
+            forceRefresh = forceRefresh,
+            onCacheHit = { data ->
+                val plugins = data.plugins.orEmpty()
+                val providers = data.providers
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        plugins = plugins,
+                        orphanPlugins =
+                            data.orphanDashboardPlugins.orEmpty().map { orphan ->
+                                PluginInfo(
+                                    name = orphan.name ?: "unknown",
+                                    description = orphan.description ?: orphan.label,
+                                    version = null,
+                                    source = null,
+                                    runtimeStatus = null,
+                                )
+                            },
+                        memoryProvider = providers?.memoryProvider ?: "",
+                        memoryOptions = providers?.memoryOptions.orEmpty(),
+                        contextEngine = providers?.contextEngine ?: "compressor",
+                        contextOptions = providers?.contextOptions.orEmpty(),
+                        errorMessage = null,
+                    )
+                }
+            },
+            apiCall = { safeApiCall { ApiClient.hermesApi.getPlugins() } },
+            onStart = { _uiState.update { it.copy(isLoading = true, errorMessage = null) } },
+            onSuccess = { data ->
+                val plugins = data.plugins.orEmpty()
+                val providers = data.providers
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        plugins = plugins,
+                        orphanPlugins =
+                            data.orphanDashboardPlugins.orEmpty().map { orphan ->
+                                PluginInfo(
+                                    name = orphan.name ?: "unknown",
+                                    description = orphan.description ?: orphan.label,
+                                    version = null,
+                                    source = null,
+                                    runtimeStatus = null,
+                                )
+                            },
+                        memoryProvider = providers?.memoryProvider ?: "",
+                        memoryOptions = providers?.memoryOptions.orEmpty(),
+                        contextEngine = providers?.contextEngine ?: "compressor",
+                        contextOptions = providers?.contextOptions.orEmpty(),
+                    )
+                }
+            },
+            onError = { errorMsg ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Failed to load plugins: $errorMsg",
+                    )
+                }
+            },
+        )
+    }
+
+    fun updateInstallUrl(url: String) {
+        _uiState.update { it.copy(installUrl = url) }
+    }
+
+    fun updateInstallForce(force: Boolean) {
+        _uiState.update { it.copy(installForce = force) }
+    }
+
+    fun updateInstallEnable(enable: Boolean) {
+        _uiState.update { it.copy(installEnable = enable) }
+    }
+
+    fun installPluginFromUrl() {
+        val url = _uiState.value.installUrl.trim()
+        if (url.isEmpty()) {
+            _uiState.update { it.copy(toastMessage = "Please enter a plugin identifier") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(installBusy = true) }
+            val result =
+                withContext(Dispatchers.IO) {
+                    safeApiCall {
+                        ApiClient.hermesApi.installPlugin(
+                            io.wutz.apollo.data.model.AgentPluginInstallBody(
+                                identifier = url,
+                                force = _uiState.value.installForce,
+                                enable = _uiState.value.installEnable,
+                            ),
+                        )
+                    }
+                }
+            when (result) {
+                is NetworkResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            installUrl = "",
+                            installBusy = false,
+                            toastMessage = "Plugin installed successfully",
+                        )
+                    }
+                    loadPlugins(forceRefresh = true)
+                }
+
+                is NetworkResult.Failure -> {
+                    _uiState.update {
+                        it.copy(
+                            installBusy = false,
+                            toastMessage = "Failed to install plugin: ${result.error.message}",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateMemoryProvider(provider: String) {
+        _uiState.update { it.copy(memoryProvider = provider) }
+    }
+
+    fun updateContextEngine(engine: String) {
+        _uiState.update { it.copy(contextEngine = engine) }
+    }
+
+    fun savePluginProviders() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(providerBusy = true) }
+            val state = _uiState.value
+            val result =
+                withContext(Dispatchers.IO) {
+                    safeApiCall {
+                        ApiClient.hermesApi.savePluginProviders(
+                            PluginProvidersPutRequest(
+                                memoryProvider = if (state.isMemoryBuiltin) "" else state.memoryProvider,
+                                contextEngine = state.contextEngine,
+                            ),
+                        )
+                    }
+                }
+            when (result) {
+                is NetworkResult.Success -> {
+                    _uiState.update { it.copy(providerBusy = false, toastMessage = "Plugin providers saved") }
+                    loadPlugins(forceRefresh = true)
+                }
+
+                is NetworkResult.Failure -> {
+                    _uiState.update {
+                        it.copy(
+                            providerBusy = false,
+                            toastMessage = "Failed to save providers: ${result.error.message}",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun rescanPlugins() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(rescanBusy = true) }
+            val result =
+                withContext(Dispatchers.IO) {
+                    safeApiCall { ApiClient.hermesApi.rescanPlugins() }
+                }
+            when (result) {
+                is NetworkResult.Success -> {
+                    _uiState.update { it.copy(rescanBusy = false, toastMessage = "Plugins rescanned") }
+                    loadPlugins(forceRefresh = true)
+                }
+
+                is NetworkResult.Failure -> {
+                    _uiState.update {
+                        it.copy(
+                            rescanBusy = false,
+                            toastMessage = "Failed to rescan: ${result.error.message}",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun togglePlugin(plugin: PluginInfo) {
+        val originalEnabled = plugin.enabled
+        val targetEnabled = !originalEnabled
+        val requestScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
+
+        // Optimistically update
+        _uiState.update { state ->
+            state.copy(
+                plugins =
+                    state.plugins.map {
+                        if (it.name == plugin.name) {
+                            it.copy(runtimeStatus = if (targetEnabled) "enabled" else "disabled")
+                        } else {
+                            it
+                        }
+                    },
+            )
+        }
+
+        viewModelScope.launch {
+            val result =
+                withContext(Dispatchers.IO) {
+                    if (targetEnabled) {
+                        safeApiCall { ApiClient.hermesApi.enablePlugin(plugin.name) }
+                    } else {
+                        safeApiCall { ApiClient.hermesApi.disablePlugin(plugin.name) }
+                    }
+                }
+            val currentScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
+            if (requestScope != null && currentScope != requestScope) return@launch
+            if (result is NetworkResult.Success) {
+                val updated = _uiState.value.plugins
+                if (requestScope != null) {
+                    pluginsCache.put(requestScope.scopedKey("default"), PluginsHubResponse(plugins = updated))
+                }
+            } else if (result is NetworkResult.Failure) {
+                revertPluginToggle(plugin.name, originalEnabled, "Failed to toggle plugin: ${result.error.message}")
+                val reverted = _uiState.value.plugins
+                if (requestScope != null) {
+                    pluginsCache.put(requestScope.scopedKey("default"), PluginsHubResponse(plugins = reverted))
+                }
+            }
+        }
+    }
+
+    fun activatePlugin(plugin: PluginInfo) {
+        if (_uiState.value.rowBusy != null) return
+        safeLaunchAction(
+            onStart = { setRowBusy(plugin.name) },
+            apiCall = { safeApiCall { ApiClient.hermesApi.enablePlugin(plugin.name) } },
+            onSuccess = {
+                _uiState.update { it.copy(toastMessage = "Plugin enabled successfully") }
+                loadPlugins(forceRefresh = true)
+            },
+            onError = { error ->
+                _uiState.update { it.copy(toastMessage = "Failed to enable plugin: $error") }
+            },
+            onComplete = { clearRowBusy(plugin.name) },
+        )
+    }
+
+    /** Show confirmation dialog for removing a plugin */
+    fun requestRemovePlugin(name: String) {
+        if (_uiState.value.plugins.none { it.name == name && it.removable }) return
+        _uiState.update { it.copy(removeConfirmPlugin = name) }
+    }
+
+    /** Cancel the remove confirmation dialog */
+    fun cancelRemovePlugin() {
+        _uiState.update { it.copy(removeConfirmPlugin = null) }
+    }
+
+    fun confirmRemovePlugin() {
+        val name = _uiState.value.removeConfirmPlugin ?: return
+        if (_uiState.value.plugins.none { it.name == name && it.removable } || _uiState.value.rowBusy != null) {
+            cancelRemovePlugin()
+            return
+        }
+        _uiState.update { it.copy(removeConfirmPlugin = null) }
+        val generation = scopeGeneration
+        val requestScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
+        setRowBusy(name)
+        viewModelScope.launch {
+            try {
+                val result = pluginRemoval.remove(name)
+                if (generation != scopeGeneration ||
+                    (requestScope != null && AuthManager.currentDataScope() != requestScope)
+                ) {
+                    return@launch
+                }
+                if (!result.ok) {
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = "Failed to uninstall plugin: ${result.error ?: "Gateway refused removal"}",
+                        )
+                    }
+                    return@launch
+                }
+                val refreshed = safeApiCall { ApiClient.hermesApi.getPlugins() }
+                if (generation != scopeGeneration ||
+                    (requestScope != null && AuthManager.currentDataScope() != requestScope)
+                ) {
+                    return@launch
+                }
+                when (refreshed) {
+                    is NetworkResult.Success -> {
+                        val data = refreshed.data
+                        requestScope?.let { pluginsCache.put(it.scopedKey("default"), data) }
+                        _uiState.update { state ->
+                            state.copy(
+                                plugins = data.plugins,
+                                orphanPlugins =
+                                    data.orphanDashboardPlugins.map { orphan ->
+                                        PluginInfo(
+                                            name = orphan.name ?: "unknown",
+                                            description =
+                                                orphan.description ?: orphan.label,
+                                        )
+                                    },
+                                memoryProvider = data.providers?.memoryProvider ?: "",
+                                memoryOptions = data.providers?.memoryOptions.orEmpty(),
+                                contextEngine = data.providers?.contextEngine ?: "compressor",
+                                contextOptions = data.providers?.contextOptions.orEmpty(),
+                                toastMessage =
+                                    if (data.plugins.none { it.name == name }) {
+                                        "Plugin uninstalled successfully"
+                                    } else {
+                                        "Removal returned success, but $name still appears in the plugin list"
+                                    },
+                            )
+                        }
+                    }
+
+                    is NetworkResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                toastMessage = "Removal sent; could not verify plugin list: ${refreshed.error.message}",
+                            )
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (generation == scopeGeneration) {
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = "Failed to uninstall plugin: ${e.message ?: "Gateway unavailable"}",
+                        )
+                    }
+                }
+            } finally {
+                if (generation == scopeGeneration) clearRowBusy(name)
+            }
+        }
+    }
+
+    fun updatePlugin(name: String) {
+        if (_uiState.value.updateConsent != null) return
+        performPluginUpdate(name, acceptCapabilities = false)
+    }
+
+    fun cancelPluginUpdate() {
+        _uiState.update { it.copy(updateConsent = null) }
+    }
+
+    fun confirmPluginUpdate() {
+        val consent = _uiState.value.updateConsent ?: return
+        if (_uiState.value.rowBusy != null) return
+        cancelPluginUpdate()
+        if (consent.scope != runCatching { AuthManager.currentDataScope() }.getOrNull()) return
+        performPluginUpdate(consent.name, acceptCapabilities = true)
+    }
+
+    private fun performPluginUpdate(
+        name: String,
+        acceptCapabilities: Boolean,
+    ) {
+        if (_uiState.value.rowBusy != null) return
+        val generation = scopeGeneration
+        val requestScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
+        val api = ApiClient.hermesApi
+        setRowBusy(name)
+        _uiState.update { it.copy(toastMessage = null) }
+        viewModelScope.launch {
+            try {
+                val result = safeApiCall { api.updatePlugin(name, PluginUpdateRequest(acceptCapabilities)) }
+                if (generation != scopeGeneration ||
+                    requestScope != runCatching { AuthManager.currentDataScope() }.getOrNull()
+                ) {
+                    return@launch
+                }
+                when (result) {
+                    is NetworkResult.Success -> {
+                        val update = result.data
+                        // #1282: HTTP success is not update success; consent must be explicit.
+                        when {
+                            update.consentRequired -> {
+                                _uiState.update {
+                                    it.copy(updateConsent = PluginUpdateConsent(name, update, requestScope))
+                                }
+                            }
+
+                            !update.ok -> {
+                                _uiState.update {
+                                    it.copy(
+                                        toastMessage = "Failed to update plugin: ${update.error ?: "Update refused"}",
+                                    )
+                                }
+                            }
+
+                            else -> {
+                                _uiState.update {
+                                    it.copy(
+                                        toastMessage =
+                                            if (update.unchanged) {
+                                                "Plugin is already up to date"
+                                            } else {
+                                                "Plugin updated successfully"
+                                            },
+                                    )
+                                }
+                                loadPlugins(forceRefresh = true)
+                            }
+                        }
+                    }
+
+                    is NetworkResult.Failure -> {
+                        _uiState.update {
+                            it.copy(toastMessage = "Failed to update plugin: ${result.error.message}")
+                        }
+                    }
+                }
+            } finally {
+                if (generation == scopeGeneration) clearRowBusy(name)
+            }
+        }
+    }
+
+    fun togglePluginVisibility(plugin: PluginInfo) {
+        viewModelScope.launch {
+            setRowBusy(plugin.name)
+            val targetHidden = !plugin.userHidden
+            val result =
+                withContext(Dispatchers.IO) {
+                    safeApiCall {
+                        ApiClient.hermesApi.setPluginVisibility(
+                            plugin.name,
+                            mapOf("hidden" to targetHidden),
+                        )
+                    }
+                }
+            when (result) {
+                is NetworkResult.Success -> {
+                    _uiState.update { it.copy(toastMessage = "Plugin visibility updated") }
+                    clearRowBusy(plugin.name)
+                    loadPlugins(forceRefresh = true)
+                }
+
+                is NetworkResult.Failure -> {
+                    _uiState.update { it.copy(toastMessage = "Failed to update visibility: ${result.error.message}") }
+                    clearRowBusy(plugin.name)
+                }
+            }
+        }
+    }
+
+    private fun revertPluginToggle(
+        name: String,
+        originalEnabled: Boolean,
+        errorMsg: String,
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                plugins =
+                    state.plugins.map {
+                        if (it.name == name) {
+                            it.copy(runtimeStatus = if (originalEnabled) "enabled" else "disabled")
+                        } else {
+                            it
+                        }
+                    },
+                toastMessage = errorMsg,
+            )
+        }
+    }
+
+    private fun setRowBusy(name: String) {
+        _uiState.update { it.copy(rowBusy = name) }
+    }
+
+    private fun clearRowBusy(name: String) {
+        _uiState.update { if (it.rowBusy == name) it.copy(rowBusy = null) else it }
+    }
+
+    fun setTab(tab: PluginsTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+        if (tab == PluginsTab.CATALOG && _uiState.value.catalogEntries.isEmpty()) {
+            loadCatalog()
+        }
+    }
+
+    fun loadCatalog(isRefresh: Boolean = false) {
+        safeLaunchLoad(
+            apiCall = { safeApiCall { ApiClient.hermesApi.getPluginCatalog() } },
+            onStart = {
+                _uiState.update {
+                    it.copy(
+                        isCatalogLoading = true,
+                        catalogErrorMessage = if (isRefresh) it.catalogErrorMessage else null,
+                    )
+                }
+            },
+            onSuccess = { response ->
+                _uiState.update {
+                    it.copy(
+                        isCatalogLoading = false,
+                        catalogEntries = response.entries,
+                        catalogErrorMessage = null,
+                    )
+                }
+            },
+            onError = { errorMsg ->
+                _uiState.update {
+                    it.copy(
+                        isCatalogLoading = false,
+                        catalogErrorMessage = "Failed to load catalog: $errorMsg",
+                    )
+                }
+            },
+        )
+    }
+
+    fun setCatalogQuery(query: String) {
+        _uiState.update { it.copy(catalogQuery = query) }
+    }
+
+    fun setCatalogTierFilter(tier: String?) {
+        _uiState.update { it.copy(catalogTierFilter = tier) }
+    }
+
+    fun installCatalogPlugin(
+        entry: PluginCatalogEntry,
+        force: Boolean = false,
+    ) {
+        val catalogName = entry.name
+        safeLaunchAction(
+            onStart = { _uiState.update { it.copy(catalogInstallingName = catalogName) } },
+            apiCall = {
+                safeApiCall {
+                    ApiClient.hermesApi.installPlugin(
+                        AgentPluginInstallBody(
+                            identifier = entry.repo ?: "",
+                            catalogName = catalogName,
+                            force = force,
+                            enable = true,
+                        ),
+                    )
+                }
+            },
+            onSuccess = {
+                _uiState.update {
+                    it.copy(
+                        toastMessage = "Plugin \"${entry.displayName}\" installed successfully",
+                    )
+                }
+                loadPlugins(forceRefresh = true)
+                loadCatalog(isRefresh = true)
+            },
+            onError = { errorMsg ->
+                _uiState.update {
+                    it.copy(
+                        toastMessage = "Failed to install \"${entry.displayName}\": $errorMsg",
+                    )
+                }
+            },
+            onComplete = {
+                _uiState.update { it.copy(catalogInstallingName = null) }
+            },
+        )
+    }
+
+    fun openPluginDetail(plugin: PluginInfo) {
+        _uiState.update {
+            it.copy(
+                activeDetailPlugin = plugin,
+                isPluginDetailLoading = true,
+                pluginDetailRow = null,
+                pluginDetailEdits = emptyMap(),
+            )
+        }
+        viewModelScope.launch {
+            try {
+                val profile = AuthManager.activeProfileId.value
+                val rows = pluginManage.listPlugins(profile)
+                val matchingRow = rows.firstOrNull { it.key == plugin.name || it.name == plugin.name }
+                val initialEdits = mutableMapOf<String, String>()
+                matchingRow?.settingsSchema?.forEach { field ->
+                    if (field.type != PluginSettingFieldType.SECRET) {
+                        val strVal =
+                            when (val v = field.value ?: field.default) {
+                                null -> ""
+                                is JsonPrimitive -> v.content
+                                else -> v.toString()
+                            }
+                        initialEdits[field.key] = strVal
+                    }
+                }
+                _uiState.update {
+                    it.copy(
+                        isPluginDetailLoading = false,
+                        pluginDetailRow = matchingRow,
+                        pluginDetailEdits = initialEdits,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isPluginDetailLoading = false,
+                        pluginDetailRow = null,
+                    )
+                }
+            }
+        }
+    }
+
+    fun closePluginDetail() {
+        _uiState.update {
+            it.copy(
+                activeDetailPlugin = null,
+                pluginDetailRow = null,
+                pluginDetailEdits = emptyMap(),
+                isPluginDetailSaving = false,
+            )
+        }
+    }
+
+    fun setPluginDetailEdit(
+        key: String,
+        value: String,
+    ) {
+        _uiState.update {
+            it.copy(pluginDetailEdits = it.pluginDetailEdits + (key to value))
+        }
+    }
+
+    fun savePluginSettings() {
+        val plugin = _uiState.value.pluginDetailRow ?: return
+        val schema = plugin.settingsSchema ?: return
+        val canonicalKey = plugin.key ?: plugin.name
+        val currentEdits = _uiState.value.pluginDetailEdits
+
+        _uiState.update { it.copy(isPluginDetailSaving = true) }
+        viewModelScope.launch {
+            try {
+                val profile = AuthManager.activeProfileId.value
+                val valuesToSave = mutableMapOf<String, JsonElement>()
+
+                for (field in schema) {
+                    val raw = currentEdits[field.key] ?: ""
+                    when (field.type) {
+                        PluginSettingFieldType.SECRET -> {
+                            val envVar = field.env
+                            if (raw.isNotBlank() && !envVar.isNullOrBlank()) {
+                                val envResult =
+                                    safeApiCall {
+                                        ApiClient.hermesApi.updateEnvVar(EnvVarUpdate(key = envVar, value = raw))
+                                    }
+                                if (envResult is NetworkResult.Failure) {
+                                    throw IllegalStateException(
+                                        "Failed to update secret $envVar: ${envResult.error.message}",
+                                    )
+                                }
+                            }
+                        }
+
+                        PluginSettingFieldType.STRING -> {
+                            valuesToSave[field.key] = JsonPrimitive(raw)
+                        }
+
+                        PluginSettingFieldType.NUMBER -> {
+                            val num =
+                                raw.trim().toLongOrNull()
+                                    ?: raw.trim().toDoubleOrNull()
+                            if (num != null) {
+                                valuesToSave[field.key] =
+                                    if (num is Long) JsonPrimitive(num) else JsonPrimitive(num as Double)
+                            } else if (raw.trim().isNotEmpty()) {
+                                throw IllegalArgumentException("${field.label}: expected a number")
+                            }
+                        }
+
+                        PluginSettingFieldType.BOOLEAN -> {
+                            valuesToSave[field.key] = JsonPrimitive(raw.trim().equals("true", ignoreCase = true))
+                        }
+
+                        PluginSettingFieldType.ENUM -> {
+                            if (!field.choices.isNullOrEmpty() && raw.trim() !in field.choices) {
+                                throw IllegalArgumentException(
+                                    "${field.label}: must be one of ${field.choices.joinToString()}",
+                                )
+                            }
+                            valuesToSave[field.key] = JsonPrimitive(raw.trim())
+                        }
+
+                        PluginSettingFieldType.JSON -> {
+                            val parsed =
+                                if (raw.trim().isEmpty()) {
+                                    JsonPrimitive("")
+                                } else {
+                                    Json.parseToJsonElement(raw.trim())
+                                }
+                            valuesToSave[field.key] = parsed
+                        }
+                    }
+                }
+
+                if (valuesToSave.isNotEmpty()) {
+                    val result = pluginManage.saveSettings(canonicalKey, valuesToSave, profile)
+                    if (!result.ok) {
+                        throw IllegalStateException(result.error ?: "Failed to save settings")
+                    }
+                    if (result.plugin != null) {
+                        val refreshed = result.plugin
+                        val newEdits = mutableMapOf<String, String>()
+                        refreshed.settingsSchema?.forEach { f ->
+                            if (f.type != PluginSettingFieldType.SECRET) {
+                                val strVal =
+                                    when (val v = f.value ?: f.default) {
+                                        null -> ""
+                                        is JsonPrimitive -> v.content
+                                        else -> v.toString()
+                                    }
+                                newEdits[f.key] = strVal
+                            }
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isPluginDetailSaving = false,
+                                pluginDetailRow = refreshed,
+                                pluginDetailEdits = newEdits,
+                                toastMessage = "Plugin settings saved",
+                            )
+                        }
+                        return@launch
+                    }
+                }
+
+                // If only secrets were saved or result plugin is null
+                _uiState.update {
+                    it.copy(
+                        isPluginDetailSaving = false,
+                        pluginDetailEdits =
+                            it.pluginDetailEdits.filterKeys { k ->
+                                schema.none { f -> f.key == k && f.type == PluginSettingFieldType.SECRET }
+                            },
+                        toastMessage = "Plugin settings saved",
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isPluginDetailSaving = false,
+                        toastMessage = "Failed to save settings: ${e.message}",
+                    )
+                }
+            }
+        }
+    }
+
+    override fun clearToast() {
+        _uiState.update { it.copy(toastMessage = null) }
+    }
+}

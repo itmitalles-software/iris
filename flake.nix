@@ -112,7 +112,7 @@
             alias avd-reset='adb shell wm size reset && adb shell wm density reset'
 
             # HermesControl app logcat (filtered to the app process only)
-            alias logcat-app='adb logcat --pid=$(adb shell pidof com.m57.hermescontrol)'
+            alias logcat-app='adb logcat --pid=$(adb shell pidof io.wutz.apollo)'
 
             echo "Display Presets Loaded:"
             echo "  avd-phone        -> 1440x3120 (500 DPI) [QHD+ Flagship]"

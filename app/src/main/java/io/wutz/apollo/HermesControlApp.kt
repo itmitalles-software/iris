@@ -1,0 +1,73 @@
+package io.wutz.apollo
+
+import android.app.Application
+import android.os.Build
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.local.SessionListCacheStore
+import io.wutz.apollo.data.remote.CertificateImageInterceptor
+import io.wutz.apollo.data.remote.ClientCertificates
+import io.wutz.apollo.data.remote.NetworkMonitor
+import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.data.remote.ServerTrust
+import io.wutz.apollo.notification.TurnCorrelationTracker
+import io.wutz.apollo.ui.analytics.AnalyticsPreloader
+import io.wutz.apollo.ui.chat.cleanStalePastedImages
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+class HermesControlApp :
+    Application(),
+    SingletonImageLoader.Factory {
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    override fun onCreate() {
+        super.onCreate()
+        val startupTimeMs = System.currentTimeMillis()
+        appScope.launch(Dispatchers.IO) {
+            cleanStalePastedImages(cacheDir, startupTimeMs)
+        }
+        ServerTrust.initialize(this)
+        ClientCertificates.initialize(this)
+        AuthManager.init(this)
+        NetworkMonitor.init(this)
+        SessionListCacheStore.init(this)
+        // Reply-notification turn boundaries survive process death (armed before
+        // each mobile prompt, consumed by the matching completion).
+        TurnCorrelationTracker.attach(this)
+        appScope.launch {
+            AuthManager.initializationState.first { it == AuthManager.InitializationState.Ready }
+            // Issue #537 follow-up (A): preload analytics in the background after launch
+            // so the tab renders instantly when opened (the usage endpoint is slow on a
+            // cold backend). Fire-and-forget; never blocks UI startup.
+            AnalyticsPreloader.preload(this@HermesControlApp)
+        }
+    }
+
+    override fun newImageLoader(context: PlatformContext): ImageLoader =
+        ImageLoader
+            .Builder(context)
+            .components {
+                add(CertificateImageInterceptor())
+                add(
+                    OkHttpNetworkFetcherFactory(
+                        callFactory = { OkHttpProvider.base },
+                    ),
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    add(AnimatedImageDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
+            }.crossfade(true)
+            .build()
+}

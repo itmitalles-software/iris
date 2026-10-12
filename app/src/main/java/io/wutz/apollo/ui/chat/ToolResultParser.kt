@@ -1,0 +1,82 @@
+package io.wutz.apollo.ui.chat
+
+import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.ui.chat.tool.ToolView
+import io.wutz.apollo.ui.chat.tool.ToolViewBuilder
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
+/**
+ * Parses the tool.complete JSON payload into a [ToolView] via the
+ * desktop-ported display engine ([ToolViewBuilder]).
+ *
+ * This is a thin adapter: it normalizes the payload shape (args/result
+ * sub-objects, legacy top-level fallback, name resolution) and hands the
+ * parts to the engine. All per-tool formatting lives in the engine.
+ *
+ * Returns null for non-JSON or non-object content — the view falls back
+ * to the raw JSON dump in that case.
+ */
+fun parseToolOutput(
+    content: String,
+    toolName: String?,
+    isRunning: Boolean,
+): ToolView? {
+    val trimmed = content.trim()
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        return null
+    }
+
+    return try {
+        val element = OkHttpProvider.json.parseToJsonElement(trimmed)
+        if (element !is JsonObject) {
+            return null
+        }
+
+        // Resolve tool name — from the message first, then from the payload
+        // (old sessions carried it in the body).
+        val resolvedToolName =
+            toolName
+                ?: (element["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+        // Extract args sub-object if present (new tool.complete format) and
+        // the result sub-object, falling back to the top-level payload (old
+        // format where result fields sat at the root).
+        val rawArgs = element["args"] as? JsonObject
+        // Gateway labels are envelope metadata; never interpret a real args.labels value as display text.
+        val labels = element["labels"] as? JsonArray
+        val args =
+            if (labels != null) {
+                JsonObject(rawArgs.orEmpty() + ("hermes_tool_labels" to labels))
+            } else {
+                rawArgs
+            }
+        val rawResultObj = element["result"] as? JsonObject
+        val displayMetadata = element["display_metadata"]
+        val result =
+            when {
+                rawResultObj != null && displayMetadata != null && !rawResultObj.containsKey("display_metadata") -> {
+                    JsonObject(rawResultObj + ("display_metadata" to displayMetadata))
+                }
+
+                rawResultObj != null -> {
+                    rawResultObj
+                }
+
+                else -> {
+                    element
+                }
+            }
+
+        ToolViewBuilder.build(
+            toolName = resolvedToolName ?: "tool",
+            args = args,
+            result = result,
+            isError = false,
+            running = isRunning,
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
