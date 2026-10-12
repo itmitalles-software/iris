@@ -1,12 +1,5 @@
 package io.wutz.apollo.ui.settings
 
-import io.wutz.apollo.data.config.ConnectionProfile
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.model.BusySendMode
-import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.session.ProfileSwitchCoordinator
-import io.wutz.apollo.theme.ThemePreference
-import io.wutz.apollo.theme.ThemePreset
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -14,6 +7,13 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.data.config.ConnectionProfile
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.model.BusySendMode
+import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.session.ProfileSwitchCoordinator
+import io.wutz.apollo.theme.ThemePreference
+import io.wutz.apollo.theme.ThemePreset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

@@ -1,10 +1,10 @@
 package io.wutz.apollo.ui.chat
 
 import android.util.Log
-import io.wutz.apollo.data.model.ProcessInfo
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
+import io.wutz.apollo.data.model.ProcessInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher

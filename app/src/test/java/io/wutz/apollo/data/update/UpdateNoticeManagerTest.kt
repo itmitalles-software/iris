@@ -1,6 +1,5 @@
 package io.wutz.apollo.data.update
 
-import io.wutz.apollo.data.local.AuthManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -8,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.data.local.AuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

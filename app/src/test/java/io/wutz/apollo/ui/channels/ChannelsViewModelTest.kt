@@ -1,5 +1,11 @@
 package io.wutz.apollo.ui.channels
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.EnvVarField
 import io.wutz.apollo.data.model.MessagingPlatform
@@ -8,12 +14,6 @@ import io.wutz.apollo.data.model.MessagingPlatformUpdate
 import io.wutz.apollo.data.model.MessagingPlatformUpdateResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

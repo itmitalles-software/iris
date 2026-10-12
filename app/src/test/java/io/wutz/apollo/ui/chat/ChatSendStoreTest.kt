@@ -1,10 +1,10 @@
 package io.wutz.apollo.ui.chat
 
 import android.content.SharedPreferences
-import io.wutz.apollo.data.model.Attachment
-import io.wutz.apollo.data.model.BusySendMode
 import io.mockk.every
 import io.mockk.mockk
+import io.wutz.apollo.data.model.Attachment
+import io.wutz.apollo.data.model.BusySendMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

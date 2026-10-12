@@ -1,5 +1,8 @@
 package io.wutz.apollo.ui.kanban
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.wutz.apollo.data.local.InMemoryKanbanPreferencesStore
 import io.wutz.apollo.data.model.KanbanBoard
 import io.wutz.apollo.data.model.KanbanBoardResponse
@@ -9,9 +12,6 @@ import io.wutz.apollo.data.model.KanbanTask
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.repository.KanbanRepository
 import io.wutz.apollo.data.ws.KanbanEventsClient
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

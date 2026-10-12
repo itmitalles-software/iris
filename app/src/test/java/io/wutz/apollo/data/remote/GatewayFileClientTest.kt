@@ -1,10 +1,10 @@
 package io.wutz.apollo.data.remote
 
+import io.mockk.every
+import io.mockk.mockk
 import io.wutz.apollo.data.config.ServerStore
 import io.wutz.apollo.data.config.ServerStoreState
 import io.wutz.apollo.data.local.AuthManager
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -1,9 +1,9 @@
 package io.wutz.apollo.data.ws
 
-import io.wutz.apollo.data.model.MessageReaction
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
+import io.wutz.apollo.data.model.MessageReaction
 import kotlinx.serialization.json.JsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals

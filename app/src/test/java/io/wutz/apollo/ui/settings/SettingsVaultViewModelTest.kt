@@ -1,11 +1,11 @@
 package io.wutz.apollo.ui.settings
 
-import io.wutz.apollo.data.model.VaultItem
-import io.wutz.apollo.data.model.VaultSource
-import io.wutz.apollo.data.ws.VaultRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.wutz.apollo.data.model.VaultItem
+import io.wutz.apollo.data.model.VaultSource
+import io.wutz.apollo.data.ws.VaultRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

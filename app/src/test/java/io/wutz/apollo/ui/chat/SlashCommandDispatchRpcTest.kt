@@ -1,6 +1,14 @@
 package io.wutz.apollo.ui.chat
 
 import android.app.Application
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.slot
+import io.mockk.unmockkAll
+import io.mockk.verify
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.HermesDatabase
@@ -19,14 +27,6 @@ import io.wutz.apollo.data.ws.contract.ConfigSetParams
 import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.ui.chat.fakes.FakeChatPersistenceRepository
 import io.wutz.apollo.ui.chat.fakes.FakeSlashUsageStore
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.mockkStatic
-import io.mockk.slot
-import io.mockk.unmockkAll
-import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

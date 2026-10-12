@@ -1,5 +1,8 @@
 package io.wutz.apollo.ui.projects
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.DiscoveredRepo
 import io.wutz.apollo.data.model.ProjectFolder
@@ -7,9 +10,6 @@ import io.wutz.apollo.data.model.ProjectInfo
 import io.wutz.apollo.data.ws.ProjectsRepository
 import io.wutz.apollo.data.ws.ProjectsResult
 import io.wutz.apollo.data.ws.WsEvent
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -3,6 +3,11 @@ package io.wutz.apollo.ui.chat
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import io.wutz.apollo.data.config.ServerStore
 import io.wutz.apollo.data.config.ServerStoreState
 import io.wutz.apollo.data.local.AuthManager
@@ -17,11 +22,6 @@ import io.wutz.apollo.notification.ReplyNotificationTracker
 import io.wutz.apollo.notification.TurnCorrelationTracker
 import io.wutz.apollo.notification.TurnRowResolver
 import io.wutz.apollo.notification.correlateCompletedTurnRow
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
-import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement

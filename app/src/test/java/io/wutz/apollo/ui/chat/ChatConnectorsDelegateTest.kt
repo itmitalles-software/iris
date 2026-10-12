@@ -1,5 +1,8 @@
 package io.wutz.apollo.ui.chat
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.wutz.apollo.data.model.ConnectorConnectItem
 import io.wutz.apollo.data.model.ConnectorConnectResult
 import io.wutz.apollo.data.model.ConnectorConnectStatus
@@ -8,9 +11,6 @@ import io.wutz.apollo.data.model.ConnectorError
 import io.wutz.apollo.data.model.ConnectorItem
 import io.wutz.apollo.data.model.ConnectorListResult
 import io.wutz.apollo.data.ws.ConnectorRepository
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

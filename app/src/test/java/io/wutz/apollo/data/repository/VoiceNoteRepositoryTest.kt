@@ -1,13 +1,13 @@
 package io.wutz.apollo.data.repository
 
-import io.wutz.apollo.data.model.AudioTranscriptionRequest
-import io.wutz.apollo.data.model.AudioTranscriptionResponse
-import io.wutz.apollo.data.remote.HermesApiService
-import io.wutz.apollo.data.remote.NetworkResult
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import io.wutz.apollo.data.model.AudioTranscriptionRequest
+import io.wutz.apollo.data.model.AudioTranscriptionResponse
+import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.NetworkResult
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody

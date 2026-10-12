@@ -2,10 +2,10 @@ package io.wutz.apollo.ui.chat.components
 
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
-import io.wutz.apollo.ui.chat.ChatMessage
-import io.wutz.apollo.ui.chat.MessageRole
 import io.mockk.every
 import io.mockk.mockk
+import io.wutz.apollo.ui.chat.ChatMessage
+import io.wutz.apollo.ui.chat.MessageRole
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

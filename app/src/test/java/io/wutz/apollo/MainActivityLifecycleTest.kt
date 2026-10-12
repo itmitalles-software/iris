@@ -1,11 +1,11 @@
 package io.wutz.apollo
 
-import io.wutz.apollo.notification.NotificationHelper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.notification.NotificationHelper
 import org.junit.After
 import org.junit.Test
 import java.lang.reflect.InvocationTargetException

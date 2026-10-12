@@ -1,5 +1,11 @@
 package io.wutz.apollo.ui.plugins
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.model.AgentPluginInstallBody
 import io.wutz.apollo.data.model.PluginCatalogCapabilities
 import io.wutz.apollo.data.model.PluginCatalogEntry
@@ -12,12 +18,6 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.ws.PluginRemovalRepository
 import io.wutz.apollo.data.ws.PluginRemovalResult
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

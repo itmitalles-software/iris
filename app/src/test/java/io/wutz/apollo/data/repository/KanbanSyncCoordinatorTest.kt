@@ -1,13 +1,13 @@
 package io.wutz.apollo.data.repository
 
-import io.wutz.apollo.data.ws.KanbanEvent
-import io.wutz.apollo.data.ws.KanbanEventsClient
-import io.wutz.apollo.data.ws.KanbanEventsEnvelope
-import io.wutz.apollo.data.ws.KanbanLiveStatus
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.wutz.apollo.data.ws.KanbanEvent
+import io.wutz.apollo.data.ws.KanbanEventsClient
+import io.wutz.apollo.data.ws.KanbanEventsEnvelope
+import io.wutz.apollo.data.ws.KanbanLiveStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope

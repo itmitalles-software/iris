@@ -1,10 +1,10 @@
 package io.wutz.apollo.notification
 
 import android.content.Context
-import io.wutz.apollo.data.ws.ConnectionStatus
-import io.wutz.apollo.data.ws.WsEvent
 import io.mockk.mockk
 import io.mockk.verify
+import io.wutz.apollo.data.ws.ConnectionStatus
+import io.wutz.apollo.data.ws.WsEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

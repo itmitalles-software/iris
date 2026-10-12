@@ -1,5 +1,11 @@
 package io.wutz.apollo.ui.toolsets
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.model.ActionStatusResponse
 import io.wutz.apollo.data.model.EnvVarRevealResponse
 import io.wutz.apollo.data.model.ToolsetConfigResponse
@@ -10,12 +16,6 @@ import io.wutz.apollo.data.model.ToolsetProvider
 import io.wutz.apollo.data.model.ToolsetProviderSelectResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

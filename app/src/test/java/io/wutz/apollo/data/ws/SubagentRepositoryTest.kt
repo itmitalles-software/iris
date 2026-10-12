@@ -1,16 +1,16 @@
 package io.wutz.apollo.data.ws
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockkObject
+import io.mockk.slot
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.model.SubagentListItem
 import io.wutz.apollo.data.model.SubagentListResponse
 import io.wutz.apollo.data.model.SubagentTailResponse
 import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.contract.SessionIdParams
 import io.wutz.apollo.data.ws.contract.SubagentTailParams
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockkObject
-import io.mockk.slot
-import io.mockk.unmockkAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

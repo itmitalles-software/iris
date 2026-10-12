@@ -7,10 +7,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
-import io.wutz.apollo.data.model.ModelProvider
-import io.wutz.apollo.data.model.PinnedModel
 import io.mockk.every
 import io.mockk.mockk
+import io.wutz.apollo.data.model.ModelProvider
+import io.wutz.apollo.data.model.PinnedModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.junit.Before

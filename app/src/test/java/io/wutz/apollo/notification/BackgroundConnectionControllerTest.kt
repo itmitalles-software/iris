@@ -1,16 +1,16 @@
 package io.wutz.apollo.notification
 
 import android.util.Log
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.remote.NetworkMonitor
-import io.wutz.apollo.data.ws.ConnectionStatus
-import io.wutz.apollo.data.ws.HermesWsClient
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.remote.NetworkMonitor
+import io.wutz.apollo.data.ws.ConnectionStatus
+import io.wutz.apollo.data.ws.HermesWsClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals

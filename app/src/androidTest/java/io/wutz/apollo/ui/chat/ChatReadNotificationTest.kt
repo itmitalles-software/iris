@@ -21,6 +21,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import androidx.test.platform.app.InstrumentationRegistry
+import io.mockk.mockk
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.SessionMessage
 import io.wutz.apollo.data.ws.ConnectionStatus
@@ -28,7 +29,6 @@ import io.wutz.apollo.notification.ChatNotificationService
 import io.wutz.apollo.notification.ReplyNotificationTracker
 import io.wutz.apollo.ui.chat.components.ChatLifecycleEffects
 import io.wutz.apollo.ui.chat.components.rememberChatScrollController
-import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive

@@ -1,7 +1,7 @@
 package io.wutz.apollo.ui.chat.fakes
 
-import io.wutz.apollo.data.local.SlashUsageStore
 import io.mockk.mockk
+import io.wutz.apollo.data.local.SlashUsageStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update

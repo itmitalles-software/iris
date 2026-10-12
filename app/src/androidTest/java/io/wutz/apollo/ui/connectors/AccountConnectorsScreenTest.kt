@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.mockk.coEvery
+import io.mockk.mockk
+import io.mockk.unmockkAll
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.AccountConnectorResult
@@ -26,9 +29,6 @@ import io.wutz.apollo.data.model.ConnectorListResult
 import io.wutz.apollo.data.ws.AccountConnectorRepository
 import io.wutz.apollo.theme.HermesControlTheme
 import io.wutz.apollo.theme.ThemePreference
-import io.mockk.coEvery
-import io.mockk.mockk
-import io.mockk.unmockkAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow

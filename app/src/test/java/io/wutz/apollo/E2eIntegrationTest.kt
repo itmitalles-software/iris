@@ -3,6 +3,7 @@ package io.wutz.apollo
 import android.app.Application
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import io.mockk.*
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.ActionResponse
 import io.wutz.apollo.data.model.ActiveProfileResponse
@@ -63,7 +64,6 @@ import io.wutz.apollo.ui.plugins.PluginsViewModel
 import io.wutz.apollo.ui.sessions.SessionsViewModel
 import io.wutz.apollo.ui.skills.SkillsViewModel
 import io.wutz.apollo.ui.system.SystemViewModel
-import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*

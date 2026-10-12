@@ -1,11 +1,11 @@
 package io.wutz.apollo.ui.kanban
 
-import io.wutz.apollo.data.model.DispatchResult
-import io.wutz.apollo.data.remote.KanbanApiService
-import io.wutz.apollo.data.repository.DefaultKanbanDispatcherNudger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.wutz.apollo.data.model.DispatchResult
+import io.wutz.apollo.data.remote.KanbanApiService
+import io.wutz.apollo.data.repository.DefaultKanbanDispatcherNudger
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope

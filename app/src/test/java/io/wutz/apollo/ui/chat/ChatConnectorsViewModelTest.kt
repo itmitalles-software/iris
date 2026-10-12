@@ -1,11 +1,11 @@
 package io.wutz.apollo.ui.chat
 
+import io.mockk.mockk
+import io.mockk.verify
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.session.ActiveSessionHolder
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.data.ws.HermesWsClient
-import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

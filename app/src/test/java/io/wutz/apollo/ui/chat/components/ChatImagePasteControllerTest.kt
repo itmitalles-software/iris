@@ -2,12 +2,12 @@ package io.wutz.apollo.ui.chat.components
 
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
+import io.mockk.mockk
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.Attachment
 import io.wutz.apollo.ui.chat.ChatAttachmentTarget
 import io.wutz.apollo.ui.chat.PastedImage
 import io.wutz.apollo.ui.chat.PastedImageTooLargeException
-import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation

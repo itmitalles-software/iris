@@ -1,6 +1,13 @@
 package io.wutz.apollo.data.ws
 
 import android.util.Log
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
+import io.mockk.verify
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.CookieManager
@@ -10,13 +17,6 @@ import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.buildFakePersistentCookieJar
 import io.wutz.apollo.data.session.ActiveSessionHolder
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.mockkStatic
-import io.mockk.unmockkAll
-import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers

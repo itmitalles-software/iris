@@ -1,6 +1,13 @@
 package io.wutz.apollo.ui.bots.group
 
 import android.util.Log
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
 import io.wutz.apollo.data.model.BotAvatarMeta
 import io.wutz.apollo.data.model.BotRosterMeta
 import io.wutz.apollo.data.model.GroupChatRoomLease
@@ -14,13 +21,6 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.data.ws.WsEvent
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.mockkStatic
-import io.mockk.unmockkObject
-import io.mockk.unmockkStatic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -1,11 +1,5 @@
 package io.wutz.apollo.data.session
 
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.model.SetActiveProfileRequest
-import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.remote.HermesApiService
-import io.wutz.apollo.data.remote.NetworkResult
-import io.wutz.apollo.data.ws.HermesWsClient
 import io.mockk.Ordering
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -14,6 +8,12 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.model.SetActiveProfileRequest
+import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.NetworkResult
+import io.wutz.apollo.data.ws.HermesWsClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel

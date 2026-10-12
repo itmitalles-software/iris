@@ -1,10 +1,10 @@
 package io.wutz.apollo.notification
 
-import io.wutz.apollo.data.model.SessionMessage
-import io.wutz.apollo.data.remote.ApiClient
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.wutz.apollo.data.model.SessionMessage
+import io.wutz.apollo.data.remote.ApiClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After

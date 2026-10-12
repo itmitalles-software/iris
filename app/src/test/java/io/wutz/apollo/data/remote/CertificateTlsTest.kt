@@ -1,18 +1,18 @@
 package io.wutz.apollo.data.remote
 
 import android.util.Log
-import io.wutz.apollo.data.config.ServerStore
-import io.wutz.apollo.data.config.ServerStoreState
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.ws.ConnectionStatus
-import io.wutz.apollo.data.ws.ReconnectPolicy
-import io.wutz.apollo.data.ws.WsTransport
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
+import io.wutz.apollo.data.config.ServerStore
+import io.wutz.apollo.data.config.ServerStoreState
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.ws.ConnectionStatus
+import io.wutz.apollo.data.ws.ReconnectPolicy
+import io.wutz.apollo.data.ws.WsTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

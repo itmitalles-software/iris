@@ -1,6 +1,9 @@
 package io.wutz.apollo.ui.connectors
 
 import androidx.lifecycle.viewModelScope
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.AccountConnectorResult
 import io.wutz.apollo.data.model.ConnectorCatalogEntry
@@ -13,9 +16,6 @@ import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.data.ws.contract.ConnectionAnswer
 import io.wutz.apollo.data.ws.contract.ConnectionRespondParams
 import io.wutz.apollo.data.ws.contract.ConnectorOwner
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

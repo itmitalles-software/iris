@@ -4,12 +4,12 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
-import io.wutz.apollo.notification.ChatNotificationService
-import io.wutz.apollo.notification.ReplyNotificationTracker
-import io.wutz.apollo.ui.chat.components.ChatReadObserver
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.wutz.apollo.notification.ChatNotificationService
+import io.wutz.apollo.notification.ReplyNotificationTracker
+import io.wutz.apollo.ui.chat.components.ChatReadObserver
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

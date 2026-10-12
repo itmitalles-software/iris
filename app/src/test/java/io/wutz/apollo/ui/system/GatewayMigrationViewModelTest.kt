@@ -1,18 +1,18 @@
 package io.wutz.apollo.ui.system
 
 import android.app.Application
-import io.wutz.apollo.data.model.GatewayMigrationPlan
-import io.wutz.apollo.data.model.GatewayMigrationProfile
-import io.wutz.apollo.data.model.GatewayMigrationStartResponse
-import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.remote.HermesApiService
-import io.wutz.apollo.ui.common.ActionProgressPhase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.data.model.GatewayMigrationPlan
+import io.wutz.apollo.data.model.GatewayMigrationProfile
+import io.wutz.apollo.data.model.GatewayMigrationStartResponse
+import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.ui.common.ActionProgressPhase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

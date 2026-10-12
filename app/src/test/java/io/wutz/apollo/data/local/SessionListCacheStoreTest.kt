@@ -2,10 +2,10 @@ package io.wutz.apollo.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
-import io.wutz.apollo.data.model.SessionInfo
-import io.wutz.apollo.data.model.SessionListResponse
 import io.mockk.every
 import io.mockk.mockk
+import io.wutz.apollo.data.model.SessionInfo
+import io.wutz.apollo.data.model.SessionListResponse
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

@@ -1,5 +1,11 @@
 package io.wutz.apollo.ui.profiles
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.ActiveProfileResponse
 import io.wutz.apollo.data.model.CreateProfileRequest
@@ -19,12 +25,6 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.data.ws.HermesWsClient
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

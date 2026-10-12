@@ -4,13 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
-import io.wutz.apollo.R
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.remote.CleartextPolicy
-import io.wutz.apollo.data.remote.HermesApiService
-import io.wutz.apollo.data.remote.ServerEndpoint
-import io.wutz.apollo.data.remote.requiresLocalNetworkPermission
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.every
@@ -18,6 +11,13 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.CleartextPolicy
+import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.ServerEndpoint
+import io.wutz.apollo.data.remote.requiresLocalNetworkPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

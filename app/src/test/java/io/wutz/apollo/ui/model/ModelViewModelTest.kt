@@ -1,5 +1,9 @@
 package io.wutz.apollo.ui.model
 
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
+import io.mockk.verify
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.ModelCapabilities
@@ -10,10 +14,6 @@ import io.wutz.apollo.data.model.PinnedModel
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.ModelOptionsRepository
-import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
-import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

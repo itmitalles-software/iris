@@ -1,5 +1,8 @@
 package io.wutz.apollo.data.repository
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.wutz.apollo.data.model.CreateTaskBody
 import io.wutz.apollo.data.model.CreateTaskResponse
 import io.wutz.apollo.data.model.DeleteAttachmentResponse
@@ -13,9 +16,6 @@ import io.wutz.apollo.data.model.UpdateTaskBody
 import io.wutz.apollo.data.model.UpdateTaskResponse
 import io.wutz.apollo.data.remote.KanbanApiService
 import io.wutz.apollo.data.remote.NetworkResult
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest

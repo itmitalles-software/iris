@@ -1,5 +1,8 @@
 package io.wutz.apollo.ui.kanban
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import io.wutz.apollo.data.model.AttachmentListResponse
 import io.wutz.apollo.data.model.DeleteAttachmentResponse
 import io.wutz.apollo.data.model.KanbanAttachment
@@ -19,9 +22,6 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.repository.KanbanRepository
 import io.wutz.apollo.data.ws.KanbanEventsClient
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

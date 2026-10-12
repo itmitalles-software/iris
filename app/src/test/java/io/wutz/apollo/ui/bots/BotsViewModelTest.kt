@@ -1,5 +1,11 @@
 package io.wutz.apollo.ui.bots
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.ActiveProfileResponse
 import io.wutz.apollo.data.model.BotAvatarMeta
@@ -13,12 +19,6 @@ import io.wutz.apollo.data.model.ProfilesResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.ws.HermesWsClient
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

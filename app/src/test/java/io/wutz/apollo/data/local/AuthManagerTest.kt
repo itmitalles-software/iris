@@ -4,12 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
-import io.wutz.apollo.data.config.ConnectionProfile
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.data.config.ConnectionProfile
 import kotlinx.coroutines.async
 import org.junit.After
 import org.junit.Assert.assertEquals

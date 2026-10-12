@@ -1,6 +1,7 @@
 package io.wutz.apollo.ui.connect
 
 import android.app.Application
+import io.mockk.*
 import io.wutz.apollo.R
 import io.wutz.apollo.data.config.ConnectionProfile
 import io.wutz.apollo.data.local.AuthManager
@@ -9,7 +10,6 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.ServerEndpoint
-import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

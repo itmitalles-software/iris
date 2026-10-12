@@ -1,11 +1,11 @@
 package io.wutz.apollo.ui.authlogin
 
 import android.util.Log
-import io.wutz.apollo.R
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first

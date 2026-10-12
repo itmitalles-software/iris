@@ -18,12 +18,12 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.wutz.apollo.R
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.theme.HermesControlTheme
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.wutz.apollo.R
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.theme.HermesControlTheme
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

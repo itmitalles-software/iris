@@ -1,15 +1,15 @@
 package io.wutz.apollo.ui.authlogin
 
 import android.app.Application
-import io.wutz.apollo.data.config.ConnectionProfile
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.data.config.ConnectionProfile
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

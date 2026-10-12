@@ -2,13 +2,6 @@ package io.wutz.apollo.ui.authlogin
 
 import android.app.Application
 import android.util.Log
-import io.wutz.apollo.R
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.remote.CertificateBindings
-import io.wutz.apollo.data.remote.ClientCertificates
-import io.wutz.apollo.data.remote.OkHttpProvider
-import io.wutz.apollo.data.remote.ServerEndpoint
-import io.wutz.apollo.data.remote.await
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -16,6 +9,13 @@ import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.remote.CertificateBindings
+import io.wutz.apollo.data.remote.ClientCertificates
+import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.data.remote.ServerEndpoint
+import io.wutz.apollo.data.remote.await
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

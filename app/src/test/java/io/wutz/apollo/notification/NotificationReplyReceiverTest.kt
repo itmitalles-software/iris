@@ -6,12 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.RemoteInput
-import io.wutz.apollo.data.local.ChatMessageDao
-import io.wutz.apollo.data.local.ChatMessageEntity
-import io.wutz.apollo.data.local.HermesDatabase
-import io.wutz.apollo.data.session.ActiveSessionHolder
-import io.wutz.apollo.data.ws.HermesWsClient
-import io.wutz.apollo.data.ws.WsMethods
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -20,6 +14,12 @@ import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.data.local.ChatMessageDao
+import io.wutz.apollo.data.local.ChatMessageEntity
+import io.wutz.apollo.data.local.HermesDatabase
+import io.wutz.apollo.data.session.ActiveSessionHolder
+import io.wutz.apollo.data.ws.HermesWsClient
+import io.wutz.apollo.data.ws.WsMethods
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After

@@ -1,13 +1,13 @@
 package io.wutz.apollo.ui.gateway
 
-import io.wutz.apollo.data.model.StatusResponse
-import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.remote.HermesApiService
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.data.model.StatusResponse
+import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.HermesApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

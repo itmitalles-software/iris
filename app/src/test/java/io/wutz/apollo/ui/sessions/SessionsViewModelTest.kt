@@ -1,5 +1,12 @@
 package io.wutz.apollo.ui.sessions
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
+import io.mockk.verify
 import io.wutz.apollo.data.model.LiveSessionSnapshot
 import io.wutz.apollo.data.model.ProjectInfo
 import io.wutz.apollo.data.model.SessionInfo
@@ -16,13 +23,6 @@ import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.data.ws.ProjectsSource
 import io.wutz.apollo.data.ws.SessionLiveStatusSource
 import io.wutz.apollo.data.ws.WsEvent
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
-import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

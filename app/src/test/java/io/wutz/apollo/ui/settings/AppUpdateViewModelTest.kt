@@ -5,12 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.FileProvider
-import io.wutz.apollo.data.local.AuthManager
-import io.wutz.apollo.data.update.AppUpdateCache
-import io.wutz.apollo.data.update.AppUpdateChecker
-import io.wutz.apollo.data.update.AppUpdateState
-import io.wutz.apollo.data.update.UpdateInfo
-import io.wutz.apollo.data.update.UpdateNoticeManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -20,6 +14,12 @@ import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.update.AppUpdateCache
+import io.wutz.apollo.data.update.AppUpdateChecker
+import io.wutz.apollo.data.update.AppUpdateState
+import io.wutz.apollo.data.update.UpdateInfo
+import io.wutz.apollo.data.update.UpdateNoticeManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

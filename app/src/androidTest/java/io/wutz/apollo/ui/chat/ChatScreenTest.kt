@@ -9,13 +9,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.core.content.ContextCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkStatic
 import io.wutz.apollo.data.model.Attachment
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
 import io.wutz.apollo.ui.common.ActionProgressController
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

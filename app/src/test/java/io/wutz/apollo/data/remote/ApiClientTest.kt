@@ -1,9 +1,9 @@
 package io.wutz.apollo.data.remote
 
-import io.wutz.apollo.data.local.AuthManager
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.data.local.AuthManager
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

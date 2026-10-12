@@ -1,5 +1,11 @@
 package io.wutz.apollo.ui.memory
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.model.MemoryProviderStatusRow
 import io.wutz.apollo.data.model.MemoryResetRequest
 import io.wutz.apollo.data.model.MemoryResetResponse
@@ -7,12 +13,6 @@ import io.wutz.apollo.data.model.MemoryResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow

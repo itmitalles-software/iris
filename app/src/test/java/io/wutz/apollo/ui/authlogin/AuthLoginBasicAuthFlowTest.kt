@@ -1,11 +1,11 @@
 package io.wutz.apollo.ui.authlogin
 
+import io.mockk.unmockkObject
 import io.wutz.apollo.data.remote.CookieManager
 import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.ServerTrust
 import io.wutz.apollo.data.remote.buildFakePersistentCookieJar
 import io.wutz.apollo.data.remote.mockSystemServerTrust
-import io.mockk.unmockkObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

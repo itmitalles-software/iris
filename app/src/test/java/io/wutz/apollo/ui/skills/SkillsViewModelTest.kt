@@ -1,6 +1,12 @@
 package io.wutz.apollo.ui.skills
 
 import android.app.Application
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.model.HubSkill
 import io.wutz.apollo.data.model.SkillHubSource
 import io.wutz.apollo.data.model.SkillHubSourcesResponse
@@ -8,12 +14,6 @@ import io.wutz.apollo.data.model.SkillScanFinding
 import io.wutz.apollo.data.model.SkillScanResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

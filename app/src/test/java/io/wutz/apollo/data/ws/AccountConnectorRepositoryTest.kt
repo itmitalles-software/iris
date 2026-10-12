@@ -1,5 +1,10 @@
 package io.wutz.apollo.data.ws
 
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.AccountConnectorResult
 import io.wutz.apollo.data.model.ConnectorError
@@ -9,11 +14,6 @@ import io.wutz.apollo.data.ws.contract.ConnectionRespondParams
 import io.wutz.apollo.data.ws.contract.ConnectorOwner
 import io.wutz.apollo.data.ws.contract.ConnectorsOperationStatusParams
 import io.wutz.apollo.data.ws.contract.RpcMethod
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockkObject
-import io.mockk.unmockkAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonElement

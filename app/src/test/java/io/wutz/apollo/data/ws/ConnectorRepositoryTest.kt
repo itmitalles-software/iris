@@ -1,11 +1,11 @@
 package io.wutz.apollo.data.ws
 
-import io.wutz.apollo.data.model.ConnectorConnectResult
-import io.wutz.apollo.data.model.ConnectorError
-import io.wutz.apollo.data.model.ConnectorListResult
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.wutz.apollo.data.model.ConnectorConnectResult
+import io.wutz.apollo.data.model.ConnectorError
+import io.wutz.apollo.data.model.ConnectorListResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
