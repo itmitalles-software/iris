@@ -12,6 +12,7 @@ import io.wutz.apollo.data.remote.CookieManager
 import io.wutz.apollo.data.remote.DashboardSessionTokenRefresher
 import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.buildFakePersistentCookieJar
+import io.wutz.apollo.data.remote.mockSystemServerTrust
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -48,6 +49,9 @@ class GatewayContractFramesTest {
 
         mockWebServer = MockWebServer()
         mockWebServer.start()
+        // OkHttpProvider needs the startup trust policy; without it this class only passed
+        // when an earlier test in the same JVM had initialised it (#6).
+        mockSystemServerTrust()
         mockkObject(AuthManager)
         every { AuthManager.wsUrl() } returns mockWebServer.url("/").toString().replace("http://", "ws://")
         every { AuthManager.isAutoReconnect() } returns false
