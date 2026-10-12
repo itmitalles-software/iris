@@ -55,6 +55,15 @@ _Last updated: 2026-10-12_
   owner's OK.
 - #7 (Play flavor) deferred until a Play release is planned.
 
+## Host setup and release (2026-10-12)
+
+- v0.1.0 is released and signed (release key kept offline by the owner; GitHub
+  secrets set).
+- `scripts/server/setup-hermes-for-apollo.sh` is the supported host setup
+  (README "Quick setup"). The owner's host runs an equivalent `hermes-serve`
+  user service on 127.0.0.1:9119; the last step, `sudo tailscale serve --bg 9119`,
+  is pending (#2).
+
 ## Known issues / follow-ups
 
 Tracked as GitHub issues in the repository.
