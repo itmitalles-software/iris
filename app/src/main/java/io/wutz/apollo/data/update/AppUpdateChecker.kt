@@ -35,7 +35,7 @@ data class UpdateInfo(
         val browserDownloadUrl: String = "",
     )
 
-    /** The release APK asset — release.yml ships `hermes-mobile-<tag>.apk`. */
+    /** The release APK asset — release.yml ships `apollo-<tag>.apk`. */
     val apkAsset: Asset?
         get() = assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
 }
@@ -162,7 +162,7 @@ fun isReleaseCandidateVersion(tag: String): Boolean =
  */
 open class AppUpdateChecker(
     private val client: OkHttpClient = OkHttpProvider.base,
-    private val apiBaseUrl: String = "https://api.github.com/repos/Hy4ri/hermes-mobile",
+    private val apiBaseUrl: String = "https://api.github.com/repos/wutz-io/apollo-hermes-android",
 ) {
     /**
      * Fetch the newest installable release metadata.

@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Apollo mark: a minimal sun (disc + eight rays) inside the 66dp safe zone -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,37a17,17 0,1 1,0 34a17,17 0,1 1,0 -34z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M54.00,30.50 L54.00,24.00 M70.62,37.38 L75.21,32.79 M77.50,54.00 L84.00,54.00 M70.62,70.62 L75.21,75.21 M54.00,77.50 L54.00,84.00 M37.38,70.62 L32.79,75.21 M30.50,54.00 L24.00,54.00 M37.38,37.38 L32.79,32.79" />
+</vector>

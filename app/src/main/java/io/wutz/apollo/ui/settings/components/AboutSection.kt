@@ -88,11 +88,22 @@ internal fun AboutSection(
 
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "https://github.com/Hy4ri/hermes-mobile",
+            text = "https://github.com/wutz-io/apollo-hermes-android",
             style =
                 MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.primary,
                 ),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.settings_about_upstream_credit),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.settings_about_unofficial),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

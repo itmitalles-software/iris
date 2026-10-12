@@ -158,6 +158,7 @@ internal fun AppearanceSection(
 private fun ThemePreset.label(): String =
     stringResource(
         when (this) {
+            ThemePreset.APOLLO -> R.string.theme_preset_apollo
             ThemePreset.DEFAULT -> R.string.theme_preset_default
             ThemePreset.MONOCHROME -> R.string.theme_preset_monochrome
             ThemePreset.GRUVBOX -> R.string.theme_preset_gruvbox
