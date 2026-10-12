@@ -3,7 +3,7 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
-## Unreleased
+## 0.1.1 — 2026-10-13
 
 ### Added
 
@@ -18,8 +18,9 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
 - Every turn of a chat started in Apollo appeared twice after the app was
   restarted (#5, also in upstream Hermes Mobile: Hy4ri/hermes-mobile#1568).
   The first sync of a new session now probes `order=latest` paging, so cached
-  rows carry stable row ids instead of absolute positions. Sessions created
-  before this fix keep their old cache entries until the app data is cleared.
+  rows carry stable row ids instead of absolute positions; a failed probe falls
+  back to the previous behavior. Sessions created before this fix keep their
+  old cache entries until the app data is cleared.
 - Share target hardening: a `0@`/user-id authority prefix can no longer bypass
   the own-FileProvider guard; styled shared text is kept; URIs the sender did
   not grant no longer crash the share trampoline; provider queries run off the
