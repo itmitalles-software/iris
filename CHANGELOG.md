@@ -3,6 +3,16 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
+## Unreleased
+
+### Added
+
+- `scripts/server/setup-hermes-for-apollo.sh`: one-command Hermes host setup
+  for Apollo (login with scrypt hash in a private env file, `hermes serve`
+  systemd user service on loopback, self-check, Tailscale Serve hint;
+  rerunnable, `--no-service`, `--uninstall`). README explains quick and
+  manual setup.
+
 ## 0.1.0 — 2026-10-12
 
 First Apollo version, forked from Hermes Mobile `dev` at `689a2d30`

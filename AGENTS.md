@@ -43,6 +43,10 @@ tested and easy to merge with upstream.
 ./gradlew ktlintCheck checkColorLiterals testDebugUnitTest lintDebug assembleDebug
 ```
 
+If you touch shell scripts, run `shellcheck scripts/**/*.sh`; the server
+setup script (`scripts/server/setup-hermes-for-apollo.sh`) must also be tried
+with an isolated `--service-name/--port/--config-dir` and `--uninstall`.
+
 For UI changes, also run the app (emulator or device) and check light and
 dark mode in English and German. State clearly what was not tested,
 especially anything that needs a live Hermes server.
