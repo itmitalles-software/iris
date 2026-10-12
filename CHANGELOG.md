@@ -3,7 +3,7 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
-## Unreleased — 0.1.0
+## 0.1.0 — 2026-10-12
 
 First Apollo version, forked from Hermes Mobile `dev` at `689a2d30`
 (2026-10-12). It contains the complete upstream feature set (see
