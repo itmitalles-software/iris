@@ -29,13 +29,13 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.PermanentDrawerSheet
-import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -387,10 +387,26 @@ fun MainNavigation(sessionId: String? = null) {
         }
     }
 
+    // Leaving the modal layout must not leave a stale scrim behind.
+    LaunchedEffect(isExpandedWidth) {
+        if (isExpandedWidth) drawerState.snapTo(DrawerValue.Closed)
+    }
+
     CompositionLocalProvider(LocalDrawerGestureController provides gestureController) {
-        if (isExpandedWidth) {
-            PermanentNavigationDrawer(
-                drawerContent = {
+        // One layout for every width: NavDisplay keeps the same composition position, so
+        // crossing the threshold (rotation, unfolding) keeps drafts and scroll state.
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            gesturesEnabled = gestureController.enabled && !isExpandedWidth,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    content = drawerItems,
+                )
+            },
+        ) {
+            Row {
+                if (isExpandedWidth) {
                     AnimatedVisibility(visible = sidebarVisible) {
                         Row {
                             PermanentDrawerSheet(
@@ -403,21 +419,11 @@ fun MainNavigation(sessionId: String? = null) {
                             VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
-                },
-                content = screenContent,
-            )
-        } else {
-            ModalNavigationDrawer(
-                drawerState = drawerState,
-                gesturesEnabled = gestureController.enabled,
-                drawerContent = {
-                    ModalDrawerSheet(
-                        modifier = Modifier.verticalScroll(rememberScrollState()),
-                        content = drawerItems,
-                    )
-                },
-                content = screenContent,
-            )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    screenContent()
+                }
+            }
         }
     }
 }

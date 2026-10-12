@@ -30,7 +30,7 @@ done
 # 2. Move Room schema directories (named after the database class).
 for dir in app/schemas/"$OLD_PKG".*; do
     [ -d "$dir" ] || continue
-    target="app/schemas/${NEW_PKG}${dir#app/schemas/$OLD_PKG}"
+    target="app/schemas/${NEW_PKG}${dir#app/schemas/"$OLD_PKG"}"
     mkdir -p "$target"
     for file in "$dir"/*; do
         git mv -f "$file" "$target/" 2>/dev/null || mv -f "$file" "$target/"
@@ -43,7 +43,7 @@ done
 git ls-files -z -- \
     'app/**' '*.kts' '*.pro' '*.toml' '.github/**' 'scripts/**' 'flake.nix' \
     ':!:NOTICE' ':!:UPSTREAM.md' ':!:scripts/apollo-package-rename.sh' |
-    xargs -0 grep -lIZ -e "$OLD_PKG" -e "$OLD_PATH" 2>/dev/null |
+    { xargs -0 grep -lIZ -e "$OLD_PKG" -e "$OLD_PATH" 2>/dev/null || true; } |
     xargs -0 -r sed -i -e "s#${OLD_PKG//./\\.}#${NEW_PKG}#g" -e "s#${OLD_PATH}#${NEW_PATH}#g"
 
 echo "Package rename complete: $OLD_PKG -> $NEW_PKG"

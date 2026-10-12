@@ -50,17 +50,17 @@ class ServerStoreMigration(
         val port = prefs.getInt("port", 9119)
         val autoReconnect = prefs.getBoolean("auto_reconnect", true)
 
-        val themePrefString = prefs.getString("theme_preference", ThemePreference.SYSTEM.name)
+        val themePrefString = prefs.getString("theme_preference", ThemePreference.DARK.name)
         val themePreference =
             runCatching { ThemePreference.valueOf(themePrefString!!) }
-                .getOrDefault(ThemePreference.SYSTEM)
+                .getOrDefault(ThemePreference.DARK)
 
         val useDynamicColors = prefs.getBoolean("use_dynamic_colors", false)
 
-        val themePresetString = prefs.getString("theme_preset", ThemePreset.DEFAULT.name)
+        val themePresetString = prefs.getString("theme_preset", ThemePreset.APOLLO.name)
         val themePreset =
             runCatching { ThemePreset.valueOf(themePresetString!!) }
-                .getOrDefault(ThemePreset.DEFAULT)
+                .getOrDefault(ThemePreset.APOLLO)
 
         val connectionProfilesRaw = prefs.getString("connection_profiles", null)
         val connectionProfiles =

@@ -66,6 +66,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -743,17 +744,22 @@ private fun englishReasoningLevelLabel(level: String): String =
 
 /** Localized compact labels for [REASONING_LEVELS]. */
 @Composable
-private fun rememberReasoningLevelLabels(): Map<String, String> =
-    mapOf(
-        "none" to stringResource(R.string.chat_reasoning_level_none),
-        "minimal" to stringResource(R.string.chat_reasoning_level_minimal),
-        "low" to stringResource(R.string.chat_reasoning_level_low),
-        "medium" to stringResource(R.string.chat_reasoning_level_medium),
-        "high" to stringResource(R.string.chat_reasoning_level_high),
-        "xhigh" to stringResource(R.string.chat_reasoning_level_xhigh),
-        "max" to stringResource(R.string.chat_reasoning_level_max),
-        "ultra" to stringResource(R.string.chat_reasoning_level_ultra),
-    )
+private fun rememberReasoningLevelLabels(): Map<String, String> {
+    // The toolbar recomposes while streaming; resolve the labels once per locale/configuration.
+    val resources = LocalResources.current
+    return remember(resources, LocalConfiguration.current) {
+        mapOf(
+            "none" to resources.getString(R.string.chat_reasoning_level_none),
+            "minimal" to resources.getString(R.string.chat_reasoning_level_minimal),
+            "low" to resources.getString(R.string.chat_reasoning_level_low),
+            "medium" to resources.getString(R.string.chat_reasoning_level_medium),
+            "high" to resources.getString(R.string.chat_reasoning_level_high),
+            "xhigh" to resources.getString(R.string.chat_reasoning_level_xhigh),
+            "max" to resources.getString(R.string.chat_reasoning_level_max),
+            "ultra" to resources.getString(R.string.chat_reasoning_level_ultra),
+        )
+    }
+}
 
 /**
  * Build a human-readable label from a reasoning effort level.

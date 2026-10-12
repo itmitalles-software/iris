@@ -27,11 +27,15 @@ import io.wutz.apollo.notification.NotificationReplyReceiver
 import io.wutz.apollo.share.ShareInbox
 import io.wutz.apollo.share.ShareIntentParser
 import io.wutz.apollo.theme.HermesControlTheme
+import io.wutz.apollo.theme.SystemBarsForTheme
+import io.wutz.apollo.theme.resolvesToDark
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.LoadingState
 import io.wutz.apollo.util.LocaleContextWrapper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -87,6 +91,7 @@ class MainActivity : ComponentActivity() {
             val useDynamicColors by AuthManager.useDynamicColorsFlow.collectAsState()
             val themePreset by AuthManager.themePresetFlow.collectAsState()
             val chatFontScale by AuthManager.chatFontScaleFlow.collectAsState()
+            SystemBarsForTheme(darkTheme = themePreference.resolvesToDark())
             HermesControlTheme(
                 themePreference = themePreference,
                 useDynamicColors = useDynamicColors,
@@ -173,19 +178,23 @@ class MainActivity : ComponentActivity() {
     private fun consumeShareIntent(intent: Intent?) {
         if (intent == null) return
         if (intent.action != Intent.ACTION_SEND && intent.action != Intent.ACTION_SEND_MULTIPLE) return
-        val content =
-            ShareIntentParser.parse(
-                intent = intent,
-                ownAuthority = "$packageName.fileprovider",
-                resolver = ShareIntentParser.contentResolverDescriber(contentResolver),
-            )
+        val shared = Intent(intent)
         intent.action = null
-        if (content == null) {
-            Toast.makeText(this, R.string.share_nothing_usable, Toast.LENGTH_LONG).show()
-            return
-        }
-        ShareInbox.offer(content)
         lifecycleScope.launch {
+            // Provider queries can be slow (cloud documents, many items): keep them off the main thread.
+            val content =
+                withContext(Dispatchers.IO) {
+                    ShareIntentParser.parse(
+                        intent = shared,
+                        ownAuthority = "$packageName.fileprovider",
+                        resolver = ShareIntentParser.contentResolverDescriber(contentResolver),
+                    )
+                }
+            if (content == null) {
+                Toast.makeText(this@MainActivity, R.string.share_nothing_usable, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            ShareInbox.offer(content)
             AuthManager.initializationState.first { it == AuthManager.InitializationState.Ready }
             if (AuthManager.isGatedMode() || !AuthManager.getToken().isNullOrBlank()) {
                 NavigationController.openNewChat()

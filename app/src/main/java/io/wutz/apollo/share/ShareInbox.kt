@@ -35,8 +35,6 @@ object ShareInbox {
     }
 
     fun consume(): SharedContent? = pending.getAndSet(null)
-
-    fun hasPending(): Boolean = pending.get() != null
 }
 
 /** Metadata lookup for a shared URI; injectable so parsing is unit-testable. */
@@ -87,14 +85,24 @@ object ShareIntentParser {
                         Attachment(uri = uri.toString(), name = name, mimeType = mime, size = size)
                     }
                 }
-        val text = composeText(intent.getStringExtra(Intent.EXTRA_SUBJECT), intent.getStringExtra(Intent.EXTRA_TEXT))
+        // EXTRA_TEXT/EXTRA_SUBJECT are CharSequence extras; getStringExtra drops styled (Spanned) text.
+        val text =
+            composeText(
+                intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
+                intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+            )
         return SharedContent(text = text, attachments = attachments).takeUnless { it.isEmpty }
     }
 
     internal fun isAcceptedUri(
         uri: Uri,
         ownAuthority: String,
-    ): Boolean = uri.scheme == ContentResolver.SCHEME_CONTENT && uri.authority != null && uri.authority != ownAuthority
+    ): Boolean {
+        val authority = uri.authority ?: return false
+        // A "<userId>@" prefix still resolves to the same provider (ContentProvider
+        // getAuthorityWithoutUserId), so compare without it.
+        return uri.scheme == ContentResolver.SCHEME_CONTENT && authority.substringAfterLast('@') != ownAuthority
+    }
 
     internal fun composeText(
         subject: String?,

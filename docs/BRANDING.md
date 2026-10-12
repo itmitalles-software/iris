@@ -45,7 +45,7 @@ all variants). Do not edit the generated files by hand.
 | Themed (monochrome) icon | `res/drawable/ic_launcher_monochrome.xml` |
 | Notification icon | `res/drawable/ic_notification.xml` |
 | Tintable mark (in-app) | `res/drawable/ic_apollo_mark.xml` |
-| Full-colour emblem (in-app) | `res/drawable/ic_apollo_emblem.xml` |
+| Full-colour emblem (in-app) | `res/drawable/ic_apollo_emblem.xml` (dark surfaces), `ic_apollo_emblem_light.xml` (light) |
 | Wordmark (in app) | Cinzel text via `ApolloWordmarkStyle` (`theme/ApolloType.kt`) |
 | Splash brand line | `res/drawable/splash_branding.xml` |
 | SVG masters | `docs/brand/apollo-icon.svg`, `apollo-mark.svg`, `apollo-wordmark.svg` |

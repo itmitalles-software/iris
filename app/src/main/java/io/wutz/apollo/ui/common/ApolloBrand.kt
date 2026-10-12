@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -39,8 +40,13 @@ fun ApolloBrandLockup(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // The knock-out around the "A" must match the surface it sits on.
+        val onDarkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         Image(
-            painter = painterResource(R.drawable.ic_apollo_emblem),
+            painter =
+                painterResource(
+                    if (onDarkSurface) R.drawable.ic_apollo_emblem else R.drawable.ic_apollo_emblem_light,
+                ),
             contentDescription = null,
             modifier = Modifier.size(emblemSize),
         )

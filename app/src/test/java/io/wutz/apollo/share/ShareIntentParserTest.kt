@@ -35,8 +35,8 @@ class ShareIntentParserTest {
         mockk {
             every { action } returns Intent.ACTION_SEND
             every { getParcelableExtra<Uri>(Intent.EXTRA_STREAM) } returns stream
-            every { getStringExtra(Intent.EXTRA_TEXT) } returns text
-            every { getStringExtra(Intent.EXTRA_SUBJECT) } returns subject
+            every { getCharSequenceExtra(Intent.EXTRA_TEXT) } returns text
+            every { getCharSequenceExtra(Intent.EXTRA_SUBJECT) } returns subject
         }
 
     @Test
@@ -48,6 +48,23 @@ class ShareIntentParserTest {
     fun `rejects file uris and apollo's own file provider`() {
         assertFalse(ShareIntentParser.isAcceptedUri(uri("file", null), ownAuthority))
         assertFalse(ShareIntentParser.isAcceptedUri(uri("content", ownAuthority), ownAuthority))
+        // A user-id prefix resolves to the same provider and must not bypass the guard.
+        assertFalse(ShareIntentParser.isAcceptedUri(uri("content", "0@$ownAuthority"), ownAuthority))
+        assertFalse(ShareIntentParser.isAcceptedUri(uri("content", "10@$ownAuthority"), ownAuthority))
+    }
+
+    @Test
+    fun `keeps styled shared text`() {
+        // A non-String CharSequence, like the Spanned text many apps share.
+        val styled: CharSequence = StringBuilder("styled text")
+        val intent =
+            mockk<Intent> {
+                every { action } returns Intent.ACTION_SEND
+                every { getParcelableExtra<Uri>(Intent.EXTRA_STREAM) } returns null
+                every { getCharSequenceExtra(Intent.EXTRA_TEXT) } returns styled
+                every { getCharSequenceExtra(Intent.EXTRA_SUBJECT) } returns null
+            }
+        assertEquals("styled text", ShareIntentParser.parse(intent, ownAuthority, describer)?.text)
     }
 
     @Test
@@ -87,7 +104,6 @@ class ShareIntentParserTest {
     fun `inbox hands content over exactly once`() {
         val content = SharedContent(text = "hi", attachments = emptyList())
         ShareInbox.offer(content)
-        assertTrue(ShareInbox.hasPending())
         assertEquals(content, ShareInbox.consume())
         assertNull(ShareInbox.consume())
     }

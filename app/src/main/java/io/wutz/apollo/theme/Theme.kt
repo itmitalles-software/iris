@@ -1,7 +1,5 @@
 package io.wutz.apollo.theme
 
-import android.app.Activity
-import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
@@ -10,11 +8,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import io.wutz.apollo.theme.presets.DefaultTheme
 import kotlinx.serialization.Serializable
 
@@ -65,12 +60,7 @@ fun HermesControlTheme(
     chatFontScale: Float = LocalChatFontScale.current,
     content: @Composable () -> Unit,
 ) {
-    val darkTheme =
-        when (themePreference) {
-            ThemePreference.SYSTEM -> isSystemInDarkTheme()
-            ThemePreference.LIGHT -> false
-            ThemePreference.DARK -> true
-        }
+    val darkTheme = themePreference.resolvesToDark()
 
     val context = LocalContext.current
     val dynamicAvailable =
@@ -87,20 +77,6 @@ fun HermesControlTheme(
         }
 
     val statusColors = resolveStatusColors(themePreset, darkTheme)
-
-    // enableEdgeToEdge() picks system-bar icon colors from the *system* night
-    // mode. The in-app theme can differ (Apollo defaults to dark), so keep the
-    // bar icons readable against the app's own background.
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = view.context.findActivity()?.window ?: return@SideEffect
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
-            }
-        }
-    }
 
     CompositionLocalProvider(
         LocalThemePreference provides themePreference,
@@ -119,9 +95,11 @@ fun HermesControlTheme(
     }
 }
 
-private tailrec fun android.content.Context.findActivity(): Activity? =
+/** Whether this preference renders the dark scheme right now (SYSTEM follows the device). */
+@Composable
+fun ThemePreference.resolvesToDark(): Boolean =
     when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
+        ThemePreference.SYSTEM -> isSystemInDarkTheme()
+        ThemePreference.LIGHT -> false
+        ThemePreference.DARK -> true
     }

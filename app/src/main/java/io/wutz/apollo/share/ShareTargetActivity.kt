@@ -30,7 +30,19 @@ class ShareTargetActivity : Activity() {
                             Intent.FLAG_ACTIVITY_SINGLE_TOP,
                     )
                 }
-            startActivity(forward)
+            try {
+                startActivity(forward)
+            } catch (_: SecurityException) {
+                // The sender shared a URI without granting it to us; we cannot re-grant it.
+                // Forward the text alone: MainActivity drops the unreadable stream and tells the user.
+                startActivity(
+                    forward.apply {
+                        clipData = null
+                        removeExtra(Intent.EXTRA_STREAM)
+                        flags = flags and Intent.FLAG_GRANT_READ_URI_PERMISSION.inv()
+                    },
+                )
+            }
         }
         finish()
     }

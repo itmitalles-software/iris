@@ -5,7 +5,8 @@ Outputs (paths relative to the repository root):
   app/src/main/res/drawable/ic_launcher_{background,foreground,monochrome}.xml
   app/src/main/res/drawable/ic_notification.xml
   app/src/main/res/drawable/ic_apollo_mark.xml       (tintable emblem)
-  app/src/main/res/drawable/ic_apollo_emblem.xml     (full-colour emblem)
+  app/src/main/res/drawable/ic_apollo_emblem.xml     (full-colour emblem, dark surfaces)
+  app/src/main/res/drawable/ic_apollo_emblem_light.xml (full-colour emblem, light surfaces)
   app/src/main/res/drawable/splash_branding.xml      (Android 12+ splash: APOLLO / for hermes agent)
   docs/brand/*.svg                                   (icon, mark, wordmark, banner, feature graphic)
 
@@ -41,6 +42,7 @@ GOLD = "#D4AF72"
 GOLD_LIGHT = "#F2DDAE"
 GOLD_DEEP = "#A47C45"
 MARBLE = "#ECE8E1"
+MARBLE_LIGHT = "#F7F4EE"  # light-theme background (ApolloScheme light surface)
 MUTED = "#A8A49C"
 
 GOLD_STOPS = [(0.0, GOLD_LIGHT), (0.5, GOLD), (1.0, GOLD_DEEP)]
@@ -272,7 +274,10 @@ def android_assets(font: TTFont) -> None:
                  comment="Status-bar notification icon (white silhouette)."))
     write(DRAWABLE / "ic_apollo_emblem.xml",
           vector(96, 96, crop[2], crop[3], group_open + emblem_layers(INK, tech=True) + "    </group>\n", aapt=True,
-                 comment="Full-colour Apollo emblem for landing, login and About."))
+                 comment="Full-colour Apollo emblem for dark surfaces (landing, login, About)."))
+    write(DRAWABLE / "ic_apollo_emblem_light.xml",
+          vector(96, 96, crop[2], crop[3], group_open + emblem_layers(MARBLE_LIGHT, tech=True) + "    </group>\n",
+                 aapt=True, comment="Full-colour Apollo emblem for light surfaces (knock-out in marble, not ink)."))
 
     # Android 12+ splash branding image: 200 x 80 dp box.
     cap_units = 719.0  # Cinzel cap height in font units

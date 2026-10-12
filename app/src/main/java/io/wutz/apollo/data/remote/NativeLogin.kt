@@ -75,6 +75,13 @@ sealed interface NativeCallback {
     data object Closed : NativeCallback
 }
 
+/** Text of the page the browser shows after the sign-in redirect (localized by the caller). */
+data class CallbackPageText(
+    val title: String = "Apollo",
+    val signedIn: String = "Signed in. You can close this tab and return to Apollo.",
+    val failed: String = "Sign-in failed. You can close this tab and try again in Apollo.",
+)
+
 /**
  * One-shot HTTP listener on the loopback interface. The gateway only accepts
  * `http://127.0.0.1:<port>/...` redirect URIs (IP literal, never `localhost`).
@@ -82,8 +89,10 @@ sealed interface NativeCallback {
  * scanners) are answered and ignored so a stray local connection cannot abort
  * or hijack a login in progress: the code is useless without our PKCE verifier.
  */
+
 class LoopbackCallbackServer private constructor(
     private val socket: ServerSocket,
+    private val pageText: CallbackPageText,
 ) : Closeable {
     val redirectUri: String get() = "http://127.0.0.1:${socket.localPort}$CALLBACK_PATH"
 
@@ -143,12 +152,12 @@ class LoopbackCallbackServer private constructor(
         val code = url.queryParameter("code")
         return when {
             !error.isNullOrBlank() -> {
-                respond(client, "200 OK", "Sign-in failed. You can close this tab and try again in Hermes Mobile.")
+                respond(client, "200 OK", pageText.failed)
                 NativeCallback.Denied(error)
             }
 
             !code.isNullOrBlank() -> {
-                respond(client, "200 OK", "Signed in. You can close this tab and return to Hermes Mobile.")
+                respond(client, "200 OK", pageText.signedIn)
                 NativeCallback.Code(code)
             }
 
@@ -167,8 +176,8 @@ class LoopbackCallbackServer private constructor(
         val body =
             "<!doctype html><html><head><meta charset=\"utf-8\">" +
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-                "<title>Hermes Mobile</title></head>" +
-                "<body style=\"font-family:sans-serif;padding:2em\"><p>$message</p></body></html>"
+                "<title>${pageText.title.escapeHtml()}</title></head>" +
+                "<body style=\"font-family:sans-serif;padding:2em\"><p>${message.escapeHtml()}</p></body></html>"
         val bytes = body.toByteArray(Charsets.UTF_8)
         val head =
             "HTTP/1.1 $status\r\nContent-Type: text/html; charset=utf-8\r\n" +
@@ -190,8 +199,11 @@ class LoopbackCallbackServer private constructor(
         private const val CALLBACK_PATH = "/callback"
         private const val CLIENT_READ_TIMEOUT_MS = 5_000
 
-        fun open(): LoopbackCallbackServer =
-            LoopbackCallbackServer(ServerSocket(0, 4, InetAddress.getByName("127.0.0.1")))
+        fun open(pageText: CallbackPageText = CallbackPageText()): LoopbackCallbackServer =
+            LoopbackCallbackServer(ServerSocket(0, 4, InetAddress.getByName("127.0.0.1")), pageText)
+
+        private fun String.escapeHtml(): String =
+            replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
         /** `GET /callback?x=y HTTP/1.1` -> parsed URL, or null for anything else. */
         internal fun parseRequestUrl(requestLine: String?): HttpUrl? {

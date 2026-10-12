@@ -420,6 +420,8 @@
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_german">Deutsch</string>
+    <string name="native_login_page_signed_in">Signed in. You can close this tab and return to Apollo.</string>
+    <string name="native_login_page_failed">Sign-in failed. You can close this tab and try again in Apollo.</string>
     <string name="share_sign_in_first">Sign in to Hermes first, then share again.</string>
     <string name="share_nothing_usable">Apollo can\'t use this shared content.</string>
     <string name="language_arabic">العربية</string>

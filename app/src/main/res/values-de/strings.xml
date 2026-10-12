@@ -1918,6 +1918,8 @@
     <string name="trust_user_cas_restart_required">Starte den App-Prozess neu, um diese Änderung zu übernehmen.</string>
 
     <string name="language_german">Deutsch</string>
+    <string name="native_login_page_signed_in">Angemeldet. Du kannst diesen Tab schließen und zu Apollo zurückkehren.</string>
+    <string name="native_login_page_failed">Anmeldung fehlgeschlagen. Du kannst diesen Tab schließen und es in Apollo erneut versuchen.</string>
     <string name="share_sign_in_first">Melde dich zuerst bei Hermes an und teile dann erneut.</string>
     <string name="share_nothing_usable">Apollo kann diesen geteilten Inhalt nicht verwenden.</string>
     <string name="theme_preset_apollo">Apollo</string>

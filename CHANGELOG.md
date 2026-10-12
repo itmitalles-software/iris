@@ -13,6 +13,27 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
   rerunnable, `--no-service`, `--uninstall`). README explains quick and
   manual setup.
 
+### Fixed
+
+- Every turn of a chat started in Apollo appeared twice after the app was
+  restarted (#5, also in upstream Hermes Mobile: Hy4ri/hermes-mobile#1568).
+  The first sync of a new session now probes `order=latest` paging, so cached
+  rows carry stable row ids instead of absolute positions. Sessions created
+  before this fix keep their old cache entries until the app data is cleared.
+- Share target hardening: a `0@`/user-id authority prefix can no longer bypass
+  the own-FileProvider guard; styled shared text is kept; URIs the sender did
+  not grant no longer crash the share trampoline; provider queries run off the
+  main thread.
+- Rotating or unfolding across the 840 dp sidebar threshold keeps drafts and
+  scroll state.
+- System bars use `enableEdgeToEdge` with the in-app theme, fixing invisible
+  navigation-bar icons on Android 8–9 when app and system theme differ.
+- Browser sign-in page names Apollo and is localized.
+- Emblem on light surfaces no longer shows a dark outline.
+- `setup-hermes-for-apollo.sh`: password from stdin without a trailing newline,
+  stricter `--public-url`/`--user` validation, lingering hint.
+  `apollo-package-rename.sh` no longer fails when nothing is left to rename.
+
 ## 0.1.0 — 2026-10-12
 
 First Apollo version, forked from Hermes Mobile `dev` at `689a2d30`

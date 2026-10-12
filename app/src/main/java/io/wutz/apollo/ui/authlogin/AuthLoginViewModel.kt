@@ -10,6 +10,7 @@ import io.wutz.apollo.data.config.ConnectionProfile
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.AuthPayloads
+import io.wutz.apollo.data.remote.CallbackPageText
 import io.wutz.apollo.data.remote.CertificateOrigin
 import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.ClientCertificates
@@ -684,7 +685,13 @@ class AuthLoginViewModel(
         val clientState = NativePkce.randomUrlSafe()
         val server =
             try {
-                LoopbackCallbackServer.open()
+                LoopbackCallbackServer.open(
+                    CallbackPageText(
+                        title = app.getString(R.string.app_name),
+                        signedIn = app.getString(R.string.native_login_page_signed_in),
+                        failed = app.getString(R.string.native_login_page_failed),
+                    ),
+                )
             } catch (e: IOException) {
                 return BrowserOutcome(error = app.getString(R.string.connect_error_connection_failed, e.message ?: ""))
             }

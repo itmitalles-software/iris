@@ -95,8 +95,10 @@ if [ -z "$PUBLIC_URL" ]; then
     [ -n "${TS_NAME:-}" ] || die "could not read the Tailscale name; pass --public-url https://<host>"
     PUBLIC_URL="https://$TS_NAME"
 fi
-case "$PUBLIC_URL" in https://*) ;; *) die "--public-url must start with https://" ;; esac
-case "$PUBLIC_URL$LOGIN_USER" in *"'"*) die "quotes are not allowed in --public-url or --user" ;; esac
+# Plain origin (optionally with a path); also keeps the env-file/sed rewrites below safe.
+[[ "$PUBLIC_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._~/-]*)?$ ]] ||
+    die "--public-url must look like https://host[:port][/path]"
+[[ "$LOGIN_USER" =~ ^[A-Za-z0-9._@-]+$ ]] || die "--user may only contain letters, digits and ._@-"
 PUBLIC_HOST="${PUBLIC_URL#https://}"
 PUBLIC_HOST="${PUBLIC_HOST%%/*}"
 
@@ -113,7 +115,7 @@ if [ -f "$ENV_FILE" ] && [ "$NEW_LOGIN" = 0 ]; then
     LOGIN_USER="$(sed -n "s/^HERMES_DASHBOARD_BASIC_AUTH_USERNAME='\{0,1\}\([^']*\)'\{0,1\}$/\1/p" "$ENV_FILE")"
 else
     case "$PASSWORD_MODE" in
-        stdin) IFS= read -r PASSWORD ;;
+        stdin) IFS= read -r PASSWORD || [ -n "$PASSWORD" ] ;;
         generate) PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')" ;;
         prompt)
             read -r -s -p "Password for Apollo login '$LOGIN_USER': " PASSWORD; echo
@@ -218,6 +220,12 @@ else
     echo "Last step: publish Hermes inside your tailnet over HTTPS:"
     echo "  sudo $TS_CMD"
     echo "(no sudo needed if you once ran: sudo tailscale set --operator=\$USER)"
+fi
+if [ "$INSTALL_SERVICE" = 1 ] && command -v loginctl >/dev/null &&
+    [ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" != yes ]; then
+    echo
+    echo "Note: the service stops when you log out and waits for your next login after a reboot."
+    echo "To keep Hermes reachable (e.g. on a headless machine), run once: loginctl enable-linger $USER"
 fi
 echo
 echo "In Apollo: Sign in -> $PUBLIC_URL -> user '$LOGIN_USER' and your password."
