@@ -41,6 +41,20 @@ _Last updated: 2026-10-12_
   landing, login, chat with tool call, navigation, history, settings, About,
   light mode and the tablet layout. Local gate green (3,424 tests, Lint 0 errors).
 
+## 2026-10-12 follow-up round
+
+- UI literals localized (3fa3cd14, closes #8); GatewayContractFramesTest fixed
+  in isolation (d5b58cc5, closes #6). Contract checks pass against local
+  Hermes v0.21.6 and hermes-agent main.
+- Live in the emulator: sudo prompt dialog (server-to-client request),
+  completion notification, inline reply from the notification. Tool-approval
+  dialog not reachable because the host uses smart approvals (#3).
+- #5 (duplicated turns after cold start) reproduced with the official Hermes
+  Mobile v2.4.0 APK, so it is an upstream bug. The findings and a drafted
+  upstream report are in the issue; posting the report upstream needs the
+  owner's OK.
+- #7 (Play flavor) deferred until a Play release is planned.
+
 ## Known issues / follow-ups
 
 Tracked as GitHub issues in the repository.
