@@ -8671,6 +8671,67 @@ class ChatViewModelTest {
         }
 
     @Test
+    fun sync_failedLatestProbeFallsBackToAbsolutePositions() =
+        runTest {
+            // Apollo #5: a failing order=latest probe must not break the sync of a new session.
+            val (vm, session) = createViewModelWithSession()
+            every { HermesWsClient.sendMessage(session, "hello", any(), any()) } answers {
+                arg<((String) -> Unit)?>(2)?.invoke("hello-submit")
+                "hello-submit"
+            }
+            assertTrue(vm.sendMessage("hello"))
+            advanceUntilIdle()
+            mockEventsFlow.emit(WsEvent.RpcResult("hello-submit", mapOf("status" to "ok", "user_row_id" to 7)))
+            mockEventsFlow.emit(WsEvent.MessageStart(session))
+            mockEventsFlow.emit(WsEvent.MessageComplete("hi", session))
+            advanceUntilIdle()
+
+            val orders = mutableListOf<String?>()
+            coEvery {
+                ApiClient.hermesApi.getSessionMessages(session, any(), any(), any(), any())
+            } coAnswers {
+                val order = arg<String?>(3)
+                orders += order
+                if (order == "latest") {
+                    retrofit2.Response.error(500, "boom".toResponseBody())
+                } else {
+                    retrofit2.Response.success(
+                        SessionMessagesResponse(
+                            messages =
+                                listOf(
+                                    io.wutz.apollo.data.model.SessionMessage(
+                                        id = 7,
+                                        role = "user",
+                                        content = JsonPrimitive("hello"),
+                                    ),
+                                    io.wutz.apollo.data.model.SessionMessage(
+                                        id = 8,
+                                        role = "assistant",
+                                        content = JsonPrimitive("hi"),
+                                    ),
+                                ),
+                            pagination =
+                                io.wutz.apollo.data.model
+                                    .PaginationInfo(),
+                        ),
+                    )
+                }
+            }
+
+            vm.syncCurrentSession()
+            advanceUntilIdle()
+
+            // The probe (with safeApiCall's 5xx retries) comes first, then the legacy request.
+            assertEquals("latest", orders.first())
+            assertNull(orders.last())
+            assertNull(vm.uiState.value.errorMessage)
+            assertTrue(
+                vm.uiState.value.messages
+                    .any { it.role == MessageRole.ASSISTANT && it.content == "hi" },
+            )
+        }
+
+    @Test
     fun testSync_latestOrder_grownTranscript_keepsNewestMessage() =
         runTest {
             val (viewModel, _) = createViewModelWithSession()

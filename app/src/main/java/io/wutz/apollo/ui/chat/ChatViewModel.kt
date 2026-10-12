@@ -6403,15 +6403,19 @@ class ChatViewModel(
                             if (latestOrder || probeLatest) "latest" else null,
                         )
                     if (!valid()) return@launch
-                    if (probeLatest && result is NetworkResult.Success) {
-                        pagingProtocolProbed = true
+                    if (probeLatest) {
+                        val probe = result
                         val supportsLatest =
-                            result.data.pagination?.order == "latest" && result.data.messages.all { it.id != null }
+                            probe is NetworkResult.Success &&
+                                probe.data.pagination?.order == "latest" &&
+                                probe.data.messages.all { it.id != null }
+                        if (probe is NetworkResult.Success) pagingProtocolProbed = true
                         if (supportsLatest) {
                             latestPaging = true
                             latestOrder = true
-                            loadedMessageOffset = result.data.messages.size
+                            loadedMessageOffset = probe.data.messages.size
                         } else {
+                            // Legacy backend or a failed probe: sync exactly as before (absolute positions).
                             result = fetchMessagePage(sessionId, nextOffset, MESSAGE_PAGE_SIZE, null)
                             if (!valid()) return@launch
                         }
