@@ -3,7 +3,7 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
-## Unreleased
+## 0.1.2 — 2026-10-13
 
 ### Fixed
 
@@ -12,6 +12,8 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
   rows such as "Stopped N background processes.") are now shown in German too
   (#10). Counts use proper singular/plural forms. The cleartext HTTP warning on
   the login and connect screens is localized.
+- Disconnecting now cancels a WebSocket handshake that is still in flight, so
+  a superseded connection attempt no longer touches auth state (#11).
 
 ## 0.1.1 — 2026-10-13
 
