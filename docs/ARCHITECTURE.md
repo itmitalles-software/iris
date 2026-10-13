@@ -1,7 +1,7 @@
 # Architecture conventions
 
-Inherited from the upstream Hermes Mobile `AGENTS.md` and still authoritative
-for the code Apollo shares with upstream. Apollo-specific rules live in the
+Inherited from the Hermes Mobile `AGENTS.md` (Apollo's origin) and still
+authoritative for Apollo's code. Apollo-specific rules live in the
 root [AGENTS.md](../AGENTS.md).
 This complements [README.md](../README.md) (for humans) and [DESIGN.md](../DESIGN.md)
 (visual and interaction requirements) with agent-focused operational and
@@ -17,7 +17,7 @@ Flag conflicts between requirements and implementation instead of silently diver
 [Hermes Agent](https://hermes-agent.nousresearch.com). It talks to the Hermes
 dashboard's REST API and WebSocket TUI Gateway (JSON-RPC 2.0) over a trusted LAN.
 
-- **Package:** `io.wutz.apollo` (upstream: `io.wutz.apollo`)
+- **Package:** `io.wutz.apollo` (Hermes Mobile: `com.m57.hermescontrol`)
 - **Min SDK 26 / Target SDK 37 / Compile SDK 37**
 - **Kotlin and KSP:** versions are pinned in [`gradle/libs.versions.toml`](../gradle/libs.versions.toml). KSP uses standalone versioning, NOT `kotlinVersion-kspVersion`.
 - **Jetpack Compose**, Room, Navigation3, OkHttp WebSocket, Retrofit, Kotlinx Serialization. See the version catalog and [`app/build.gradle.kts`](../app/build.gradle.kts) for versions and dependency scopes.

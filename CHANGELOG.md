@@ -3,6 +3,22 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
+## Unreleased
+
+### Changed
+
+- Apollo is now developed independently of Hermes Mobile: it no longer merges
+  upstream changes. `UPSTREAM.md` became `ORIGIN.md`; the package-rename sync
+  script and the upstream Weblate config are gone. Credit, `LICENSE` and
+  `NOTICE` stay.
+- CI and Dependabot target `main` only (upstream used a `dev` branch). The PR
+  template recovery workflow works on `main` again.
+
+### Removed
+
+- The "Support Hermes Mobile (upstream)" Ko-fi card in Settings. The About
+  screen still credits Hermes Mobile.
+
 ## 0.1.2 — 2026-10-13
 
 ### Fixed
@@ -51,7 +67,7 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
 
 First Apollo version, forked from Hermes Mobile `dev` at `689a2d30`
 (2026-10-12). It contains the complete upstream feature set (see
-[UPSTREAM.md](UPSTREAM.md)) plus:
+[ORIGIN.md](ORIGIN.md)) plus:
 
 ### Added
 

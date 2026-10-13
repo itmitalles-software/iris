@@ -1,15 +1,16 @@
 # AGENTS.md
 
-Rules for coding agents (and humans) working on Apollo. Keep changes small,
-tested and easy to merge with upstream.
+Rules for coding agents (and humans) working on Apollo. Keep changes small
+and tested.
 
 ## Read first
 
 - `.agent/STATE.md`: current verified state and next steps
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): navigation, ViewModel scope,
-  drawer gestures, WebSocket/RPC conventions (inherited from upstream, binding)
+  drawer gestures, WebSocket/RPC conventions (inherited from Hermes Mobile, binding)
 - [DESIGN.md](DESIGN.md) for UI work
-- [UPSTREAM.md](UPSTREAM.md) before touching code that upstream also changes
+- [ORIGIN.md](ORIGIN.md): Apollo started as a fork of Hermes Mobile and is
+  independent since 2026-10-13 (no upstream merges)
 - Open work lives in GitHub Issues, not in TODO files.
 
 ## Principles
@@ -18,20 +19,19 @@ tested and easy to merge with upstream.
   endpoints that exist in `hermes-agent`, and verify new calls against its
   source or the vendored contract (`app/src/test/resources/gateway-contract`).
   Never invent APIs or ship UI placeholders for missing server features.
-- Prefer upstream's existing components and patterns. No new frameworks, DI
+- Prefer the existing components and patterns. No new frameworks, DI
   containers, modules or abstractions without a concrete need.
-- Keep the diff to upstream small: put Apollo-only behavior in clearly named
-  files where practical, and record every divergence in `UPSTREAM.md`.
+- Porting a fix from Hermes Mobile is fine: port it by hand and credit it in
+  the commit message (`Ported from Hy4ri/hermes-mobile@<sha>`).
 - Security: no telemetry, trackers or third-party SDKs. Credentials only in
   encrypted storage, never in logs. Do not weaken TLS verification. Ask for
   confirmation before destructive actions.
 
 ## Conventions
 
-- Package `io.wutz.apollo`; never reintroduce `com.m57.hermescontrol`
-  (run `scripts/apollo-package-rename.sh` after upstream merges).
+- Package `io.wutz.apollo`; never reintroduce `com.m57.hermescontrol`.
 - Every user-visible string goes into `values/strings.xml` **and**
-  `values-de/strings.xml`. Other upstream locales may fall back to English.
+  `values-de/strings.xml`. The other locales are unmaintained and fall back to English.
 - Colors come from the theme (`MaterialTheme.colorScheme`,
   `LocalHermesStatusColors`); `checkColorLiterals` enforces this.
 - ktlint 1.8.0 style: sorted imports, trailing commas, 120 columns.

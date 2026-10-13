@@ -48,7 +48,6 @@ import io.wutz.apollo.SettingsVault
 import io.wutz.apollo.theme.ThemePreference
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
-import io.wutz.apollo.ui.settings.components.SupportSection
 import io.wutz.apollo.ui.settings.components.languageLabel
 
 @Composable
@@ -144,7 +143,6 @@ fun SettingsScreen(
                         ),
                     ),
             )
-            SupportSection()
         }
     }
 }

@@ -5,8 +5,9 @@ _Last updated: 2026-10-13_
 ## Repository
 
 - GitHub: `wutz-io/apollo-hermes-android` (public), branch `main`.
-- Fork of `Hy4ri/hermes-mobile` `dev` at `689a2d30` (see `UPSTREAM.md`).
-  Remote `upstream` points there; upstream tags are not pushed.
+- Started as a fork of `Hy4ri/hermes-mobile` `dev` at `689a2d30`; independent
+  since 2026-10-13, no upstream syncing (see `ORIGIN.md`).
+  No `upstream` remote; Hermes Mobile's release tags are not in this repo.
 - Package / application ID `io.wutz.apollo` (debug `io.wutz.apollo.dev`).
 
 ## Verified (2026-10-12)
@@ -91,8 +92,8 @@ _Last updated: 2026-10-13_
   `ui/common/UiText`; main CI green incl. instrumented tests. Branch
   `pr-assets-13` only holds the PR screenshot (not app code). Checked in the
   emulator in DE/EN, dark/light, read-only against the owner's live Hermes.
-- `gh` in this checkout defaults to the `upstream` remote: always pass
-  `-R wutz-io/apollo-hermes-android`.
+- The `upstream` remote was removed when Apollo went independent; `gh repo
+  set-default` points at `wutz-io/apollo-hermes-android`.
 - A local `hermes serve` over plain HTTP (127.0.0.1) accepts the password
   login but answers 401 afterwards (also with curl), so the recipe below no
   longer works as is; the HTTPS Tailscale endpoint works.

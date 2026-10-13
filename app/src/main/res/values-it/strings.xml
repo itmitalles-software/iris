@@ -309,9 +309,6 @@
     <string name="settings_about_update_retry">Riprova</string>
     <string name="settings_about_rc_updates_title">Controlla aggiornamenti Release Candidate</string>
     <string name="settings_about_rc_updates_desc">Installa build di pre-rilascio RC. Potrebbero essere meno stabili.</string>
-    <string name="settings_support_title">Supporta Apollo</string>
-    <string name="settings_support_message">Se Apollo ti fa risparmiare tempo, puoi supportarne lo sviluppo.</string>
-    <string name="settings_support_action">Supportami su Ko-fi</string>
     <string name="settings_summary_profiles">%1$d salvati</string>
     <string name="settings_summary_typing_on">Effetto digitazione attivo</string>
     <string name="settings_summary_typing_off">Effetto digitazione disattivato</string>
