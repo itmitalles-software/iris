@@ -1,6 +1,6 @@
 # Apollo — verified state
 
-_Last updated: 2026-10-12_
+_Last updated: 2026-10-13_
 
 ## Repository
 
@@ -76,8 +76,25 @@ _Last updated: 2026-10-12_
   system rows and the notice-kind design (#10).
 - v0.1.1 released and signed. CI flake class around the singleton WS transport
   is tracked in #11.
-- Public git history before 0b91499b still contains the owner's tailnet hostname
-  in STATE.md; rewriting history needs the owner's OK.
+- History rewritten 2026-10-13 with the owner's OK: commits from 89b129b2 on no
+  longer contain the tailnet hostname (main, v0.1.1 and PR branches force-pushed;
+  old refs in the owner's local bundle `~/local-archive/apollo-hermes-android-before-history-rewrite-20261013.bundle`).
+  GitHub may still serve the old commits by SHA until support purges them.
+
+## 2026-10-13: #11, CI gate, #10
+
+- #11 fixed and merged (PR #12): WS tests pass in isolation; `disconnect()`
+  cancels in-flight handshakes.
+- The PR template gate now accepts `main` as base (upstream required `dev`).
+  UI PRs still need an image in "## Screenshots".
+- #10 (ViewModel messages EN/DE, `ui/common/UiText`) is PR #13; its screenshot
+  question is open with the owner. Branch `pr-assets` holds a screenshot image
+  for it (not app code).
+- `gh` in this checkout defaults to the `upstream` remote: always pass
+  `-R wutz-io/apollo-hermes-android`.
+- A local `hermes serve` over plain HTTP (127.0.0.1) accepts the password
+  login but answers 401 afterwards (also with curl), so the recipe below no
+  longer works as is; the HTTPS Tailscale endpoint works.
 
 ## Known issues / follow-ups
 
