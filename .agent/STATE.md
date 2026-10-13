@@ -87,9 +87,10 @@ _Last updated: 2026-10-13_
   cancels in-flight handshakes.
 - The PR template gate now accepts `main` as base (upstream required `dev`).
   UI PRs still need an image in "## Screenshots".
-- #10 (ViewModel messages EN/DE, `ui/common/UiText`) is PR #13; its screenshot
-  question is open with the owner. Branch `pr-assets` holds a screenshot image
-  for it (not app code).
+- #10 merged (PR #13, f2898955): ViewModel messages EN/DE via
+  `ui/common/UiText`; main CI green incl. instrumented tests. Branch
+  `pr-assets-13` only holds the PR screenshot (not app code). Checked in the
+  emulator in DE/EN, dark/light, read-only against the owner's live Hermes.
 - `gh` in this checkout defaults to the `upstream` remote: always pass
   `-R wutz-io/apollo-hermes-android`.
 - A local `hermes serve` over plain HTTP (127.0.0.1) accepts the password
