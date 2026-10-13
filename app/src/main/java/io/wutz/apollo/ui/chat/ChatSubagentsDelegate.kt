@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.chat
 
 import android.util.Log
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SubagentListItem
 import io.wutz.apollo.data.ws.SubagentRepository
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -165,7 +167,7 @@ class ChatSubagentsDelegate(
                                     SubagentTranscriptUiState(
                                         subagentId = subagentId,
                                         isLoading = false,
-                                        error = "Unable to load transcript",
+                                        error = UiText.res(R.string.chat_msg_subagent_transcript_failed),
                                     ),
                             )
                         } else {
@@ -186,7 +188,9 @@ class ChatSubagentsDelegate(
                                 SubagentTranscriptUiState(
                                     subagentId = subagentId,
                                     isLoading = false,
-                                    error = e.message ?: "Unable to load transcript",
+                                    error =
+                                        e.message?.let(UiText::raw)
+                                            ?: UiText.res(R.string.chat_msg_subagent_transcript_failed),
                                 ),
                         )
                     } else {

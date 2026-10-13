@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -34,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.R
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
+import io.wutz.apollo.ui.common.resolve
 import io.wutz.apollo.ui.settings.components.AboutSection
 import io.wutz.apollo.ui.settings.components.AppearanceSection
 import io.wutz.apollo.ui.settings.components.BehaviorSection
@@ -343,10 +345,11 @@ internal fun SettingsVaultPage(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val resources = LocalResources.current
 
     LaunchedEffect(state.toastMessage) {
         state.toastMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
+            snackbarHostState.showSnackbar(message.resolve(resources))
             viewModel.clearToast()
         }
     }

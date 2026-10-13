@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import io.wutz.apollo.ui.chat.SubagentIndicator
 import io.wutz.apollo.ui.chat.SubagentTranscriptUiState
+import io.wutz.apollo.ui.common.UiText
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -98,7 +99,7 @@ class SubagentInspectionSheetTest {
             SubagentTranscriptUiState(
                 subagentId = "sub-1089",
                 text = "",
-                error = "Connection timeout",
+                error = UiText.raw("Connection timeout"),
                 isLoading = false,
             )
 

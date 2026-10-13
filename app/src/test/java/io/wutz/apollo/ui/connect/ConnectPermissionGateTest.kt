@@ -18,6 +18,7 @@ import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.requiresLocalNetworkPermission
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -83,9 +84,6 @@ class ConnectPermissionGateTest {
         every { AuthManager.ensureDefaultSelected() } returns Unit
 
         every { mockApp.getString(any<Int>()) } returns ""
-
-        every { mockApp.getString(R.string.connect_error_token_required) } returns "Token is required"
-        every { mockApp.getString(R.string.connect_error_lan_permission_denied) } returns "LAN denied"
 
         every {
             ContextCompat.checkSelfPermission(
@@ -200,7 +198,7 @@ class ConnectPermissionGateTest {
             vm.onLanPermissionResult(false)
             advanceUntilIdle()
             assertFalse(vm.uiState.value.lanPermissionNeeded)
-            assertEquals("LAN denied", vm.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_lan_permission_denied), vm.uiState.value.errorMessage)
             assertFalse(vm.uiState.value.connectionSuccess)
         }
 

@@ -3,6 +3,7 @@ package io.wutz.apollo.ui.projects
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.DiscoveredRepo
 import io.wutz.apollo.data.model.ProjectFolder
@@ -10,6 +11,7 @@ import io.wutz.apollo.data.model.ProjectInfo
 import io.wutz.apollo.data.ws.ProjectsRepository
 import io.wutz.apollo.data.ws.ProjectsResult
 import io.wutz.apollo.data.ws.WsEvent
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +91,7 @@ class ProjectsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
             vm.save(ProjectDraft(name = "  "))
-            assertEquals(ProjectsViewModel.NAME_REQUIRED, vm.uiState.value.editorError)
+            assertEquals(UiText.res(R.string.projects_error_name_required), vm.uiState.value.editorError)
             coVerify(exactly = 0) { repo.create(any(), any(), any()) }
         }
 
@@ -103,7 +105,7 @@ class ProjectsViewModelTest {
             vm.save(ProjectDraft(name = "Dup", folder = " /code/app "))
             advanceUntilIdle()
             assertNotNull(vm.uiState.value.editor)
-            assertEquals("folder already belongs", vm.uiState.value.editorError)
+            assertEquals(UiText.raw("folder already belongs"), vm.uiState.value.editorError)
         }
 
     @Test
@@ -144,7 +146,7 @@ class ProjectsViewModelTest {
             advanceUntilIdle()
             vm.setArchived(app, true)
             advanceUntilIdle()
-            assertEquals("no such project", vm.uiState.value.toastMessage)
+            assertEquals(UiText.raw("no such project"), vm.uiState.value.toastMessage)
             assertNull(vm.uiState.value.busyId)
         }
 

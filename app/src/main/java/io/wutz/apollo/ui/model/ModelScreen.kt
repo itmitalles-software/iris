@@ -67,6 +67,7 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.model.components.MoaConfigDialog
 import io.wutz.apollo.ui.model.components.ModelCapabilitySummary
 import io.wutz.apollo.ui.model.components.ModelPickerDialog
@@ -114,7 +115,7 @@ fun ModelScreen(
             state.errorMessage != null && state.providers.isEmpty() && state.mainModelProvider.isEmpty() &&
                 state.pinnedModels.isEmpty() -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadAll() },
                     modifier = Modifier.padding(paddingValues),
                 )
@@ -246,7 +247,7 @@ fun ModelScreen(
         AlertDialog(
             onDismissRequest = { viewModel.dismissModelPickerConfirm() },
             title = { Text(stringResource(R.string.model_expensive_title)) },
-            text = { Text(state.modelPickerConfirmMessage!!) },
+            text = { Text(state.modelPickerConfirmMessage!!.asString()) },
             confirmButton = {
                 Button(onClick = { viewModel.confirmModelPickerExpensive() }) {
                     Text(stringResource(R.string.model_confirm_continue))

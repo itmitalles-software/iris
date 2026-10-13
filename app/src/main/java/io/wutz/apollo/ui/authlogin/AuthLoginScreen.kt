@@ -59,6 +59,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.R
 import io.wutz.apollo.data.remote.ClientCertificates
 import io.wutz.apollo.ui.common.CustomHeadersButton
+import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.transportWarningText
 
 @Composable
 fun AuthLoginScreen(
@@ -213,7 +215,7 @@ fun AuthLoginScreen(
             ) {
                 state.transportWarning?.let { warning ->
                     Text(
-                        text = warning,
+                        text = transportWarningText(warning),
                         style =
                             MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.error,
@@ -383,7 +385,7 @@ fun AuthLoginScreen(
             ) {
                 state.errorMessage?.let { msg ->
                     Text(
-                        text = msg,
+                        text = msg.asString(),
                         style =
                             MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.error,

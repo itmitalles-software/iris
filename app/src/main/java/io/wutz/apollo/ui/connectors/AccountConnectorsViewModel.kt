@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.connectors
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.AccountConnectorResult
@@ -18,6 +19,7 @@ import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.ui.chat.ChatConnectionOperationDelegate
 import io.wutz.apollo.ui.chat.ConnectionOperationRequest
 import io.wutz.apollo.ui.chat.ConnectionOperationRequester
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -30,7 +32,7 @@ import kotlinx.coroutines.launch
 
 data class AccountConnectorsState(
     val loading: Boolean = true,
-    val error: String? = null,
+    val error: UiText? = null,
     val unavailable: Boolean = false,
     val catalog: List<ConnectorCatalogEntry> = emptyList(),
     val connectorStates: List<ConnectorItem> = emptyList(),
@@ -140,7 +142,7 @@ class AccountConnectorsViewModel(
                         loading = false,
                         unavailable = false,
                         error =
-                            listResult.errorOrNull()?.message ?: catalogResult.errorMessage()
+                            listResult.errorOrNull()?.message?.let(UiText::raw) ?: catalogResult.errorMessage()
                                 ?: accountsResult.errorMessage() ?: policyResult.errorMessage(),
                         catalog = catalogResult.valueOrNull().orEmpty(),
                         connectorStates = listResult.getOrNull().orEmpty(),
@@ -230,7 +232,7 @@ class AccountConnectorsViewModel(
         }
 
     // Reserve synchronously, not inside launch: repeated taps must not start concurrent writes.
-    private fun mutate(action: suspend () -> String?) {
+    private fun mutate(action: suspend () -> UiText?) {
         scopedJobs.removeAll { it.isCompleted }
         if (_state.value.scope == null || _state.value.busy || _state.value.loading ||
             _state.value.unavailable || !isCurrent(generation)
@@ -283,18 +285,19 @@ class AccountConnectorsViewModel(
                     }
 
                     is AccountConnectorResult.Failure -> {
-                        _state.update { it.copy(error = result.error.message) }
+                        _state.update { it.copy(error = UiText.raw(result.error.message)) }
                     }
                 }
             }
     }
 
     fun browserLaunchFailed() {
-        _state.update { it.copy(error = "Unable to open the authorization browser.") }
+        _state.update { it.copy(error = UiText.res(R.string.connectors_msg_browser_launch_failed)) }
     }
 }
 
 private fun <T> AccountConnectorResult<T>.valueOrNull(): T? = (this as? AccountConnectorResult.Success)?.value
 
-private fun AccountConnectorResult<*>.errorMessage(): String? =
-    (this as? AccountConnectorResult.Failure)?.error?.message
+/** Connector errors come from the gateway and stay raw. */
+private fun AccountConnectorResult<*>.errorMessage(): UiText? =
+    (this as? AccountConnectorResult.Failure)?.error?.message?.let(UiText::raw)

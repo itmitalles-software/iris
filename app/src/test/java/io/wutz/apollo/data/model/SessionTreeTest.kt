@@ -36,6 +36,8 @@ class SessionTreeTest {
             listOf("Recent root", "Original", "branch 1", "Named nested branch", "branch 2"),
             tree.map { it.displayTitle },
         )
+        // Untitled forks carry their number so the UI can show a translated "branch N" label.
+        assertEquals(listOf(null, null, 1, null, 2), tree.map { it.branchNumber })
         // Fork flag + nesting depth
         assertEquals(listOf(false, false, true, true, true), tree.map { it.isFork })
         assertEquals(listOf(0, 0, 1, 2, 1), tree.map { it.forkDepth })

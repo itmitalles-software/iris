@@ -27,6 +27,7 @@ import io.wutz.apollo.data.remote.nativeAuthorizeUrl
 import io.wutz.apollo.data.remote.redeemNativeCode
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,7 +83,7 @@ data class AuthLoginUiState(
     /** A browser sign-in is in flight and waiting for the redirect back to the app. */
     val browserWaiting: Boolean = false,
     val connectionSuccess: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val loggedInProfiles: List<ConnectionProfile> = emptyList(),
 )
 
@@ -227,7 +228,7 @@ class AuthLoginViewModel(
         val endpoint =
             runCatching { ServerEndpoint.parseForBuild(state.baseUrl) }.getOrNull()
         if (endpoint == null) {
-            _uiState.update { it.copy(errorMessage = app.getString(R.string.connect_error_url_invalid)) }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.connect_error_url_invalid)) }
             return
         }
 
@@ -249,7 +250,7 @@ class AuthLoginViewModel(
                     token = result?.extractedToken ?: it.token,
                     errorMessage =
                         if (result == null) {
-                            app.getString(
+                            UiText.res(
                                 if (certificateFailure) {
                                     R.string.mtls_prompt_connection_error
                                 } else {
@@ -485,7 +486,7 @@ class AuthLoginViewModel(
     ): String? {
         if (token.isBlank()) {
             _uiState.update {
-                it.copy(isLoading = false, errorMessage = app.getString(R.string.auth_login_error_token_required))
+                it.copy(isLoading = false, errorMessage = UiText.res(R.string.auth_login_error_token_required))
             }
             return null
         }
@@ -503,22 +504,22 @@ class AuthLoginViewModel(
                     when (val err = result.error) {
                         is io.wutz.apollo.data.remote.NetworkError.Http -> {
                             when (err.code) {
-                                401 -> app.getString(R.string.connect_error_401)
-                                403 -> app.getString(R.string.connect_error_403)
-                                else -> app.getString(R.string.connect_error_http_code, err.code)
+                                401 -> UiText.res(R.string.connect_error_401)
+                                403 -> UiText.res(R.string.connect_error_403)
+                                else -> UiText.res(R.string.connect_error_http_code, err.code)
                             }
                         }
 
                         is io.wutz.apollo.data.remote.NetworkError.AuthExpired -> {
-                            app.getString(R.string.connect_error_401)
+                            UiText.res(R.string.connect_error_401)
                         }
 
                         is io.wutz.apollo.data.remote.NetworkError.Connection -> {
-                            app.getString(R.string.connect_error_connection_failed, err.cause.message ?: "")
+                            UiText.res(R.string.connect_error_connection_failed, err.cause.message ?: "")
                         }
 
                         is io.wutz.apollo.data.remote.NetworkError.Unknown -> {
-                            app.getString(R.string.connect_error_connection_failed, err.cause.message ?: "")
+                            UiText.res(R.string.connect_error_connection_failed, err.cause.message ?: "")
                         }
                     }
                 _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
@@ -539,13 +540,13 @@ class AuthLoginViewModel(
     ): ConnectResult? {
         if (username.isBlank()) {
             _uiState.update {
-                it.copy(isLoading = false, errorMessage = app.getString(R.string.auth_login_error_username_required))
+                it.copy(isLoading = false, errorMessage = UiText.res(R.string.auth_login_error_username_required))
             }
             return null
         }
         if (password.isBlank()) {
             _uiState.update {
-                it.copy(isLoading = false, errorMessage = app.getString(R.string.auth_login_error_password_required))
+                it.copy(isLoading = false, errorMessage = UiText.res(R.string.auth_login_error_password_required))
             }
             return null
         }
@@ -570,9 +571,9 @@ class AuthLoginViewModel(
             if (!loginResp.isSuccessful) {
                 val msg =
                     when (loginResp.code) {
-                        401 -> app.getString(R.string.connect_error_401)
-                        403 -> app.getString(R.string.connect_error_403)
-                        else -> app.getString(R.string.connect_error_http_code, loginResp.code)
+                        401 -> UiText.res(R.string.connect_error_401)
+                        403 -> UiText.res(R.string.connect_error_403)
+                        else -> UiText.res(R.string.connect_error_http_code, loginResp.code)
                     }
                 _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
                 return null
@@ -586,7 +587,7 @@ class AuthLoginViewModel(
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    errorMessage = app.getString(R.string.connect_error_connection_failed, e.message ?: ""),
+                    errorMessage = UiText.res(R.string.connect_error_connection_failed, e.message ?: ""),
                 )
             }
             return null
@@ -606,7 +607,7 @@ class AuthLoginViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = app.getString(R.string.connect_error_http_code, ticketResp.code),
+                        errorMessage = UiText.res(R.string.connect_error_http_code, ticketResp.code),
                     )
                 }
                 return null
@@ -615,7 +616,7 @@ class AuthLoginViewModel(
             val ticket = ticketMatch?.groupValues?.getOrNull(1)
             if (ticket.isNullOrBlank()) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Failed to obtain WebSocket ticket")
+                    it.copy(isLoading = false, errorMessage = UiText.res(R.string.auth_login_msg_ws_ticket_failed))
                 }
                 return null
             }
@@ -634,7 +635,7 @@ class AuthLoginViewModel(
         val provider = state.selectedProvider ?: return
         if (state.authMode != DashboardAuthMode.BROWSER || state.browserWaiting) return
         if (!state.browserSupported) {
-            _uiState.update { it.copy(errorMessage = app.getString(R.string.auth_login_error_browser_unsupported)) }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.auth_login_error_browser_unsupported)) }
             return
         }
         val endpoint =
@@ -671,7 +672,7 @@ class AuthLoginViewModel(
 
     private class BrowserOutcome(
         val wsTicket: String? = null,
-        val error: String? = null,
+        val error: UiText? = null,
     ) {
         val connected: Boolean get() = wsTicket != null
     }
@@ -693,7 +694,7 @@ class AuthLoginViewModel(
                     ),
                 )
             } catch (e: IOException) {
-                return BrowserOutcome(error = app.getString(R.string.connect_error_connection_failed, e.message ?: ""))
+                return BrowserOutcome(error = UiText.res(R.string.connect_error_connection_failed, e.message ?: ""))
             }
         return server.use {
             val authorizeUrl =
@@ -708,7 +709,7 @@ class AuthLoginViewModel(
                 openBrowser(authorizeUrl.toString())
             } catch (e: Exception) {
                 Log.w(TAG, "Could not open browser: ${e.javaClass.simpleName}")
-                return@use BrowserOutcome(error = app.getString(R.string.auth_login_error_browser_no_browser))
+                return@use BrowserOutcome(error = UiText.res(R.string.auth_login_error_browser_no_browser))
             }
             when (val callback = server.awaitCallback(clientState, BROWSER_LOGIN_TIMEOUT_MS)) {
                 is NativeCallback.Code -> {
@@ -716,11 +717,11 @@ class AuthLoginViewModel(
                 }
 
                 is NativeCallback.Denied -> {
-                    BrowserOutcome(error = app.getString(R.string.auth_login_error_browser_denied, callback.error))
+                    BrowserOutcome(error = UiText.res(R.string.auth_login_error_browser_denied, callback.error))
                 }
 
                 NativeCallback.TimedOut -> {
-                    BrowserOutcome(error = app.getString(R.string.auth_login_error_browser_timeout))
+                    BrowserOutcome(error = UiText.res(R.string.auth_login_error_browser_timeout))
                 }
 
                 NativeCallback.Closed -> {
@@ -740,7 +741,7 @@ class AuthLoginViewModel(
                 redeemNativeCode(OkHttpProvider.probe, endpoint, code, verifier)
             } catch (e: IOException) {
                 return BrowserOutcome(
-                    error = app.getString(R.string.connect_error_connection_failed, e.message ?: ""),
+                    error = UiText.res(R.string.connect_error_connection_failed, e.message ?: ""),
                 )
             }
         return when (result) {
@@ -753,7 +754,7 @@ class AuthLoginViewModel(
                         _uiState.update {
                             it.copy(
                                 errorMessage =
-                                    app.getString(
+                                    UiText.res(
                                         R.string.connect_error_connection_failed,
                                         e.message ?: "",
                                     ),
@@ -770,11 +771,11 @@ class AuthLoginViewModel(
             }
 
             is NativeTokenResult.HttpError -> {
-                BrowserOutcome(error = app.getString(R.string.connect_error_http_code, result.code))
+                BrowserOutcome(error = UiText.res(R.string.connect_error_http_code, result.code))
             }
 
             NativeTokenResult.Malformed -> {
-                BrowserOutcome(error = app.getString(R.string.auth_login_error_browser_bad_response))
+                BrowserOutcome(error = UiText.res(R.string.auth_login_error_browser_bad_response))
             }
         }
     }

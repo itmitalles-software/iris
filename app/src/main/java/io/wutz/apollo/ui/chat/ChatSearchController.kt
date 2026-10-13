@@ -3,6 +3,7 @@ package io.wutz.apollo.ui.chat
 import io.wutz.apollo.ui.chat.fullbleed.isHiddenTool
 import io.wutz.apollo.ui.chat.fullbleed.isSyntheticSystemRow
 import io.wutz.apollo.ui.chat.fullbleed.isTimelineMarker
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
 
 /** The rendered transcript surface where a search occurrence belongs. */
@@ -13,8 +14,11 @@ enum class SearchTarget {
 }
 
 /** Search only the tool header and collapsed summary; raw payload is hidden until expanded. */
-internal fun searchableToolText(message: ChatMessage): String {
-    val view = ToolViewCache.getOrParse(message.content, message.toolName, message.isToolRunning)
+internal fun searchableToolText(
+    message: ChatMessage,
+    toolText: ToolText,
+): String {
+    val view = ToolViewCache.getOrParse(message.content, message.toolName, message.isToolRunning, toolText)
     val summary = view?.let { composeToolSummaryLines(it, message.toolName) }
     return listOfNotNull(
         (view?.serverDisplayName ?: message.toolName)?.takeIf { it.isNotBlank() },
@@ -27,11 +31,12 @@ internal fun searchableToolText(message: ChatMessage): String {
 internal fun searchTextFor(
     message: ChatMessage,
     target: SearchTarget,
+    toolText: ToolText,
 ): String =
     when (target) {
         SearchTarget.CONTENT -> message.content
         SearchTarget.REASONING -> message.reasoningText
-        SearchTarget.TOOL -> searchableToolText(message)
+        SearchTarget.TOOL -> searchableToolText(message, toolText)
     }
 
 /**
@@ -56,8 +61,13 @@ data class SearchResult(
  * Pure search logic for in-chat text search.
  *
  * Computes match indices and navigation without depending on ViewModel or Android.
+ *
+ * @param toolText Resolves the localized tool titles that search scans, so matches follow what the
+ *   bubbles show in the current language (issue #10).
  */
-class ChatSearchController {
+class ChatSearchController(
+    private val toolText: () -> ToolText,
+) {
     /**
      * Find literal occurrences in rendered user/assistant prose, reasoning,
      * and the visible tool header/summary. Never scan hidden raw tool payloads.
@@ -101,7 +111,7 @@ class ChatSearchController {
                 }
 
                 MessageRole.TOOL -> {
-                    if (!message.isHiddenTool()) scan(idx, searchableToolText(message), SearchTarget.TOOL)
+                    if (!message.isHiddenTool()) scan(idx, searchableToolText(message, toolText()), SearchTarget.TOOL)
                 }
 
                 MessageRole.SYSTEM -> {

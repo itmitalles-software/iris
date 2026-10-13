@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.EnvVarField
 import io.wutz.apollo.data.model.MessagingPlatform
@@ -14,6 +15,8 @@ import io.wutz.apollo.data.model.MessagingPlatformUpdate
 import io.wutz.apollo.data.model.MessagingPlatformUpdateResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.mapHttpError
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,9 +76,9 @@ class ChannelsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.restartNeeded)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                ?.contains("reloaded live") == true,
+        assertEquals(
+            UiText.res(R.string.channels_msg_configured_live, "telegram"),
+            viewModel.uiState.value.toastMessage,
         )
         coVerify { mockApi.configurePlatform("telegram", any()) }
         coVerify(atLeast = 2) { mockApi.getMessagingPlatforms() }
@@ -94,9 +97,9 @@ class ChannelsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.restartNeeded)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                ?.contains("restart the gateway") == true,
+        assertEquals(
+            UiText.res(R.string.channels_msg_configured_restart, "telegram"),
+            viewModel.uiState.value.toastMessage,
         )
     }
 
@@ -164,10 +167,12 @@ class ChannelsViewModelTest {
 
         coVerify(exactly = 0) { mockApi.configurePlatform(any(), any()) }
         assertEquals(null, viewModel.uiState.value.removingId)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                .orEmpty()
-                .contains("profile changed"),
+        assertEquals(
+            UiText.res(
+                R.string.channels_msg_disconnect_failed,
+                "An unexpected error occurred: Connection or profile changed; retry disconnect",
+            ),
+            viewModel.uiState.value.toastMessage,
         )
     }
 
@@ -182,10 +187,9 @@ class ChannelsViewModelTest {
 
         coVerify(exactly = 0) { mockApi.configurePlatform(any(), any()) }
         assertEquals(null, viewModel.uiState.value.removingId)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                .orEmpty()
-                .contains("Disconnect failed"),
+        assertEquals(
+            UiText.res(R.string.channels_msg_disconnect_failed, mapHttpError(403, "Forbidden").message),
+            viewModel.uiState.value.toastMessage,
         )
     }
 
@@ -215,10 +219,12 @@ class ChannelsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 0) { mockApi.configurePlatform(any(), any()) }
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                .orEmpty()
-                .contains("metadata is unavailable"),
+        assertEquals(
+            UiText.res(
+                R.string.channels_msg_disconnect_failed,
+                "An unexpected error occurred: Platform credential metadata is unavailable",
+            ),
+            viewModel.uiState.value.toastMessage,
         )
     }
 
@@ -240,10 +246,9 @@ class ChannelsViewModelTest {
                 .id,
         )
         assertEquals(null, viewModel.uiState.value.removingId)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                .orEmpty()
-                .contains("Disconnect failed"),
+        assertEquals(
+            UiText.res(R.string.channels_msg_disconnect_failed, mapHttpError(409, "Conflict").message),
+            viewModel.uiState.value.toastMessage,
         )
         assertFalse(viewModel.uiState.value.restartNeeded)
     }

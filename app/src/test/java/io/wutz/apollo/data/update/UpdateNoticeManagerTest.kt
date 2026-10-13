@@ -7,7 +7,9 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -194,7 +196,7 @@ class UpdateNoticeManagerTest {
             advanceUntilIdle()
 
             assertEquals(
-                AppUpdateState.Error("Network error — check your connection", isCheckError = true),
+                AppUpdateState.Error(UiText.res(R.string.update_msg_network_error), isCheckError = true),
                 AppUpdateCache.state.value,
             )
             verify(exactly = 0) { AuthManager.setUpdateCheckDoneForVersion(currentVersion) }
@@ -209,7 +211,10 @@ class UpdateNoticeManagerTest {
             UpdateNoticeManager.checkOnLaunch(checker, currentVersion, testDispatcher)
             advanceUntilIdle()
 
-            assertEquals(AppUpdateState.Error("No release found yet", isCheckError = true), AppUpdateCache.state.value)
+            assertEquals(
+                AppUpdateState.Error(UiText.res(R.string.update_msg_no_release), isCheckError = true),
+                AppUpdateCache.state.value,
+            )
             assertFalse(AppUpdateCache.isDismissed("v1.22.0"))
         }
 

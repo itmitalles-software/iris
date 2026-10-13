@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.ActionStatusResponse
 import io.wutz.apollo.data.model.EnvVarRevealResponse
 import io.wutz.apollo.data.model.ToolsetConfigResponse
@@ -16,6 +17,8 @@ import io.wutz.apollo.data.model.ToolsetProvider
 import io.wutz.apollo.data.model.ToolsetProviderSelectResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.mapHttpError
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -121,7 +124,10 @@ class ToolsetDetailViewModelTest {
 
         val state = vm.uiState.value
         assertNull(state.config)
-        assertTrue(state.errorMessage?.contains("Failed to load toolset config") == true)
+        assertEquals(
+            UiText.res(R.string.toolsets_msg_config_load_failed, mapHttpError(400).message),
+            state.errorMessage,
+        )
         assertFalse(state.isLoading)
     }
 
@@ -137,7 +143,7 @@ class ToolsetDetailViewModelTest {
         val state = vm.uiState.value
         assertEquals("prov-a", state.config?.activeProvider)
         assertEquals(listOf(true, false), state.config?.providers?.map { it.isActive })
-        assertEquals("Backend set to prov-a", state.toastMessage)
+        assertEquals(UiText.res(R.string.toolsets_msg_backend_set, "prov-a"), state.toastMessage)
         assertNull(state.selectingProvider)
     }
 
@@ -151,7 +157,10 @@ class ToolsetDetailViewModelTest {
 
         val state = vm.uiState.value
         assertEquals("prov-b", state.config?.activeProvider)
-        assertTrue(state.toastMessage?.contains("Failed to select backend") == true)
+        assertEquals(
+            UiText.res(R.string.toolsets_msg_backend_select_failed, mapHttpError(400).message),
+            state.toastMessage,
+        )
         assertNull(state.selectingProvider)
     }
 
@@ -174,7 +183,7 @@ class ToolsetDetailViewModelTest {
                 ?.first { it.key == "KEY_B" }
                 ?.isSet,
         )
-        assertEquals("Saved KEY_B", state.toastMessage)
+        assertEquals(UiText.res(R.string.toolsets_msg_env_saved, "KEY_B"), state.toastMessage)
         assertNull(state.savingEnvKey)
     }
 
@@ -214,7 +223,7 @@ class ToolsetDetailViewModelTest {
                 ?.isSet,
         )
         assertFalse(state.revealedValues.containsKey("KEY_B"))
-        assertEquals("Cleared KEY_B", state.toastMessage)
+        assertEquals(UiText.res(R.string.toolsets_msg_env_cleared, "KEY_B"), state.toastMessage)
         assertNull(state.deletingEnvKey)
     }
 
@@ -335,10 +344,7 @@ class ToolsetDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(vm.uiState.value.postSetup)
-        assertTrue(
-            vm.uiState.value.toastMessage
-                ?.contains("spawn rejected") == true,
-        )
+        assertEquals(UiText.res(R.string.toolsets_msg_setup_spawn_rejected), vm.uiState.value.toastMessage)
         coVerify(exactly = 0) { mockApi.getActionStatus(any()) }
     }
 }

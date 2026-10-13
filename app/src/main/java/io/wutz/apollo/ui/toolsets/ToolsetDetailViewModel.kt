@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.toolsets
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.EnvVarDeleteRequest
 import io.wutz.apollo.data.model.EnvVarRevealRequest
 import io.wutz.apollo.data.model.ToolsetConfigResponse
@@ -13,6 +14,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,8 +35,8 @@ data class PostSetupState(
 data class ToolsetDetailUiState(
     val isLoading: Boolean = false,
     val config: ToolsetConfigResponse? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val expandedProvider: String? = null,
     val selectingProvider: String? = null,
     val savingEnvKey: String? = null,
@@ -106,7 +108,7 @@ class ToolsetDetailViewModel :
                     is NetworkResult.Failure -> {
                         state.copy(
                             isLoading = false,
-                            errorMessage = "Failed to load toolset config: ${result.error.message}",
+                            errorMessage = UiText.res(R.string.toolsets_msg_config_load_failed, result.error.message),
                         )
                     }
                 }
@@ -136,9 +138,9 @@ class ToolsetDetailViewModel :
                     is NetworkResult.Success -> {
                         val message =
                             if (result.data.needsNousAuth) {
-                                "Backend set to ${provider.name} — needs Nous Portal sign-in to activate"
+                                UiText.res(R.string.toolsets_msg_backend_set_needs_auth, provider.name)
                             } else {
-                                "Backend set to ${provider.name}"
+                                UiText.res(R.string.toolsets_msg_backend_set, provider.name)
                             }
                         state.copy(
                             selectingProvider = null,
@@ -156,7 +158,11 @@ class ToolsetDetailViewModel :
                     is NetworkResult.Failure -> {
                         state.copy(
                             selectingProvider = null,
-                            toastMessage = "Failed to select backend: ${result.error.message}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.toolsets_msg_backend_select_failed,
+                                    result.error.message,
+                                ),
                         )
                     }
                 }
@@ -184,14 +190,14 @@ class ToolsetDetailViewModel :
                         state.copy(
                             savingEnvKey = null,
                             config = state.config?.let { patchEnvIsSet(it, key, true) },
-                            toastMessage = "Saved $key",
+                            toastMessage = UiText.res(R.string.toolsets_msg_env_saved, key),
                         )
                     }
 
                     is NetworkResult.Failure -> {
                         state.copy(
                             savingEnvKey = null,
-                            toastMessage = "Failed to save $key: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.toolsets_msg_env_save_failed, key, result.error.message),
                         )
                     }
                 }
@@ -210,14 +216,19 @@ class ToolsetDetailViewModel :
                             deletingEnvKey = null,
                             config = state.config?.let { patchEnvIsSet(it, key, false) },
                             revealedValues = state.revealedValues - key,
-                            toastMessage = "Cleared $key",
+                            toastMessage = UiText.res(R.string.toolsets_msg_env_cleared, key),
                         )
                     }
 
                     is NetworkResult.Failure -> {
                         state.copy(
                             deletingEnvKey = null,
-                            toastMessage = "Failed to clear $key: ${result.error.message}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.toolsets_msg_env_clear_failed,
+                                    key,
+                                    result.error.message,
+                                ),
                         )
                     }
                 }
@@ -235,7 +246,14 @@ class ToolsetDetailViewModel :
                     }
 
                     is NetworkResult.Failure -> {
-                        state.copy(toastMessage = "Failed to reveal $key: ${result.error.message}")
+                        state.copy(
+                            toastMessage =
+                                UiText.res(
+                                    R.string.toolsets_msg_env_reveal_failed,
+                                    key,
+                                    result.error.message,
+                                ),
+                        )
                     }
                 }
             }
@@ -272,7 +290,11 @@ class ToolsetDetailViewModel :
                         _uiState.update {
                             it.copy(
                                 postSetup = null,
-                                toastMessage = "Failed to start setup: ${spawn.error.message}",
+                                toastMessage =
+                                    UiText.res(
+                                        R.string.toolsets_msg_setup_start_failed,
+                                        spawn.error.message,
+                                    ),
                             )
                         }
                     }
@@ -282,7 +304,7 @@ class ToolsetDetailViewModel :
                             _uiState.update {
                                 it.copy(
                                     postSetup = null,
-                                    toastMessage = "Failed to start setup: spawn rejected",
+                                    toastMessage = UiText.res(R.string.toolsets_msg_setup_spawn_rejected),
                                 )
                             }
                             return@launch

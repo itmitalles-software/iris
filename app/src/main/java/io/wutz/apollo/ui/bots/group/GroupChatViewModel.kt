@@ -3,6 +3,7 @@ package io.wutz.apollo.ui.bots.group
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.GroupChatRoomLease
 import io.wutz.apollo.data.model.GroupChatRoomMeta
 import io.wutz.apollo.data.model.GroupChatSyncFrom
@@ -25,6 +26,8 @@ import io.wutz.apollo.data.ws.contract.SessionCreateParams
 import io.wutz.apollo.data.ws.contract.SessionInterruptParams
 import io.wutz.apollo.data.ws.toJsonElement
 import io.wutz.apollo.ui.chat.tool.ToolResultSummary
+import io.wutz.apollo.ui.chat.tool.ToolText
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +52,7 @@ data class GroupChatUiState(
     val messages: List<GroupChatMessage> = emptyList(),
     val activeSpeaker: String? = null,
     val isLoading: Boolean = true,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val maxBotMessages: Int = DEFAULT_MAX_BOT_MESSAGES,
     val maxContinuationPasses: Int = DEFAULT_MAX_CONTINUATION_PASSES,
     val systemPrompt: String? = null,
@@ -75,6 +78,8 @@ class GroupChatViewModel(
     private var groupName: String = "",
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val json: Json = Json { ignoreUnknownKeys = true },
+    /** Localizes structured tool-result summaries; null keeps the English nouns (tests). */
+    private val toolText: ToolText? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(GroupChatUiState(groupName = groupName))
     val uiState: StateFlow<GroupChatUiState> = _uiState.asStateFlow()
@@ -164,7 +169,7 @@ class GroupChatViewModel(
         }
 
         val resultElement = data["result"]?.toJsonElement() ?: data["output"]?.toJsonElement() ?: data.toJsonElement()
-        val summary = ToolResultSummary.formatToolResultSummary(resultElement)
+        val summary = ToolResultSummary.formatToolResultSummary(resultElement, toolText)
         return summary.ifBlank { null }
     }
 
@@ -462,7 +467,7 @@ class GroupChatViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load group members",
+                        errorMessage = UiText.res(R.string.group_chat_msg_load_members_failed),
                     )
                 }
             }

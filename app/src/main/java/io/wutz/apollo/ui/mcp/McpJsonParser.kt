@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.mcp
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.AddMcpServerRequest
 import io.wutz.apollo.data.model.McpServerTestResponse
 import io.wutz.apollo.data.model.McpServerToolInfo
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -222,21 +224,20 @@ object McpTokenEstimator {
         return if (sawValid) total else null
     }
 
+    /** "N tools" or "N tools • ~1.2k tokens"; the token figure keeps its compact US formatting. */
     fun formatTokenOverhead(
         toolCount: Int,
         tokenEstimate: Int?,
-    ): String {
-        if (tokenEstimate == null) {
-            return if (toolCount == 1) "1 tool" else "$toolCount tools"
-        }
+    ): UiText {
+        val toolStr = UiText.plural(R.plurals.mcp_msg_tool_count, toolCount)
+        if (tokenEstimate == null) return toolStr
         val tokenFormatted =
             if (tokenEstimate >= 1000) {
                 String.format(Locale.US, "%.1fk", tokenEstimate / 1000.0)
             } else {
                 tokenEstimate.toString()
             }
-        val toolStr = if (toolCount == 1) "1 tool" else "$toolCount tools"
-        return "$toolStr • ~$tokenFormatted tokens"
+        return UiText.res(R.string.mcp_msg_tool_token_overhead, toolStr, tokenFormatted)
     }
 }
 

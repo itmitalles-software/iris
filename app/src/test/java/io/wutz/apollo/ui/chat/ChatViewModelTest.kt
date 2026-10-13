@@ -52,6 +52,7 @@ import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.notification.TurnCorrelationTracker
 import io.wutz.apollo.ui.chat.fakes.FakeChatPersistenceRepository
 import io.wutz.apollo.ui.chat.fakes.FakeSlashUsageStore
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -292,6 +293,7 @@ class ChatViewModelTest {
         mockkObject(HermesDatabase)
 
         app = mockk(relaxed = true)
+        EnglishTestResources.install(app)
         attachmentCacheDir =
             java.nio.file.Files
                 .createTempDirectory("chat-attachments-test")
@@ -1200,6 +1202,7 @@ class ChatViewModelTest {
             assertEquals(0, captured.count { it.first == WsMethods.SESSION_BRANCH })
             assertTrue(
                 viewModel.uiState.value.errorMessage
+                    ?.en()
                     ?.contains("session.branch_whole") == true,
             )
         }
@@ -1519,6 +1522,7 @@ class ChatViewModelTest {
 
             assertTrue(
                 viewModel.uiState.value.errorMessage
+                    ?.en()
                     ?.contains("Unknown command") == true,
             )
         }
@@ -1714,7 +1718,7 @@ class ChatViewModelTest {
             advanceUntilIdle()
 
             // UI state now shows confirmation dialog message
-            assertEquals("Meta training warning", viewModel.uiState.value.modelSwitchConfirmMessage)
+            assertEquals(UiText.raw("Meta training warning"), viewModel.uiState.value.modelSwitchConfirmMessage)
 
             // User confirms
             viewModel.confirmModelSwitchExpensive()
@@ -1767,7 +1771,7 @@ class ChatViewModelTest {
                 ),
             )
             advanceUntilIdle()
-            assertEquals("Meta training warning", viewModel.uiState.value.modelSwitchConfirmMessage)
+            assertEquals(UiText.raw("Meta training warning"), viewModel.uiState.value.modelSwitchConfirmMessage)
 
             // User dismisses/cancels
             viewModel.dismissModelSwitchConfirm()
@@ -2830,6 +2834,7 @@ class ChatViewModelTest {
             assertNull(viewModel.uiState.value.composerTextToRestore)
             assertTrue(
                 viewModel.uiState.value.errorMessage
+                    ?.en()
                     ?.contains("too large") == true,
             )
             verify(exactly = 0) { contentResolver.openInputStream(any()) }
@@ -2882,6 +2887,7 @@ class ChatViewModelTest {
             )
             assertTrue(
                 viewModel.uiState.value.errorMessage
+                    ?.en()
                     ?.contains("too large") == true,
             )
         }
@@ -2973,7 +2979,7 @@ class ChatViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.messages.any { it.content == "keep this prompt" })
             assertEquals("keep this prompt", state.composerTextToRestore)
-            assertTrue(state.errorMessage?.contains("save") == true)
+            assertTrue(state.errorMessage?.en()?.contains("save") == true)
             assertFalse(state.isAgentTyping)
             verify(exactly = 0) { HermesWsClient.sendMessage(any(), any(), any(), any()) }
         }
@@ -5036,6 +5042,7 @@ class ChatViewModelTest {
             assertEquals(listOf(original), store.all())
             assertTrue(
                 viewModel.uiState.value.errorMessage
+                    ?.en()
                     ?.contains("too large") == true,
             )
             verify(exactly = 0) { HermesWsClient.request(WsMethods.FILE_ATTACH, any(), any()) }
@@ -7296,6 +7303,7 @@ class ChatViewModelTest {
 
             assertTrue(
                 viewModel.uiState.value.errorMessage!!
+                    .en()
                     .contains("Internal error during creation"),
             )
         }
@@ -10572,7 +10580,10 @@ class ChatViewModelTest {
 
             assertArrayEquals("downloaded".toByteArray(), output.toByteArray())
             assertNull(vm.uiState.value.savingAttachmentPath)
-            assertEquals("Saved note.txt", vm.uiState.value.openError)
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_file_saved, "note.txt"),
+                vm.uiState.value.openError,
+            )
         }
 
     @Test
@@ -10658,6 +10669,7 @@ class ChatViewModelTest {
             assertNull(viewModel.uiState.value.savingAttachmentPath)
             assertTrue(
                 viewModel.uiState.value.openError
+                    ?.en()
                     .orEmpty()
                     .startsWith("Could not save"),
             )
@@ -10739,6 +10751,7 @@ class ChatViewModelTest {
             assertNotNull(vm.uiState.value.openError)
             assertTrue(
                 vm.uiState.value.openError!!
+                    .en()
                     .contains("missing.pdf"),
             )
         }
@@ -10783,6 +10796,7 @@ class ChatViewModelTest {
             assertNull(vm.uiState.value.openingAttachmentPath)
             assertTrue(
                 vm.uiState.value.openError
+                    ?.en()
                     .orEmpty()
                     .contains("big.pdf"),
             )
@@ -10895,6 +10909,7 @@ class ChatViewModelTest {
             assertNotNull(vm.uiState.value.errorMessage)
             assertTrue(
                 vm.uiState.value.errorMessage!!
+                    .en()
                     .contains("Backend exploded"),
             )
         }
@@ -11587,6 +11602,7 @@ class ChatViewModelTest {
 
             assertTrue(
                 viewModel.uiState.value.errorMessage
+                    ?.en()
                     ?.contains("Voice note transcription failed") == true,
             )
             assertFalse(voiceFile.exists())
@@ -11610,9 +11626,9 @@ class ChatViewModelTest {
             viewModel.sendVoiceNote(voiceFile)
             advanceUntilIdle()
 
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("No speech detected") == true,
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_voice_note_empty),
+                viewModel.uiState.value.errorMessage,
             )
             verify(exactly = 0) { HermesWsClient.sendMessage(any(), any(), any(), any()) }
         }
@@ -11631,9 +11647,9 @@ class ChatViewModelTest {
             advanceUntilIdle()
 
             assertFalse(voiceFile.exists())
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("not connected") == true,
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_voice_note_offline),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -11668,9 +11684,9 @@ class ChatViewModelTest {
             // survive in the composer instead of landing in a session it was
             // never recorded for, or vanishing (review, PR #1250).
             assertEquals("late transcript", viewModel.uiState.value.composerTextToRestore)
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("transcript kept") == true,
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_voice_note_unsent),
+                viewModel.uiState.value.errorMessage,
             )
             verify(exactly = 0) { HermesWsClient.sendMessage(any(), any(), any(), any()) }
             assertFalse(viewModel.uiState.value.isTranscribingVoiceNote)
@@ -11698,9 +11714,9 @@ class ChatViewModelTest {
             advanceUntilIdle()
 
             assertEquals("keep me", viewModel.uiState.value.composerTextToRestore)
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("transcript kept") == true,
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_voice_note_unsent),
+                viewModel.uiState.value.errorMessage,
             )
             verify(exactly = 0) { HermesWsClient.sendMessage(any(), any(), any(), any()) }
         }
@@ -11814,9 +11830,9 @@ class ChatViewModelTest {
                 "do not send this to the new server",
                 viewModel.uiState.value.composerTextToRestore,
             )
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("transcript kept") == true,
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_voice_note_unsent),
+                viewModel.uiState.value.errorMessage,
             )
             assertFalse(viewModel.uiState.value.isTranscribingVoiceNote)
             assertFalse(voiceFile.exists())
@@ -11880,9 +11896,9 @@ class ChatViewModelTest {
                 "profile-scoped transcript",
                 viewModel.uiState.value.composerTextToRestore,
             )
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("transcript kept") == true,
+            assertEquals(
+                UiText.res(io.wutz.apollo.R.string.chat_msg_voice_note_unsent),
+                viewModel.uiState.value.errorMessage,
             )
             assertFalse(viewModel.uiState.value.isTranscribingVoiceNote)
             assertFalse(voiceFile.exists())
@@ -12211,8 +12227,6 @@ class ChatViewModelTest {
     @Test
     fun acknowledgeUnknownCommitFailureRetainsReceiptAndShowsErrorWithoutSending() =
         runTest {
-            every { app.getString(io.wutz.apollo.R.string.chat_pending_acknowledge_failed) } returns
-                "Could not acknowledge the pending entry. It has been kept; try again."
             var saved: String? = null
             var staged: String? = null
             var writable = true
@@ -12242,7 +12256,7 @@ class ChatViewModelTest {
             assertEquals(listOf(receipt), store.all())
             assertEquals(persistedBefore, saved)
             assertEquals(
-                "Could not acknowledge the pending entry. It has been kept; try again.",
+                UiText.res(io.wutz.apollo.R.string.chat_pending_acknowledge_failed),
                 vm.uiState.value.errorMessage,
             )
             verify(exactly = 1) { HermesWsClient.sendMessage(session, "ack-failure", any(), any()) }
@@ -12295,8 +12309,6 @@ class ChatViewModelTest {
     @Test
     fun removeAcknowledgedPendingSendFailureKeepsReceiptAndReportsError() =
         runTest {
-            every { app.getString(io.wutz.apollo.R.string.chat_pending_remove_failed) } returns
-                "Could not remove the pending entry. It has been kept; try again."
             var saved: String? = null
             var writable = true
             var staged: String? = null
@@ -12326,7 +12338,7 @@ class ChatViewModelTest {
             assertEquals(listOf(receipt), store.all())
             assertEquals(persistedBefore, saved)
             assertEquals(
-                "Could not remove the pending entry. It has been kept; try again.",
+                UiText.res(io.wutz.apollo.R.string.chat_pending_remove_failed),
                 vm.uiState.value.errorMessage,
             )
             verify(exactly = 1) { HermesWsClient.sendMessage(session, "disk-failure", any(), any()) }
@@ -12359,3 +12371,6 @@ class ChatViewModelTest {
             assertEquals(released.attempts + 1, store.all().single().attempts)
         }
 }
+
+/** Resolves a UI message in English so content assertions keep checking the shown text (issue #10). */
+private fun UiText.en(): String = EnglishTestResources.resolve(this)

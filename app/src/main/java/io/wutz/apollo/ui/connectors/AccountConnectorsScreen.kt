@@ -50,6 +50,7 @@ import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.LoadingState
 import io.wutz.apollo.ui.common.NavIcon
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.util.ConnectorUrlValidator
 
 @Composable
@@ -106,7 +107,7 @@ fun AccountConnectorsScreen(
             }
 
             state.error != null && state.catalog.isEmpty() && state.accounts.isEmpty() -> {
-                ErrorState(message = state.error.orEmpty(), onRetry = vm::refresh)
+                ErrorState(message = state.error?.asString().orEmpty(), onRetry = vm::refresh)
             }
 
             state.catalog.isEmpty() && state.accounts.isEmpty() -> {
@@ -119,7 +120,9 @@ fun AccountConnectorsScreen(
                     contentPadding = PaddingValues(spacing.md),
                     verticalArrangement = Arrangement.spacedBy(spacing.md),
                 ) {
-                    state.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error) } }
+                    state.error?.let { error ->
+                        item { Text(error.asString(), color = MaterialTheme.colorScheme.error) }
+                    }
                     items(state.catalog, key = { "catalog-${it.slug}" }) { connector ->
                         val current = state.connectorStates.firstOrNull { it.connector == connector.slug }
                         val policy = state.policy

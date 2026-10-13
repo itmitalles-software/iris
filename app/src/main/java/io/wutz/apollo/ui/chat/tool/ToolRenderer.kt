@@ -8,30 +8,52 @@ package io.wutz.apollo.ui.chat.tool
  * [ToolResultSummary]-based text for subtitle/detail). Returning an empty
  * string is a real answer — "this tool intentionally shows nothing here" —
  * and suppresses the generic fallback.
+ *
+ * Every hook receives a [ToolText] so the engine's own words (titles, labels, fallbacks) resolve in
+ * the current locale (issue #10); payload data is only passed as a format argument.
  */
 internal interface ToolRenderer {
     /** Title while the call is still running ("Running ls", "Searching …"). */
-    fun pendingTitle(call: ToolCall): String? = null
+    fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = null
 
     /** Title after successful completion ("Ran ls", "Opened example.com"). */
-    fun doneTitle(call: ToolCall): String? = null
+    fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = null
 
     /** Title when the call errored. */
-    fun errorTitle(call: ToolCall): String? = null
+    fun errorTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = null
 
     /** Secondary line naming what was acted on. Not used when an error is shown. */
-    fun subtitle(call: ToolCall): String? = null
+    fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = null
 
     /** Expanded body text. */
-    fun detail(call: ToolCall): String? = null
+    fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = null
 
     /** Expanded body text while the call is still running. */
-    fun pendingDetail(call: ToolCall): String? = null
+    fun pendingDetail(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = null
 
     /** Structured extras (streams, diffs, search hits) for special row layouts. */
     fun extras(
         call: ToolCall,
         status: ToolViewStatus,
+        res: ToolText,
     ): ToolViewExtras = ToolViewExtras.NONE
 }
 

@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.CreateCronJobRequest
 import io.wutz.apollo.data.model.CronBlueprint
 import io.wutz.apollo.data.model.CronBlueprintField
@@ -19,6 +20,7 @@ import io.wutz.apollo.data.model.InstantiateBlueprintRequest
 import io.wutz.apollo.data.model.UpdateCronJobRequest
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -197,10 +199,10 @@ class CronJobsViewModelTest {
         vm.saveEditor()
         settle()
 
-        val toast =
-            vm.uiState.value.editorState.toastMessage
-                .orEmpty()
-        assertTrue(toast, toast.contains("invalid time '25:00'"))
+        assertEquals(
+            UiText.res(R.string.cron_msg_save_failed, "invalid time '25:00' - use HH:MM (24h)"),
+            vm.uiState.value.editorState.toastMessage,
+        )
         assertFalse(vm.uiState.value.editorState.isSaving)
     }
 
@@ -389,10 +391,9 @@ class CronJobsViewModelTest {
 
         coVerify { mockApi.deleteCronJob("j5") }
         assertTrue(vm.uiState.value.editorState.isOpen)
-        assertTrue(
-            vm.uiState.value.editorState.toastMessage
-                .orEmpty()
-                .contains("Failed to save"),
+        assertEquals(
+            UiText.res(R.string.cron_msg_save_failed, "monitor_script and monitor_url are mutually exclusive"),
+            vm.uiState.value.editorState.toastMessage,
         )
     }
 

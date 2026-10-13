@@ -57,6 +57,7 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import kotlinx.coroutines.launch
 
 private data class LogsFilterOption(
@@ -182,7 +183,7 @@ fun LogsScreen(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage ?: stringResource(R.string.error_unknown),
+                    message = state.errorMessage?.asString() ?: stringResource(R.string.error_unknown),
                     onRetry = { viewModel.loadLogs() },
                 )
             }

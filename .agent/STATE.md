@@ -94,3 +94,15 @@ HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random> \
 hermes serve --host 127.0.0.1 --port 19120 --skip-build
 adb -s emulator-5580 reverse tcp:19120 tcp:19120   # app URL: http://127.0.0.1:19120
 ```
+
+## 2026-10-13: #10 ViewModel messages (branch work/i18n-viewmodel-messages)
+
+- `ui/common/UiText` (Resource/Plural/Raw, resolved in composables) carries all
+  ViewModel toast/error/snackbar messages; formatters return `UiText` or take a
+  resolver (`ui/chat/tool/ToolText` for tool renderers, cache keyed by locale).
+  Parameterized system rows stay English in Room and are parsed back by
+  `SystemNotice.displayUiText`. ~700 new EN/DE keys (block "Apollo i18n
+  (ViewModel messages, issue #10)").
+- Still English by design: data-layer fallbacks passed through as raw
+  arguments (`NetworkError` HTTP texts, `ConnectorError` messages, Projects
+  "Request failed"), TUI-style slash-command output, wire values.

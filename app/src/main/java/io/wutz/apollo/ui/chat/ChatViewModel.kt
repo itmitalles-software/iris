@@ -73,8 +73,11 @@ import io.wutz.apollo.notification.captureTurnBoundary
 import io.wutz.apollo.notification.correlationScopeId
 import io.wutz.apollo.share.SharedContent
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
 import io.wutz.apollo.ui.common.ActionProgressController
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.resolve
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -112,11 +115,6 @@ private const val MESSAGE_PAGE_SIZE = 150
 private const val TIMELINE_PAGE_SIZE = 500
 private const val HISTORY_WINDOW_SIZE = 120
 private const val MAX_PENDING_RECEIPT_LOOKUPS = 8
-private const val VOICE_NOTE_OFFLINE_MESSAGE = "Voice note not sent — not connected"
-private const val VOICE_NOTE_EMPTY_MESSAGE = "No speech detected in the voice note"
-private const val VOICE_NOTE_FAILED_MESSAGE = "Voice note transcription failed"
-private const val VOICE_NOTE_UNSENT_MESSAGE =
-    "Voice note not sent — transcript kept in the input field"
 
 private val REASONING_EFFORT_LEVELS =
     setOf("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")
@@ -199,15 +197,15 @@ data class ChatUiState(
     val maxToolCallsPerTurn: Int? = null,
     /** Standalone streaming message — rendered after the main list. */
     val streamingMessage: ChatMessage? = null,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     /** Persistent until dismissed/new turn; distinct from one-shot RPC/network snackbars. */
     val replyFailure: ReplyFailure? = null,
     /** Identity of the single non-durable failed assistant projection for this session lifecycle. */
     val replyFailureProjection: ReplyFailureProjection? = null,
     // Background job completion toast (issue #527) — non-blocking snackbar
-    val backgroundCompleteMessage: String? = null,
+    val backgroundCompleteMessage: UiText? = null,
     // Attachment feedback — surfaced as a non-blocking snackbar (issue #724)
-    val openError: String? = null,
+    val openError: UiText? = null,
     val savingAttachmentPath: String? = null,
     // Gateway file currently being downloaded for open — drives the inline
     // loading indicator on the attachment card (issue #913 follow-up).
@@ -249,7 +247,7 @@ data class ChatUiState(
     val modelPickerProviders: List<ModelProvider> = emptyList(),
     val modelPickerPinned: List<PinnedModel> = emptyList(),
     val modelPickerLoading: Boolean = false,
-    val modelSwitchConfirmMessage: String? = null,
+    val modelSwitchConfirmMessage: UiText? = null,
     // Current session's active model label (provider/model), shown in the chip
     val currentSessionModel: String? = null,
     // Per-model reasoning capabilities for the current session's model
@@ -311,7 +309,7 @@ data class ChatUiState(
     val stagedProject: ProjectInfo? = null,
     /** Projects a new chat can start in, from `projects.list`; empty hides the picker. */
     val startableProjects: List<ProjectInfo> = emptyList(),
-    val resumeError: String? = null,
+    val resumeError: UiText? = null,
     val isResumeRetrying: Boolean = false,
     /** Text staged to prefill the composer (e.g. from /undo). */
     val pendingPrefillText: String? = null,
@@ -338,9 +336,9 @@ data class ChatTimelineState(
     val isLoading: Boolean = false,
     val hasMore: Boolean = false,
     val nextCursor: Int? = null,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val jumpingRowId: Int? = null,
-    val windowErrorMessage: String? = null,
+    val windowErrorMessage: UiText? = null,
     val historyMessages: List<ChatMessage>? = null,
     val historyAnchorRowId: Int? = null,
     val historyHasOlder: Boolean = false,
@@ -718,6 +716,7 @@ class ChatViewModel(
         ChatSearchDelegate(
             scope = viewModelScope,
             uiState = _uiState,
+            toolText = ::toolText,
             dispatcher = searchDispatcher,
         )
 
@@ -860,7 +859,7 @@ class ChatViewModel(
                 .collect { messages ->
                     for (message in messages) {
                         if (message.role == MessageRole.TOOL) {
-                            ToolViewCache.prewarm(message.content, message.toolName, message.isToolRunning)
+                            ToolViewCache.prewarm(message.content, message.toolName, message.isToolRunning, toolText())
                         }
                     }
                 }
@@ -1938,7 +1937,10 @@ class ChatViewModel(
                 val runtimeId = (resultMap?.get("session_id") as? String)?.takeIf { it.isNotBlank() }
                 if (runtimeId == null) {
                     _uiState.update {
-                        it.copy(isLoading = false, resumeError = "Invalid session creation response")
+                        it.copy(
+                            isLoading = false,
+                            resumeError = UiText.res(R.string.chat_msg_invalid_session_create_response),
+                        )
                     }
                     return
                 }
@@ -2046,7 +2048,7 @@ class ChatViewModel(
                     sessionsList.map { s ->
                         SessionUi(
                             id = s["id"] as? String ?: "",
-                            title = s["title"] as? String ?: "Untitled",
+                            title = s["title"] as? String ?: localized(UiText.res(R.string.history_untitled)),
                             messageCount = (s["message_count"] as? Double)?.toInt() ?: 0,
                         )
                     }
@@ -2071,7 +2073,12 @@ class ChatViewModel(
                 if (resumedStoredId != null && resumedStoredId != sessionId) return
                 val runtimeId = (resultMap?.get("session_id") as? String)?.takeIf { it.isNotBlank() }
                 if (runtimeId == null) {
-                    handleResumeFailure(sessionId, resumeRequest.generation, "Invalid session resume response")
+                    handleResumeFailure(
+                        sessionId,
+                        resumeRequest.generation,
+                        "Invalid session resume response",
+                        UiText.res(R.string.chat_msg_invalid_session_resume_response),
+                    )
                     return
                 }
                 runtimeSessionId = runtimeId
@@ -2456,7 +2463,7 @@ class ChatViewModel(
                         pendingAttachments = pending.attachments + it.pendingAttachments,
                         composerTextToRestore = pending.text,
                         isAgentTyping = false,
-                        errorMessage = "Failed to create session: $errorMsg",
+                        errorMessage = UiText.res(R.string.chat_msg_create_session_failed, errorMsg),
                     )
                 }
             }
@@ -2488,8 +2495,8 @@ class ChatViewModel(
         _uiState.update {
             it.copy(
                 isLoading = false,
-                errorMessage = "Error ($method): $errorMsg",
-                resumeError = if (method == WsMethods.SESSION_CREATE) errorMsg else it.resumeError,
+                errorMessage = UiText.res(R.string.chat_msg_rpc_error, method, errorMsg),
+                resumeError = if (method == WsMethods.SESSION_CREATE) UiText.raw(errorMsg) else it.resumeError,
             )
         }
     }
@@ -2743,7 +2750,7 @@ class ChatViewModel(
                                 if (e is QueuedAttachmentTooLargeException) {
                                     attachmentTooLargeMessage(e.attachment)
                                 } else {
-                                    "Could not retain attachment"
+                                    UiText.res(R.string.chat_msg_retain_attachment_failed)
                                 },
                         )
                     }
@@ -2905,7 +2912,7 @@ class ChatViewModel(
 
     private fun failOutgoingBeforeSubmit(
         messageId: String,
-        reason: String,
+        reason: UiText,
         generation: Long = sessionGeneration,
     ) {
         markPendingSend(messageId, PendingSendState.REJECTED)
@@ -2972,7 +2979,7 @@ class ChatViewModel(
                         if (e is QueuedAttachmentTooLargeException) {
                             attachmentTooLargeMessage(e.attachment)
                         } else {
-                            "Could not retain queued attachment"
+                            UiText.res(R.string.chat_msg_retain_queued_attachment_failed)
                         },
                     )
                 } finally {
@@ -3093,7 +3100,7 @@ class ChatViewModel(
         } catch (_: IllegalStateException) {
             _uiState.update {
                 it.copy(
-                    errorMessage = getApplication<Application>().getString(R.string.chat_pending_acknowledge_failed),
+                    errorMessage = UiText.res(R.string.chat_pending_acknowledge_failed),
                 )
             }
             return
@@ -3117,7 +3124,7 @@ class ChatViewModel(
                 sendStore.dismissReleasedUnknown(snapshot)
             } catch (_: IllegalStateException) {
                 _uiState.update {
-                    it.copy(errorMessage = getApplication<Application>().getString(R.string.chat_pending_remove_failed))
+                    it.copy(errorMessage = UiText.res(R.string.chat_pending_remove_failed))
                 }
                 return
             }
@@ -3161,7 +3168,7 @@ class ChatViewModel(
                     it.state == PendingSendState.SENDING
             }
         if (others) {
-            _uiState.update { it.copy(errorMessage = "Wait for the current send to settle") }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.chat_msg_wait_for_send)) }
             return
         }
         if (row.attachments.isNotEmpty()) {
@@ -3378,7 +3385,7 @@ class ChatViewModel(
                     ),
                 )
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = "Could not save message for delivery") }
+                _uiState.update { it.copy(errorMessage = UiText.res(R.string.chat_msg_save_for_delivery_failed)) }
                 return false
             }
         }
@@ -3411,7 +3418,10 @@ class ChatViewModel(
                     repo.persistMessage(userMessage, storageSessionId)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
-                    failOutgoingBeforeSubmit(userMessage.id, "Could not retain queued attachment")
+                    failOutgoingBeforeSubmit(
+                        userMessage.id,
+                        UiText.res(R.string.chat_msg_retain_queued_attachment_failed),
+                    )
                 } finally {
                     queuedStagingIds.remove(userMessage.id)
                     drainPendingQueue()
@@ -3494,7 +3504,7 @@ class ChatViewModel(
         }
         if (!canSubmitMessage()) {
             file.delete()
-            _uiState.update { it.copy(errorMessage = VOICE_NOTE_OFFLINE_MESSAGE) }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.chat_msg_voice_note_offline)) }
             return
         }
         val recordedSessionId = _uiState.value.currentSessionId
@@ -3520,7 +3530,7 @@ class ChatViewModel(
                     is NetworkResult.Success -> {
                         val transcript = result.data.trim()
                         if (transcript.isEmpty()) {
-                            _uiState.update { it.copy(errorMessage = VOICE_NOTE_EMPTY_MESSAGE) }
+                            _uiState.update { it.copy(errorMessage = UiText.res(R.string.chat_msg_voice_note_empty)) }
                         } else {
                             deliverVoiceTranscript(
                                 transcript = transcript,
@@ -3534,7 +3544,10 @@ class ChatViewModel(
                     is NetworkResult.Failure -> {
                         Log.w(TAG, "Voice note transcription failed: ${result.error.message}")
                         _uiState.update {
-                            it.copy(errorMessage = "$VOICE_NOTE_FAILED_MESSAGE: ${result.error.message}")
+                            it.copy(
+                                errorMessage =
+                                    UiText.res(R.string.chat_msg_voice_note_failed, result.error.message),
+                            )
                         }
                     }
                 }
@@ -3571,7 +3584,7 @@ class ChatViewModel(
             _uiState.update {
                 it.copy(
                     composerTextToRestore = transcript,
-                    errorMessage = VOICE_NOTE_UNSENT_MESSAGE,
+                    errorMessage = UiText.res(R.string.chat_msg_voice_note_unsent),
                 )
             }
         }
@@ -3707,7 +3720,8 @@ class ChatViewModel(
                                     removeUnconfirmedBubble(msgToPersist.id)
                                     _uiState.update {
                                         it.copy(
-                                            errorMessage = "Attachment unavailable: ${attachment.name}",
+                                            errorMessage =
+                                                UiText.res(R.string.chat_msg_attachment_unavailable, attachment.name),
                                             isAgentTyping = mainTurnBusy,
                                         )
                                     }
@@ -3715,7 +3729,7 @@ class ChatViewModel(
                             } else {
                                 failOutgoingBeforeSubmit(
                                     msgToPersist.id,
-                                    "Attachment unavailable: ${attachment.name}",
+                                    UiText.res(R.string.chat_msg_attachment_unavailable, attachment.name),
                                     dispatchGeneration,
                                 )
                             }
@@ -3750,7 +3764,7 @@ class ChatViewModel(
                                 messages = state.messages.filterNot { it.id == msgToPersist.id },
                                 pendingAttachments = attachments + state.pendingAttachments,
                                 composerTextToRestore = msgToPersist.content,
-                                errorMessage = "Failed to save message",
+                                errorMessage = UiText.res(R.string.chat_msg_save_message_failed),
                                 isAgentTyping = wasStreaming,
                             )
                         }
@@ -3805,7 +3819,7 @@ class ChatViewModel(
                         Log.e(TAG, "Failed to upload attachment ${attachment.name}", e)
                         failOutgoingBeforeSubmit(
                             msgToPersist.id,
-                            "Upload failed: ${attachment.name}",
+                            UiText.res(R.string.chat_msg_upload_failed, attachment.name),
                             dispatchGeneration,
                         )
                         return@launch
@@ -3966,8 +3980,8 @@ class ChatViewModel(
         }
     }
 
-    private fun attachmentTooLargeMessage(attachment: Attachment): String =
-        "Attachment too large: ${attachment.name} (maximum 10 MB)"
+    private fun attachmentTooLargeMessage(attachment: Attachment): UiText =
+        UiText.res(R.string.chat_msg_attachment_too_large, attachment.name)
 
     // ── Attachment management ─────────────────────────────────────────────
 
@@ -4086,7 +4100,7 @@ class ChatViewModel(
         // (before any RPC fires) with a clear message instead of a doomed call.
         if (CommandBlocklist.contains(command)) {
             addAssistantMessage(
-                "${command.split(" ", limit = 2)[0]} is not supported on mobile",
+                UiText.res(R.string.chat_msg_command_not_supported_mobile, command.split(" ", limit = 2)[0]),
             )
             return
         }
@@ -4115,10 +4129,7 @@ class ChatViewModel(
                     // Bot Chat is a canonical forever-conversation — compact instead of creating an orphan
                     val sessionId = _uiState.value.currentSessionId
                     if (!sessionId.isNullOrBlank()) {
-                        addAssistantMessage(
-                            "Bot chats are one continuous conversation — compacting instead. " +
-                                "For a throwaway session, create a standard chat.",
-                        )
+                        addAssistantMessage(UiText.res(R.string.chat_msg_bot_chat_compacting))
                         dispatchViaRpc("/compact")
                     } else {
                         createNewSession()
@@ -4211,7 +4222,7 @@ class ChatViewModel(
             )
         } catch (e: Exception) {
             removeUnconfirmedBubble(userMessage.id)
-            _uiState.update { it.copy(errorMessage = "Could not save message for delivery") }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.chat_msg_save_for_delivery_failed)) }
             return
         }
         publishPendingSends()
@@ -4234,7 +4245,7 @@ class ChatViewModel(
     private fun handleReasoningSlashCommand(arg: String) {
         val sessionId = runtimeSessionId
         if (sessionId.isNullOrBlank()) {
-            addAssistantMessage("Reasoning controls require an active session.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_requires_session))
             return
         }
 
@@ -4256,7 +4267,9 @@ class ChatViewModel(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    addAssistantMessage("Could not read reasoning status: ${e.message ?: e.toString()}")
+                    addAssistantMessage(
+                        UiText.res(R.string.chat_msg_reasoning_status_failed, e.message ?: e.toString()),
+                    )
                 }
             }
             return
@@ -4272,11 +4285,11 @@ class ChatViewModel(
             if (parsed.scopeName != "global") {
                 val caps = _uiState.value.currentModelCapabilities
                 if (caps?.reasoningSupport == false) {
-                    addAssistantMessage("Reasoning is not supported for the current model.")
+                    addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_not_supported))
                     return
                 }
                 if (value == "none" && caps?.can_disable_reasoning == false) {
-                    addAssistantMessage("Reasoning cannot be disabled for this model (always on).")
+                    addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_always_on))
                     return
                 }
             }
@@ -4313,7 +4326,7 @@ class ChatViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                addAssistantMessage("Could not change reasoning: ${e.message ?: e.toString()}")
+                addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_change_failed, e.message ?: e.toString()))
             }
         }
     }
@@ -4327,14 +4340,12 @@ class ChatViewModel(
     fun submitSideQuestion(question: String) {
         val trimmed = question.trim()
         if (trimmed.isBlank()) {
-            addAssistantMessage(
-                "Usage: `/btw <question>` — Ask a side question about this session without mutating its history.",
-            )
+            addAssistantMessage(UiText.res(R.string.chat_msg_btw_usage))
             return
         }
         val sessionId = runtimeSessionId ?: _uiState.value.currentSessionId
         if (sessionId.isNullOrBlank()) {
-            addAssistantMessage("No active session for side questions. Start a chat first.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_btw_no_session))
             return
         }
 
@@ -4370,7 +4381,7 @@ class ChatViewModel(
                             btwState =
                                 current.copy(
                                     isLoading = false,
-                                    error = e.message ?: "Failed to dispatch side question",
+                                    error = e.message ?: localized(UiText.res(R.string.chat_msg_btw_dispatch_failed)),
                                 ),
                         )
                     } ?: state
@@ -4416,14 +4427,14 @@ class ChatViewModel(
                     if (name != null) {
                         actionProgress.markStarted(name)
                     } else {
-                        actionProgress.fail(
-                            "Update started but the backend did not report an action name",
-                        )
+                        actionProgress.fail(localized(UiText.res(R.string.chat_msg_update_no_action_name)))
                     }
                 }
 
                 is NetworkResult.Failure -> {
-                    actionProgress.fail("Failed to start update: ${result.error.message}")
+                    actionProgress.fail(
+                        localized(UiText.res(R.string.chat_msg_update_start_failed, result.error.message)),
+                    )
                 }
             }
         }
@@ -4437,7 +4448,7 @@ class ChatViewModel(
     private fun branchSession(command: String) {
         val sessionId = runtimeSessionId
         if (sessionId == null) {
-            addAssistantMessage("No active session. Use `/new` to create one.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_no_active_session))
             return
         }
         val arg = command.split(" ", limit = 2).getOrElse(1) { "" }.trim()
@@ -4458,7 +4469,7 @@ class ChatViewModel(
     private fun dispatchViaRpc(command: String) {
         val sessionId = runtimeSessionId
         if (sessionId == null) {
-            addAssistantMessage("No active session. Use `/new` to create one.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_no_active_session))
             return
         }
         val parts = command.split(" ", limit = 2)
@@ -4478,7 +4489,10 @@ class ChatViewModel(
                 if (map?.get("type") is String) {
                     handleDispatchResult(map)
                 } else {
-                    val output = (map?.get("output") as? String).orEmpty().ifBlank { "/$name: no output" }
+                    val output =
+                        (map?.get("output") as? String).orEmpty().ifBlank {
+                            localized(UiText.res(R.string.chat_msg_command_no_output, name))
+                        }
                     val warning = (map?.get("warning") as? String).orEmpty()
                     addAssistantMessage(if (warning.isBlank()) output else "warning: $warning\n$output")
                 }
@@ -4610,6 +4624,14 @@ class ChatViewModel(
         return placed
     }
 
+    /** Tool-display texts in the app's current language, for search and cache prewarming off the UI. */
+    private fun toolText(): ToolText = ToolText.of(getApplication<Application>().resources)
+
+    /** Resolves [text] now, for rows that are stored as text (local feedback, progress and subagent logs). */
+    private fun localized(text: UiText): String = text.resolve(getApplication<Application>())
+
+    private fun addAssistantMessage(text: UiText) = addAssistantMessage(localized(text))
+
     private fun addAssistantMessage(text: String) {
         appendLocalTranscriptEvent(
             ChatMessage(
@@ -4623,7 +4645,7 @@ class ChatViewModel(
     private fun handleUndoCommand(count: String) {
         val sessionId = runtimeSessionId
         if (sessionId == null) {
-            addAssistantMessage("No active session to undo.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_undo_no_session))
             return
         }
         viewModelScope.launch {
@@ -4638,9 +4660,9 @@ class ChatViewModel(
                     )
                 handleDispatchResult(result.toAny())
             } catch (e: HermesWsClient.HermesRpcException) {
-                addAssistantMessage(e.message ?: "Failed to undo.")
+                addAssistantMessage(e.message ?: localized(UiText.res(R.string.chat_msg_undo_failed)))
             } catch (e: Exception) {
-                addAssistantMessage(e.message ?: "Failed to undo.")
+                addAssistantMessage(e.message ?: localized(UiText.res(R.string.chat_msg_undo_failed)))
             }
         }
     }
@@ -4651,7 +4673,7 @@ class ChatViewModel(
         // Keep the stored ID below for generation guards and transcript persistence.
         val rpcSessionId = runtimeSessionId
         if (sessionId == null || rpcSessionId == null) {
-            addAssistantMessage("No active session to compress.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_compress_no_session))
             return
         }
         if (_uiState.value.isCompressing) return
@@ -4788,9 +4810,14 @@ class ChatViewModel(
                 summary?.headline?.takeIf { it.isNotBlank() },
                 summary?.token_line?.takeIf { it.isNotBlank() },
                 summary?.note?.takeIf { it.isNotBlank() },
-            ).takeIf { it.isNotEmpty() }?.joinToString("\n") ?: response?.message ?: "Context compressed."
+            ).takeIf { it.isNotEmpty() }?.joinToString("\n") ?: response?.message
+                ?: localized(UiText.res(R.string.chat_msg_context_compressed))
         addAssistantMessage(
-            if (incompleteFallback) "$feedback\nHistory refresh incomplete; cached history retained." else feedback,
+            if (incompleteFallback) {
+                localized(UiText.res(R.string.chat_msg_compressed_history_incomplete, feedback))
+            } else {
+                feedback
+            },
         )
         if (!isCurrentSessionRequest(sessionId, generation)) return
         fetchContextUsage()
@@ -4813,9 +4840,9 @@ class ChatViewModel(
         }
         val feedback =
             when {
-                notice.isNotBlank() && message.isNotBlank() -> "$notice (Rewound to: \"$message\")"
+                notice.isNotBlank() && message.isNotBlank() -> SystemNotice.noticeRewoundTo(notice, message)
                 notice.isNotBlank() -> notice
-                message.isNotBlank() -> "↶ Rewound to: \"$message\""
+                message.isNotBlank() -> SystemNotice.rewoundTo(message)
                 else -> SystemNotice.REWOUND
             }
         if (storageSessionId != null) {
@@ -4866,12 +4893,12 @@ class ChatViewModel(
                 try {
                     val killed = wsClient.call(RpcMethods.PROCESS_STOP, ProcessStopParams).killed ?: 0
                     when {
-                        killed > 0 -> "Stopped $killed background process${if (killed == 1) "" else "es"}."
+                        killed > 0 -> SystemNotice.stoppedBackgroundProcesses(killed)
                         else -> SystemNotice.NO_BACKGROUND_PROCESSES
                     }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
-                    "Could not stop background processes: ${e.message ?: e.javaClass.simpleName}"
+                    SystemNotice.stopBackgroundProcessesFailed(e.message ?: e.javaClass.simpleName)
                 }
             addSystemMessage(message)
         }
@@ -4908,8 +4935,16 @@ class ChatViewModel(
                         (ind.goal == indicator.goal || indicator.subagentId != null)
                     ) {
                         val newLogs =
-                            (ind.logs + SubagentLogLine(text = "Course correction: \"$trimmed\"", isSummary = true))
-                                .takeLast(30)
+                            (
+                                ind.logs +
+                                    SubagentLogLine(
+                                        text =
+                                            localized(
+                                                UiText.res(R.string.chat_msg_subagent_course_correction, trimmed),
+                                            ),
+                                        isSummary = true,
+                                    )
+                            ).takeLast(30)
                         ind.copy(status = "steered", logs = newLogs)
                     } else {
                         ind
@@ -4945,8 +4980,13 @@ class ChatViewModel(
                         (ind.goal == indicator.goal || indicator.subagentId != null)
                     ) {
                         val newLogs =
-                            (ind.logs + SubagentLogLine(text = "Stopped subagent", isError = true))
-                                .takeLast(30)
+                            (
+                                ind.logs +
+                                    SubagentLogLine(
+                                        text = localized(UiText.res(R.string.chat_msg_subagent_stopped)),
+                                        isError = true,
+                                    )
+                            ).takeLast(30)
                         ind.copy(status = "cancelled", logs = newLogs)
                     } else {
                         ind
@@ -5255,7 +5295,13 @@ class ChatViewModel(
                         is NetworkResult.Failure -> {
                             _timelineState.update {
                                 if (valid()) {
-                                    it.copy(errorMessage = "Failed to load timeline: ${result.error.message}")
+                                    it.copy(
+                                        errorMessage =
+                                            UiText.res(
+                                                R.string.chat_msg_load_timeline_failed,
+                                                result.error.message,
+                                            ),
+                                    )
                                 } else {
                                     it
                                 }
@@ -5266,7 +5312,12 @@ class ChatViewModel(
                     throw e
                 } catch (e: Exception) {
                     if (valid()) {
-                        _timelineState.update { it.copy(errorMessage = "Failed to load timeline: ${e.message}") }
+                        _timelineState.update {
+                            it.copy(
+                                errorMessage =
+                                    UiText.res(R.string.chat_msg_load_timeline_failed, e.message ?: e.toString()),
+                            )
+                        }
                     }
                 } finally {
                     if (valid()) _timelineState.update { it.copy(isLoading = false) }
@@ -5314,7 +5365,7 @@ class ChatViewModel(
                             val response = result.data
                             if (response.messages.size > HISTORY_WINDOW_SIZE) {
                                 _timelineState.update {
-                                    it.copy(windowErrorMessage = "History response exceeded the page limit.")
+                                    it.copy(windowErrorMessage = UiText.res(R.string.chat_msg_history_page_limit))
                                 }
                                 return@launch
                             }
@@ -5336,7 +5387,7 @@ class ChatViewModel(
                             val targetId = RestMessageId.of(sessionId, rowId)
                             if (page.none { it.id == targetId || it.canonicalRestId == targetId }) {
                                 _timelineState.update {
-                                    it.copy(windowErrorMessage = "The selected prompt is no longer available.")
+                                    it.copy(windowErrorMessage = UiText.res(R.string.chat_msg_prompt_unavailable))
                                 }
                                 return@launch
                             }
@@ -5356,7 +5407,10 @@ class ChatViewModel(
                         is NetworkResult.Failure -> {
                             _timelineState.update {
                                 if (valid()) {
-                                    it.copy(windowErrorMessage = "Failed to load message: ${result.error.message}")
+                                    it.copy(
+                                        windowErrorMessage =
+                                            UiText.res(R.string.chat_msg_load_message_failed, result.error.message),
+                                    )
                                 } else {
                                     it
                                 }
@@ -5367,7 +5421,12 @@ class ChatViewModel(
                     throw e
                 } catch (e: Exception) {
                     if (valid()) {
-                        _timelineState.update { it.copy(windowErrorMessage = "Failed to load message: ${e.message}") }
+                        _timelineState.update {
+                            it.copy(
+                                windowErrorMessage =
+                                    UiText.res(R.string.chat_msg_load_message_failed, e.message ?: e.toString()),
+                            )
+                        }
                     }
                 } finally {
                     if (valid()) _timelineState.update { it.copy(jumpingRowId = null) }
@@ -5672,7 +5731,12 @@ class ChatViewModel(
                         // The first read can be retried by the same older-history action.
                         cacheHasOlder = true
                         publishHistoryAvailability()
-                        _uiState.update { it.copy(errorMessage = "Failed to load cached messages: ${e.message}") }
+                        _uiState.update {
+                            it.copy(
+                                errorMessage =
+                                    UiText.res(R.string.chat_msg_load_cached_failed, e.message ?: e.toString()),
+                            )
+                        }
                     }
                 } finally {
                     if (isCurrentSessionRequest(sessionId, generation) && _uiState.value.messages.isNotEmpty()) {
@@ -5765,7 +5829,12 @@ class ChatViewModel(
                                 finishResumeWhenHydrated(generation)
                             } else {
                                 if (hydratedGeneration == generation) hydratedGeneration = -1L
-                                handleResumeFailure(sessionId, generation, "Failed to load messages: $error")
+                                handleResumeFailure(
+                                    sessionId,
+                                    generation,
+                                    "Failed to load messages: $error",
+                                    UiText.res(R.string.chat_msg_load_messages_failed, error),
+                                )
                             }
                         }
                     }
@@ -5774,7 +5843,12 @@ class ChatViewModel(
                 } catch (e: Exception) {
                     if (valid()) {
                         hydratedGeneration = -1L
-                        handleResumeFailure(sessionId, generation, "Failed to load messages: ${e.message}")
+                        handleResumeFailure(
+                            sessionId,
+                            generation,
+                            "Failed to load messages: ${e.message}",
+                            UiText.res(R.string.chat_msg_load_messages_failed, e.message ?: e.toString()),
+                        )
                     }
                 } finally {
                     if (valid()) _uiState.update { it.copy(isLoading = false) }
@@ -6104,7 +6178,7 @@ class ChatViewModel(
                 it.copy(
                     isLoading = false,
                     isResumeRetrying = false,
-                    resumeError = "Session not found on server (displaying cached messages)",
+                    resumeError = UiText.res(R.string.chat_msg_session_not_found_cached),
                 )
             }
             return
@@ -6156,15 +6230,20 @@ class ChatViewModel(
                 isAgentTyping = false,
                 isThinking = false,
                 isResumeRetrying = false,
-                resumeError = "Live session was reclaimed by the server. Retry to reconnect.",
+                resumeError = UiText.res(R.string.chat_msg_session_reclaimed),
             )
         }
     }
 
+    /**
+     * [errorMessage] is the raw failure text the recovery logic inspects (e.g. "session not found");
+     * [displayMessage] is what the Retry overlay shows (defaults to the raw server text).
+     */
     private fun handleResumeFailure(
         sessionId: String,
         generation: Long,
         errorMessage: String,
+        displayMessage: UiText = UiText.raw(errorMessage),
     ) {
         // Only handle if still on this session.
         if (!isCurrentSessionRequest(sessionId, generation)) return
@@ -6189,7 +6268,7 @@ class ChatViewModel(
                 it.copy(
                     isLoading = false,
                     isResumeRetrying = false,
-                    resumeError = errorMessage,
+                    resumeError = displayMessage,
                     errorMessage = null,
                 )
             }
@@ -6325,7 +6404,11 @@ class ChatViewModel(
                         is NetworkResult.Failure -> {
                             _uiState.update {
                                 it.copy(
-                                    errorMessage = "Failed to load older messages: ${result.error.message}",
+                                    errorMessage =
+                                        UiText.res(
+                                            R.string.chat_msg_load_older_failed,
+                                            result.error.message,
+                                        ),
                                 )
                             }
                         }
@@ -6336,7 +6419,8 @@ class ChatViewModel(
                     if (valid()) {
                         _uiState.update {
                             it.copy(
-                                errorMessage = "Failed to load older messages: ${e.message}",
+                                errorMessage =
+                                    UiText.res(R.string.chat_msg_load_older_failed, e.message ?: e.toString()),
                             )
                         }
                     }
@@ -6456,7 +6540,14 @@ class ChatViewModel(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    if (valid()) _uiState.update { it.copy(errorMessage = "Failed to sync messages: ${e.message}") }
+                    if (valid()) {
+                        _uiState.update {
+                            it.copy(
+                                errorMessage =
+                                    UiText.res(R.string.chat_msg_sync_failed, e.message ?: e.toString()),
+                            )
+                        }
+                    }
                 } finally {
                     if (valid()) isSyncingMessages = false
                 }

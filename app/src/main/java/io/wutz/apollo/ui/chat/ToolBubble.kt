@@ -78,6 +78,7 @@ import io.wutz.apollo.ui.chat.components.FileViewCard
 import io.wutz.apollo.ui.chat.tool.ToolView
 import io.wutz.apollo.ui.chat.tool.ToolViewBuilder
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
+import io.wutz.apollo.ui.chat.tool.rememberToolText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -140,9 +141,10 @@ internal fun ToolBubble(
     val apolloAccent = LocalThemePreset.current == ThemePreset.APOLLO
     val accentColor = MaterialTheme.colorScheme.primary
 
+    val toolText = rememberToolText()
     val view =
-        remember(message.content, message.toolName, message.isToolRunning) {
-            ToolViewCache.getOrParse(message.content, message.toolName, message.isToolRunning)
+        remember(message.content, message.toolName, message.isToolRunning, toolText) {
+            ToolViewCache.getOrParse(message.content, message.toolName, message.isToolRunning, toolText)
         }
     val config = ToolSchemaRegistry.getDisplayConfig(message.toolName)
 

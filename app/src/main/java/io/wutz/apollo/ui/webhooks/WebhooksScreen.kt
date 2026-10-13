@@ -60,6 +60,7 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.common.toDetailRows
@@ -198,7 +199,7 @@ fun WebhooksScreen(
 
                     state.createFormError?.let { error ->
                         Text(
-                            text = error,
+                            text = error.asString(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -252,7 +253,7 @@ fun WebhooksScreen(
 
             state.errorMessage != null && state.baseUrl == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadWebhooks() },
                     modifier = Modifier.padding(paddingValues),
                 )

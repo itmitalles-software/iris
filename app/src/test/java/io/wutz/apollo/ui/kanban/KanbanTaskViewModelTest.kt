@@ -3,6 +3,7 @@ package io.wutz.apollo.ui.kanban
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.AttachmentListResponse
 import io.wutz.apollo.data.model.DeleteAttachmentResponse
 import io.wutz.apollo.data.model.KanbanAttachment
@@ -22,6 +23,7 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.repository.KanbanRepository
 import io.wutz.apollo.data.ws.KanbanEventsClient
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -125,7 +127,7 @@ class KanbanTaskViewModelTest {
                     ?.task
                     ?.body,
             )
-            assertEquals("Description saved", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_description_saved), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -145,7 +147,7 @@ class KanbanTaskViewModelTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             coVerify { mockRepository.addComment("t_1", "dev", "Steering note") }
-            assertEquals("Comment added", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_comment_added), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -168,9 +170,9 @@ class KanbanTaskViewModelTest {
 
             coVerify { mockRepository.addComment("t_1", "dev", "Stop now") }
             coVerify { mockRepository.reclaimTask("t_1", "dev", match { it.contains("Requeued") }) }
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("requeued") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_note_posted_requeued),
+                vm.uiState.value.toastMessage,
             )
         }
 
@@ -185,9 +187,9 @@ class KanbanTaskViewModelTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             coVerify { mockRepository.reassignTask("t_1", "dev", "coder", true) }
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("coder") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_task_reassigned, "coder"),
+                vm.uiState.value.toastMessage,
             )
         }
 
@@ -217,7 +219,7 @@ class KanbanTaskViewModelTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             coVerify { mockRepository.uploadAttachment("t_1", "dev", any()) }
-            assertEquals("Attachment uploaded", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_attachment_uploaded), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -249,7 +251,7 @@ class KanbanTaskViewModelTest {
                     },
                 )
             }
-            assertEquals("Model override updated", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_model_override_updated), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -301,7 +303,7 @@ class KanbanTaskViewModelTest {
 
             coVerify { mockRepository.deleteTask("t_1", "dev") }
             assertTrue(deleted)
-            assertEquals("Task deleted", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_task_deleted), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -409,9 +411,9 @@ class KanbanTaskViewModelTest {
             vm.specifyTask("dev", "t_1")
             testDispatcher.scheduler.runCurrent()
 
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("Not configured") == true,
+            assertEquals(
+                UiText.raw("Not configured"),
+                vm.uiState.value.toastMessage,
             )
             coVerify(exactly = 0) { mockRepository.getTask("t_1", "dev", any(), any()) }
         }
@@ -430,9 +432,9 @@ class KanbanTaskViewModelTest {
             vm.createParentLink("dev", "t_1", "parent")
             testDispatcher.scheduler.runCurrent()
 
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("gated") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_parent_linked_gated),
+                vm.uiState.value.toastMessage,
             )
             coVerify { mockRepository.getTask("t_1", "dev", any(), any()) }
         }
@@ -489,7 +491,7 @@ class KanbanTaskViewModelTest {
             vm.terminateRun("dev", "t_1", 7L)
             testDispatcher.scheduler.runCurrent()
 
-            assertEquals("run 7 already ended", vm.uiState.value.toastMessage)
+            assertEquals(UiText.raw("run 7 already ended"), vm.uiState.value.toastMessage)
             assertTrue(!vm.uiState.value.isTerminatingRun)
             coVerify(exactly = 0) { mockRepository.getRun(7L, "dev") }
         }

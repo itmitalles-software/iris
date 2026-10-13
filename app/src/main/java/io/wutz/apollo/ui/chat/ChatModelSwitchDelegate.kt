@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.ModelCapabilities
@@ -15,6 +16,7 @@ import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.contract.ConfigSetParams
 import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.toAny
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -54,7 +56,7 @@ class ChatModelSwitchDelegate(
     private val runtimeSessionId: () -> String?,
     private val wsSend: (params: ConfigSetParams, onSent: ((String) -> Unit)?) -> Unit,
     private val trackRequest: (id: String, method: String) -> Unit,
-    private val addAssistantMessage: (text: String) -> Unit,
+    private val addAssistantMessage: (text: UiText) -> Unit,
     private val handleSlashCommand: (command: String) -> Unit,
     private val fetchContextUsage: () -> Unit,
     private val onModelSwitchInitiated: () -> Unit = {},
@@ -212,7 +214,7 @@ class ChatModelSwitchDelegate(
                                 modelPickerLoading = false,
                                 errorMessage =
                                     if (it.showModelPicker || refresh) {
-                                        "Failed to load models: ${result.error.message}"
+                                        UiText.res(R.string.chat_msg_load_models_failed, result.error.message)
                                     } else {
                                         it.errorMessage
                                     },
@@ -282,7 +284,7 @@ class ChatModelSwitchDelegate(
     ) {
         val sessionId = runtimeSessionId()
         if (sessionId == null) {
-            addAssistantMessage("No active session. Use `/new` to create one.")
+            addAssistantMessage(UiText.res(R.string.chat_msg_no_active_session))
             return
         }
         val spec =
@@ -328,9 +330,9 @@ class ChatModelSwitchDelegate(
             if (confirmRequired) {
                 if (pending != null && pending.sequence == modelSwitchSequence) {
                     val confirmMessage =
-                        (map["confirm_message"] as? String)
-                            ?: (map["warning"] as? String)
-                            ?: "This model requires confirmation to switch. Continue?"
+                        ((map["confirm_message"] as? String) ?: (map["warning"] as? String))
+                            ?.let { UiText.raw(it) }
+                            ?: UiText.res(R.string.chat_msg_model_switch_confirm)
                     activeModelSwitchConfirmation = pending
                     uiState.update {
                         it.copy(modelSwitchConfirmMessage = confirmMessage)
@@ -346,7 +348,7 @@ class ChatModelSwitchDelegate(
                             } else {
                                 "⚠ $warning"
                             }
-                        addAssistantMessage(formattedWarning)
+                        addAssistantMessage(UiText.raw(formattedWarning))
                     }
                 }
             }
@@ -578,7 +580,8 @@ class ChatModelSwitchDelegate(
                         uiState.update { state ->
                             state.copy(
                                 pendingReasoningLevel = null,
-                                errorMessage = "Could not confirm reasoning change: ${e.message ?: e.toString()}",
+                                errorMessage =
+                                    UiText.res(R.string.chat_msg_reasoning_confirm_failed, e.message ?: e.toString()),
                             )
                         }
                     }

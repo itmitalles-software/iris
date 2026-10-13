@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -11,14 +13,17 @@ import kotlinx.serialization.json.JsonPrimitive
  * Covers joined results, background dispatch handles, and list/steer/stop acks.
  */
 internal object DelegateTaskRenderer : ToolRenderer {
-    private fun goals(call: ToolCall): List<String> {
+    private fun goals(
+        call: ToolCall,
+        res: ToolText,
+    ): List<String> {
         val tasks = call.args?.get("tasks") as? JsonArray
         val fromTasks =
             tasks?.mapIndexedNotNull { i, el ->
                 ToolJson
                     .parseMaybeObject(el)
                     ?.let { ToolJson.firstString(it, listOf("goal")) }
-                    ?.ifEmpty { "Task ${i + 1}" }
+                    ?.ifEmpty { res.get(R.string.tool_msg_task_n, i + 1) }
             } ?: emptyList()
         if (fromTasks.isNotEmpty()) return fromTasks
         return ToolJson
@@ -29,66 +34,78 @@ internal object DelegateTaskRenderer : ToolRenderer {
 
     private fun action(call: ToolCall) = ToolJson.firstString(call.args, listOf("action")).ifEmpty { "spawn" }
 
-    override fun pendingTitle(call: ToolCall): String =
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
         when (action(call)) {
             "list" -> {
-                "Listing subagents"
+                res.get(R.string.tool_title_listing_subagents)
             }
 
             "steer" -> {
-                "Steering subagent"
+                res.get(R.string.tool_title_steering_subagent)
             }
 
             "stop" -> {
-                "Stopping subagent"
+                res.get(R.string.tool_title_stopping_subagent)
             }
 
             else -> {
-                val n = goals(call).size.coerceAtLeast(1)
-                "Delegating $n task${if (n == 1) "" else "s"}"
+                val n = goals(call, res).size.coerceAtLeast(1)
+                res.plural(R.plurals.tool_title_delegating_tasks, n)
             }
         }
 
-    override fun doneTitle(call: ToolCall): String {
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         return when {
             action(call) == "list" -> {
                 val n = ToolJson.intValue(result?.get("count")) ?: 0
-                "$n subagent${if (n == 1) "" else "s"}"
+                res.plural(R.plurals.tool_title_subagent_count, n)
             }
 
             action(call) == "steer" -> {
-                "Steer queued"
+                res.get(R.string.tool_title_steer_queued)
             }
 
             action(call) == "stop" -> {
-                "Stop requested"
+                res.get(R.string.tool_title_stop_requested)
             }
 
             ToolJson.firstString(result, listOf("status")) == "dispatched" -> {
-                val n = ToolJson.intValue(result?.get("count")) ?: goals(call).size
-                "Dispatched $n background task${if (n == 1) "" else "s"}"
+                val n = ToolJson.intValue(result?.get("count")) ?: goals(call, res).size
+                res.plural(R.plurals.tool_title_dispatched_tasks, n)
             }
 
             else -> {
                 val results = result?.get("results") as? JsonArray
-                val n = results?.size ?: goals(call).size.coerceAtLeast(1)
+                val n = results?.size ?: goals(call, res).size.coerceAtLeast(1)
                 val failed =
                     results?.count {
                         ToolJson.firstString(ToolJson.parseMaybeObject(it), listOf("status")) == "failed"
                     } ?: 0
                 if (failed > 0) {
-                    "Delegated $n tasks · $failed failed"
+                    res.plural(R.plurals.tool_title_delegated_tasks_failed, n, n, failed)
                 } else {
-                    "Delegated $n task${if (n == 1) "" else "s"}"
+                    res.plural(R.plurals.tool_title_delegated_tasks, n)
                 }
             }
         }
     }
 
-    override fun subtitle(call: ToolCall): String = ToolJson.compactPreview(goals(call).firstOrNull() ?: "", 120)
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ToolJson.compactPreview(goals(call, res).firstOrNull() ?: "", 120)
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         // list action: one row per live subagent
         (result?.get("subagents") as? JsonArray)?.let { subs ->
@@ -109,7 +126,7 @@ internal object DelegateTaskRenderer : ToolRenderer {
                 val idx = ToolJson.intValue(r["task_index"]) ?: 0
                 val ok = ToolJson.firstString(r, listOf("status")) != "failed"
                 val marker = if (ok) "[x]" else "[!]"
-                val goal = goals(call).getOrNull(idx) ?: "Task ${idx + 1}"
+                val goal = goals(call, res).getOrNull(idx) ?: res.get(R.string.tool_msg_task_n, idx + 1)
                 val model = ToolJson.firstString(r, listOf("model"))
                 val dur =
                     ToolJson

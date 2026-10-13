@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.plugins
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.MemoryProviderConfigResponse
 import io.wutz.apollo.data.model.MemoryProviderConfigUpdateRequest
 import io.wutz.apollo.data.model.MemoryProviderSetupRequest
@@ -11,6 +12,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +24,8 @@ data class MemoryProviderDetailUiState(
     val providerName: String = "",
     val config: MemoryProviderConfigResponse? = null,
     val status: MemoryProviderStatusRow? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     /** In-progress edits, keyed by field key. Secrets only hold typed text. */
     val edits: Map<String, String> = emptyMap(),
     val saving: Boolean = false,
@@ -104,7 +106,7 @@ class MemoryProviderDetailViewModel :
                             isLoading = false,
                             providerName = name,
                             status = status ?: it.status,
-                            errorMessage = configResult.error.message,
+                            errorMessage = UiText.raw(configResult.error.message),
                         )
                     }
                 }
@@ -160,7 +162,7 @@ class MemoryProviderDetailViewModel :
                                 it.edits.filterKeys { key ->
                                     config.fields.none { f -> f.key == key && f.kind == "secret" }
                                 },
-                            toastMessage = "Memory provider settings saved",
+                            toastMessage = UiText.res(R.string.plugins_msg_memory_provider_saved),
                         )
                     }
                 }
@@ -169,7 +171,7 @@ class MemoryProviderDetailViewModel :
                     _uiState.update {
                         it.copy(
                             saving = false,
-                            toastMessage = "Failed to save settings: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.plugins_msg_settings_save_failed, result.error.message),
                         )
                     }
                 }
@@ -199,9 +201,9 @@ class MemoryProviderDetailViewModel :
                             setupResult = result.data,
                             toastMessage =
                                 if (result.data.ok) {
-                                    "Setup completed"
+                                    UiText.res(R.string.plugins_msg_setup_completed)
                                 } else {
-                                    "Setup finished with failures"
+                                    UiText.res(R.string.plugins_msg_setup_finished_with_failures)
                                 },
                         )
                     }
@@ -211,7 +213,7 @@ class MemoryProviderDetailViewModel :
                     _uiState.update {
                         it.copy(
                             runningSetup = false,
-                            toastMessage = "Setup failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.plugins_msg_setup_failed, result.error.message),
                         )
                     }
                 }
@@ -237,12 +239,12 @@ class MemoryProviderDetailViewModel :
     }
 }
 
-/** Status pill mapping — matches the backend's provider status values. */
-fun memoryProviderStatusLabel(status: String): String =
+/** Status pill text for a backend provider status; unknown values are shown as sent, with spaces for underscores. */
+fun memoryProviderStatusText(status: String): UiText =
     when (status) {
-        "ready" -> "Ready"
-        "needs_config" -> "Needs config"
-        "unavailable" -> "Unavailable"
-        "missing" -> "Missing"
-        else -> status.replace('_', ' ')
+        "ready" -> UiText.res(R.string.plugins_memory_status_ready)
+        "needs_config" -> UiText.res(R.string.plugins_memory_status_needs_config)
+        "unavailable" -> UiText.res(R.string.plugins_memory_status_unavailable)
+        "missing" -> UiText.res(R.string.plugins_memory_status_missing)
+        else -> UiText.raw(status.replace('_', ' '))
     }

@@ -1,12 +1,15 @@
 package io.wutz.apollo.ui.billing
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SubscriptionChangeRequest
 import io.wutz.apollo.data.model.SubscriptionStateResponse
 import io.wutz.apollo.data.model.UsageBarsResponse
 import io.wutz.apollo.data.ws.BillingRepository
 import io.wutz.apollo.data.ws.HermesWsClient
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -33,9 +36,9 @@ data class BillingUiState(
     val preview: io.wutz.apollo.data.model.SubscriptionPreviewResponse? = null,
     /** Set when an RPC method is unavailable on the connected backend (e.g. -32601). */
     val featureUnavailable: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     /** Transient success/info toast after an action (upgrade/resume/cancel). */
-    val actionMessage: String? = null,
+    val actionMessage: UiText? = null,
 )
 
 class BillingViewModel : ViewModel() {
@@ -54,21 +57,23 @@ class BillingViewModel : ViewModel() {
                         async {
                             var sub: SubscriptionStateResponse? = null
                             var unavailable = false
-                            var error: String? = null
+                            var error: UiText? = null
                             try {
                                 sub = BillingRepository.getSubscriptionState()
                                 if (sub?.ok == false) {
                                     unavailable = true
-                                    error = sub.error ?: "Billing unavailable"
+                                    error = sub.error?.let(UiText::raw) ?: UiText.res(R.string.billing_msg_unavailable)
                                 } else if (sub == null) {
-                                    if (error == null) error = "No billing data returned"
+                                    if (error == null) error = UiText.res(R.string.billing_msg_no_data)
                                 }
                             } catch (e: HermesWsClient.HermesRpcException) {
                                 unavailable = true
-                                error = e.message
+                                error = e.message?.let(UiText::raw)
                             } catch (e: Exception) {
                                 if (e is kotlinx.coroutines.CancellationException) throw e
-                                error = e.message ?: "Failed to load subscription"
+                                error =
+                                    e.message?.let(UiText::raw)
+                                        ?: UiText.res(R.string.billing_msg_load_subscription_failed)
                             }
                             Triple(sub, unavailable, error)
                         }
@@ -76,17 +81,18 @@ class BillingViewModel : ViewModel() {
                     val barsDeferred =
                         async {
                             var bars: UsageBarsResponse? = null
-                            var error: String? = null
+                            var error: UiText? = null
                             try {
                                 bars = BillingRepository.getUsageBars()
                                 if (bars?.ok == false) {
-                                    error = "Usage data unavailable"
+                                    error = UiText.res(R.string.billing_msg_usage_unavailable)
                                 }
                             } catch (e: HermesWsClient.HermesRpcException) {
                                 // usage unavailable is non-fatal
                             } catch (e: Exception) {
                                 if (e is kotlinx.coroutines.CancellationException) throw e
-                                error = e.message ?: "Failed to load usage"
+                                error =
+                                    e.message?.let(UiText::raw) ?: UiText.res(R.string.billing_msg_load_usage_failed)
                             }
                             Pair(bars, error)
                         }
@@ -115,7 +121,7 @@ class BillingViewModel : ViewModel() {
                 .onSuccess { preview ->
                     if (preview == null) {
                         _uiState.update {
-                            it.copy(isActionInFlight = false, errorMessage = "No billing data returned")
+                            it.copy(isActionInFlight = false, errorMessage = UiText.res(R.string.billing_msg_no_data))
                         }
                         return@onSuccess
                     }
@@ -123,7 +129,11 @@ class BillingViewModel : ViewModel() {
                         _uiState.update {
                             it.copy(
                                 isActionInFlight = false,
-                                errorMessage = preview.error ?: preview.message ?: "Preview unavailable",
+                                errorMessage =
+                                    rawOr(
+                                        preview.error ?: preview.message,
+                                        R.string.billing_msg_preview_unavailable,
+                                    ),
                             )
                         }
                     } else {
@@ -133,7 +143,10 @@ class BillingViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             isActionInFlight = false,
-                            errorMessage = (e as? HermesWsClient.HermesRpcException)?.message ?: e.message,
+                            errorMessage =
+                                ((e as? HermesWsClient.HermesRpcException)?.message ?: e.message)?.let(
+                                    UiText::raw,
+                                ),
                         )
                     }
                 }
@@ -147,7 +160,7 @@ class BillingViewModel : ViewModel() {
                 .onSuccess { resp ->
                     if (resp == null) {
                         _uiState.update {
-                            it.copy(isActionInFlight = false, errorMessage = "No billing data returned")
+                            it.copy(isActionInFlight = false, errorMessage = UiText.res(R.string.billing_msg_no_data))
                         }
                         return@onSuccess
                     }
@@ -155,7 +168,11 @@ class BillingViewModel : ViewModel() {
                         _uiState.update {
                             it.copy(
                                 isActionInFlight = false,
-                                errorMessage = resp.error ?: resp.message ?: "Upgrade unavailable",
+                                errorMessage =
+                                    rawOr(
+                                        resp.error ?: resp.message,
+                                        R.string.billing_msg_upgrade_unavailable,
+                                    ),
                             )
                         }
                         return@onSuccess
@@ -163,19 +180,19 @@ class BillingViewModel : ViewModel() {
                     val msg =
                         when {
                             resp.requires_action == true && resp.recovery_url != null -> {
-                                "Action required — open: ${resp.recovery_url}"
+                                UiText.res(R.string.billing_msg_action_required, resp.recovery_url)
                             }
 
                             resp.payment_failed == true -> {
-                                resp.message ?: "Payment failed"
+                                rawOr(resp.message, R.string.billing_msg_payment_failed)
                             }
 
                             resp.ok == true -> {
-                                "Upgrade successful"
+                                UiText.res(R.string.billing_msg_upgrade_successful)
                             }
 
                             else -> {
-                                resp.message ?: "Upgrade requested"
+                                rawOr(resp.message, R.string.billing_msg_upgrade_requested)
                             }
                         }
                     _uiState.update { it.copy(isActionInFlight = false, actionMessage = msg) }
@@ -184,7 +201,10 @@ class BillingViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             isActionInFlight = false,
-                            errorMessage = (e as? HermesWsClient.HermesRpcException)?.message ?: e.message,
+                            errorMessage =
+                                ((e as? HermesWsClient.HermesRpcException)?.message ?: e.message)?.let(
+                                    UiText::raw,
+                                ),
                         )
                     }
                 }
@@ -201,7 +221,7 @@ class BillingViewModel : ViewModel() {
                 .onSuccess { resp ->
                     if (resp == null) {
                         _uiState.update {
-                            it.copy(isActionInFlight = false, errorMessage = "No billing data returned")
+                            it.copy(isActionInFlight = false, errorMessage = UiText.res(R.string.billing_msg_no_data))
                         }
                         return@onSuccess
                     }
@@ -209,7 +229,11 @@ class BillingViewModel : ViewModel() {
                         _uiState.update {
                             it.copy(
                                 isActionInFlight = false,
-                                errorMessage = resp.error ?: resp.message ?: "Plan change unavailable",
+                                errorMessage =
+                                    rawOr(
+                                        resp.error ?: resp.message,
+                                        R.string.billing_msg_plan_change_unavailable,
+                                    ),
                             )
                         }
                         return@onSuccess
@@ -218,7 +242,16 @@ class BillingViewModel : ViewModel() {
                         it.copy(
                             isActionInFlight = false,
                             actionMessage =
-                                resp.message ?: if (cancel == true) "Cancellation scheduled" else "Plan changed",
+                                rawOr(
+                                    resp.message,
+                                    if (cancel ==
+                                        true
+                                    ) {
+                                        R.string.billing_msg_cancellation_scheduled
+                                    } else {
+                                        R.string.billing_msg_plan_changed
+                                    },
+                                ),
                         )
                     }
                     load()
@@ -226,7 +259,10 @@ class BillingViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             isActionInFlight = false,
-                            errorMessage = (e as? HermesWsClient.HermesRpcException)?.message ?: e.message,
+                            errorMessage =
+                                ((e as? HermesWsClient.HermesRpcException)?.message ?: e.message)?.let(
+                                    UiText::raw,
+                                ),
                         )
                     }
                 }
@@ -240,7 +276,7 @@ class BillingViewModel : ViewModel() {
                 .onSuccess { resp ->
                     if (resp == null) {
                         _uiState.update {
-                            it.copy(isActionInFlight = false, errorMessage = "No billing data returned")
+                            it.copy(isActionInFlight = false, errorMessage = UiText.res(R.string.billing_msg_no_data))
                         }
                         return@onSuccess
                     }
@@ -248,7 +284,11 @@ class BillingViewModel : ViewModel() {
                         _uiState.update {
                             it.copy(
                                 isActionInFlight = false,
-                                errorMessage = resp.error ?: resp.message ?: "Resume unavailable",
+                                errorMessage =
+                                    rawOr(
+                                        resp.error ?: resp.message,
+                                        R.string.billing_msg_resume_unavailable,
+                                    ),
                             )
                         }
                         return@onSuccess
@@ -256,7 +296,7 @@ class BillingViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             isActionInFlight = false,
-                            actionMessage = resp.message ?: "Subscription resumed",
+                            actionMessage = rawOr(resp.message, R.string.billing_msg_subscription_resumed),
                         )
                     }
                     load()
@@ -264,10 +304,19 @@ class BillingViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             isActionInFlight = false,
-                            errorMessage = (e as? HermesWsClient.HermesRpcException)?.message ?: e.message,
+                            errorMessage =
+                                ((e as? HermesWsClient.HermesRpcException)?.message ?: e.message)?.let(
+                                    UiText::raw,
+                                ),
                         )
                     }
                 }
         }
     }
 }
+
+/** Server-provided text stays raw; the local fallback is localized. */
+private fun rawOr(
+    serverText: String?,
+    @StringRes fallback: Int,
+): UiText = serverText?.let(UiText::raw) ?: UiText.res(fallback)

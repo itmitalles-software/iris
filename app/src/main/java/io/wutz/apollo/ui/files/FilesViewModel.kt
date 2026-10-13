@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.files
 
 import android.util.Base64
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.ManagedDirectoryCreate
 import io.wutz.apollo.data.model.ManagedFileActionResponse
@@ -13,6 +15,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +36,7 @@ data class FilesUiState(
     val crumbs: List<Pair<String, String>> = emptyList(),
     val entries: List<ManagedFileEntry> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     // ── Transient action state ──
     val busyPaths: Set<String> = emptySet(),
     val isCreatingDir: Boolean = false,
@@ -41,7 +44,7 @@ data class FilesUiState(
     val isUploading: Boolean = false,
     val deleteTarget: ManagedFileEntry? = null,
     val openingPath: String? = null,
-    val toastMessage: String? = null,
+    val toastMessage: UiText? = null,
 )
 
 /** Decoded file ready to be written to disk and opened on-device. */
@@ -144,7 +147,7 @@ class FilesViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to list files: $errorMsg",
+                        errorMessage = UiText.res(R.string.files_msg_list_failed, errorMsg),
                     )
                 }
             },
@@ -181,11 +184,11 @@ class FilesViewModel :
         val name = _uiState.value.newDirName.trim()
         val base = _uiState.value.currentPath
         if (name.isBlank()) {
-            _uiState.update { it.copy(toastMessage = "Folder name is required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.files_msg_folder_name_required)) }
             return
         }
         if (name.contains("/")) {
-            _uiState.update { it.copy(toastMessage = "Folder name cannot contain /") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.files_msg_folder_name_slash)) }
             return
         }
         val target = if (base.isBlank()) name else "$base/$name"
@@ -197,7 +200,7 @@ class FilesViewModel :
                         ApiClient.hermesApi.createManagedDirectory(ManagedDirectoryCreate(target))
                     }
                 }
-            handleActionResult(result, "Folder created", "Failed to create folder")
+            handleActionResult(result, R.string.files_msg_folder_created, R.string.files_msg_create_folder_failed)
         }
     }
 
@@ -225,7 +228,7 @@ class FilesViewModel :
                         ApiClient.hermesApi.uploadManagedFileStream(pathBody, overwriteBody, part)
                     }
                 }
-            handleActionResult(result, "File uploaded", "Failed to upload file")
+            handleActionResult(result, R.string.files_msg_file_uploaded, R.string.files_msg_upload_failed)
         }
     }
 
@@ -262,7 +265,7 @@ class FilesViewModel :
                     _uiState.update {
                         it.copy(
                             busyPaths = cleared,
-                            toastMessage = "Deleted ${target.name}",
+                            toastMessage = UiText.res(R.string.files_msg_deleted, target.name),
                         )
                     }
                     refresh()
@@ -272,7 +275,7 @@ class FilesViewModel :
                     _uiState.update {
                         it.copy(
                             busyPaths = cleared,
-                            toastMessage = "Failed to delete: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.files_msg_delete_failed, result.error.message),
                         )
                     }
                 }
@@ -317,8 +320,8 @@ class FilesViewModel :
 
     private fun handleActionResult(
         result: NetworkResult<ManagedFileActionResponse>,
-        successMsg: String,
-        errorMsg: String,
+        @StringRes successMsg: Int,
+        @StringRes errorMsg: Int,
     ) {
         when (result) {
             is NetworkResult.Success -> {
@@ -326,7 +329,7 @@ class FilesViewModel :
                     it.copy(
                         isLoading = false,
                         isUploading = false,
-                        toastMessage = successMsg,
+                        toastMessage = UiText.res(successMsg),
                     )
                 }
                 refresh()
@@ -337,14 +340,14 @@ class FilesViewModel :
                     it.copy(
                         isLoading = false,
                         isUploading = false,
-                        toastMessage = "$errorMsg: ${result.error.message}",
+                        toastMessage = UiText.res(errorMsg, result.error.message),
                     )
                 }
             }
         }
     }
 
-    fun showToast(message: String) {
+    fun showToast(message: UiText) {
         _uiState.update { it.copy(toastMessage = message) }
     }
 

@@ -75,6 +75,7 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.rememberSyncedTextFieldState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -119,7 +120,7 @@ fun ConfigScreen(
 
             state.errorMessage != null && state.values == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadAll() },
                     modifier = Modifier.padding(paddingValues),
                 )

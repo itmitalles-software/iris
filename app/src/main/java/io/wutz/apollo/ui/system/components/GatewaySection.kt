@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
@@ -86,7 +87,11 @@ fun LazyListScope.gatewaySection(
                     // Version · Sessions · PID
                     status.version?.let { ver ->
                         val parts = mutableListOf(ver)
-                        status.active_sessions?.let { parts.add("$it session(s)") }
+                        status.active_sessions?.let {
+                            parts.add(
+                                pluralStringResource(R.plurals.system_gateway_session_count, it, it),
+                            )
+                        }
                         state.doctorReport?.let { report ->
                             if (report.ok && report.pid != null) {
                                 parts.add("pid ${report.pid}")

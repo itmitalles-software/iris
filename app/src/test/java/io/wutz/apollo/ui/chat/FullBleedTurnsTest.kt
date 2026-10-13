@@ -499,6 +499,11 @@ class FullBleedTurnsTest {
                 }
             },
         )
-        assertEquals(emptyList<SearchMatch>(), ChatSearchController().findMatches(messages.take(2), "react").matches)
+        assertEquals(
+            emptyList<SearchMatch>(),
+            ChatSearchController {
+                EnglishTestResources.toolText
+            }.findMatches(messages.take(2), "react").matches,
+        )
     }
 }

@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.chat
 
 import io.wutz.apollo.ui.chat.fullbleed.currentMatchMessageId
 import io.wutz.apollo.ui.chat.fullbleed.matchedMessageIds
+import io.wutz.apollo.ui.chat.tool.ToolText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +33,9 @@ import kotlinx.coroutines.withContext
 class ChatSearchDelegate(
     private val scope: CoroutineScope,
     private val uiState: MutableStateFlow<ChatUiState>,
+    toolText: () -> ToolText,
     val searchState: ChatSearchState = ChatSearchState(),
-    private val searchController: ChatSearchController = ChatSearchController(),
+    private val searchController: ChatSearchController = ChatSearchController(toolText),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val debounceMs: Long = SEARCH_DEBOUNCE_MS,
 ) {

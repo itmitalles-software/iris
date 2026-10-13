@@ -1,11 +1,13 @@
 package io.wutz.apollo.ui.system
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.UpdateReceipt
 import io.wutz.apollo.data.model.UpdateReceiptFleetEntry
 import io.wutz.apollo.data.model.UpdateReceiptFollowup
 import io.wutz.apollo.data.model.UpdateReceiptResponse
 import io.wutz.apollo.data.model.UpdateReceiptSummary
 import io.wutz.apollo.data.model.UpdateReceiptVersion
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
@@ -55,10 +57,10 @@ class UpdateReceiptFormattingTest {
         val lines = formatUpdateReceiptLines(receipt)
         assertEquals(
             listOf(
-                "Update receipt",
-                "Outcome: success",
-                "Version: 0.20.4 → 0.20.5",
-                "Fleet: default: current, work: stale",
+                title,
+                UiText.res(R.string.system_msg_receipt_outcome, "success"),
+                UiText.res(R.string.system_msg_receipt_version, "0.20.4", "0.20.5"),
+                UiText.res(R.string.system_msg_receipt_fleet, "default: current, work: stale"),
             ),
             lines,
         )
@@ -79,10 +81,10 @@ class UpdateReceiptFormattingTest {
         val lines = formatUpdateReceiptLines(receipt)
         assertEquals(
             listOf(
-                "Update receipt",
-                "Outcome: partial",
-                "Version: → 0.21.0",
-                "Fleet: current",
+                title,
+                UiText.res(R.string.system_msg_receipt_outcome, "partial"),
+                UiText.res(R.string.system_msg_receipt_version_to, "0.21.0"),
+                UiText.res(R.string.system_msg_receipt_fleet, "current"),
             ),
             lines,
         )
@@ -103,9 +105,9 @@ class UpdateReceiptFormattingTest {
         val lines = formatUpdateReceiptLines(receipt)
         assertEquals(
             listOf(
-                "Update receipt",
-                "Outcome: success",
-                "Version: abcdef12 → 11112222",
+                title,
+                UiText.res(R.string.system_msg_receipt_outcome, "success"),
+                UiText.res(R.string.system_msg_receipt_version, "abcdef12", "11112222"),
             ),
             lines,
         )
@@ -126,11 +128,11 @@ class UpdateReceiptFormattingTest {
 
         assertEquals(
             listOf(
-                "Update receipt",
-                "Outcome: success",
-                "Version: → 0.21.7",
-                "Follow-up owed: restart-gateway — unit busy",
-                "Action required from you: stash — restore conflicted",
+                title,
+                UiText.res(R.string.system_msg_receipt_outcome, "success"),
+                UiText.res(R.string.system_msg_receipt_version_to, "0.21.7"),
+                UiText.res(R.string.system_msg_receipt_followup_reason, "restart-gateway", "unit busy"),
+                UiText.res(R.string.system_msg_receipt_user_action_detail, "stash — restore conflicted"),
             ),
             formatUpdateReceiptLines(receipt),
         )
@@ -139,10 +141,16 @@ class UpdateReceiptFormattingTest {
     @Test
     fun `empty followups and unreadable user action add nothing or a bare notice`() {
         val plain = UpdateReceiptResponse(summary = UpdateReceiptSummary(outcome = "success", followups = emptyList()))
-        assertEquals(listOf("Update receipt", "Outcome: success"), formatUpdateReceiptLines(plain))
+        assertEquals(
+            listOf(title, UiText.res(R.string.system_msg_receipt_outcome, "success")),
+            formatUpdateReceiptLines(plain),
+        )
 
         val opaque = UpdateReceiptResponse(summary = UpdateReceiptSummary(userAction = json.decodeFromString("{}")))
-        assertEquals(listOf("Update receipt", "Action required from you"), formatUpdateReceiptLines(opaque))
+        assertEquals(
+            listOf(title, UiText.res(R.string.system_msg_receipt_user_action)),
+            formatUpdateReceiptLines(opaque),
+        )
     }
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -178,6 +186,23 @@ class UpdateReceiptFormattingTest {
         val old = wire.decodeFromString<UpdateReceiptResponse>("""{"summary":{"outcome":"success"}}""")
         assertEquals(null, old.summary!!.followups)
     }
+
+    @Test
+    fun `follow-up without a reason omits the separator`() {
+        val receipt =
+            UpdateReceiptResponse(
+                summary =
+                    UpdateReceiptSummary(
+                        followups = listOf(UpdateReceiptFollowup(step = "migrate", reason = " ")),
+                    ),
+            )
+        assertEquals(
+            listOf(title, UiText.res(R.string.system_msg_receipt_followup, "migrate")),
+            formatUpdateReceiptLines(receipt),
+        )
+    }
+
+    private val title = UiText.res(R.string.system_msg_receipt_title)
 
     private val json = Json
 }

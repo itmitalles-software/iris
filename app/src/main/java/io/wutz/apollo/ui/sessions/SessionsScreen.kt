@@ -85,6 +85,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -119,6 +120,7 @@ import io.wutz.apollo.ui.common.StatCard
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.sessions.components.BranchRow
 import io.wutz.apollo.ui.sessions.components.PinnedSectionHeader
@@ -210,6 +212,7 @@ fun SessionsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val spacing = LocalSpacing.current
+    val resources = LocalResources.current
     val statusColors = LocalHermesStatusColors.current
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -662,7 +665,7 @@ fun SessionsScreen(
                                 state.searchError != null -> {
                                     ErrorState(
                                         message =
-                                            state.searchError
+                                            state.searchError?.asString()
                                                 ?: stringResource(R.string.error_unknown),
                                         onRetry = { viewModel.setSearchQuery(state.searchQuery) },
                                     )
@@ -744,7 +747,10 @@ fun SessionsScreen(
                                                 item(key = "search_paging_footer") {
                                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                         state.searchLoadMoreError?.let { error ->
-                                                            Text(error, color = MaterialTheme.colorScheme.error)
+                                                            Text(
+                                                                error.asString(),
+                                                                color = MaterialTheme.colorScheme.error,
+                                                            )
                                                         }
                                                         TextButton(
                                                             onClick = viewModel::loadMoreSearch,
@@ -785,7 +791,7 @@ fun SessionsScreen(
                     state.errorMessage != null -> {
                         val errorMsg = state.errorMessage
                         ErrorState(
-                            message = errorMsg ?: stringResource(R.string.error_unknown),
+                            message = errorMsg?.asString() ?: stringResource(R.string.error_unknown),
                             onRetry = { viewModel.loadSessions() },
                         )
                     }
@@ -937,6 +943,7 @@ fun SessionsScreen(
                                         session = session,
                                         displayTitle = item.displayTitle,
                                         branchStem = null,
+                                        branchNumber = item.branchNumber,
                                         isFork = item.isFork,
                                         forkDepth = item.forkDepth,
                                         query = state.searchQuery,
@@ -965,7 +972,9 @@ fun SessionsScreen(
                                         onRename = {
                                             viewModel.openRenameDialog(
                                                 session.id,
-                                                item.displayTitle,
+                                                item.branchNumber?.let { n ->
+                                                    resources.getString(R.string.sessions_branch_title, n)
+                                                } ?: item.displayTitle,
                                             )
                                         },
                                         onTogglePin = { viewModel.togglePin(session.id) },

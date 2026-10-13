@@ -40,6 +40,7 @@ import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.mcp.McpServersUiState
@@ -69,7 +70,7 @@ fun CatalogView(
 
             state.catalogError != null && state.catalogEntries.isEmpty() -> {
                 ErrorState(
-                    message = state.catalogError,
+                    message = state.catalogError.asString(),
                     onRetry = { viewModel.loadCatalog() },
                 )
             }

@@ -69,6 +69,7 @@ import io.wutz.apollo.ui.common.SectionHeader
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -106,7 +107,7 @@ fun ProjectsScreen(
 
             state.errorMessage != null && state.projects.isEmpty() -> {
                 ErrorState(
-                    message = state.errorMessage.orEmpty(),
+                    message = state.errorMessage?.asString().orEmpty(),
                     onRetry = viewModel::load,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -123,15 +124,7 @@ fun ProjectsScreen(
             draft = draft,
             isSaving = state.isSaving,
             error =
-                state.editorError?.let {
-                    if (it ==
-                        ProjectsViewModel.NAME_REQUIRED
-                    ) {
-                        stringResource(R.string.projects_error_name_required)
-                    } else {
-                        it
-                    }
-                },
+                state.editorError?.asString(),
             onSave = viewModel::save,
             onDismiss = viewModel::dismissEditor,
         )

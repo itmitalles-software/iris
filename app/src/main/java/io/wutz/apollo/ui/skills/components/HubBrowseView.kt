@@ -43,6 +43,7 @@ import io.wutz.apollo.ui.common.DetailRow
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.SkeletonListState
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.skills.SkillsUiState
 
@@ -118,7 +119,7 @@ fun HubBrowseView(
 
             state.hubSearchError != null -> {
                 ErrorState(
-                    message = state.hubSearchError,
+                    message = state.hubSearchError.asString(),
                     onRetry = { onSearch(hubQuery) },
                 )
             }
@@ -234,7 +235,7 @@ fun HubLandingView(
 
         state.hubSourcesError != null -> {
             ErrorState(
-                message = state.hubSourcesError,
+                message = state.hubSourcesError.asString(),
                 onRetry = onLoadHubSources,
             )
         }

@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.keys
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.EnvVarConfig
 import io.wutz.apollo.data.model.EnvVarDeleteRequest
@@ -11,6 +12,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.Dispatchers
@@ -39,9 +41,12 @@ data class KeysUiState(
     val deletingKeys: Set<String> = emptySet(),
     val keysChanged: Boolean = false,
     val isRestartingGateway: Boolean = false,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
 )
+
+/** Section for keys without a server category; only its label is localized (see KeysScreen). */
+internal const val OTHER_KEYS_CATEGORY = "Other"
 
 private val CATEGORY_ORDER =
     listOf(
@@ -77,10 +82,10 @@ class KeysViewModel :
                 .map { it.name }
                 .toSet(),
     ): List<CategorySection> {
-        // Group by category, uncategorized go to "Other"
+        // Group by category, uncategorized go to OTHER_KEYS_CATEGORY
         val grouped = mutableMapOf<String, MutableMap<String, EnvVarConfig>>()
         envVars.forEach { (key, config) ->
-            val category = config.category?.ifBlank { null } ?: "Other"
+            val category = config.category?.ifBlank { null } ?: OTHER_KEYS_CATEGORY
             grouped.getOrPut(category) { mutableMapOf() }[key] = config
         }
 
@@ -136,7 +141,7 @@ class KeysViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load keys: $errorMsg",
+                        errorMessage = UiText.res(R.string.keys_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -184,7 +189,7 @@ class KeysViewModel :
         val key = _uiState.value.newKeyName.trim()
         val value = _uiState.value.newKeyValue.trim()
         if (key.isBlank() || value.isBlank()) {
-            _uiState.update { it.copy(toastMessage = "Key and value are required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.keys_msg_key_value_required)) }
             return
         }
 
@@ -203,7 +208,7 @@ class KeysViewModel :
                             newKeyName = "",
                             newKeyValue = "",
                             keysChanged = true,
-                            toastMessage = "Key added successfully",
+                            toastMessage = UiText.res(R.string.keys_msg_added),
                         )
                     }
                     loadKeys(forceRefresh = true)
@@ -213,7 +218,7 @@ class KeysViewModel :
                     _uiState.update {
                         it.copy(
                             isAddingKey = false,
-                            toastMessage = "Failed to add key: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.keys_msg_add_failed, result.error.message),
                         )
                     }
                 }
@@ -248,7 +253,7 @@ class KeysViewModel :
                         it.copy(
                             deletingKeys = it.deletingKeys - key,
                             keysChanged = true,
-                            toastMessage = "Key deleted successfully",
+                            toastMessage = UiText.res(R.string.keys_msg_deleted),
                         )
                     }
                     loadKeys(forceRefresh = true)
@@ -258,7 +263,7 @@ class KeysViewModel :
                     _uiState.update {
                         it.copy(
                             deletingKeys = it.deletingKeys - key,
-                            toastMessage = "Failed to delete key: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.keys_msg_delete_failed, result.error.message),
                         )
                     }
                 }
@@ -283,7 +288,11 @@ class KeysViewModel :
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to reveal key: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.keys_msg_reveal_failed, result.error.message),
+                        )
+                    }
                 }
             }
         }
@@ -308,18 +317,27 @@ class KeysViewModel :
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(keysChanged = true, toastMessage = "Key updated successfully") }
+                    _uiState.update {
+                        it.copy(
+                            keysChanged = true,
+                            toastMessage = UiText.res(R.string.keys_msg_updated),
+                        )
+                    }
                     loadKeys(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to update key: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.keys_msg_update_failed, result.error.message),
+                        )
+                    }
                 }
             }
         }
     }
 
-    fun showToast(message: String) {
+    fun showToast(message: UiText) {
         _uiState.update { it.copy(toastMessage = message) }
     }
 
@@ -336,7 +354,7 @@ class KeysViewModel :
                         it.copy(
                             isRestartingGateway = false,
                             keysChanged = false,
-                            toastMessage = "Gateway restart initiated",
+                            toastMessage = UiText.res(R.string.keys_msg_gateway_restart_initiated),
                         )
                     }
                 }
@@ -345,7 +363,7 @@ class KeysViewModel :
                     _uiState.update {
                         it.copy(
                             isRestartingGateway = false,
-                            toastMessage = "Failed to restart gateway: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.keys_msg_gateway_restart_failed, result.error.message),
                         )
                     }
                 }

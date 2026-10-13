@@ -52,6 +52,7 @@ import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -84,7 +85,7 @@ fun AnalyticsScreen(
 
             state.errorMessage != null && state.usage == null && state.models == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: stringResource(R.string.error_unknown),
+                    message = state.errorMessage?.asString() ?: stringResource(R.string.error_unknown),
                     onRetry = { viewModel.load() },
                 )
             }

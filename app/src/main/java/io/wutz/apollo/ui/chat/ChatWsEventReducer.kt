@@ -1,11 +1,13 @@
 package io.wutz.apollo.ui.chat
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.deltaFrom
 import io.wutz.apollo.data.model.mergeWith
 import io.wutz.apollo.data.model.parseUsageSnapshot
 import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.data.ws.toJsonElement
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -1002,7 +1004,7 @@ object ChatWsEventReducer {
             state =
                 state.copy(
                     isLoading = false,
-                    errorMessage = "Error: ${event.error}",
+                    errorMessage = UiText.res(R.string.chat_msg_error, event.error.toString()),
                 ),
             streamingState = streamingState,
         )
@@ -1020,7 +1022,11 @@ object ChatWsEventReducer {
                 state.copy(
                     isAgentTyping = false,
                     isLoading = false,
-                    errorMessage = "Backend error: ${event.message ?: "Unknown gateway error"}",
+                    errorMessage =
+                        UiText.res(
+                            R.string.chat_msg_backend_error,
+                            event.message ?: UiText.res(R.string.chat_msg_unknown_gateway_error),
+                        ),
                 ),
             streamingState = StreamingState(),
         )
@@ -1038,8 +1044,8 @@ object ChatWsEventReducer {
             when (val label = event.data?.get("label")) {
                 is String -> label
                 else -> event.data?.get("name") as? String
-            }?.let { "Background job finished: $it" }
-                ?: "Background job finished"
+            }?.let { UiText.res(R.string.chat_msg_background_job_finished_named, it) }
+                ?: UiText.res(R.string.chat_msg_background_job_finished)
         return ReducerResult(
             state = state.copy(backgroundCompleteMessage = message),
             streamingState = streamingState,

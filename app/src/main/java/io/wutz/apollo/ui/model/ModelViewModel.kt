@@ -21,6 +21,7 @@ import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.ModelOptionsRepository
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -54,8 +55,8 @@ data class ModelUiState(
     val providers: List<ModelProvider> = emptyList(),
     val modelInfo: ModelInfoResponse? = null,
     val activeProfile: ProfileInfo? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val pinnedModels: List<PinnedModel> = emptyList(),
     // Main model
     val mainModelProvider: String = "",
@@ -72,7 +73,7 @@ data class ModelUiState(
     val auxPickerTask: String = "",
     // Model picker busy (for expensive model confirmation)
     val modelPickerBusy: Boolean = false,
-    val modelPickerConfirmMessage: String? = null,
+    val modelPickerConfirmMessage: UiText? = null,
     // Pending resolve
     val pendingModelPickerResolve: ((Boolean) -> Unit)? = null,
 )
@@ -211,7 +212,7 @@ class ModelViewModel(
                             catalogLoading = false,
                             errorMessage =
                                 if (it.providers.isEmpty() && it.mainModelProvider.isEmpty()) {
-                                    "Failed to load model options: ${optionsResult.error.message}"
+                                    UiText.res(R.string.model_msg_load_options_failed, optionsResult.error.message)
                                 } else {
                                     null
                                 },
@@ -354,7 +355,8 @@ class ModelViewModel(
                         _uiState.update {
                             it.copy(
                                 modelPickerConfirmMessage =
-                                    data.confirm_message ?: "This model is expensive. Continue?",
+                                    data.confirm_message?.let(UiText::raw)
+                                        ?: UiText.res(R.string.model_msg_expensive_confirm),
                                 pendingModelPickerResolve = { confirmed ->
                                     if (confirmed) {
                                         setMainModelWithConfirm(provider, model)
@@ -371,7 +373,7 @@ class ModelViewModel(
                     } else {
                         _uiState.update {
                             it.copy(
-                                toastMessage = "Main model set to $provider / $model",
+                                toastMessage = UiText.res(R.string.model_msg_main_set, provider, model),
                                 showMainModelPicker = false,
                                 modelPickerBusy = false,
                             )
@@ -383,7 +385,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to set main model: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.model_msg_main_set_failed, result.error.message),
                             modelPickerBusy = false,
                         )
                     }
@@ -414,7 +416,7 @@ class ModelViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Main model set to $provider / $model",
+                            toastMessage = UiText.res(R.string.model_msg_main_set, provider, model),
                             showMainModelPicker = false,
                             modelPickerBusy = false,
                         )
@@ -425,7 +427,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to set main model: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.model_msg_main_set_failed, result.error.message),
                             modelPickerBusy = false,
                         )
                     }
@@ -490,7 +492,7 @@ class ModelViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Aux task '$task' set to $provider / $model",
+                            toastMessage = UiText.res(R.string.model_msg_aux_set, task, provider, model),
                             showAuxModelPicker = false,
                             auxPickerTask = "",
                         )
@@ -501,7 +503,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to set aux task: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.model_msg_aux_set_failed, result.error.message),
                         )
                     }
                 }
@@ -529,7 +531,7 @@ class ModelViewModel(
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {
-                        it.copy(toastMessage = "All auxiliary tasks reset to auto", modelPickerBusy = false)
+                        it.copy(toastMessage = UiText.res(R.string.model_msg_aux_reset), modelPickerBusy = false)
                     }
                     loadQuick()
                 }
@@ -537,7 +539,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to reset aux tasks: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.model_msg_aux_reset_failed, result.error.message),
                             modelPickerBusy = false,
                         )
                     }
@@ -570,7 +572,7 @@ class ModelViewModel(
                     _uiState.update {
                         it.copy(
                             moaConfig = result.data,
-                            toastMessage = "MOA config saved",
+                            toastMessage = UiText.res(R.string.model_msg_moa_saved),
                             showMoaDialog = false,
                             modelPickerBusy = false,
                         )
@@ -580,7 +582,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to save MOA config: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.model_msg_moa_save_failed, result.error.message),
                             modelPickerBusy = false,
                         )
                     }
@@ -610,7 +612,10 @@ class ModelViewModel(
                             _uiState.update {
                                 it.copy(
                                     toastMessage =
-                                        "Failed to fetch active profile: ${activeProfileNameResResult.error.message}",
+                                        UiText.res(
+                                            R.string.model_msg_active_profile_failed,
+                                            activeProfileNameResResult.error.message,
+                                        ),
                                 )
                             }
                             return@launch
@@ -633,14 +638,22 @@ class ModelViewModel(
                 }
             when (updateResResult) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Successfully set profile model to $modelName") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.model_msg_profile_model_set, modelName),
+                        )
+                    }
                     loadQuick()
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to set profile model: ${updateResResult.error.message}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.model_msg_profile_model_set_failed,
+                                    updateResResult.error.message,
+                                ),
                         )
                     }
                 }
@@ -665,7 +678,7 @@ class ModelViewModel(
         if (currentPinned.contains(newPin)) return
         if (currentPinned.size >= MAX_PINNED_MODELS) {
             _uiState.update {
-                it.copy(toastMessage = "Maximum of $MAX_PINNED_MODELS pinned models reached")
+                it.copy(toastMessage = UiText.plural(R.plurals.model_msg_pin_limit, MAX_PINNED_MODELS))
             }
             return
         }

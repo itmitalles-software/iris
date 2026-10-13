@@ -61,6 +61,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.R
 import io.wutz.apollo.ui.common.PressureBanner
+import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.transportWarningText
 
 @Composable
 fun ConnectScreen(
@@ -196,7 +198,7 @@ fun ConnectScreen(
                 ) {
                     state.errorMessage?.let { error ->
                         Text(
-                            text = error,
+                            text = error.asString(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Start,
@@ -291,7 +293,7 @@ fun ConnectScreen(
                         ) {
                             state.transportWarning?.let { warning ->
                                 Text(
-                                    text = warning,
+                                    text = transportWarningText(warning),
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodySmall,
                                     textAlign = TextAlign.Start,

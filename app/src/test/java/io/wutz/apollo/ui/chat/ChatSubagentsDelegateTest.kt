@@ -11,6 +11,7 @@ import io.wutz.apollo.data.model.SubagentListItem
 import io.wutz.apollo.data.model.SubagentListResponse
 import io.wutz.apollo.data.model.SubagentTailResponse
 import io.wutz.apollo.data.ws.SubagentRepository
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -561,7 +562,7 @@ class ChatSubagentsDelegateTest {
 
             val transcript = uiState.value.subagentTranscript
             assertNotNull(transcript)
-            assertEquals("Gateway connection error", transcript?.error)
+            assertEquals(UiText.raw("Gateway connection error"), transcript?.error)
             assertFalse(transcript?.isLoading == true)
 
             // Now recover on retry

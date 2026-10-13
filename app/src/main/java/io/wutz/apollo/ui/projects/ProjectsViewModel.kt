@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.projects
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.DiscoveredRepo
@@ -11,6 +12,7 @@ import io.wutz.apollo.data.ws.ProjectsRepository
 import io.wutz.apollo.data.ws.ProjectsResult
 import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
@@ -35,7 +37,7 @@ data class ProjectDraft(
 
 data class ProjectsUiState(
     val isLoading: Boolean = true,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val projects: List<ProjectInfo> = emptyList(),
     // Git roots from past sessions that are not a project yet: one-tap "Create project" suggestions.
     val suggestions: List<DiscoveredRepo> = emptyList(),
@@ -45,9 +47,9 @@ data class ProjectsUiState(
     val busyId: String? = null,
     val isSaving: Boolean = false,
     val editor: ProjectDraft? = null,
-    val editorError: String? = null,
+    val editorError: UiText? = null,
     val deleteTarget: ProjectInfo? = null,
-    val toastMessage: String? = null,
+    val toastMessage: UiText? = null,
 ) {
     val visibleProjects: List<ProjectInfo>
         get() {
@@ -99,7 +101,7 @@ class ProjectsViewModel(
                     }
 
                     is ProjectsResult.Failed -> {
-                        _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                        _uiState.update { it.copy(isLoading = false, errorMessage = UiText.raw(result.message)) }
                     }
                 }
             }
@@ -151,7 +153,7 @@ class ProjectsViewModel(
     fun save(draft: ProjectDraft) {
         val name = draft.name.trim()
         if (name.isEmpty()) {
-            _uiState.update { it.copy(editorError = NAME_REQUIRED) }
+            _uiState.update { it.copy(editorError = UiText.res(R.string.projects_error_name_required)) }
             return
         }
         _uiState.update { it.copy(isSaving = true, editorError = null) }
@@ -170,7 +172,7 @@ class ProjectsViewModel(
 
                 // Keep the sheet open with the gateway's reason (duplicate folder, bad name, …).
                 is ProjectsResult.Failed -> {
-                    _uiState.update { it.copy(isSaving = false, editorError = result.message) }
+                    _uiState.update { it.copy(isSaving = false, editorError = UiText.raw(result.message)) }
                 }
             }
         }
@@ -222,7 +224,7 @@ class ProjectsViewModel(
             _uiState.update {
                 it.copy(
                     busyId = null,
-                    toastMessage = (result as? ProjectsResult.Failed)?.message,
+                    toastMessage = (result as? ProjectsResult.Failed)?.message?.let(UiText::raw),
                 )
             }
             load()
@@ -230,9 +232,4 @@ class ProjectsViewModel(
     }
 
     override fun clearToast() = _uiState.update { it.copy(toastMessage = null) }
-
-    companion object {
-        /** Sentinel the screen maps to a localized "name is required" message. */
-        const val NAME_REQUIRED = "name_required"
-    }
 }

@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat.tool
 
+import io.wutz.apollo.R
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -220,6 +221,30 @@ internal object ToolCounts {
         return if (n > 0) countMetric(n, noun) else null
     }
 
+    private val COUNT_PLURALS =
+        mapOf(
+            "result" to R.plurals.tool_msg_count_result,
+            "match" to R.plurals.tool_msg_count_match,
+            "file" to R.plurals.tool_msg_count_file,
+            "item" to R.plurals.tool_msg_item_count,
+            "search" to R.plurals.tool_msg_count_search,
+            "source" to R.plurals.tool_msg_count_source,
+            "document" to R.plurals.tool_msg_count_document,
+            "step" to R.plurals.tool_msg_count_step,
+            "row" to R.plurals.tool_msg_count_row,
+            "skill" to R.plurals.tool_msg_count_skill,
+        )
+
+    /**
+     * Display label for a [countLabelFor] pair ("3 results"). Known nouns are localized; a noun
+     * derived from a server field name (`widget_count`) keeps the English pluralization.
+     */
+    fun formatCountLabel(
+        count: Int,
+        noun: String,
+        res: ToolText,
+    ): String = COUNT_PLURALS[noun]?.let { res.plural(it, count) } ?: "$count ${pluralizeNoun(noun, count)}"
+
     fun countLabelFor(call: ToolCall): Pair<Int, String>? {
         val rawResult = call.rawResult ?: return null
         val toolName = call.name
@@ -259,7 +284,7 @@ internal object ToolCounts {
         val summaryText =
             ToolJson
                 .firstString(result, listOf("summary", "message", "detail"))
-                .ifEmpty { ToolJson.fallbackDetailText(call.args, rawResult) }
+                .ifEmpty { ToolJson.fallbackDetailText(call.args, rawResult, res = null) }
 
         return countFromText(summaryText, fallbackNoun)
     }

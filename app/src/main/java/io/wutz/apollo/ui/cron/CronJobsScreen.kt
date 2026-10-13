@@ -71,6 +71,7 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.common.rememberSyncedTextFieldState
@@ -115,7 +116,7 @@ fun CronJobsScreen(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage ?: stringResource(R.string.error_unknown),
+                    message = state.errorMessage?.asString() ?: stringResource(R.string.error_unknown),
                     onRetry = { viewModel.loadCronJobs() },
                 )
             }
@@ -223,7 +224,7 @@ fun CronJobsScreen(
                                 }
                                 Spacer(modifier = Modifier.height(spacing.xs))
                                 Text(
-                                    text = CronExpressionFormatter.cronToHumanReadable(job.scheduleText),
+                                    text = CronExpressionFormatter.cronToHumanReadable(job.scheduleText).asString(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -336,7 +337,7 @@ fun CronJobsScreen(
                     }
                     RunDetailRow(
                         stringResource(R.string.cron_edit_field_schedule),
-                        CronExpressionFormatter.cronToHumanReadable(job.scheduleText),
+                        CronExpressionFormatter.cronToHumanReadable(job.scheduleText).asString(),
                     )
                     if (job.last_error != null && job.last_error.isNotBlank()) {
                         RunDetailRow(stringResource(R.string.cron_status_error), job.last_error)

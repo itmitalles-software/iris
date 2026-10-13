@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.config
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
@@ -13,6 +14,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -43,8 +45,8 @@ data class ConfigUiState(
     val yamlMode: Boolean = false,
     val yamlIsLoading: Boolean = false,
     val yamlIsSaving: Boolean = false,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
 )
 
 class ConfigViewModel :
@@ -177,9 +179,14 @@ class ConfigViewModel :
                             )
                         }
                     } else if (!hasCachedData) {
-                        val errorMsg = (configResult as? NetworkResult.Failure)?.error?.message ?: "Unknown error"
+                        val errorMsg =
+                            (configResult as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                                ?: UiText.res(R.string.error_unknown)
                         _uiState.update {
-                            it.copy(isLoading = false, errorMessage = "Failed to load config: $errorMsg")
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = UiText.res(R.string.config_msg_load_failed, errorMsg),
+                            )
                         }
                     }
                 }
@@ -187,7 +194,10 @@ class ConfigViewModel :
                 val currentScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
                 if (requestScope != null && currentScope == requestScope && !hasCachedData) {
                     _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "Failed to load config: ${e.message}")
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = UiText.res(R.string.config_msg_load_failed, e.message.toString()),
+                        )
                     }
                 }
             }
@@ -265,7 +275,7 @@ class ConfigViewModel :
                         _uiState.update {
                             it.copy(
                                 yamlIsLoading = false,
-                                toastMessage = "Failed to load YAML: ${result.error.message}",
+                                toastMessage = UiText.res(R.string.config_msg_load_yaml_failed, result.error.message),
                             )
                         }
                     }
@@ -310,7 +320,7 @@ class ConfigViewModel :
                                 (configResult as? NetworkResult.Success)?.data?.let(::flattenConfig)
                                     ?: it.values,
                             modifiedKeys = emptySet(),
-                            toastMessage = "Configuration saved successfully",
+                            toastMessage = UiText.res(R.string.config_msg_saved),
                         )
                     }
                 }
@@ -319,7 +329,7 @@ class ConfigViewModel :
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            toastMessage = "Failed to save: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.config_msg_save_failed, result.error.message),
                         )
                     }
                 }
@@ -356,7 +366,7 @@ class ConfigViewModel :
                             values =
                                 (configResult as? NetworkResult.Success)?.data?.let(::flattenConfig)
                                     ?: it.values,
-                            toastMessage = "YAML configuration saved",
+                            toastMessage = UiText.res(R.string.config_msg_yaml_saved),
                         )
                     }
                 }
@@ -365,7 +375,7 @@ class ConfigViewModel :
                     _uiState.update {
                         it.copy(
                             yamlIsSaving = false,
-                            toastMessage = "Failed to save YAML: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.config_msg_save_yaml_failed, result.error.message),
                         )
                     }
                 }
@@ -402,7 +412,7 @@ class ConfigViewModel :
 
         if (count > 0) {
             _uiState.update {
-                it.copy(toastMessage = "Reset $count field(s) to defaults (tap Save to apply)")
+                it.copy(toastMessage = UiText.plural(R.plurals.config_msg_reset_fields, count))
             }
         }
     }

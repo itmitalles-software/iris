@@ -31,6 +31,8 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ActionProgressController
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.resolve
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,8 +68,8 @@ data class SystemUiState(
     val backupArchive: String? = null,
     val downloadableBackup: String? = null,
     val debugShare: DebugShareResponse? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     // Form states
     val credProvider: String = "openrouter",
     val credKey: String = "",
@@ -306,11 +308,11 @@ class SystemViewModel(
     fun startMigration() {
         val plan = _uiState.value.migrationPlan ?: return
         if (plan.alreadyMultiplexed) {
-            _uiState.update { it.copy(toastMessage = "Gateway is already multiplexed") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_migration_already_multiplexed)) }
             return
         }
         if (plan.blockers.isNotEmpty()) {
-            _uiState.update { it.copy(toastMessage = "Migration is blocked by the preflight plan") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_migration_blocked)) }
             return
         }
 
@@ -325,18 +327,18 @@ class SystemViewModel(
                     val response = result.data
                     val actionName = response.name
                     if (!response.ok) {
-                        migrationProgress.fail("Migration was rejected by the backend")
+                        migrationProgress.fail(text(UiText.res(R.string.system_msg_migration_rejected)))
                     } else if (actionName != null) {
                         migrationProgress.markStarted(actionName)
                     } else {
-                        migrationProgress.fail(
-                            "Migration was accepted but the backend did not report an action name",
-                        )
+                        migrationProgress.fail(text(UiText.res(R.string.system_msg_migration_no_action_name)))
                     }
                 }
 
                 is NetworkResult.Failure -> {
-                    migrationProgress.fail("Failed to start migration: ${result.error.message}")
+                    migrationProgress.fail(
+                        text(UiText.res(R.string.system_msg_migration_start_failed, result.error.message)),
+                    )
                 }
             }
         }
@@ -354,7 +356,7 @@ class SystemViewModel(
         if (status?.name == "hermes-update") {
             viewModelScope.launch {
                 val receipt = fetchUpdateReceiptLines()
-                if (receipt.isNotEmpty()) actionProgress.pushTrailingLines(receipt)
+                if (receipt.isNotEmpty()) actionProgress.pushTrailingLines(receipt.map(::text))
             }
         }
         loadAll()
@@ -371,7 +373,7 @@ class SystemViewModel(
      * for the popup. Returns an empty list when the endpoint is unavailable
      * (old backend, no receipt yet, or any error) so the caller appends nothing.
      */
-    private suspend fun fetchUpdateReceiptLines(): List<String> {
+    private suspend fun fetchUpdateReceiptLines(): List<UiText> {
         val result =
             withContext(Dispatchers.IO) {
                 safeApiCall { ApiClient.hermesApi.getUpdateReceipt() }
@@ -383,31 +385,38 @@ class SystemViewModel(
     // ── Gateway actions ────────────────────────────────────────────────
 
     fun startGateway() {
-        runGatewayAction("start") { safeApiCall { ApiClient.hermesApi.startGateway() } }
+        runGatewayAction(R.string.system_msg_gateway_started, R.string.system_msg_gateway_start_failed) {
+            safeApiCall { ApiClient.hermesApi.startGateway() }
+        }
     }
 
     fun stopGateway() {
-        runGatewayAction("stop") { safeApiCall { ApiClient.hermesApi.stopGateway() } }
+        runGatewayAction(R.string.system_msg_gateway_stopped, R.string.system_msg_gateway_stop_failed) {
+            safeApiCall { ApiClient.hermesApi.stopGateway() }
+        }
     }
 
     fun restartGateway() {
-        runGatewayAction("restart") { safeApiCall { ApiClient.hermesApi.restartGateway() } }
+        runGatewayAction(R.string.system_msg_gateway_restarted, R.string.system_msg_gateway_restart_failed) {
+            safeApiCall { ApiClient.hermesApi.restartGateway() }
+        }
     }
 
     private fun runGatewayAction(
-        name: String,
+        @StringRes successRes: Int,
+        @StringRes failureRes: Int,
         apiCall: suspend () -> NetworkResult<Unit>,
     ) {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) { apiCall() }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Gateway ${name}ed successfully") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(successRes)) }
                     loadStatus()
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to $name gateway: ${result.error.message}") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(failureRes, result.error.message)) }
                 }
             }
         }
@@ -431,7 +440,7 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             checkingUpdate = false,
-                            toastMessage = "Update check failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.system_msg_update_check_failed, result.error.message),
                         )
                     }
                 }
@@ -458,14 +467,12 @@ class SystemViewModel(
                     if (name != null) {
                         actionProgress.markStarted(name)
                     } else {
-                        actionProgress.fail(
-                            "Update started but the backend did not report an action name",
-                        )
+                        actionProgress.fail(text(UiText.res(R.string.system_msg_update_no_action_name)))
                     }
                 }
 
                 is NetworkResult.Failure -> {
-                    actionProgress.fail("Failed to start update: ${result.error.message}")
+                    actionProgress.fail(text(UiText.res(R.string.system_msg_update_start_failed, result.error.message)))
                 }
             }
         }
@@ -490,16 +497,18 @@ class SystemViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            toastMessage = "Curator ${if (!currentlyPaused) "paused" else "resumed"}",
-                        )
-                    }
+                    val messageRes =
+                        if (currentlyPaused) R.string.system_msg_curator_resumed else R.string.system_msg_curator_paused
+                    _uiState.update { it.copy(toastMessage = UiText.res(messageRes)) }
                     loadCurator()
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to toggle curator: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.system_msg_curator_toggle_failed, result.error.message),
+                        )
+                    }
                 }
             }
         }
@@ -529,7 +538,7 @@ class SystemViewModel(
     fun addCredential() {
         val state = _uiState.value
         if (state.credKey.isBlank()) {
-            _uiState.update { it.copy(toastMessage = "Key/token is required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_credential_key_required)) }
             return
         }
         _uiState.update { it.copy(addingCred = true) }
@@ -551,7 +560,7 @@ class SystemViewModel(
                             addingCred = false,
                             credKey = "",
                             credLabel = "",
-                            toastMessage = "Credential added",
+                            toastMessage = UiText.res(R.string.system_msg_credential_added),
                         )
                     }
                     loadCredentials()
@@ -559,7 +568,10 @@ class SystemViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(addingCred = false, toastMessage = "Failed to add credential: ${result.error.message}")
+                        it.copy(
+                            addingCred = false,
+                            toastMessage = UiText.res(R.string.system_msg_credential_add_failed, result.error.message),
+                        )
                     }
                 }
             }
@@ -577,12 +589,20 @@ class SystemViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Credential removed") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_credential_removed)) }
                     loadCredentials()
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to remove credential: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage =
+                                UiText.res(
+                                    R.string.system_msg_credential_remove_failed,
+                                    result.error.message,
+                                ),
+                        )
+                    }
                 }
             }
         }
@@ -639,7 +659,7 @@ class SystemViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Backup triggered",
+                            toastMessage = UiText.res(R.string.system_msg_backup_triggered),
                             backupArchive = result.data.archive,
                         )
                     }
@@ -647,7 +667,11 @@ class SystemViewModel(
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to trigger backup: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.system_msg_backup_trigger_failed, result.error.message),
+                        )
+                    }
                 }
             }
         }
@@ -664,7 +688,7 @@ class SystemViewModel(
     fun downloadBackup(onBody: (body: okhttp3.ResponseBody, fileName: String) -> Unit) {
         val archive =
             _uiState.value.backupArchive ?: run {
-                _uiState.update { it.copy(toastMessage = "No backup archive available") }
+                _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_backup_none)) }
                 return
             }
         // Single-flight: a second tap while a retry loop is running must not
@@ -695,20 +719,26 @@ class SystemViewModel(
                                     // 328MB backups took ~60s in testing.
                                     val elapsed = attempt * DOWNLOAD_RETRY_DELAY_MS / 1000
                                     _uiState.update {
-                                        it.copy(toastMessage = "Waiting for backup… ${elapsed}s")
+                                        it.copy(toastMessage = UiText.res(R.string.system_msg_backup_waiting, elapsed))
                                     }
                                     attempt++
                                     delay(DOWNLOAD_RETRY_DELAY_MS)
                                 } else {
                                     _uiState.update {
-                                        it.copy(toastMessage = "Failed to download backup: ${result.error.message}")
+                                        it.copy(
+                                            toastMessage =
+                                                UiText.res(
+                                                    R.string.system_msg_backup_download_failed,
+                                                    result.error.message,
+                                                ),
+                                        )
                                     }
                                     return@launch
                                 }
                             }
                         }
                     }
-                    _uiState.update { it.copy(toastMessage = "Backup is still being created — try again in a moment") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_backup_still_creating)) }
                 } finally {
                     _uiState.update { it.copy(isDownloading = false) }
                 }
@@ -751,7 +781,7 @@ class SystemViewModel(
                         it.copy(
                             isImporting = false,
                             importFileName = null,
-                            toastMessage = "Import started",
+                            toastMessage = UiText.res(R.string.system_msg_import_started),
                         )
                     }
                 }
@@ -760,7 +790,7 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             isImporting = false,
-                            toastMessage = "Import failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.system_msg_import_failed, result.error.message),
                         )
                     }
                 }
@@ -768,7 +798,7 @@ class SystemViewModel(
         }
     }
 
-    fun showToast(message: String) {
+    fun showToast(message: UiText) {
         _uiState.update { it.copy(toastMessage = message) }
     }
 
@@ -792,7 +822,7 @@ class SystemViewModel(
                         it.copy(
                             sharing = false,
                             debugShare = result.data,
-                            toastMessage = "Debug share created",
+                            toastMessage = UiText.res(R.string.system_msg_debug_share_created),
                         )
                     }
                 }
@@ -801,7 +831,7 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             sharing = false,
-                            toastMessage = "Debug share failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.system_msg_debug_share_failed, result.error.message),
                         )
                     }
                 }
@@ -847,7 +877,7 @@ class SystemViewModel(
     fun createHook() {
         val state = _uiState.value
         if (state.hookCommand.isBlank()) {
-            _uiState.update { it.copy(toastMessage = "Command is required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_hook_command_required)) }
             return
         }
         _uiState.update { it.copy(creatingHook = true) }
@@ -873,7 +903,7 @@ class SystemViewModel(
                             hookCommand = "",
                             hookMatcher = "",
                             hookTimeout = "",
-                            toastMessage = "Hook created",
+                            toastMessage = UiText.res(R.string.system_msg_hook_created),
                         )
                     }
                     loadHooks()
@@ -883,7 +913,7 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             creatingHook = false,
-                            toastMessage = "Failed to create hook: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.system_msg_hook_create_failed, result.error.message),
                         )
                     }
                 }
@@ -902,12 +932,16 @@ class SystemViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Hook deleted") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.system_msg_hook_deleted)) }
                     loadHooks()
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to delete hook: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.system_msg_hook_delete_failed, result.error.message),
+                        )
+                    }
                 }
             }
         }
@@ -955,11 +989,7 @@ class SystemViewModel(
                     result.data.name?.let { pollActionStatus(it) }
                     _uiState.update {
                         it.copy(
-                            toastMessage =
-                                getApplication<Application>().getString(
-                                    R.string.system_action_started,
-                                    getApplication<Application>().getString(labelRes),
-                                ),
+                            toastMessage = UiText.res(R.string.system_action_started, UiText.res(labelRes)),
                         )
                     }
                 }
@@ -968,11 +998,7 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             toastMessage =
-                                getApplication<Application>().getString(
-                                    R.string.system_action_failed,
-                                    getApplication<Application>().getString(labelRes),
-                                    result.error.message,
-                                ),
+                                UiText.res(R.string.system_action_failed, UiText.res(labelRes), result.error.message),
                         )
                     }
                 }
@@ -985,6 +1011,9 @@ class SystemViewModel(
     override fun clearToast() {
         _uiState.update { it.copy(toastMessage = null) }
     }
+
+    /** Resolves [message] now, for the shared progress dialog that only takes plain text. */
+    private fun text(message: UiText): String = message.resolve(getApplication<Application>())
 }
 
 private fun migrationSupport(result: NetworkResult<GatewayMigrationPlan>): Boolean? =

@@ -16,6 +16,7 @@ import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.data.ws.contract.ConnectionAnswer
 import io.wutz.apollo.data.ws.contract.ConnectionRespondParams
 import io.wutz.apollo.data.ws.contract.ConnectorOwner
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -181,7 +182,7 @@ class AccountConnectorsViewModelTest {
             coEvery { repo.listConnectors() } returns ConnectorListResult.Error(ConnectorError.NetworkError())
             advanceUntilIdle()
             assertFalse(vm.state.value.unavailable)
-            assertEquals(ConnectorError.NetworkError().message, vm.state.value.error)
+            assertEquals(UiText.raw(ConnectorError.NetworkError().message), vm.state.value.error)
         }
 
     @Test fun `profile change clears prior unavailable state`() =
@@ -231,12 +232,12 @@ class AccountConnectorsViewModelTest {
                 AccountConnectorResult.Failure(ConnectorError.RequestFailed("authorization failed"))
             vm.connect("drive")
             advanceUntilIdle()
-            assertEquals("authorization failed", vm.state.value.error)
+            assertEquals(UiText.raw("authorization failed"), vm.state.value.error)
             coEvery { repo.remove("c1") } returns
                 AccountConnectorResult.Failure(ConnectorError.RequestFailed("remove failed"))
             vm.remove("c1")
             advanceUntilIdle()
-            assertEquals("remove failed", vm.state.value.error)
+            assertEquals(UiText.raw("remove failed"), vm.state.value.error)
             assertFalse(vm.state.value.busy)
         }
 

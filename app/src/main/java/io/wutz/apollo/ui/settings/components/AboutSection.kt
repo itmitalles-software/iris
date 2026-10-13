@@ -24,6 +24,7 @@ import io.wutz.apollo.BuildConfig
 import io.wutz.apollo.R
 import io.wutz.apollo.data.update.AppUpdateState
 import io.wutz.apollo.ui.common.ApolloBrandLockup
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.settings.InfoRow
 import io.wutz.apollo.ui.settings.SectionCard
 
@@ -184,7 +185,7 @@ private fun UpdateRow(
                 }
 
                 is AppUpdateState.Error -> {
-                    ValueText(state.message)
+                    ValueText(state.message.asString())
                 }
             }
         }

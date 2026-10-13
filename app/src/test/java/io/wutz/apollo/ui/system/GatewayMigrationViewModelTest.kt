@@ -7,12 +7,14 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.GatewayMigrationPlan
 import io.wutz.apollo.data.model.GatewayMigrationProfile
 import io.wutz.apollo.data.model.GatewayMigrationStartResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.ui.common.ActionProgressPhase
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -128,6 +130,8 @@ class GatewayMigrationViewModelTest {
                 ),
             )
 
+        // The shared progress dialog takes resolved text, so the resource lookup is stubbed.
+        every { mockApp.resources.getString(R.string.system_msg_migration_rejected) } returns "rejected (resolved)"
         val viewModel = SystemViewModel(mockApp, migrationDispatcher = testDispatcher)
         viewModel.loadMigrationPlan()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -136,7 +140,7 @@ class GatewayMigrationViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(ActionProgressPhase.FAILED, viewModel.migrationProgress.state.value.phase)
-        assertEquals("Migration was rejected by the backend", viewModel.migrationProgress.state.value.error)
+        assertEquals("rejected (resolved)", viewModel.migrationProgress.state.value.error)
         coVerify { mockApi.startGatewayMigration() }
     }
 
@@ -153,9 +157,9 @@ class GatewayMigrationViewModelTest {
         testDispatcher.scheduler.runCurrent()
 
         assertFalse(viewModel.migrationProgress.state.value.visible)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                ?.contains("already multiplexed") == true,
+        assertEquals(
+            UiText.res(R.string.system_msg_migration_already_multiplexed),
+            viewModel.uiState.value.toastMessage,
         )
         coVerify(exactly = 0) { mockApi.startGatewayMigration() }
     }
@@ -173,10 +177,7 @@ class GatewayMigrationViewModelTest {
         testDispatcher.scheduler.runCurrent()
 
         assertFalse(viewModel.migrationProgress.state.value.visible)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                ?.contains("blocked") == true,
-        )
+        assertEquals(UiText.res(R.string.system_msg_migration_blocked), viewModel.uiState.value.toastMessage)
         coVerify(exactly = 0) { mockApi.startGatewayMigration() }
     }
 }

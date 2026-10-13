@@ -1,5 +1,8 @@
 package io.wutz.apollo.ui.chat.tool
 
+import io.wutz.apollo.R
+import io.wutz.apollo.ui.common.UiText
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -14,53 +17,49 @@ import kotlinx.serialization.json.JsonPrimitive
  *   code — all routinely produce useful output. It only becomes an error
  *   when the command produced no real output to show.
  * - a rejected memory write is a budget negotiation → WARNING, not ERROR
+ *
+ * [errorText] returns tool/server text as [UiText.Raw] and Apollo's own fallbacks as string
+ * resources, so the builder resolves them in the current locale (issue #10).
  */
 internal object ToolStatusResolver {
+    /** The error to show for [call], or null when the call did not fail. */
     fun errorText(
         call: ToolCall,
         isError: Boolean,
-    ): String {
+    ): UiText? {
         val result = call.rawResult
         val resultRecord = call.result
 
         if (isError) {
             val extracted = ToolResultSummary.extractToolErrorMessage(result)
             if (extracted.isNotEmpty()) {
-                return extracted
+                return UiText.Raw(extracted)
             }
             if (result is JsonPrimitive && result.isString && result.content.trim().isNotEmpty()) {
-                return result.content.trim()
+                return UiText.Raw(result.content.trim())
             }
 
-            return "Tool returned an error."
+            return UiText.res(R.string.tool_msg_error_generic)
         }
 
         val error = ToolJson.firstString(resultRecord, listOf("error"))
         if (error.isNotEmpty()) {
-            return error
+            return UiText.Raw(error)
         }
 
         val extracted = ToolResultSummary.extractToolErrorMessage(result)
         if (extracted.isNotEmpty()) {
-            return extracted
+            return UiText.Raw(extracted)
         }
 
         if (resultRecord != null) {
             if (ToolJson.boolFalse(resultRecord["success"]) || ToolJson.boolFalse(resultRecord["ok"])) {
-                return ToolJson
-                    .firstString(
-                        resultRecord,
-                        listOf("message", "reason", "detail"),
-                    ).ifEmpty { "Tool returned success=false." }
+                return serverReason(resultRecord) ?: UiText.res(R.string.tool_msg_error_success_false)
             }
 
             val status = ToolJson.firstString(resultRecord, listOf("status"))
             if (Regex("\\b(error|failed|failure)\\b", RegexOption.IGNORE_CASE).containsMatchIn(status)) {
-                return ToolJson
-                    .firstString(
-                        resultRecord,
-                        listOf("message", "reason", "detail"),
-                    ).ifEmpty { "Tool returned status \"$status\"." }
+                return serverReason(resultRecord) ?: UiText.res(R.string.tool_msg_error_status, status)
             }
 
             val exit = ToolJson.numberValue(resultRecord["exit_code"])
@@ -70,13 +69,19 @@ internal object ToolStatusResolver {
                         .any { k -> ToolJson.firstString(resultRecord, listOf(k)).isNotEmpty() }
 
                 if (!hasOutput) {
-                    return "Command failed with exit code ${exit.toInt()}."
+                    return UiText.res(R.string.tool_msg_error_exit_code, exit.toInt())
                 }
             }
         }
 
-        return ""
+        return null
     }
+
+    private fun serverReason(record: JsonObject): UiText? =
+        ToolJson
+            .firstString(record, listOf("message", "reason", "detail"))
+            .takeIf { it.isNotEmpty() }
+            ?.let { UiText.Raw(it) }
 
     fun status(
         call: ToolCall,
@@ -95,7 +100,7 @@ internal object ToolStatusResolver {
             return ToolViewStatus.SUCCESS
         }
 
-        if (errorText(call, isError).isEmpty()) {
+        if (errorText(call, isError) == null) {
             return ToolViewStatus.SUCCESS
         }
 

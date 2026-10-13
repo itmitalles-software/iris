@@ -1,5 +1,7 @@
 package io.wutz.apollo.data.update
 
+import io.wutz.apollo.ui.common.UiText
+
 /**
  * State of the in-app updater (issue #867) — shared by the About tab's
  * [io.wutz.apollo.ui.settings.AppUpdateViewModel] and the launch
@@ -38,8 +40,9 @@ sealed interface AppUpdateState {
     /** Install-from-unknown-sources not granted for this app yet. */
     data object NeedsUnknownSourcesPermission : AppUpdateState
 
+    /** [message] is one of the updater's own localized texts (Apollo, issue #10). */
     data class Error(
-        val message: String,
+        val message: UiText,
         val isCheckError: Boolean = false,
     ) : AppUpdateState
 }

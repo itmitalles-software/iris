@@ -52,7 +52,9 @@ class ChatSearchDelegateTest {
         runTest {
             val uiState = stateWith("needle old")
             val delegate =
-                ChatSearchDelegate(backgroundScope, uiState, dispatcher = StandardTestDispatcher(testScheduler))
+                ChatSearchDelegate(backgroundScope, uiState, toolText = {
+                    EnglishTestResources.toolText
+                }, dispatcher = StandardTestDispatcher(testScheduler))
             runCurrent()
             uiState.value =
                 uiState.value.copy(
@@ -105,7 +107,9 @@ class ChatSearchDelegateTest {
                         ),
                 )
             val delegate =
-                ChatSearchDelegate(backgroundScope, uiState, dispatcher = StandardTestDispatcher(testScheduler))
+                ChatSearchDelegate(backgroundScope, uiState, toolText = {
+                    EnglishTestResources.toolText
+                }, dispatcher = StandardTestDispatcher(testScheduler))
             delegate.toggleSearch()
             delegate.setSearchQuery("needle")
             advanceTimeBy(150)
@@ -143,7 +147,12 @@ class ChatSearchDelegateTest {
                         ),
                 )
             val delegate =
-                ChatSearchDelegate(backgroundScope, uiState, dispatcher = worker)
+                ChatSearchDelegate(
+                    backgroundScope,
+                    uiState,
+                    toolText = { EnglishTestResources.toolText },
+                    dispatcher = worker,
+                )
             delegate.setSearchQuery("needle")
             advanceTimeBy(150)
             runCurrent()
@@ -173,7 +182,9 @@ class ChatSearchDelegateTest {
         runTest {
             val uiState = stateWith("alpha", "beta")
             val delegate =
-                ChatSearchDelegate(backgroundScope, uiState, dispatcher = StandardTestDispatcher(testScheduler))
+                ChatSearchDelegate(backgroundScope, uiState, toolText = {
+                    EnglishTestResources.toolText
+                }, dispatcher = StandardTestDispatcher(testScheduler))
             delegate.toggleSearch()
             delegate.setSearchQuery("alpha")
             advanceTimeBy(150)
@@ -224,7 +235,9 @@ class ChatSearchDelegateTest {
                         ),
                 )
             val delegate =
-                ChatSearchDelegate(backgroundScope, uiState, dispatcher = StandardTestDispatcher(testScheduler))
+                ChatSearchDelegate(backgroundScope, uiState, toolText = {
+                    EnglishTestResources.toolText
+                }, dispatcher = StandardTestDispatcher(testScheduler))
             delegate.setSearchQuery("needle")
             advanceTimeBy(150)
             runCurrent()
@@ -246,6 +259,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = StandardTestDispatcher(testScheduler),
                     debounceMs = 150,
                 )
@@ -282,6 +296,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = StandardTestDispatcher(testScheduler),
                     debounceMs = 150,
                 )
@@ -308,6 +323,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = worker,
                     debounceMs = 150,
                 )
@@ -337,6 +353,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = StandardTestDispatcher(testScheduler),
                     debounceMs = 150,
                 )
@@ -361,6 +378,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = StandardTestDispatcher(testScheduler),
                     debounceMs = 150,
                 )
@@ -396,6 +414,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = StandardTestDispatcher(testScheduler),
                     debounceMs = 150,
                 )
@@ -420,6 +439,7 @@ class ChatSearchDelegateTest {
                 ChatSearchDelegate(
                     scope = backgroundScope,
                     uiState = uiState,
+                    toolText = { EnglishTestResources.toolText },
                     dispatcher = StandardTestDispatcher(testScheduler),
                     debounceMs = 150,
                 )

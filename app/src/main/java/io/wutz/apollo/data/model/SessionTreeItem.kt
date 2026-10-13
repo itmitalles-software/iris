@@ -3,6 +3,9 @@ package io.wutz.apollo.data.model
 /** Fallback title for sessions without title, name or preview; the UI shows a translated label for it. */
 const val UNTITLED_SESSION_TITLE = "Untitled"
 
+/** English fallback title of the [number]th untitled fork; see [SessionTreeItem.branchNumber]. */
+fun branchFallbackTitle(number: Int): String = "branch $number"
+
 data class SessionTreeItem(
     val session: SessionInfo,
     val depth: Int,
@@ -16,6 +19,11 @@ data class SessionTreeItem(
     // non-forked (root) sessions.
     val forkDepth: Int = 0,
     val displayTitle: String,
+    /**
+     * Set when [displayTitle] is the English "branch N" fallback for an untitled fork; the UI shows a
+     * translated label for it (Apollo, issue #10).
+     */
+    val branchNumber: Int? = null,
 )
 
 /**
@@ -40,11 +48,14 @@ fun flattenSessionTree(sessions: List<SessionInfo>): List<SessionTreeItem> {
     ) {
         if (!visited.add(session.id)) return
         val isBranch = session.parent_session_id?.takeIf(ids::contains) != null
-        val title =
+        val ownTitle =
             session.title?.takeIf(String::isNotBlank)
                 ?: session.display_name?.takeIf(String::isNotBlank)
-                ?: if (isBranch) {
-                    "branch ${siblingIndex + 1}"
+        val branchNumber = if (ownTitle == null && isBranch) siblingIndex + 1 else null
+        val title =
+            ownTitle
+                ?: if (branchNumber != null) {
+                    branchFallbackTitle(branchNumber)
                 } else {
                     session.preview?.takeIf(String::isNotBlank)?.take(80) ?: UNTITLED_SESSION_TITLE
                 }
@@ -57,6 +68,7 @@ fun flattenSessionTree(sessions: List<SessionInfo>): List<SessionTreeItem> {
                 isFork = isBranch,
                 forkDepth = if (isBranch) depth else 0,
                 displayTitle = title,
+                branchNumber = branchNumber,
             )
         val descendants = children[session.id].orEmpty()
         descendants.forEachIndexed { index, child ->

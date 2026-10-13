@@ -24,6 +24,10 @@ import kotlinx.serialization.json.contentOrNull
  *
  * Unknown tools fall back to [ToolResultSummary] heuristics so they still
  * read as a human summary instead of a raw JSON dump.
+ *
+ * The engine's own words resolve through the [ToolText] passed to [build]
+ * (issue #10); the resulting [ToolView] holds display-ready strings in that
+ * locale, which is why [ToolViewCache] keys on [ToolText.localeKey].
  */
 object ToolViewBuilder {
     /**
@@ -39,6 +43,7 @@ object ToolViewBuilder {
         result: JsonElement?,
         isError: Boolean = false,
         running: Boolean = false,
+        res: ToolText,
     ): ToolView {
         val call = ToolCall.of(toolName, args, result)
         val renderer = ToolRendererRegistry.rendererFor(toolName)
@@ -48,33 +53,33 @@ object ToolViewBuilder {
             if (status == ToolViewStatus.SUCCESS) {
                 ""
             } else {
-                ToolStatusResolver.errorText(call, isError)
+                ToolStatusResolver.errorText(call, isError)?.let(res::resolve).orEmpty()
             }
 
         val serverTitle = serverLabelTitle(call.args)
         val title =
             serverTitle
                 ?: when {
-                    running -> renderer.pendingTitle(call)
-                    error.isNotEmpty() -> renderer.errorTitle(call)
-                    else -> renderer.doneTitle(call)
+                    running -> renderer.pendingTitle(call, res)
+                    error.isNotEmpty() -> renderer.errorTitle(call, res)
+                    else -> renderer.doneTitle(call, res)
                 } ?: ToolJson.titleForTool(toolName)
 
         val subtitle =
             if (error.isNotEmpty()) {
                 error
             } else {
-                renderer.subtitle(call) ?: genericSubtitle(call)
+                renderer.subtitle(call, res) ?: genericSubtitle(call, res)
             }
 
         val detailBody =
             ToolJson.stripDividerLines(
                 if (running) {
-                    renderer.pendingDetail(call)
-                        ?: renderer.detail(call)
-                        ?: ToolJson.fallbackDetailText(call.rawArgs, call.rawResult)
+                    renderer.pendingDetail(call, res)
+                        ?: renderer.detail(call, res)
+                        ?: ToolJson.fallbackDetailText(call.rawArgs, call.rawResult, res)
                 } else {
-                    renderer.detail(call) ?: ToolJson.fallbackDetailText(call.rawArgs, call.rawResult)
+                    renderer.detail(call, res) ?: ToolJson.fallbackDetailText(call.rawArgs, call.rawResult, res)
                 },
             )
         val detail =
@@ -91,7 +96,7 @@ object ToolViewBuilder {
                 detailBody
             }
 
-        val extras = renderer.extras(call, status)
+        val extras = renderer.extras(call, status, res)
 
         val countLabel =
             if (status == ToolViewStatus.ERROR) {
@@ -100,10 +105,10 @@ object ToolViewBuilder {
                 ToolCounts.countLabelFor(call)
             }
 
-        val clampedDetail = ToolJson.clampForDisplay(detail)
-        val clampedStdout = extras.stdout?.let { ToolJson.clampForDisplay(it) }
-        val clampedStderr = extras.stderr?.let { ToolJson.clampForDisplay(it) }
-        val clampedDiff = extras.inlineDiff?.ifEmpty { null }?.let { ToolJson.clampForDisplay(it) }
+        val clampedDetail = ToolJson.clampForDisplay(detail, res)
+        val clampedStdout = extras.stdout?.let { ToolJson.clampForDisplay(it, res) }
+        val clampedStderr = extras.stderr?.let { ToolJson.clampForDisplay(it, res) }
+        val clampedDiff = extras.inlineDiff?.ifEmpty { null }?.let { ToolJson.clampForDisplay(it, res) }
 
         return ToolView(
             status = status,
@@ -113,7 +118,7 @@ object ToolViewBuilder {
             detail = clampedDetail,
             detailLabel = extras.detailLabel,
             outputCut = extras.outputCut,
-            countLabel = countLabel?.let { (count, noun) -> "$count ${ToolCounts.pluralizeNoun(noun, count)}" },
+            countLabel = countLabel?.let { (count, noun) -> ToolCounts.formatCountLabel(count, noun, res) },
             durationLabel = ToolJson.durationLabel(call.result),
             stdout = clampedStdout,
             stderr = clampedStderr,
@@ -122,7 +127,7 @@ object ToolViewBuilder {
             inlineDiff = clampedDiff,
             diffPath = extras.diffPath,
             diffStats = extras.diffStats,
-            fileContent = extras.fileContent?.let { ToolJson.clampForDisplay(it) },
+            fileContent = extras.fileContent?.let { ToolJson.clampForDisplay(it, res) },
             filePath = extras.filePath,
             imageUrl = imageUrlFor(call.args, call.result),
             searchHits = extras.searchHits,
@@ -146,15 +151,18 @@ object ToolViewBuilder {
             ?.takeIf(String::isNotBlank)
 
     /** Subtitle fallback: first line of the heuristic summary, then contexts. */
-    private fun genericSubtitle(call: ToolCall): String {
-        val summary = ToolResultSummary.formatToolResultSummary(call.rawResult)
+    private fun genericSubtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
+        val summary = ToolResultSummary.formatToolResultSummary(call.rawResult, res)
         val firstLine = summary.split("\n").firstOrNull()?.takeIf { it.isNotEmpty() } ?: ""
 
         return ToolJson
             .compactPreview(firstLine, 120)
             .ifEmpty { ToolJson.compactPreview(call.result, 120) }
             .ifEmpty { ToolJson.compactPreview(call.args, 120) }
-            .ifEmpty { ToolJson.fallbackDetailText(call.args, call.rawResult) }
+            .ifEmpty { ToolJson.fallbackDetailText(call.args, call.rawResult, res) }
     }
 
     private fun looksRedundant(

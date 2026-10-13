@@ -42,6 +42,7 @@ import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.theme.LocalSpacing
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.sessions.cleanSearchSnippet
 import io.wutz.apollo.ui.sessions.formatPlayedAt
 import io.wutz.apollo.ui.sessions.highlightSearchText
@@ -71,7 +72,7 @@ fun SearchResultCard(
     val statusColors = LocalHermesStatusColors.current
     val snippet = session.preview?.takeIf { it.isNotBlank() } ?: stringResource(R.string.history_untitled)
     val cleanSnippet = cleanSearchSnippet(snippet)
-    val playedAt = formatPlayedAt(session.last_active ?: session.started_at)
+    val playedAt = formatPlayedAt(session.last_active ?: session.started_at)?.asString()
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(

@@ -67,8 +67,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -93,6 +93,8 @@ import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.kanban.components.KanbanModelOverrideEditor
 import io.wutz.apollo.util.StreamingUriRequestBody
 import kotlinx.coroutines.CancellationException
@@ -167,7 +169,7 @@ fun KanbanTaskScreen(
 
             state.errorMessage != null && state.detail == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadTask(boardSlug, taskId) },
                     modifier = Modifier.padding(paddingValues),
                 )
@@ -1270,8 +1272,7 @@ private fun TaskFilesTab(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val resources = remember(context, configuration) { context.createConfigurationContext(configuration).resources }
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     var attachmentToDelete by remember { mutableStateOf<KanbanAttachment?>(null) }
     var attachmentToDownload by remember { mutableStateOf<KanbanAttachment?>(null) }
@@ -1288,24 +1289,24 @@ private fun TaskFilesTab(
                                     result.data.use { body ->
                                         context.contentResolver.openOutputStream(uri)?.use { output ->
                                             body.byteStream().use { input -> input.copyTo(output) }
-                                        } ?: error("Could not open the selected destination")
+                                        } ?: error(resources.getString(R.string.kanban_msg_open_destination_failed))
                                     }
                                 }
-                                viewModel.showToast(resources.getString(R.string.kanban_attachment_saved))
+                                viewModel.showToast(UiText.res(R.string.kanban_attachment_saved))
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {
                                 viewModel.showToast(
-                                    resources.getString(
+                                    UiText.res(
                                         R.string.kanban_attachment_error,
-                                        e.message ?: resources.getString(R.string.error_unknown),
+                                        e.message ?: UiText.res(R.string.error_unknown),
                                     ),
                                 )
                             }
                         }
 
                         is NetworkResult.Failure -> {
-                            viewModel.showToast(result.error.message)
+                            viewModel.showToast(UiText.raw(result.error.message))
                         }
                     }
                 }
@@ -1356,9 +1357,9 @@ private fun TaskFilesTab(
                         throw e
                     } catch (e: Exception) {
                         viewModel.showToast(
-                            resources.getString(
+                            UiText.res(
                                 R.string.kanban_attachment_error,
-                                e.message ?: resources.getString(R.string.error_unknown),
+                                e.message ?: UiText.res(R.string.error_unknown),
                             ),
                         )
                     }

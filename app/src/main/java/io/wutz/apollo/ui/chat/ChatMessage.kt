@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.chat
 
 import io.wutz.apollo.data.model.Attachment
 import io.wutz.apollo.data.model.MessageReaction
+import io.wutz.apollo.ui.common.UiText
 import java.util.UUID
 
 /**
@@ -192,7 +193,7 @@ data class SubagentTranscriptUiState(
     val isLoading: Boolean = false,
     val isTruncated: Boolean = false,
     val bytesRead: Long? = null,
-    val error: String? = null,
+    val error: UiText? = null,
 ) {
     val isEmpty: Boolean get() = text.isEmpty() && !isLoading && error == null
 }

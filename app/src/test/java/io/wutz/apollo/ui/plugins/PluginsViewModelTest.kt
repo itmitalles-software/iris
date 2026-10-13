@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.AgentPluginInstallBody
 import io.wutz.apollo.data.model.PluginCatalogCapabilities
 import io.wutz.apollo.data.model.PluginCatalogEntry
@@ -16,8 +17,10 @@ import io.wutz.apollo.data.model.PluginUpdateResult
 import io.wutz.apollo.data.model.PluginsHubResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.data.ws.PluginRemovalRepository
 import io.wutz.apollo.data.ws.PluginRemovalResult
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -99,7 +102,7 @@ class PluginsViewModelTest {
         viewModel.confirmPluginUpdate()
         testDispatcher.scheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.updateConsent)
-        assertEquals("Plugin updated successfully", viewModel.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.plugins_msg_updated), viewModel.uiState.value.toastMessage)
         coVerify(exactly = 1) { mockApi.updatePlugin("snyk", PluginUpdateRequest(false)) }
         coVerify(exactly = 1) { mockApi.updatePlugin("snyk", PluginUpdateRequest(true)) }
         coVerify(exactly = 1) { mockApi.getPlugins() }
@@ -127,7 +130,10 @@ class PluginsViewModelTest {
         val viewModel = PluginsViewModel()
         viewModel.updatePlugin("snyk")
         testDispatcher.scheduler.advanceUntilIdle()
-        assertEquals("Failed to update plugin: Update refused", viewModel.uiState.value.toastMessage)
+        assertEquals(
+            UiText.res(R.string.plugins_msg_update_failed, "Update refused"),
+            viewModel.uiState.value.toastMessage,
+        )
         assertNull(viewModel.uiState.value.rowBusy)
         coVerify(exactly = 0) { mockApi.getPlugins() }
     }
@@ -140,7 +146,7 @@ class PluginsViewModelTest {
         val viewModel = PluginsViewModel()
         viewModel.updatePlugin("snyk")
         testDispatcher.scheduler.advanceUntilIdle()
-        assertEquals("Plugin is already up to date", viewModel.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.plugins_msg_already_up_to_date), viewModel.uiState.value.toastMessage)
         assertNull(viewModel.uiState.value.rowBusy)
     }
 
@@ -167,9 +173,9 @@ class PluginsViewModelTest {
         val viewModel = PluginsViewModel()
         viewModel.updatePlugin("snyk")
         testDispatcher.scheduler.advanceUntilIdle()
-        assertTrue(
-            viewModel.uiState.value.toastMessage!!
-                .contains("Failed to update"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_update_failed, mapHttpError(503).message),
+            viewModel.uiState.value.toastMessage,
         )
         assertNull(viewModel.uiState.value.rowBusy)
         coVerify(exactly = 0) { mockApi.getPlugins() }
@@ -221,9 +227,9 @@ class PluginsViewModelTest {
             viewModel.uiState.value.catalogEntries
                 .isEmpty(),
         )
-        assertTrue(
-            viewModel.uiState.value.catalogErrorMessage
-                ?.contains("500") == true,
+        assertEquals(
+            UiText.res(R.string.plugins_msg_catalog_load_failed, mapHttpError(500).message),
+            viewModel.uiState.value.catalogErrorMessage,
         )
     }
 
@@ -267,7 +273,7 @@ class PluginsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.catalogInstallingName)
-        assertEquals("Plugin \"snyk\" installed successfully", viewModel.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.plugins_msg_catalog_installed, "snyk"), viewModel.uiState.value.toastMessage)
         assertEquals(1, viewModel.uiState.value.plugins.size)
         assertTrue(
             viewModel.uiState.value.catalogEntries
@@ -294,9 +300,9 @@ class PluginsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.catalogInstallingName)
-        assertTrue(
-            viewModel.uiState.value.toastMessage
-                ?.contains("Failed to install") == true,
+        assertEquals(
+            UiText.res(R.string.plugins_msg_catalog_install_failed, "snyk", mapHttpError(400).message),
+            viewModel.uiState.value.toastMessage,
         )
     }
 
@@ -345,7 +351,7 @@ class PluginsViewModelTest {
             viewModel.uiState.value.plugins
                 .isEmpty(),
         )
-        assertEquals("Plugin uninstalled successfully", viewModel.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.plugins_msg_uninstalled), viewModel.uiState.value.toastMessage)
         assertNull(viewModel.uiState.value.rowBusy)
         coVerify(exactly = 1) { removal.remove("snyk") }
         coVerify(exactly = 2) { mockApi.getPlugins() }
@@ -386,9 +392,9 @@ class PluginsViewModelTest {
         viewModel.confirmRemovePlugin()
         testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.plugins.size)
-        assertTrue(
-            viewModel.uiState.value.toastMessage!!
-                .contains("not a user install"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_uninstall_failed, "not a user install"),
+            viewModel.uiState.value.toastMessage,
         )
 
         coEvery { removal.remove("snyk") } throws IllegalStateException("socket disconnected")
@@ -396,9 +402,9 @@ class PluginsViewModelTest {
         viewModel.confirmRemovePlugin()
         testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.plugins.size)
-        assertTrue(
-            viewModel.uiState.value.toastMessage!!
-                .contains("socket disconnected"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_uninstall_failed, "socket disconnected"),
+            viewModel.uiState.value.toastMessage,
         )
         coVerify(exactly = 1) { mockApi.getPlugins() }
     }
@@ -418,9 +424,9 @@ class PluginsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.plugins.size)
-        assertTrue(
-            viewModel.uiState.value.toastMessage!!
-                .contains("still appears"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_uninstall_unverified, "snyk"),
+            viewModel.uiState.value.toastMessage,
         )
     }
 
@@ -442,9 +448,9 @@ class PluginsViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.plugins.size)
-        assertTrue(
-            viewModel.uiState.value.toastMessage!!
-                .contains("could not verify"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_uninstall_verify_failed, mapHttpError(503).message),
+            viewModel.uiState.value.toastMessage,
         )
     }
 

@@ -43,6 +43,7 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.PressureBanner
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +76,7 @@ fun GatewayScreen(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadStatus() },
                     modifier = Modifier.padding(paddingValues),
                 )
@@ -91,7 +92,7 @@ fun GatewayScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
-                                text = state.errorMessage ?: "",
+                                text = state.errorMessage?.asString() ?: "",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyMedium,
                             )

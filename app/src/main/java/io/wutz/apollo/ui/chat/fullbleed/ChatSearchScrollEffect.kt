@@ -6,6 +6,7 @@ import io.wutz.apollo.ui.chat.ChatMessage
 import io.wutz.apollo.ui.chat.ChatSearchState
 import io.wutz.apollo.ui.chat.components.ChatScrollController
 import io.wutz.apollo.ui.chat.searchTextFor
+import io.wutz.apollo.ui.chat.tool.rememberToolText
 
 /** Resolve a search hit against emitted lazy rows, including hoisted reasoning and tool rows. */
 @Composable
@@ -16,6 +17,7 @@ internal fun ChatSearchScrollEffect(
     turns: List<ChatTurn>,
     scrollController: ChatScrollController,
 ) {
+    val toolText = rememberToolText()
     LaunchedEffect(
         searchState.isActive,
         searchState.currentIndex,
@@ -41,6 +43,10 @@ internal fun ChatSearchScrollEffect(
             )
         // A hit in a staged history prefix is retried when the prefix enters layout.
         val lazyIndex = searchMatchToLazyIndex(turns, messages, match) ?: return@LaunchedEffect
-        scrollController.scrollToSearchMatch(lazyIndex, match.contentOffset, searchTextFor(message, target).length)
+        scrollController.scrollToSearchMatch(
+            lazyIndex,
+            match.contentOffset,
+            searchTextFor(message, target, toolText).length,
+        )
     }
 }

@@ -30,6 +30,7 @@ import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.FilterChipRow
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.common.toDetailRows
 import io.wutz.apollo.ui.skills.CATEGORY_ALL
@@ -103,10 +104,14 @@ fun InstalledSkillsView(
         )
 
         if (categories.isNotEmpty() || sources.isNotEmpty()) {
+            // The "all" chip keeps the CATEGORY_ALL key so the filter matches in every locale; only its label is translated.
             FilterChipRow(
-                chips = listOf(stringResource(R.string.skills_category_all)) + categories,
+                chips = listOf(CATEGORY_ALL) + categories,
                 selectedChip = selectedCategory,
                 onChipSelected = onCategoryChange,
+                chipLabel = { category ->
+                    Text(if (category == CATEGORY_ALL) stringResource(R.string.skills_category_all) else category)
+                },
             )
             if (sources.isNotEmpty()) {
                 FilterChipRow(
@@ -130,7 +135,7 @@ fun InstalledSkillsView(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage,
+                    message = state.errorMessage.asString(),
                     onRetry = onRefresh,
                 )
             }

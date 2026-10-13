@@ -32,6 +32,14 @@ Keep this list current. It is the checklist for resolving merge conflicts.
   `ui/chat/SystemNotice.kt` (#8); formatters take label resolvers
   (`buildReasoningLabel`, `KanbanModelOverride.displayLabel`,
   `KanbanEventDetailMessage`, `AuxTaskInfo` resource ids).
+  ViewModel messages (`toastMessage`, `errorMessage`, snackbars) are
+  `ui/common/UiText` (resource id + args, or raw server text) and are resolved
+  in the composables; pure formatters return `UiText` or take a resolver
+  (`ui/chat/tool/ToolText` for the tool renderers). Parameterized system rows
+  ("Stopped N background processes.", "↶ Rewound to: …") stay English in
+  storage and are parsed back into resources by `SystemNotice.displayUiText`
+  (#10). New keys live in the block "Apollo i18n (ViewModel messages, issue
+  #10)".
 - **Update checker / releases** — release assets are `apollo-<tag>.apk` from
   `wutz-io/apollo-hermes-android`; the release workflow fails early when
   signing secrets are missing.

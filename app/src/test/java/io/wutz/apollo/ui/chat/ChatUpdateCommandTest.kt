@@ -90,6 +90,7 @@ class ChatUpdateCommandTest {
         mockkObject(HermesDatabase)
 
         app = mockk(relaxed = true)
+        EnglishTestResources.install(app)
         fakeRepo = FakeChatPersistenceRepository()
         mockApi = mockk(relaxed = true)
 

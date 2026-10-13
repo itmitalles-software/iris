@@ -58,4 +58,19 @@ class ReplyFailureDetailsTest {
             )
         assertEquals("code: rate_limit\nprovider: example\nHTTP 429", failure?.details)
     }
+
+    @Test
+    fun unknownGatewayErrorPlaceholderIsTranslatedOnlyForDisplay() {
+        val details = "layer: provider\ncode: 500\n$UNKNOWN_GATEWAY_ERROR"
+        assertEquals(
+            "layer: provider\ncode: 500\nUnbekannter Gateway-Fehler",
+            localizeReplyFailureDetails(details, "Unbekannter Gateway-Fehler"),
+        )
+        // Server text that merely contains the phrase is left alone.
+        assertEquals(
+            "error: Unknown gateway error (upstream)",
+            localizeReplyFailureDetails("error: Unknown gateway error (upstream)", "X"),
+        )
+        assertEquals("Unknown gateway error", UNKNOWN_GATEWAY_ERROR)
+    }
 }

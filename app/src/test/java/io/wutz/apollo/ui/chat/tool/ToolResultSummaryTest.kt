@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat.tool
 
+import io.wutz.apollo.R
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
@@ -50,6 +51,30 @@ class ToolResultSummaryTest {
         assertTrue("got:\n$summary", summary.contains("- First result - alpha preview text"))
         assertTrue(summary.contains("- Second result (cached)"))
         assertTrue("got:\n$summary", summary.contains("- … 1 more item"))
+    }
+
+    @Test
+    fun `summary words resolve through plurals resources`() {
+        val list =
+            """[{"title":"a"},{"title":"b"},{"title":"c"},{"title":"d"},{"title":"e"},{"title":"f"},{"title":"g"}]"""
+        val recorded = ToolResultSummary.formatToolResultSummary(parse(list), TestToolText.recording)
+        assertTrue(recorded, recorded.endsWith("- " + TestToolText.recordedPlural(R.plurals.tool_msg_more_items, 1)))
+
+        val nested = parse("""{"groups":[[1,2,3],[4]]}""")
+        assertEquals(
+            "- Groups: ${TestToolText.recordedPlural(R.plurals.tool_msg_item_count, 2)} " +
+                "(${TestToolText.recordedPlural(R.plurals.tool_msg_item_count, 3)})",
+            ToolResultSummary.formatToolResultSummary(nested, TestToolText.recording),
+        )
+        assertEquals(
+            "- Groups: 2 Einträge (3 Einträge)",
+            ToolResultSummary.formatToolResultSummary(nested, TestToolText.german),
+        )
+        // The English resources match the parsing-only fallback (no ToolText) word for word.
+        assertEquals(
+            ToolResultSummary.formatToolResultSummary(nested),
+            ToolResultSummary.formatToolResultSummary(nested, TestToolText.english),
+        )
     }
 
     @Test

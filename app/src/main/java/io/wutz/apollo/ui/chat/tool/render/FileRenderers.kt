@@ -1,9 +1,11 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.DiffStats
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewExtras
 import io.wutz.apollo.ui.chat.tool.ToolViewStatus
 import kotlinx.serialization.json.JsonElement
@@ -105,7 +107,8 @@ internal object FileEditSupport {
     fun pathSubtitle(
         call: ToolCall,
         path: String,
-    ): String = path.ifEmpty { ToolJson.fallbackDetailText(call.args, call.rawResult) }
+        res: ToolText,
+    ): String = path.ifEmpty { ToolJson.fallbackDetailText(call.args, call.rawResult, res) }
 }
 
 /** `read_file`: "Read name.kt L10-14" title with the file content as detail. */
@@ -156,14 +159,26 @@ internal object ReadFileRenderer : ToolRenderer {
         return listOf(FileEditSupport.basename(path), lineLabel).filter { it.isNotEmpty() }.joinToString(" ")
     }
 
-    override fun pendingTitle(call: ToolCall): String = "Reading ${displayTarget(call.args, null)}"
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_reading, displayTarget(call.args, null))
 
-    override fun doneTitle(call: ToolCall): String = "Read ${displayTarget(call.args, call.result)}"
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_read, displayTarget(call.args, call.result))
 
-    override fun subtitle(call: ToolCall): String =
-        FileEditSupport.pathSubtitle(call, ToolJson.firstString(call.args, listOf("path", "file", "filepath")))
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
+        FileEditSupport.pathSubtitle(call, ToolJson.firstString(call.args, listOf("path", "file", "filepath")), res)
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         if (call.rawResult == null) {
             return ""
         }
@@ -174,6 +189,7 @@ internal object ReadFileRenderer : ToolRenderer {
     override fun extras(
         call: ToolCall,
         status: ToolViewStatus,
+        res: ToolText,
     ): ToolViewExtras {
         val content = ToolJson.firstString(call.result, listOf("content", "text", "data", "body"))
         return if (content.isEmpty()) {
@@ -193,16 +209,24 @@ internal object ReadFileRenderer : ToolRenderer {
  * appears when there is no diff to render.
  */
 internal object FileEditRenderer : ToolRenderer {
-    override fun doneTitle(call: ToolCall): String? {
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? {
         val path = FileEditSupport.editPath(call.args, call.result)
 
         return if (path.isNotEmpty()) FileEditSupport.basename(path) else null
     }
 
-    override fun subtitle(call: ToolCall): String =
-        FileEditSupport.pathSubtitle(call, FileEditSupport.editPath(call.args, call.result))
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = FileEditSupport.pathSubtitle(call, FileEditSupport.editPath(call.args, call.result), res)
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         if (FileEditSupport.inlineDiffFromResult(call.rawResult).isNotEmpty()) {
             return ""
         }
@@ -211,7 +235,7 @@ internal object FileEditRenderer : ToolRenderer {
             if (FileEditSupport.editPath(call.args, call.result).isNotEmpty()) {
                 ""
             } else {
-                ToolJson.fallbackDetailText(call.rawArgs, call.rawResult)
+                ToolJson.fallbackDetailText(call.rawArgs, call.rawResult, res)
             }
         }
     }
@@ -219,6 +243,7 @@ internal object FileEditRenderer : ToolRenderer {
     override fun extras(
         call: ToolCall,
         status: ToolViewStatus,
+        res: ToolText,
     ): ToolViewExtras {
         val inlineDiff = FileEditSupport.inlineDiffFromResult(call.rawResult)
 

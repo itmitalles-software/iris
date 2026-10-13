@@ -1,9 +1,11 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.CommandSummarizer
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewExtras
 import io.wutz.apollo.ui.chat.tool.ToolViewStatus
 import kotlinx.serialization.json.JsonArray
@@ -37,28 +39,38 @@ internal object TerminalRenderer : ToolRenderer {
     private fun commandTitle(
         call: ToolCall,
         runningVerb: Boolean,
+        res: ToolText,
     ): String? {
         val command = shellCommand(call.args)
-        val verb =
+        val titleRes =
             when {
-                call.name == "execute_code" && runningVerb -> "Running code"
-                call.name == "execute_code" -> "Ran code"
-                runningVerb -> "Running"
-                else -> "Ran"
+                call.name == "execute_code" && runningVerb -> R.string.tool_title_running_code
+                call.name == "execute_code" -> R.string.tool_title_ran_code
+                runningVerb -> R.string.tool_title_running
+                else -> R.string.tool_title_ran
             }
 
         if (command.isEmpty()) {
             return null
         }
 
-        return "$verb ${ToolJson.compactPreview(CommandSummarizer.summarizeShellCommand(command), 160)}"
+        return res.get(titleRes, ToolJson.compactPreview(CommandSummarizer.summarizeShellCommand(command, res), 160))
     }
 
-    override fun pendingTitle(call: ToolCall): String? = commandTitle(call, runningVerb = true)
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = commandTitle(call, runningVerb = true, res)
 
-    override fun doneTitle(call: ToolCall): String? = commandTitle(call, runningVerb = false)
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? = commandTitle(call, runningVerb = false, res)
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val firstMeaningfulLine =
             shellOutput(call.result)
                 .split("\n")
@@ -70,13 +82,16 @@ internal object TerminalRenderer : ToolRenderer {
         return firstMeaningfulLine?.let { ToolJson.compactPreview(it, 160) } ?: ""
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val output = shellOutput(call.result)
 
         return when {
             output.isNotEmpty() -> output
 
-            call.name == "execute_code" -> ToolJson.fallbackDetailText(call.rawArgs, call.rawResult)
+            call.name == "execute_code" -> ToolJson.fallbackDetailText(call.rawArgs, call.rawResult, res)
 
             // A terminal row with no output already shows its command in the
             // title; the generic fallback would repeat it.
@@ -87,6 +102,7 @@ internal object TerminalRenderer : ToolRenderer {
     override fun extras(
         call: ToolCall,
         status: ToolViewStatus,
+        res: ToolText,
     ): ToolViewExtras {
         // The gateway's terminal_tool emits a single merged `output` string
         // (stdout+stderr, ANSI-stripped); older payloads carried separate
@@ -107,7 +123,10 @@ internal object TerminalRenderer : ToolRenderer {
 
 /** `read_terminal`: a line-window over a live terminal session. */
 internal object ReadTerminalRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         val error = ToolJson.firstString(result, listOf("error"))
         if (error.isNotEmpty()) {
@@ -120,15 +139,22 @@ internal object ReadTerminalRenderer : ToolRenderer {
         val text = ToolJson.firstString(result, listOf("text"))
 
         if (text.isEmpty()) {
-            return "Terminal output"
+            return res.get(R.string.tool_msg_terminal_output)
         }
 
         val cursor = ToolJson.intValue(result?.get("cursor_row"))
 
-        return "Lines $start-$end of $total${cursor?.let { ", cursor at row $it" } ?: ""}"
+        return if (cursor != null) {
+            res.get(R.string.tool_msg_terminal_lines_cursor, start, end, total, cursor)
+        } else {
+            res.get(R.string.tool_msg_terminal_lines, start, end, total)
+        }
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         val error = ToolJson.firstString(result, listOf("error"))
         val text = ToolJson.firstString(result, listOf("text"))
@@ -142,10 +168,10 @@ internal object ReadTerminalRenderer : ToolRenderer {
                 append("❌ $error")
             } else if (text.isNotEmpty()) {
                 append("━━━ Terminal ━━━     ($start:$end / $total)")
-                if (cursor != null) append(" │ cursor row $cursor")
+                if (cursor != null) append(" " + res.get(R.string.tool_msg_cursor_row, cursor))
                 append("\n$text")
             } else {
-                append("No terminal output")
+                append(res.get(R.string.tool_msg_no_terminal_output))
             }
         }
     }

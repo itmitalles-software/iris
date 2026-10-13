@@ -6,8 +6,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionSearchResult
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -42,8 +44,12 @@ internal fun SessionSearchResult.toSessionInfo(): SessionInfo =
 /**
  * Formats a backend epoch-seconds timestamp into a friendly, local relative/absolute
  * string. Used for search results where the session name is unknown or when displaying recency.
+ * Relative ages are string resources; older timestamps use the default locale's date format.
  */
-internal fun formatPlayedAt(epochSeconds: Double?): String? {
+internal fun formatPlayedAt(
+    epochSeconds: Double?,
+    nowEpochSecond: Long = Instant.now().epochSecond,
+): UiText? {
     if (epochSeconds == null || epochSeconds <= 0.0) return null
     val instant =
         try {
@@ -51,18 +57,17 @@ internal fun formatPlayedAt(epochSeconds: Double?): String? {
         } catch (_: Exception) {
             return null
         }
-    val now = Instant.now()
-    val diffSec = abs(now.epochSecond - instant.epochSecond)
+    val diffSec = abs(nowEpochSecond - instant.epochSecond)
     val absFormatter =
         DateTimeFormatter
             .ofLocalizedDateTime(FormatStyle.MEDIUM)
             .withZone(ZoneId.systemDefault())
     return when {
-        diffSec < 60 -> "just now"
-        diffSec < 3600 -> "${diffSec / 60}m ago"
-        diffSec < 86400 -> "${diffSec / 3600}h ago"
-        diffSec < 7 * 86400 -> "${diffSec / 86400}d ago"
-        else -> absFormatter.format(instant)
+        diffSec < 60 -> UiText.res(R.string.sessions_played_just_now)
+        diffSec < 3600 -> UiText.res(R.string.sessions_played_minutes_ago, (diffSec / 60).toInt())
+        diffSec < 86400 -> UiText.res(R.string.sessions_played_hours_ago, (diffSec / 3600).toInt())
+        diffSec < 7 * 86400 -> UiText.res(R.string.sessions_played_days_ago, (diffSec / 86400).toInt())
+        else -> UiText.raw(absFormatter.format(instant))
     }
 }
 

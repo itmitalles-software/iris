@@ -14,12 +14,14 @@ import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.update.AppUpdateCache
 import io.wutz.apollo.data.update.AppUpdateChecker
 import io.wutz.apollo.data.update.AppUpdateState
 import io.wutz.apollo.data.update.UpdateInfo
 import io.wutz.apollo.data.update.UpdateNoticeManager
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -222,7 +224,7 @@ class AppUpdateViewModelTest {
 
             val state = vm.state.value
             assertTrue(state is AppUpdateState.Error)
-            assertEquals("Network error — check your connection", (state as AppUpdateState.Error).message)
+            assertEquals(UiText.res(R.string.update_msg_network_error), (state as AppUpdateState.Error).message)
         }
 
     @Test
@@ -235,7 +237,7 @@ class AppUpdateViewModelTest {
 
             val state = vm.state.value
             assertTrue(state is AppUpdateState.Error)
-            assertEquals("No release found yet", (state as AppUpdateState.Error).message)
+            assertEquals(UiText.res(R.string.update_msg_no_release), (state as AppUpdateState.Error).message)
         }
 
     @Test
@@ -248,7 +250,7 @@ class AppUpdateViewModelTest {
 
             val state = vm.state.value
             assertTrue(state is AppUpdateState.Error)
-            assertEquals("Release has no APK asset", (state as AppUpdateState.Error).message)
+            assertEquals(UiText.res(R.string.update_msg_no_apk), (state as AppUpdateState.Error).message)
         }
 
     @Test
@@ -323,7 +325,7 @@ class AppUpdateViewModelTest {
 
             val state = vm.state.value
             assertTrue(state is AppUpdateState.Error)
-            assertEquals("Download failed — tap to retry", (state as AppUpdateState.Error).message)
+            assertEquals(UiText.res(R.string.update_msg_download_failed), (state as AppUpdateState.Error).message)
             // Retry path: tapping the row re-runs the check, which recovers.
             vm.checkForUpdate()
             advanceUntilIdle()

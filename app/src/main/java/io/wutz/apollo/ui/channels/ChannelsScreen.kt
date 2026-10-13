@@ -57,6 +57,7 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.StatusFilter
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -143,7 +144,7 @@ fun ChannelsScreen(
 
             state.errorMessage != null && state.platforms.isEmpty() -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadPlatforms() },
                     modifier = Modifier.padding(paddingValues),
                 )

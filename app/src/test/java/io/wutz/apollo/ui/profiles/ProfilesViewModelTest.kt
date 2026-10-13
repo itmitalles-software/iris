@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.ActiveProfileResponse
 import io.wutz.apollo.data.model.CreateProfileRequest
@@ -25,6 +26,7 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.data.ws.HermesWsClient
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -117,6 +119,13 @@ class ProfilesViewModelTest {
 
     private fun <T> errorResponse(code: Int): Response<T> = Response.error(code, "{}".toResponseBody(null))
 
+    private companion object {
+        // Fallback messages of mapHttpError for an empty "{}" error body.
+        const val BAD_REQUEST = "Bad Request (HTTP 400): The server could not understand the request."
+        const val NOT_FOUND = "Not Found (HTTP 404): The requested resource could not be found."
+        const val SERVER_ERROR = "Server Error (HTTP 500): The server encountered an error."
+    }
+
     @After
     fun tearDown() {
         Dispatchers.resetMain()
@@ -138,9 +147,9 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { mockApi.renameProfile("work", RenameProfileRequest("play")) }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("renamed"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_renamed, "work", "play"),
+            vm.uiState.value.toastMessage,
         )
         // reload happened
         coVerify { mockApi.getProfiles() }
@@ -167,9 +176,9 @@ class ProfilesViewModelTest {
         vm.renameProfile("work", "play")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Failed to rename"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_rename_failed, "work", NOT_FOUND),
+            vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isLoading)
     }
@@ -183,9 +192,9 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { mockApi.deleteProfile("work") }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("deleted"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_deleted, "work"),
+            vm.uiState.value.toastMessage,
         )
         coVerify { mockApi.getProfiles() }
     }
@@ -198,9 +207,9 @@ class ProfilesViewModelTest {
         vm.deleteProfile("work")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Failed to delete"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_delete_failed, "work", NOT_FOUND),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -214,9 +223,9 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { mockApi.describeProfileAuto("work", ProfileDescribeAutoRequest(overwrite = true)) }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Auto-described"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_auto_described, "work"),
+            vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isAutoDescribing)
         coVerify { mockApi.getProfiles() }
@@ -231,9 +240,13 @@ class ProfilesViewModelTest {
         vm.autoDescribeProfile("work")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("no aux client configured"),
+        assertEquals(
+            UiText.res(
+                R.string.profiles_msg_auto_describe_failed,
+                "work",
+                UiText.raw("no aux client configured"),
+            ),
+            vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isAutoDescribing)
     }
@@ -261,9 +274,9 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(vm.uiState.value.setupCommand)
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Failed to fetch setup command"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_setup_command_failed, NOT_FOUND),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -305,9 +318,9 @@ class ProfilesViewModelTest {
         vm.loadModelOptions()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Failed to load models"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_load_models_failed, SERVER_ERROR),
+            vm.uiState.value.toastMessage,
         )
         assertNull(vm.uiState.value.errorMessage)
         assertFalse(vm.uiState.value.isLoadingBuilderData)
@@ -338,9 +351,9 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { ProfileSwitchCoordinator.switchProfile("work") }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Switched to profile work"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_switched, "work"),
+            vm.uiState.value.toastMessage,
         )
         coVerify { mockApi.getProfiles() }
     }
@@ -356,9 +369,9 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(vm.uiState.value.activeProfileName)
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Failed to switch profile"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_switch_failed, "boom"),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -425,9 +438,9 @@ class ProfilesViewModelTest {
                 ),
             )
         }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("cloned successfully"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_cloned, "default", "dev-copy"),
+            vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isLoading)
         coVerify { mockApi.getProfiles() }
@@ -441,9 +454,9 @@ class ProfilesViewModelTest {
         vm.cloneProfile("default", "dev-copy")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Failed to clone profile"),
+        assertEquals(
+            UiText.res(R.string.profiles_msg_clone_failed, "default", BAD_REQUEST),
+            vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isLoading)
     }

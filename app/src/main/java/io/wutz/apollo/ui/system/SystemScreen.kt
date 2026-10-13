@@ -22,7 +22,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +37,8 @@ import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.system.components.HookCreateDialog
 import io.wutz.apollo.ui.system.components.actionLogSection
 import io.wutz.apollo.ui.system.components.checkpointsSection
@@ -79,7 +80,6 @@ fun SystemScreen(
 
     // ── Backup import (issue #786) ────────────────────────────────────────
     val context = LocalContext.current
-    val resources = LocalResources.current
     val importScope = rememberCoroutineScope()
     var pendingImport by remember { mutableStateOf<PendingImport?>(null) }
     val importPickerLauncher =
@@ -105,7 +105,7 @@ fun SystemScreen(
                     },
                     onFailure = {
                         resolvedViewModel.showToast(
-                            resources.getString(R.string.file_read_failed_reason, it.message.orEmpty()),
+                            UiText.res(R.string.file_read_failed_reason, it.message.orEmpty()),
                         )
                     },
                 )
@@ -200,12 +200,12 @@ fun SystemScreen(
                                 if (bytes != null) {
                                     resolvedViewModel.importArchive(pending.name, bytes, pending.mime)
                                 } else {
-                                    resolvedViewModel.showToast(resources.getString(R.string.file_read_failed))
+                                    resolvedViewModel.showToast(UiText.res(R.string.file_read_failed))
                                 }
                             },
                             onFailure = {
                                 resolvedViewModel.showToast(
-                                    resources.getString(R.string.file_read_failed_reason, it.message.orEmpty()),
+                                    UiText.res(R.string.file_read_failed_reason, it.message.orEmpty()),
                                 )
                             },
                         )
@@ -251,7 +251,7 @@ fun SystemScreen(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage ?: stringResource(R.string.error_unknown),
+                    message = state.errorMessage?.asString() ?: stringResource(R.string.error_unknown),
                     onRetry = { resolvedViewModel.loadAll() },
                 )
             }
@@ -321,11 +321,11 @@ fun SystemScreen(
                                         }
                                     if (uri != null) {
                                         resolvedViewModel.showToast(
-                                            resources.getString(R.string.system_backup_saved_downloads),
+                                            UiText.res(R.string.system_backup_saved_downloads),
                                         )
                                     } else {
                                         resolvedViewModel.showToast(
-                                            resources.getString(R.string.system_backup_save_failed),
+                                            UiText.res(R.string.system_backup_save_failed),
                                         )
                                     }
                                 }

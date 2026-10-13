@@ -1,23 +1,31 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import kotlinx.serialization.json.JsonArray
 
 /** `memory`: action-verb titles that keep the write target visible. */
 internal object MemoryRenderer : ToolRenderer {
-    override fun pendingTitle(call: ToolCall): String = "Saving"
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_memory_saving)
 
-    override fun doneTitle(call: ToolCall): String {
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val action = ToolJson.firstString(call.args, listOf("action")).lowercase()
         val target = ToolJson.firstString(call.args, listOf("target"))
         val base =
             when (action) {
-                "replace", "update" -> "Memory Updated"
-                "remove", "delete" -> "Memory Removed"
-                "add" -> "Memory Saved"
-                else -> "Memory ${ToolJson.firstString(call.args, listOf("action"))}"
+                "replace", "update" -> res.get(R.string.tool_title_memory_updated)
+                "remove", "delete" -> res.get(R.string.tool_title_memory_removed)
+                "add" -> res.get(R.string.tool_title_memory_saved)
+                else -> res.get(R.string.tool_title_memory_action, ToolJson.firstString(call.args, listOf("action")))
             }
 
         // Keep the target visible — "Memory Saved (user)" — like the
@@ -25,9 +33,15 @@ internal object MemoryRenderer : ToolRenderer {
         return if (target.isNotEmpty()) "$base ($target)" else base
     }
 
-    override fun subtitle(call: ToolCall): String = ToolJson.firstString(call.result, listOf("message", "error"))
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ToolJson.firstString(call.result, listOf("message", "error"))
 
-    override fun detail(call: ToolCall): String = ToolJson.firstString(call.result, listOf("message", "error"))
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ToolJson.firstString(call.result, listOf("message", "error"))
 }
 
 /** `fact_store`: add/remove/update acks and fact listings with trust scores. */
@@ -36,7 +50,10 @@ internal object FactStoreRenderer : ToolRenderer {
         (call.result?.get("results") as? JsonArray)
             ?: (call.result?.get("facts") as? JsonArray)
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val args = call.args
         val result = call.result
         val action =
@@ -62,16 +79,19 @@ internal object FactStoreRenderer : ToolRenderer {
             }
 
         return when {
-            status == "added" && factId != null -> "Fact added (ID: $factId)"
-            status == "added" -> "Fact added"
-            removed -> "Fact removed"
-            updated -> "Fact updated"
-            facts != null -> "$count facts$actionContext"
+            status == "added" && factId != null -> res.get(R.string.tool_msg_fact_added_id, factId)
+            status == "added" -> res.get(R.string.tool_msg_fact_added)
+            removed -> res.get(R.string.tool_msg_fact_removed)
+            updated -> res.get(R.string.tool_msg_fact_updated)
+            facts != null -> res.plural(R.plurals.tool_msg_fact_count, count) + actionContext
             else -> action
         }
     }
 
-    override fun detail(call: ToolCall): String =
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
         facts(call)
             ?.mapNotNull { el ->
                 val item = ToolJson.parseMaybeObject(el) ?: return@mapNotNull null
@@ -83,7 +103,7 @@ internal object FactStoreRenderer : ToolRenderer {
 
                 val metaParts = mutableListOf<String>()
                 if (category.isNotEmpty()) metaParts += "[$category]"
-                if (trust != null) metaParts += "trust: ${"%.2f".format(trust)}"
+                if (trust != null) metaParts += res.get(R.string.tool_msg_trust, "%.2f".format(trust))
                 if (tags.isNotEmpty()) metaParts += "🏷️ $tags"
 
                 if (metaParts.isNotEmpty()) {

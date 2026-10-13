@@ -50,6 +50,7 @@ import io.wutz.apollo.ui.common.ManageableItemCard
 import io.wutz.apollo.ui.common.ManageableToggle
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.mcp.McpHealthStatus
 import io.wutz.apollo.ui.mcp.McpServersUiState
 import io.wutz.apollo.ui.mcp.McpServersViewModel
@@ -137,7 +138,7 @@ fun ServerCard(
             val toolCount = toolInfos?.size ?: server.toolCount
             if (toolCount != null && toolCount > 0) {
                 val tokenEst = toolInfos?.let { McpTokenEstimator.estimateTokens(it) }
-                val label = McpTokenEstimator.formatTokenOverhead(toolCount, tokenEst)
+                val label = McpTokenEstimator.formatTokenOverhead(toolCount, tokenEst).asString()
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(6.dp),
