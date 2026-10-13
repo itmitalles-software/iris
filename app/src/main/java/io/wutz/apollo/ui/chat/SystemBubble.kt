@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
+import io.wutz.apollo.ui.common.resolve
 
 @Composable
 private fun SelfImprovementReviewCard(
@@ -118,7 +119,7 @@ internal fun SystemBubble(
     val resources = LocalResources.current
     val displayText =
         remember(message.content, resources) {
-            SystemNotice.displayText(message.content) { resources.getString(it) }
+            SystemNotice.displayText(message.content) { it.resolve(resources) }
         }
 
     Column(

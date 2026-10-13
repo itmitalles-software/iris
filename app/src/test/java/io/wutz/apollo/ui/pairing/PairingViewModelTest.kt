@@ -7,12 +7,14 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.PairingApproveRequest
 import io.wutz.apollo.data.model.PairingItem
 import io.wutz.apollo.data.model.PairingResponse
 import io.wutz.apollo.data.model.PairingRevokeRequest
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -120,7 +122,7 @@ class PairingViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.isLoading)
         assertNull(state.pairing)
-        assertTrue(state.errorMessage?.contains("Failed to load pairing") == true)
+        assertEquals(UiText.res(R.string.pairing_msg_load_failed, "boom"), state.errorMessage)
     }
 
     @Test
@@ -137,7 +139,7 @@ class PairingViewModelTest {
         assertEquals("req-1", requestSlot.captured.requestId)
         assertNull(requestSlot.captured.code)
         coVerify(exactly = 1) { mockApi.getPairing() }
-        assertEquals("Pairing request approved", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.pairing_msg_approved), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -153,10 +155,7 @@ class PairingViewModelTest {
         assertEquals("discord", requestSlot.captured.platform)
         assertEquals("u2", requestSlot.captured.userId)
         coVerify(exactly = 1) { mockApi.getPairing() }
-        assertTrue(
-            vm.uiState.value.toastMessage
-                ?.contains("u2") == true,
-        )
+        assertEquals(UiText.res(R.string.pairing_msg_revoked, "u2"), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -170,7 +169,7 @@ class PairingViewModelTest {
 
         coVerify(exactly = 1) { mockApi.clearPendingPairing() }
         coVerify(exactly = 1) { mockApi.getPairing() }
-        assertEquals("Pending requests cleared", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.pairing_msg_pending_cleared), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -191,8 +190,13 @@ class PairingViewModelTest {
 
         val state = vm.uiState.value
         assertNull(state.actionKey)
-        assertTrue(state.toastMessage?.contains("Action failed") == true)
-        assertTrue(state.toastMessage?.contains("not found or expired") == true)
+        assertEquals(
+            UiText.res(
+                R.string.pairing_msg_action_failed,
+                "Pairing request or code not found or expired for platform 'telegram'.",
+            ),
+            state.toastMessage,
+        )
     }
 
     @Test

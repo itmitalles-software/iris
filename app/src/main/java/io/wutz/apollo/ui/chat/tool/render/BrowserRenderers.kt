@@ -1,46 +1,65 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import kotlinx.serialization.json.JsonArray
 
 /** `browser_navigate`: hostname titles, including the failed-to-open form. */
 internal object BrowserNavigateRenderer : ToolRenderer {
-    override fun pendingTitle(call: ToolCall): String = "Opening ${targetHostname(call.args, null)}"
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_opening, targetHostname(call.args, null, res))
 
-    override fun doneTitle(call: ToolCall): String = "Opened ${targetHostname(call.args, call.result)}"
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_opened, targetHostname(call.args, call.result, res))
 
-    override fun errorTitle(call: ToolCall): String? {
+    override fun errorTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? {
         val url =
             ToolJson
                 .findFirstUrl(call.result)
                 .ifEmpty { call.result?.get("url")?.toString() ?: "" }
 
-        return if (url.isNotEmpty()) "Failed to open ${ToolJson.hostnameOf(url)}" else null
+        return if (url.isNotEmpty()) res.get(R.string.tool_title_open_failed, ToolJson.hostnameOf(url)) else null
     }
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val url =
             ToolJson
                 .firstString(call.args, listOf("url", "target"))
                 .ifEmpty { ToolJson.firstString(call.result, listOf("url")) }
                 .ifEmpty { ToolJson.findFirstUrl(call.args, call.result) }
 
-        return if (url.isNotEmpty()) ToolJson.hostnameOf(url) else "Navigated in browser"
+        return if (url.isNotEmpty()) ToolJson.hostnameOf(url) else res.get(R.string.tool_msg_navigated_in_browser)
     }
 }
 
 /** `browser_snapshot`: control-count summary of the accessibility snapshot. */
 internal object BrowserSnapshotRenderer : ToolRenderer {
-    private fun summarizeSnapshot(snapshot: String): String {
+    private fun summarizeSnapshot(
+        snapshot: String,
+        res: ToolText,
+    ): String {
         fun count(re: Regex): Int = re.findAll(snapshot).count()
 
         val stats =
             listOf(
-                "${count(Regex("""button\s+"[^"]+"""))} buttons",
-                "${count(Regex("""link\s+"[^"]+"""))} links",
-                "${count(Regex("""(?:textbox|combobox|searchbox)\s+"[^"]+"""))} inputs",
+                count(Regex("""button\s+"[^"]+""")).let { res.plural(R.plurals.tool_msg_snapshot_buttons, it) },
+                count(Regex("""link\s+"[^"]+""")).let { res.plural(R.plurals.tool_msg_snapshot_links, it) },
+                count(Regex("""(?:textbox|combobox|searchbox)\s+"[^"]+""")).let {
+                    res.plural(R.plurals.tool_msg_snapshot_inputs, it)
+                },
             ).joinToString(" · ")
 
         val labels =
@@ -51,78 +70,109 @@ internal object BrowserSnapshotRenderer : ToolRenderer {
                 .take(4)
                 .toList()
 
-        return if (labels.isNotEmpty()) "$stats\nTop controls: ${labels.joinToString(", ")}" else stats
-    }
-
-    override fun subtitle(call: ToolCall): String {
-        val snapshot = ToolJson.firstString(call.result, listOf("snapshot"))
-
-        return if (snapshot.isNotEmpty()) {
-            summarizeSnapshot(snapshot)
+        return if (labels.isNotEmpty()) {
+            "$stats\n" + res.get(R.string.tool_msg_top_controls, labels.joinToString(", "))
         } else {
-            "Captured a browser accessibility snapshot"
+            stats
         }
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val snapshot = ToolJson.firstString(call.result, listOf("snapshot"))
 
         return if (snapshot.isNotEmpty()) {
-            summarizeSnapshot(snapshot)
+            summarizeSnapshot(snapshot, res)
         } else {
-            ToolJson.fallbackDetailText(call.rawArgs, call.rawResult)
+            res.get(R.string.tool_msg_snapshot_captured)
+        }
+    }
+
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
+        val snapshot = ToolJson.firstString(call.result, listOf("snapshot"))
+
+        return if (snapshot.isNotEmpty()) {
+            summarizeSnapshot(snapshot, res)
+        } else {
+            ToolJson.fallbackDetailText(call.rawArgs, call.rawResult, res)
         }
     }
 }
 
 /** `browser_click`: what got clicked, with internal refs called out. */
 internal object BrowserClickRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val clicked =
             ToolJson
                 .firstString(call.result, listOf("clicked"))
                 .ifEmpty { ToolJson.firstString(call.args, listOf("ref", "target")) }
 
         return when {
-            clicked.isEmpty() -> "Clicked on page"
-            clicked.startsWith("@") -> "Clicked page element (internal ref $clicked)"
-            else -> "Clicked $clicked"
+            clicked.isEmpty() -> res.get(R.string.tool_msg_clicked_on_page)
+            clicked.startsWith("@") -> res.get(R.string.tool_msg_clicked_internal_ref, clicked)
+            else -> res.get(R.string.tool_msg_clicked, clicked)
         }
     }
 }
 
 /** `browser_fill` / `browser_type`: which field got which value. */
 internal object BrowserTypeRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val field = ToolJson.firstString(call.args, listOf("label", "field", "ref", "target"))
         val value = ToolJson.firstString(call.args, listOf("value", "text"))
 
         return listOf(
-            field.takeIf { it.isNotEmpty() }?.let { "Field: $it" },
-            value.takeIf { it.isNotEmpty() }?.let { "Value: ${ToolJson.compactPreview(it, 42)}" },
+            field.takeIf { it.isNotEmpty() }?.let { res.get(R.string.tool_msg_field, it) },
+            value.takeIf { it.isNotEmpty() }?.let { res.get(R.string.tool_msg_value, ToolJson.compactPreview(it, 42)) },
         ).filterNotNull()
             .joinToString(" · ")
-            .ifEmpty { "Filled page input" }
+            .ifEmpty { res.get(R.string.tool_msg_filled_input) }
     }
 }
 
 /** browser_scroll / browser_back / browser_press: one-line acks. */
 internal object BrowserActionRenderer : ToolRenderer {
-    override fun doneTitle(call: ToolCall): String? =
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? =
         when (call.name) {
             "browser_scroll" -> {
-                "Scrolled ${ToolJson.firstString(call.result, listOf("scrolled"))
-                    .ifEmpty { ToolJson.firstString(call.args, listOf("direction")) }.ifEmpty { "page" }}"
+                val scrolled =
+                    ToolJson
+                        .firstString(call.result, listOf("scrolled"))
+                        .ifEmpty { ToolJson.firstString(call.args, listOf("direction")) }
+                        .ifEmpty { res.get(R.string.tool_msg_page) }
+                res.get(R.string.tool_title_scrolled, scrolled)
             }
 
             "browser_back" -> {
                 val url = ToolJson.firstString(call.result, listOf("url"))
-                if (url.isNotEmpty()) "Went back to ${ToolJson.hostnameOf(url)}" else "Went back"
+                if (url.isNotEmpty()) {
+                    res.get(R.string.tool_title_went_back_to, ToolJson.hostnameOf(url))
+                } else {
+                    res.get(R.string.tool_title_went_back)
+                }
             }
 
             "browser_press" -> {
-                "Pressed ${ToolJson.firstString(call.result, listOf("pressed"))
-                    .ifEmpty { ToolJson.firstString(call.args, listOf("key")) }}"
+                res.get(
+                    R.string.tool_title_pressed,
+                    ToolJson
+                        .firstString(call.result, listOf("pressed"))
+                        .ifEmpty { ToolJson.firstString(call.args, listOf("key")) },
+                )
             }
 
             else -> {
@@ -130,19 +180,31 @@ internal object BrowserActionRenderer : ToolRenderer {
             }
         }
 
-    override fun subtitle(call: ToolCall): String = ""
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ""
 
-    override fun detail(call: ToolCall): String = ""
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ""
 }
 
 /** browser_get_images: image inventory of the current page. */
 internal object BrowserImagesRenderer : ToolRenderer {
-    override fun doneTitle(call: ToolCall): String {
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val n = ToolJson.intValue(call.result?.get("count")) ?: 0
-        return "Found $n image${if (n == 1) "" else "s"}"
+        return res.plural(R.plurals.tool_title_found_images, n)
     }
 
-    override fun detail(call: ToolCall): String =
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
         (call.result?.get("images") as? JsonArray)
             ?.take(12)
             ?.mapNotNull { el ->
@@ -159,14 +221,25 @@ internal object BrowserImagesRenderer : ToolRenderer {
 
 /** browser_vision: screenshot Q&A — the analysis text is the payload. */
 internal object BrowserVisionRenderer : ToolRenderer {
-    override fun pendingTitle(call: ToolCall): String = "Looking at page"
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_looking_at_page)
 
-    override fun doneTitle(call: ToolCall): String = "Analyzed page"
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = res.get(R.string.tool_title_analyzed_page)
 
-    override fun subtitle(call: ToolCall): String =
-        ToolJson.compactPreview(ToolJson.firstString(call.args, listOf("question")), 120)
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ToolJson.compactPreview(ToolJson.firstString(call.args, listOf("question")), 120)
 
-    override fun detail(call: ToolCall): String =
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
         ToolJson
             .firstString(call.result, listOf("analysis"))
             .ifEmpty { ToolJson.firstString(call.result, listOf("note")) }
@@ -174,16 +247,30 @@ internal object BrowserVisionRenderer : ToolRenderer {
 
 /** browser_console: message/error counts, or a JS eval result. */
 internal object BrowserConsoleRenderer : ToolRenderer {
-    override fun doneTitle(call: ToolCall): String? {
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? {
         val result = call.result ?: return null
-        if (result.containsKey("result")) return "Evaluated JS"
+        if (result.containsKey("result")) return res.get(R.string.tool_title_evaluated_js)
         val msgs = ToolJson.intValue(result["total_messages"]) ?: 0
         val errs = ToolJson.intValue(result["total_errors"]) ?: 0
-        return "Console: $msgs message${if (msgs == 1) "" else "s"}" +
-            if (errs > 0) ", $errs error${if (errs == 1) "" else "s"}" else ""
+        val messages = res.plural(R.plurals.tool_msg_console_messages, msgs)
+        return if (errs > 0) {
+            res.get(
+                R.string.tool_title_console_with_errors,
+                messages,
+                res.plural(R.plurals.tool_msg_console_errors, errs),
+            )
+        } else {
+            res.get(R.string.tool_title_console, messages)
+        }
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result ?: return ""
         result["result"]?.let { return it.toString() }
         val lines =

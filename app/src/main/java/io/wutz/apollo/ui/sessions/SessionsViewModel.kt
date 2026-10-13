@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.sessions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SessionListCacheStore
@@ -27,6 +28,7 @@ import io.wutz.apollo.data.ws.ProjectsSource
 import io.wutz.apollo.data.ws.SessionLiveStatusSource
 import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import kotlinx.coroutines.Job
@@ -80,7 +82,7 @@ data class SessionsUiState(
     val sessions: List<SessionInfo> = emptyList(),
     val total: Int = 0,
     val hasMore: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val corruptStorageProfiles: Set<String> = emptySet(),
     val stats: SessionStats = SessionStats(),
     val isLoadingStats: Boolean = false,
@@ -98,17 +100,17 @@ data class SessionsUiState(
     val showEmptyCleanupDialog: Boolean = false,
     val isCleaningEmpty: Boolean = false,
     val isDeletingBulk: Boolean = false,
-    val toastMessage: String? = null,
+    val toastMessage: UiText? = null,
     val sessionToDeleteConfirm: String? = null,
     val showBulkDeleteConfirm: Boolean = false,
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val searchResults: List<SessionSearchResult> = emptyList(),
-    val searchError: String? = null,
+    val searchError: UiText? = null,
     val isLoadingMoreSearch: Boolean = false,
     val searchHasMore: Boolean = false,
     val searchNextOffset: Int? = null,
-    val searchLoadMoreError: String? = null,
+    val searchLoadMoreError: UiText? = null,
     val showHidden: Boolean = false,
     // Archived view (issue #1496): lists only archived rows (backend archived=only).
     val showArchived: Boolean = false,
@@ -534,7 +536,7 @@ class SessionsViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = "Failed to load sessions: $errorMsg",
+                                errorMessage = UiText.res(R.string.sessions_msg_load_failed, errorMsg),
                             )
                         }
                     }
@@ -611,7 +613,11 @@ class SessionsViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoadingMore = false,
-                                errorMessage = "Failed to load more: ${result.error.message}",
+                                errorMessage =
+                                    UiText.res(
+                                        R.string.sessions_msg_load_more_failed_reason,
+                                        result.error.message,
+                                    ),
                             )
                         }
                     }
@@ -725,9 +731,15 @@ class SessionsViewModel(
             is NetworkResult.Failure -> {
                 _uiState.update {
                     if (offset == 0) {
-                        it.copy(isSearching = false, searchError = "Search failed: ${result.error.message}")
+                        it.copy(
+                            isSearching = false,
+                            searchError = UiText.res(R.string.sessions_msg_search_failed, result.error.message),
+                        )
                     } else {
-                        it.copy(isLoadingMoreSearch = false, searchLoadMoreError = "Failed to load more")
+                        it.copy(
+                            isLoadingMoreSearch = false,
+                            searchLoadMoreError = UiText.res(R.string.sessions_msg_load_more_failed),
+                        )
                     }
                 }
             }
@@ -842,7 +854,7 @@ class SessionsViewModel(
                 it.copy(
                     renamingSessionId = null,
                     renameDraft = "",
-                    toastMessage = "Title cannot be empty",
+                    toastMessage = UiText.res(R.string.sessions_msg_title_empty),
                 )
             }
             return
@@ -869,7 +881,7 @@ class SessionsViewModel(
                                 it.searchResults.map { s ->
                                     if (s.session_id == sessionId) s.copy(title = newTitle) else s
                                 },
-                            toastMessage = "Session renamed",
+                            toastMessage = UiText.res(R.string.sessions_msg_renamed),
                         )
                     }
                 }
@@ -879,7 +891,7 @@ class SessionsViewModel(
                         it.copy(
                             renamingSessionId = null,
                             renameDraft = "",
-                            toastMessage = "Rename failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.sessions_msg_rename_failed, result.error.message),
                         )
                     }
                 }
@@ -915,9 +927,9 @@ class SessionsViewModel(
                                     .map { s -> if (s.id == sessionId) s.copy(pinned = targetPinned) else s },
                             toastMessage =
                                 if (targetPinned) {
-                                    "Session pinned"
+                                    UiText.res(R.string.sessions_msg_pinned)
                                 } else {
-                                    "Session unpinned"
+                                    UiText.res(R.string.sessions_msg_unpinned)
                                 },
                         )
                     }
@@ -925,7 +937,7 @@ class SessionsViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Pin failed: ${result.error.message}")
+                        it.copy(toastMessage = UiText.res(R.string.sessions_msg_pin_failed, result.error.message))
                     }
                 }
             }
@@ -958,9 +970,9 @@ class SessionsViewModel(
                             total = (it.total - 1).coerceAtLeast(0),
                             toastMessage =
                                 if (targetArchived) {
-                                    "Session archived"
+                                    UiText.res(R.string.sessions_msg_archived)
                                 } else {
-                                    "Session unarchived"
+                                    UiText.res(R.string.sessions_msg_unarchived)
                                 },
                         )
                     }
@@ -969,7 +981,7 @@ class SessionsViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Archive failed: ${result.error.message}")
+                        it.copy(toastMessage = UiText.res(R.string.sessions_msg_archive_failed, result.error.message))
                     }
                 }
             }
@@ -1030,7 +1042,7 @@ class SessionsViewModel(
                             searchResults = it.searchResults.filter { it.session_id != sessionId },
                             total = newTotal,
                             hasMore = it.hasMore && newTotal > updatedSessions.size,
-                            toastMessage = "Session deleted",
+                            toastMessage = UiText.res(R.string.sessions_msg_deleted),
                         )
                     }
                 }
@@ -1039,7 +1051,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             deletingSessionIds = it.deletingSessionIds - sessionId,
-                            toastMessage = "Delete failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.sessions_msg_delete_failed, result.error.message),
                         )
                     }
                 }
@@ -1102,7 +1114,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             isDeletingBulk = false,
-                            toastMessage = "Delete failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.sessions_msg_delete_failed, result.error.message),
                         )
                     }
                 }
@@ -1113,9 +1125,18 @@ class SessionsViewModel(
     private fun bulkDeleteToast(
         deleted: Int,
         skipped: Int,
-    ): String {
-        val deletedText = if (deleted > 0) "$deleted session(s) deleted" else "No sessions were deleted"
-        return if (skipped > 0) "$deletedText, $skipped skipped (active)" else deletedText
+    ): UiText {
+        val deletedText =
+            if (deleted > 0) {
+                UiText.plural(R.plurals.sessions_msg_bulk_deleted, deleted)
+            } else {
+                UiText.res(R.string.sessions_msg_bulk_none_deleted)
+            }
+        return if (skipped > 0) {
+            UiText.plural(R.plurals.sessions_msg_bulk_skipped_active, skipped, deletedText, skipped)
+        } else {
+            deletedText
+        }
     }
 
     // ── Prune ────────────────────────────────────────────────────────────
@@ -1152,7 +1173,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             isPruning = false,
-                            toastMessage = "Old sessions pruned",
+                            toastMessage = UiText.res(R.string.sessions_msg_pruned),
                         )
                     }
                     loadSessions()
@@ -1163,7 +1184,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             isPruning = false,
-                            toastMessage = "Prune failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.sessions_msg_prune_failed, result.error.message),
                         )
                     }
                 }
@@ -1215,9 +1236,9 @@ class SessionsViewModel(
                             emptyCount = 0,
                             toastMessage =
                                 if (deleted > 0) {
-                                    "Deleted $deleted empty sessions"
+                                    UiText.plural(R.plurals.sessions_msg_empty_deleted, deleted)
                                 } else {
-                                    "No empty sessions to delete"
+                                    UiText.res(R.string.sessions_msg_no_empty_sessions)
                                 },
                         )
                     }
@@ -1225,11 +1246,13 @@ class SessionsViewModel(
                 }
 
                 else -> {
-                    val message = (result as? NetworkResult.Failure)?.error?.message ?: "Unknown error"
+                    val message =
+                        (result as? NetworkResult.Failure)?.error?.message?.let { UiText.raw(it) }
+                            ?: UiText.res(R.string.error_unknown)
                     _uiState.update {
                         it.copy(
                             isCleaningEmpty = false,
-                            toastMessage = "Cleanup failed: $message",
+                            toastMessage = UiText.res(R.string.sessions_msg_cleanup_failed, message),
                         )
                     }
                 }

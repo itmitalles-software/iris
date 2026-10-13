@@ -101,6 +101,8 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.asString
 import kotlinx.coroutines.launch
 
 private const val FILTER_ALL = "ALL"
@@ -232,7 +234,7 @@ fun KeysScreen(
 
                 state.errorMessage != null && !hasAnyVars -> {
                     ErrorState(
-                        message = state.errorMessage ?: "",
+                        message = state.errorMessage?.asString() ?: "",
                         onRetry = { viewModel.loadKeys() },
                         modifier = Modifier.padding(paddingValues),
                     )
@@ -306,7 +308,7 @@ fun KeysScreen(
                         visibleCategories.forEach { section ->
                             if (selectedCategory == FILTER_ALL && filteredCategories.size > 1) {
                                 item(key = "category-section-${section.name}") {
-                                    SectionHeader(title = "${section.name} (${section.vars.size})")
+                                    SectionHeader(title = "${categoryLabel(section.name)} (${section.vars.size})")
                                 }
                             }
 
@@ -397,7 +399,7 @@ private fun CategoryFilterBar(
             FilterChip(
                 selected = selectedCategory == section.name,
                 onClick = { onCategorySelected(section.name) },
-                label = { Text("${section.name} (${section.vars.size})") },
+                label = { Text("${categoryLabel(section.name)} (${section.vars.size})") },
                 leadingIcon = {
                     Icon(
                         imageVector = icon,
@@ -409,6 +411,11 @@ private fun CategoryFilterBar(
         }
     }
 }
+
+/** Server category names stay as sent; only the local fallback section is translated. */
+@Composable
+private fun categoryLabel(name: String): String =
+    if (name == OTHER_KEYS_CATEGORY) stringResource(R.string.config_category_other) else name
 
 // ── Add key dialog ───────────────────────────────────────────────────────────
 
@@ -527,7 +534,7 @@ private fun EnvVarCard(
     onHide: () -> Unit,
     onSave: (String) -> Unit,
     onRequestDelete: () -> Unit,
-    onShowToast: (String) -> Unit,
+    onShowToast: (UiText) -> Unit,
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var valueVisible by remember { mutableStateOf(false) }
@@ -546,8 +553,6 @@ private fun EnvVarCard(
         } else {
             stringResource(R.string.keys_label_not_configured)
         }
-
-    val copiedMessage = stringResource(R.string.keys_copied_toast)
 
     // Insert zero-width spaces (\u200B) after underscores so line breaks happen cleanly between words
     val formattedKeyName = remember(key) { key.replace("_", "_\u200B") }
@@ -771,7 +776,7 @@ private fun EnvVarCard(
                                         scope.launch {
                                             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
                                         }
-                                        onShowToast(copiedMessage)
+                                        onShowToast(UiText.res(R.string.keys_copied_toast))
                                     }) {
                                         Icon(
                                             imageVector = Icons.Outlined.ContentCopy,

@@ -1,5 +1,7 @@
 package io.wutz.apollo.ui.chat.tool
 
+import io.wutz.apollo.R
+
 /**
  * Reduce a verbose shell command to the "main" command, for display only.
  *
@@ -180,7 +182,10 @@ object CommandSummarizer {
         return Regex("-{2,}|_exit=|(?:^|\\s|=)\\$[?{]|PIPESTATUS").containsMatchIn(rest)
     }
 
-    fun summarizeShellCommand(raw: String?): String {
+    fun summarizeShellCommand(
+        raw: String?,
+        res: ToolText,
+    ): String {
         val original = (raw ?: "").trim()
 
         if (original.isEmpty()) {
@@ -210,6 +215,6 @@ object CommandSummarizer {
             return core[0]
         }
 
-        return "${core[0]} + ${core.size - 1} ${if (core.size == 2) "command" else "commands"}"
+        return res.plural(R.plurals.tool_msg_more_commands, core.size - 1, core[0], core.size - 1)
     }
 }

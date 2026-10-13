@@ -15,7 +15,7 @@ class ConnectorToolLabelsTest {
         }"""
         val view =
             io.wutz.apollo.ui.chat
-                .parseToolOutput(content, "tool_call", false)
+                .parseToolOutput(content, "tool_call", false, TestToolText.english)
         assertEquals("GitHub · Create issue", view?.serverDisplayName)
         assertEquals("GitHub · Create issue", view?.title)
     }
@@ -25,16 +25,22 @@ class ConnectorToolLabelsTest {
             Json.parseToJsonElement(
                 """{"hermes_tool_labels":[{"app":"Google Drive","text":"List files","kind":"connector"}]}""",
             )
-        val running = ToolViewBuilder.build("tool_call", args, null, running = true)
-        val restored = ToolViewBuilder.build("tool_call", args, Json.parseToJsonElement("{}"))
+        val running = ToolViewBuilder.build("tool_call", args, null, running = true, res = TestToolText.english)
+        val restored =
+            ToolViewBuilder.build(
+                "tool_call",
+                args,
+                Json.parseToJsonElement("{}"),
+                res = TestToolText.english,
+            )
         assertEquals("Google Drive · List files", running.title)
         assertEquals(running.title, restored.title)
     }
 
     @Test fun `malformed metadata and actual labels argument keep fallback title`() {
         val args = Json.parseToJsonElement("""{"labels":["bug"],"hermes_tool_labels":[null,42,{"app":"GitHub"}]}""")
-        val view = ToolViewBuilder.build("tool_call", args, null)
+        val view = ToolViewBuilder.build("tool_call", args, null, res = TestToolText.english)
         assertTrue(view.title.isNotBlank())
-        assertEquals(ToolViewBuilder.build("tool_call", null, null).title, view.title)
+        assertEquals(ToolViewBuilder.build("tool_call", null, null, res = TestToolText.english).title, view.title)
     }
 }

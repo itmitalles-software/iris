@@ -39,6 +39,7 @@ import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.FilterChipRow
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.plugins.PluginsUiState
@@ -88,7 +89,7 @@ fun CatalogPluginsView(
 
             state.catalogErrorMessage != null && state.catalogEntries.isEmpty() -> {
                 ErrorState(
-                    message = state.catalogErrorMessage,
+                    message = state.catalogErrorMessage.asString(),
                     onRetry = onRetry,
                 )
             }

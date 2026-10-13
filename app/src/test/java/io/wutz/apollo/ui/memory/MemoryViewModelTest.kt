@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.MemoryProviderStatusRow
 import io.wutz.apollo.data.model.MemoryResetRequest
 import io.wutz.apollo.data.model.MemoryResetResponse
@@ -13,6 +14,7 @@ import io.wutz.apollo.data.model.MemoryResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -133,11 +135,8 @@ class MemoryViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(vm.uiState.value.memory)
-        assertTrue(
-            vm.uiState.value.errorMessage
-                .orEmpty()
-                .isNotBlank(),
-        )
+        val error = vm.uiState.value.errorMessage as UiText.Raw
+        assertTrue(error.text.isNotBlank())
     }
 
     @Test
@@ -151,7 +150,7 @@ class MemoryViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { mockApi.resetMemory(MemoryResetRequest(target = "all")) }
-        assertEquals("Memory (all) reset successfully", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.memory_msg_reset_done, "all"), vm.uiState.value.toastMessage)
         // One load + one reload after reset.
         coVerify(exactly = 2) { mockApi.getMemory() }
     }
@@ -164,11 +163,9 @@ class MemoryViewModelTest {
         vm.resetMemory("memory")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage
-                .orEmpty()
-                .contains("Failed to reset memory"),
-        )
+        val toast = vm.uiState.value.toastMessage as UiText.Resource
+        assertEquals(R.string.memory_msg_reset_failed, toast.id)
+        assertTrue((toast.args.single() as String).isNotBlank())
         assertNull(vm.uiState.value.resetting)
     }
 }

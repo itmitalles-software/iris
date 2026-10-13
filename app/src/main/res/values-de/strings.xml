@@ -2152,4 +2152,923 @@
         <item quantity="one">%1$d Nutzung</item>
         <item quantity="other">%1$d Nutzungen</item>
     </plurals>
+    <!-- Apollo i18n (ViewModel messages, issue #10) -->
+    <!-- Keys -->
+    <string name="keys_msg_load_failed">Schlüssel konnten nicht geladen werden: %1$s</string>
+    <string name="keys_msg_key_value_required">Schlüssel und Wert sind erforderlich</string>
+    <string name="keys_msg_added">Schlüssel hinzugefügt</string>
+    <string name="keys_msg_add_failed">Schlüssel konnte nicht hinzugefügt werden: %1$s</string>
+    <string name="keys_msg_deleted">Schlüssel gelöscht</string>
+    <string name="keys_msg_delete_failed">Schlüssel konnte nicht gelöscht werden: %1$s</string>
+    <string name="keys_msg_reveal_failed">Schlüssel konnte nicht angezeigt werden: %1$s</string>
+    <string name="keys_msg_updated">Schlüssel aktualisiert</string>
+    <string name="keys_msg_update_failed">Schlüssel konnte nicht aktualisiert werden: %1$s</string>
+    <string name="keys_msg_gateway_restart_initiated">Gateway-Neustart eingeleitet</string>
+    <string name="keys_msg_gateway_restart_failed">Gateway konnte nicht neu gestartet werden: %1$s</string>
+    <!-- Billing -->
+    <string name="billing_msg_unavailable">Abrechnung nicht verfügbar</string>
+    <string name="billing_msg_no_data">Keine Abrechnungsdaten erhalten</string>
+    <string name="billing_msg_load_subscription_failed">Abo konnte nicht geladen werden</string>
+    <string name="billing_msg_usage_unavailable">Nutzungsdaten nicht verfügbar</string>
+    <string name="billing_msg_load_usage_failed">Nutzung konnte nicht geladen werden</string>
+    <string name="billing_msg_preview_unavailable">Vorschau nicht verfügbar</string>
+    <string name="billing_msg_upgrade_unavailable">Upgrade nicht verfügbar</string>
+    <string name="billing_msg_action_required">Aktion erforderlich – öffne: %1$s</string>
+    <string name="billing_msg_payment_failed">Zahlung fehlgeschlagen</string>
+    <string name="billing_msg_upgrade_successful">Upgrade erfolgreich</string>
+    <string name="billing_msg_upgrade_requested">Upgrade angefordert</string>
+    <string name="billing_msg_plan_change_unavailable">Tarifwechsel nicht verfügbar</string>
+    <string name="billing_msg_cancellation_scheduled">Kündigung vorgemerkt</string>
+    <string name="billing_msg_plan_changed">Tarif geändert</string>
+    <string name="billing_msg_resume_unavailable">Fortsetzen nicht verfügbar</string>
+    <string name="billing_msg_subscription_resumed">Abo fortgesetzt</string>
+    <!-- Files -->
+    <string name="files_msg_list_failed">Dateien konnten nicht aufgelistet werden: %1$s</string>
+    <string name="files_msg_folder_name_required">Ordnername ist erforderlich</string>
+    <string name="files_msg_folder_name_slash">Ordnername darf kein / enthalten</string>
+    <string name="files_msg_folder_created">Ordner erstellt</string>
+    <string name="files_msg_create_folder_failed">Ordner konnte nicht erstellt werden: %1$s</string>
+    <string name="files_msg_file_uploaded">Datei hochgeladen</string>
+    <string name="files_msg_upload_failed">Datei konnte nicht hochgeladen werden: %1$s</string>
+    <string name="files_msg_deleted">%1$s gelöscht</string>
+    <string name="files_msg_delete_failed">Löschen fehlgeschlagen: %1$s</string>
+    <!-- Skills -->
+    <string name="skills_msg_load_failed">Skills konnten nicht geladen werden: %1$s</string>
+    <string name="skills_msg_search_failed">Suche fehlgeschlagen: %1$s</string>
+    <string name="skills_msg_hub_sources_failed">Hub-Quellen konnten nicht geladen werden: %1$s</string>
+    <string name="skills_msg_installed">Installiert: %1$s</string>
+    <string name="skills_msg_install_failed">%1$s konnte nicht installiert werden: %2$s</string>
+    <string name="skills_msg_uninstalled">Deinstalliert: %1$s</string>
+    <string name="skills_msg_uninstall_failed">%1$s konnte nicht deinstalliert werden: %2$s</string>
+    <string name="skills_msg_toggle_failed">Skill konnte nicht umgeschaltet werden: %1$s</string>
+    <string name="skills_msg_content_load_failed">Skill-Inhalt konnte nicht geladen werden: %1$s</string>
+    <string name="skills_msg_saved">Skill gespeichert</string>
+    <string name="skills_msg_save_failed">Skill-Inhalt konnte nicht gespeichert werden: %1$s</string>
+    <string name="skills_msg_hub_updating">Skills werden aus dem Hub aktualisiert…</string>
+    <string name="skills_msg_hub_updated">Skills aktualisiert</string>
+    <string name="skills_msg_hub_update_failed">Aktualisierung fehlgeschlagen: %1$s</string>
+    <!-- Webhooks -->
+    <string name="webhooks_msg_load_failed">Webhooks konnten nicht geladen werden: %1$s</string>
+    <string name="webhooks_msg_global_enabled">Webhooks global aktiviert</string>
+    <string name="webhooks_msg_global_disabled">Webhooks global deaktiviert</string>
+    <string name="webhooks_msg_toggle_global_failed">Webhooks konnten nicht umgeschaltet werden: %1$s</string>
+    <string name="webhooks_msg_name_required">Name ist erforderlich</string>
+    <string name="webhooks_msg_subscription_created">Abonnement „%1$s“ erstellt</string>
+    <string name="webhooks_msg_subscription_enabled">Abonnement „%1$s“ aktiviert</string>
+    <string name="webhooks_msg_subscription_disabled">Abonnement „%1$s“ deaktiviert</string>
+    <string name="webhooks_msg_toggle_failed">„%1$s“ konnte nicht umgeschaltet werden: %2$s</string>
+    <string name="webhooks_msg_subscription_deleted">Abonnement „%1$s“ gelöscht</string>
+    <string name="webhooks_msg_delete_failed">„%1$s“ konnte nicht gelöscht werden: %2$s</string>
+    <!-- Config -->
+    <string name="config_msg_load_failed">Konfiguration konnte nicht geladen werden: %1$s</string>
+    <string name="config_msg_load_yaml_failed">YAML konnte nicht geladen werden: %1$s</string>
+    <string name="config_msg_saved">Konfiguration gespeichert</string>
+    <string name="config_msg_save_failed">Speichern fehlgeschlagen: %1$s</string>
+    <string name="config_msg_yaml_saved">YAML-Konfiguration gespeichert</string>
+    <string name="config_msg_save_yaml_failed">YAML konnte nicht gespeichert werden: %1$s</string>
+    <plurals name="config_msg_reset_fields">
+        <item quantity="one">%1$d Feld auf Standard zurückgesetzt (zum Übernehmen „Speichern“ tippen)</item>
+        <item quantity="other">%1$d Felder auf Standard zurückgesetzt (zum Übernehmen „Speichern“ tippen)</item>
+    </plurals>
+    <!-- Toolsets -->
+    <string name="toolsets_msg_load_failed">Toolsets konnten nicht geladen werden: %1$s</string>
+    <string name="toolsets_msg_toggle_failed">Toolset konnte nicht umgeschaltet werden: %1$s</string>
+    <string name="toolsets_msg_config_load_failed">Toolset-Konfiguration konnte nicht geladen werden: %1$s</string>
+    <string name="toolsets_msg_backend_set_needs_auth">Backend auf %1$s gesetzt – zum Aktivieren musst du dich beim Nous Portal anmelden</string>
+    <string name="toolsets_msg_backend_set">Backend auf %1$s gesetzt</string>
+    <string name="toolsets_msg_backend_select_failed">Backend konnte nicht ausgewählt werden: %1$s</string>
+    <string name="toolsets_msg_env_saved">%1$s gespeichert</string>
+    <string name="toolsets_msg_env_save_failed">%1$s konnte nicht gespeichert werden: %2$s</string>
+    <string name="toolsets_msg_env_cleared">%1$s geleert</string>
+    <string name="toolsets_msg_env_clear_failed">%1$s konnte nicht geleert werden: %2$s</string>
+    <string name="toolsets_msg_env_reveal_failed">%1$s konnte nicht angezeigt werden: %2$s</string>
+    <string name="toolsets_msg_setup_start_failed">Einrichtung konnte nicht gestartet werden: %1$s</string>
+    <string name="toolsets_msg_setup_spawn_rejected">Einrichtung konnte nicht gestartet werden: Start abgelehnt</string>
+    <!-- Pairing -->
+    <string name="pairing_msg_load_failed">Kopplungen konnten nicht geladen werden: %1$s</string>
+    <string name="pairing_msg_approved">Kopplungsanfrage genehmigt</string>
+    <string name="pairing_msg_revoked">Zugriff für %1$s entzogen</string>
+    <string name="pairing_msg_pending_cleared">Ausstehende Anfragen gelöscht</string>
+    <string name="pairing_msg_action_failed">Aktion fehlgeschlagen: %1$s</string>
+    <!-- Channels -->
+    <string name="channels_msg_load_failed">Plattformen konnten nicht geladen werden: %1$s</string>
+    <string name="channels_msg_updated_live">%1$s live aktualisiert</string>
+    <string name="channels_msg_toggle_failed">Umschalten fehlgeschlagen: %1$s</string>
+    <string name="channels_msg_disconnected_live">Plattform getrennt und Zugangsdaten live gelöscht</string>
+    <string name="channels_msg_disconnected_restart">Plattform getrennt und Zugangsdaten gelöscht; starte das Gateway neu</string>
+    <string name="channels_msg_disconnect_failed">Trennen fehlgeschlagen: %1$s. Aktualisiere die Plattformeinstellungen, bevor du es erneut versuchst.</string>
+    <string name="channels_msg_configured_live">%1$s konfiguriert und live neu geladen</string>
+    <string name="channels_msg_configured_restart">%1$s konfiguriert – starte das Gateway neu, damit die Änderungen wirksam werden</string>
+    <string name="channels_msg_configure_failed">Konfiguration fehlgeschlagen: %1$s</string>
+    <string name="channels_msg_test_failed">Test fehlgeschlagen: %1$s</string>
+    <string name="channels_msg_restart_failed">Neustart fehlgeschlagen: %1$s</string>
+    <string name="channels_msg_onboarding_expired">Telegram-Kopplung abgelaufen. Starte eine neue QR-Einrichtung, um es erneut zu versuchen.</string>
+    <string name="channels_msg_onboarding_waiting">Warte weiter auf Telegram. Neuer Versuch…</string>
+    <string name="channels_msg_onboarding_ids_numeric">Erlaubte Telegram-Nutzer-IDs müssen numerisch sein.</string>
+    <string name="channels_msg_onboarding_ids_required">Füge mindestens eine erlaubte Telegram-Nutzer-ID hinzu.</string>
+    <string name="channels_msg_telegram_saved">Telegram gespeichert. Gateway wird neu gestartet…</string>
+    <string name="channels_msg_qr_expired">abgelaufen</string>
+    <!-- Achievements -->
+    <string name="achievements_msg_load_failed">Erfolge konnten nicht geladen werden: %1$s</string>
+    <string name="achievements_msg_rescan_complete">Neuer Scan abgeschlossen</string>
+    <string name="achievements_msg_rescan_failed">Neuer Scan fehlgeschlagen: %1$s</string>
+    <string name="achievements_msg_reset_done">Erfolgsstatus zurückgesetzt</string>
+    <string name="achievements_msg_reset_failed">Zurücksetzen fehlgeschlagen: %1$s</string>
+    <!-- Kanban -->
+    <string name="kanban_msg_load_boards_failed">Kanban-Boards konnten nicht geladen werden: %1$s</string>
+    <string name="kanban_msg_load_tasks_failed">Kanban-Aufgaben konnten nicht geladen werden: %1$s</string>
+    <string name="kanban_msg_load_workers_failed">Aktive Worker konnten nicht geladen werden: %1$s</string>
+    <string name="kanban_msg_orchestration_saved">Orchestrierungseinstellungen gespeichert</string>
+    <string name="kanban_msg_orchestration_save_failed">Orchestrierung konnte nicht gespeichert werden: %1$s</string>
+    <string name="kanban_msg_profile_description_saved">Profilbeschreibung gespeichert</string>
+    <string name="kanban_msg_profile_description_save_failed">Profilbeschreibung konnte nicht gespeichert werden: %1$s</string>
+    <string name="kanban_msg_profile_auto_described">Profil automatisch beschrieben</string>
+    <string name="kanban_msg_auto_describe_failed">Automatische Beschreibung fehlgeschlagen</string>
+    <string name="kanban_msg_auto_describe_failed_reason">Automatische Beschreibung fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_task_created">Aufgabe erstellt</string>
+    <string name="kanban_msg_task_created_warning">Aufgabe erstellt: %1$s</string>
+    <string name="kanban_msg_task_create_failed">Aufgabe konnte nicht erstellt werden: %1$s</string>
+    <string name="kanban_msg_board_created">Board erstellt: %1$s</string>
+    <string name="kanban_msg_board_create_failed">Board konnte nicht erstellt werden: %1$s</string>
+    <string name="kanban_msg_board_updated">Board aktualisiert: %1$s</string>
+    <string name="kanban_msg_board_update_failed">Board konnte nicht aktualisiert werden: %1$s</string>
+    <string name="kanban_msg_default_board_protected">Das Standard-Board kann nicht gelöscht oder archiviert werden</string>
+    <string name="kanban_msg_board_archived">Board archiviert</string>
+    <string name="kanban_msg_board_archive_failed">Board konnte nicht archiviert werden: %1$s</string>
+    <string name="kanban_msg_board_unavailable">Board „%1$s“ ist nicht mehr verfügbar</string>
+    <string name="kanban_msg_task_deleted">Aufgabe gelöscht</string>
+    <string name="kanban_msg_task_delete_failed">Aufgabe konnte nicht gelöscht werden: %1$s</string>
+    <string name="kanban_msg_completion_summary_required">Eine Abschlusszusammenfassung ist erforderlich</string>
+    <string name="kanban_msg_unknown_error">unbekannter Fehler</string>
+    <plurals name="kanban_msg_bulk_moved">
+        <item quantity="one">%1$d Aufgabe nach %2$s verschoben</item>
+        <item quantity="other">%1$d Aufgaben nach %2$s verschoben</item>
+    </plurals>
+    <plurals name="kanban_msg_bulk_moved_partial">
+        <item quantity="one">%1$d Aufgabe verschoben, %2$d fehlgeschlagen: %3$s</item>
+        <item quantity="other">%1$d Aufgaben verschoben, %2$d fehlgeschlagen: %3$s</item>
+    </plurals>
+    <string name="kanban_msg_bulk_move_failed_all">Aufgaben konnten nicht verschoben werden: %1$s</string>
+    <string name="kanban_msg_bulk_move_failed">Verschieben fehlgeschlagen: %1$s</string>
+    <plurals name="kanban_msg_bulk_archived">
+        <item quantity="one">%1$d Aufgabe archiviert</item>
+        <item quantity="other">%1$d Aufgaben archiviert</item>
+    </plurals>
+    <plurals name="kanban_msg_bulk_archived_partial">
+        <item quantity="one">%1$d Aufgabe archiviert, %2$d fehlgeschlagen: %3$s</item>
+        <item quantity="other">%1$d Aufgaben archiviert, %2$d fehlgeschlagen: %3$s</item>
+    </plurals>
+    <string name="kanban_msg_bulk_archive_failed_all">Aufgaben konnten nicht archiviert werden: %1$s</string>
+    <string name="kanban_msg_bulk_archive_failed">Archivieren fehlgeschlagen: %1$s</string>
+    <plurals name="kanban_msg_bulk_assigned">
+        <item quantity="one">%1$d Aufgabe zugewiesen</item>
+        <item quantity="other">%1$d Aufgaben zugewiesen</item>
+    </plurals>
+    <plurals name="kanban_msg_bulk_unassigned">
+        <item quantity="one">Zuweisung von %1$d Aufgabe aufgehoben</item>
+        <item quantity="other">Zuweisung von %1$d Aufgaben aufgehoben</item>
+    </plurals>
+    <plurals name="kanban_msg_bulk_assigned_partial">
+        <item quantity="one">%1$d Aufgabe zugewiesen, %2$d fehlgeschlagen: %3$s</item>
+        <item quantity="other">%1$d Aufgaben zugewiesen, %2$d fehlgeschlagen: %3$s</item>
+    </plurals>
+    <plurals name="kanban_msg_bulk_unassigned_partial">
+        <item quantity="one">Zuweisung von %1$d Aufgabe aufgehoben, %2$d fehlgeschlagen: %3$s</item>
+        <item quantity="other">Zuweisung von %1$d Aufgaben aufgehoben, %2$d fehlgeschlagen: %3$s</item>
+    </plurals>
+    <string name="kanban_msg_bulk_assign_failed_all">Zuweisung konnte nicht geändert werden: %1$s</string>
+    <string name="kanban_msg_bulk_assign_failed">Zuweisen fehlgeschlagen: %1$s</string>
+    <plurals name="kanban_msg_bulk_deleted">
+        <item quantity="one">%1$d Aufgabe gelöscht</item>
+        <item quantity="other">%1$d Aufgaben gelöscht</item>
+    </plurals>
+    <plurals name="kanban_msg_bulk_deleted_partial">
+        <item quantity="one">%1$d Aufgabe gelöscht, %2$d fehlgeschlagen: %3$s</item>
+        <item quantity="other">%1$d Aufgaben gelöscht, %2$d fehlgeschlagen: %3$s</item>
+    </plurals>
+    <string name="kanban_msg_bulk_delete_failed_all">Aufgaben konnten nicht gelöscht werden: %1$s</string>
+    <string name="kanban_msg_move_blocked_by_parents">Verschieben blockiert durch übergeordnete Aufgaben %1$s (%2$s): %3$s</string>
+    <string name="kanban_msg_move_failed">Verschieben fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_no_pending_export">Kein ausstehender Board-Export</string>
+    <string name="kanban_msg_cached_export_missing">Zwischengespeicherter Board-Export fehlt; exportiere das Board erneut</string>
+    <string name="kanban_msg_open_destination_failed">Das ausgewählte Ziel konnte nicht geöffnet werden</string>
+    <string name="kanban_msg_archive_cleanup_failed_http">Bereinigen des Archivs fehlgeschlagen (HTTP %1$d)</string>
+    <string name="kanban_msg_load_task_failed">Aufgabendetails konnten nicht geladen werden: %1$s</string>
+    <string name="kanban_msg_description_saved">Beschreibung gespeichert</string>
+    <string name="kanban_msg_save_failed">Speichern fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_task_reassigned">Aufgabe an %1$s neu zugewiesen</string>
+    <string name="kanban_msg_task_unassigned">Zuweisung der Aufgabe aufgehoben</string>
+    <string name="kanban_msg_reassign_failed">Neu zuweisen fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_model_override_updated">Modellüberschreibung aktualisiert</string>
+    <string name="kanban_msg_model_update_failed">Modell konnte nicht aktualisiert werden: %1$s</string>
+    <string name="kanban_msg_estimate_completed">Schätzung abgeschlossen</string>
+    <string name="kanban_msg_estimate_failed">Schätzung fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_comment_added">Kommentar hinzugefügt</string>
+    <string name="kanban_msg_comment_add_failed">Kommentar konnte nicht hinzugefügt werden: %1$s</string>
+    <string name="kanban_msg_note_post_failed">Notiz konnte nicht gepostet werden: %1$s</string>
+    <string name="kanban_msg_note_posted_requeued">Notiz gepostet und Aufgabe neu eingereiht</string>
+    <string name="kanban_msg_note_posted_reclaim_failed">Notiz gepostet, aber Zurückholen fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_task_reclaimed">Aufgabe zurückgeholt</string>
+    <string name="kanban_msg_reclaim_failed">Zurückholen fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_attachment_uploaded">Anhang hochgeladen</string>
+    <string name="kanban_msg_upload_failed">Hochladen fehlgeschlagen: %1$s</string>
+    <string name="kanban_msg_attachment_deleted">Anhang gelöscht</string>
+    <string name="kanban_msg_attachment_not_deleted">Anhang wurde nicht gelöscht</string>
+    <string name="kanban_msg_run_terminated">Lauf beendet</string>
+    <string name="kanban_msg_run_not_terminated">Lauf wurde nicht beendet</string>
+    <string name="kanban_msg_task_specified">Aufgabe spezifiziert</string>
+    <string name="kanban_msg_specification_failed">Spezifizierung fehlgeschlagen</string>
+    <string name="kanban_msg_parent_link_not_created">Verknüpfung zur übergeordneten Aufgabe wurde nicht erstellt</string>
+    <string name="kanban_msg_parent_linked_gated">Verknüpft; Aufgabe wartet auf übergeordnete Aufgabe</string>
+    <string name="kanban_msg_parent_linked">Übergeordnete Aufgabe verknüpft</string>
+    <!-- Settings: password managers -->
+    <string name="vault_msg_load_failed">Tresorstatus konnte nicht geladen werden</string>
+    <string name="vault_msg_update_failed">%1$s konnte nicht aktualisiert werden: %2$s</string>
+    <string name="vault_msg_unlocked">%1$s entsperrt</string>
+    <string name="vault_msg_unlock_failed">%1$s konnte nicht entsperrt werden</string>
+    <string name="vault_msg_unlock_error">Fehler beim Entsperren von %1$s: %2$s</string>
+    <string name="vault_msg_locked">%1$s gesperrt</string>
+    <string name="vault_msg_all_locked">Alle Passwortmanager gesperrt</string>
+    <string name="vault_msg_lock_error">Fehler beim Sperren des Tresors: %1$s</string>
+    <!-- Gateway -->
+    <string name="gateway_msg_load_status_failed">Status konnte nicht geladen werden: %1$s</string>
+    <string name="gateway_msg_started">Gateway gestartet</string>
+    <string name="gateway_msg_stopped">Gateway gestoppt</string>
+    <string name="gateway_msg_restarted">Gateway neu gestartet</string>
+    <string name="gateway_msg_start_failed">Gateway konnte nicht gestartet werden: %1$s</string>
+    <string name="gateway_msg_stop_failed">Gateway konnte nicht gestoppt werden: %1$s</string>
+    <string name="gateway_msg_restart_failed">Gateway konnte nicht neu gestartet werden: %1$s</string>
+    <!-- MCP -->
+    <string name="mcp_msg_load_failed">MCP-Server konnten nicht geladen werden: %1$s</string>
+    <string name="mcp_msg_server_enabled">Server „%1$s“ aktiviert</string>
+    <string name="mcp_msg_server_disabled">Server „%1$s“ deaktiviert</string>
+    <string name="mcp_msg_toggle_failed">Server konnte nicht umgeschaltet werden: %1$s</string>
+    <string name="mcp_msg_testing_server">Server „%1$s“ wird getestet…</string>
+    <string name="mcp_msg_test_ok">Server „%1$s“ getestet – OK (%2$s)</string>
+    <string name="mcp_msg_test_failed">Test von Server „%1$s“ fehlgeschlagen: %2$s</string>
+    <string name="mcp_msg_no_enabled_servers">Keine aktivierten Server zum Testen</string>
+    <plurals name="mcp_msg_testing_servers">
+        <item quantity="one">%1$d Server wird getestet…</item>
+        <item quantity="other">%1$d Server werden getestet…</item>
+    </plurals>
+    <plurals name="mcp_msg_tested_servers">
+        <item quantity="one">%1$d Server getestet: %2$d bestanden, %3$d fehlgeschlagen</item>
+        <item quantity="other">%1$d Server getestet: %2$d bestanden, %3$d fehlgeschlagen</item>
+    </plurals>
+    <string name="mcp_msg_server_deleted">Server „%1$s“ gelöscht</string>
+    <string name="mcp_msg_delete_failed">Server konnte nicht gelöscht werden: %1$s</string>
+    <string name="mcp_msg_import_invalid">Ungültiges JSON oder keine MCP-Server in der Eingabe gefunden</string>
+    <plurals name="mcp_msg_import_success">
+        <item quantity="one">%1$d Server importiert</item>
+        <item quantity="other">%1$d Server importiert</item>
+    </plurals>
+    <plurals name="mcp_msg_import_partial">
+        <item quantity="one">%1$d Server importiert, %2$d fehlgeschlagen: %3$s</item>
+        <item quantity="other">%1$d Server importiert, %2$d fehlgeschlagen: %3$s</item>
+    </plurals>
+    <string name="mcp_msg_import_failed">Import fehlgeschlagen: %1$s</string>
+    <string name="mcp_msg_name_required">Servername ist erforderlich</string>
+    <string name="mcp_msg_server_added">Server „%1$s“ hinzugefügt</string>
+    <string name="mcp_msg_add_failed">Server konnte nicht hinzugefügt werden: %1$s</string>
+    <string name="mcp_msg_env_key_required">Schlüssel ist erforderlich</string>
+    <string name="mcp_msg_env_added">Umgebungsvariable „%1$s“ hinzugefügt</string>
+    <string name="mcp_msg_env_add_failed">Umgebungsvariable konnte nicht hinzugefügt werden: %1$s</string>
+    <string name="mcp_msg_env_removed">Umgebungsvariable „%1$s“ entfernt</string>
+    <string name="mcp_msg_env_remove_failed">Umgebungsvariable konnte nicht entfernt werden: %1$s</string>
+    <string name="mcp_msg_edit_context_changed">Server oder Profil hat sich geändert; wiederhole die Änderung im ausgewählten Profil</string>
+    <string name="mcp_msg_catalog_load_failed">Katalog konnte nicht geladen werden: %1$s</string>
+    <string name="mcp_msg_catalog_installed">Katalogeintrag „%1$s“ installiert</string>
+    <string name="mcp_msg_catalog_install_failed">Installation fehlgeschlagen: %1$s</string>
+    <string name="mcp_msg_oauth_starting">OAuth-Autorisierung wird gestartet…</string>
+    <string name="mcp_msg_oauth_no_url">OAuth konnte nicht gestartet werden: keine Autorisierungs-URL erhalten</string>
+    <string name="mcp_msg_oauth_start_failed">OAuth konnte nicht gestartet werden: %1$s</string>
+    <string name="mcp_msg_oauth_success">OAuth-Autorisierung erfolgreich!</string>
+    <string name="mcp_msg_oauth_failed">OAuth fehlgeschlagen: %1$s</string>
+    <string name="mcp_msg_oauth_poll_timeout">OAuth-Abfrage nach wiederholten Netzwerkfehlern abgebrochen</string>
+    <plurals name="mcp_msg_tool_count">
+        <item quantity="one">%1$d Tool</item>
+        <item quantity="other">%1$d Tools</item>
+    </plurals>
+    <string name="mcp_msg_tool_token_overhead">%1$s • ~%2$s Token</string>
+    <!-- Logs, analytics, memory -->
+    <string name="logs_msg_load_failed">Logs konnten nicht geladen werden: %1$s</string>
+    <string name="analytics_msg_load_failed">Analysen konnten nicht geladen werden</string>
+    <string name="analytics_msg_load_usage_failed">Nutzungsanalysen konnten nicht geladen werden</string>
+    <string name="analytics_msg_load_models_failed">Modellanalysen konnten nicht geladen werden</string>
+    <string name="memory_msg_reset_done">Gedächtnis (%1$s) zurückgesetzt</string>
+    <string name="memory_msg_reset_failed">Gedächtnis konnte nicht zurückgesetzt werden: %1$s</string>
+    <!-- Cron -->
+    <string name="cron_msg_load_failed">Cron-Jobs konnten nicht geladen werden: %1$s</string>
+    <string name="cron_msg_pause_failed">Cron-Job konnte nicht pausiert werden: %1$s</string>
+    <string name="cron_msg_resume_failed">Cron-Job konnte nicht fortgesetzt werden: %1$s</string>
+    <string name="cron_msg_triggered">Job ausgelöst</string>
+    <string name="cron_msg_trigger_failed">Cron-Job konnte nicht ausgelöst werden: %1$s</string>
+    <string name="cron_msg_delete_failed">Cron-Job konnte nicht gelöscht werden: %1$s</string>
+    <string name="cron_msg_load_blueprints_failed">Vorlagen konnten nicht geladen werden: %1$s</string>
+    <string name="cron_msg_load_job_failed">Job konnte nicht geladen werden: %1$s</string>
+    <string name="cron_msg_schedule_required">Zeitplan ist erforderlich</string>
+    <string name="cron_msg_save_failed">Speichern fehlgeschlagen: %1$s</string>
+    <string name="cron_desc_raw">Roh: %1$s</string>
+    <plurals name="cron_desc_every_minutes">
+        <item quantity="one">Jede Minute</item>
+        <item quantity="other">Alle %1$d Minuten</item>
+    </plurals>
+    <plurals name="cron_desc_every_hours">
+        <item quantity="one">Jede Stunde</item>
+        <item quantity="other">Alle %1$d Stunden</item>
+    </plurals>
+    <string name="cron_desc_every_day_midnight">Täglich um Mitternacht</string>
+    <string name="cron_desc_on_month_day_at">Am %2$s %1$s um %3$s</string>
+    <string name="cron_desc_monthly_on_day_at">Am %1$s jedes Monats um %2$s</string>
+    <string name="cron_desc_at_time_day_range">%2$s bis %3$s um %1$s</string>
+    <string name="cron_desc_every_weekday_at">Jeden %1$s um %2$s</string>
+    <string name="cron_desc_daily_at">Täglich um %1$s</string>
+    <string name="cron_list_separator">%1$s, %2$s</string>
+    <string name="cron_list_last">%1$s und %2$s</string>
+    <string name="cron_time_midnight">Mitternacht</string>
+    <string name="cron_ordinal_st">%1$d.</string>
+    <string name="cron_ordinal_nd">%1$d.</string>
+    <string name="cron_ordinal_rd">%1$d.</string>
+    <string name="cron_ordinal_th">%1$d.</string>
+    <string name="cron_dow_sunday">Sonntag</string>
+    <string name="cron_dow_monday">Montag</string>
+    <string name="cron_dow_tuesday">Dienstag</string>
+    <string name="cron_dow_wednesday">Mittwoch</string>
+    <string name="cron_dow_thursday">Donnerstag</string>
+    <string name="cron_dow_friday">Freitag</string>
+    <string name="cron_dow_saturday">Samstag</string>
+    <string name="cron_month_january">Januar</string>
+    <string name="cron_month_february">Februar</string>
+    <string name="cron_month_march">März</string>
+    <string name="cron_month_april">April</string>
+    <string name="cron_month_may">Mai</string>
+    <string name="cron_month_june">Juni</string>
+    <string name="cron_month_july">Juli</string>
+    <string name="cron_month_august">August</string>
+    <string name="cron_month_september">September</string>
+    <string name="cron_month_october">Oktober</string>
+    <string name="cron_month_november">November</string>
+    <string name="cron_month_december">Dezember</string>
+    <!-- Account connectors -->
+    <string name="connectors_msg_browser_launch_failed">Der Browser für die Autorisierung konnte nicht geöffnet werden.</string>
+    <!-- Providers -->
+    <string name="providers_msg_load_failed">Anbieter konnten nicht geladen werden: %1$s</string>
+    <string name="providers_msg_disconnected">Getrennt</string>
+    <string name="providers_msg_disconnect_failed">Trennen fehlgeschlagen: %1$s</string>
+    <string name="providers_msg_paste_code_first">Füge zuerst den Autorisierungscode ein.</string>
+    <string name="providers_msg_submission_rejected">Übermittlung abgelehnt</string>
+    <string name="providers_msg_flow_ended">OAuth-Vorgang beendet (%1$s)</string>
+    <string name="providers_msg_oauth_connected">OAuth verbunden</string>
+    <string name="providers_msg_expiry_min_sec">%1$d Min. %2$d s</string>
+    <string name="providers_msg_expiry_sec">%1$d s</string>
+    <!-- Model -->
+    <string name="model_msg_load_options_failed">Modelloptionen konnten nicht geladen werden: %1$s</string>
+    <string name="model_msg_expensive_confirm">Dieses Modell ist teuer. Fortfahren?</string>
+    <string name="model_msg_main_set">Hauptmodell auf %1$s / %2$s gesetzt</string>
+    <string name="model_msg_main_set_failed">Hauptmodell konnte nicht gesetzt werden: %1$s</string>
+    <string name="model_msg_aux_set">Hilfsaufgabe „%1$s“ auf %2$s / %3$s gesetzt</string>
+    <string name="model_msg_aux_set_failed">Hilfsaufgabe konnte nicht gesetzt werden: %1$s</string>
+    <string name="model_msg_aux_reset">Alle Hilfsaufgaben auf Auto zurückgesetzt</string>
+    <string name="model_msg_aux_reset_failed">Hilfsaufgaben konnten nicht zurückgesetzt werden: %1$s</string>
+    <string name="model_msg_moa_saved">MOA-Konfiguration gespeichert</string>
+    <string name="model_msg_moa_save_failed">MOA-Konfiguration konnte nicht gespeichert werden: %1$s</string>
+    <string name="model_msg_active_profile_failed">Aktives Profil konnte nicht abgerufen werden: %1$s</string>
+    <string name="model_msg_profile_model_set">Profilmodell auf %1$s gesetzt</string>
+    <string name="model_msg_profile_model_set_failed">Profilmodell konnte nicht gesetzt werden: %1$s</string>
+    <plurals name="model_msg_pin_limit">
+        <item quantity="one">Maximal %1$d angeheftetes Modell erreicht</item>
+        <item quantity="other">Maximal %1$d angeheftete Modelle erreicht</item>
+    </plurals>
+    <!-- Bots -->
+    <string name="bots_msg_load_failed">Bots konnten nicht geladen werden</string>
+    <string name="bots_msg_create_failed">Bot konnte nicht erstellt werden</string>
+    <string name="bots_msg_delete_failed">Bot konnte nicht gelöscht werden</string>
+    <string name="group_chat_msg_load_members_failed">Gruppenmitglieder konnten nicht geladen werden</string>
+    <!-- Auth login -->
+    <string name="auth_login_msg_ws_ticket_failed">WebSocket-Ticket konnte nicht abgerufen werden</string>
+    <!-- Tool rendering (ui/chat/tool) -->
+    <plurals name="tool_msg_output_truncated">
+        <item quantity="one">… %1$d weiteres Zeichen abgeschnitten – nutze Kopieren für die vollständige Ausgabe.</item>
+        <item quantity="other">… %1$d weitere Zeichen abgeschnitten – nutze Kopieren für die vollständige Ausgabe.</item>
+    </plurals>
+    <string name="tool_msg_page">Seite</string>
+    <plurals name="tool_msg_field_count">
+        <item quantity="one">%1$d Feld</item>
+        <item quantity="other">%1$d Felder</item>
+    </plurals>
+    <plurals name="tool_msg_item_count">
+        <item quantity="one">%1$d Eintrag</item>
+        <item quantity="other">%1$d Einträge</item>
+    </plurals>
+    <plurals name="tool_msg_more_items">
+        <item quantity="one">… %1$d weiterer Eintrag</item>
+        <item quantity="other">… %1$d weitere Einträge</item>
+    </plurals>
+    <string name="tool_msg_error_generic">Das Tool hat einen Fehler gemeldet.</string>
+    <string name="tool_msg_error_success_false">Das Tool hat success=false gemeldet.</string>
+    <string name="tool_msg_error_status">Das Tool hat den Status „%1$s“ gemeldet.</string>
+    <string name="tool_msg_error_exit_code">Befehl mit Exitcode %1$d fehlgeschlagen.</string>
+    <plurals name="tool_msg_count_result">
+        <item quantity="one">%1$d Ergebnis</item>
+        <item quantity="other">%1$d Ergebnisse</item>
+    </plurals>
+    <plurals name="tool_msg_count_match">
+        <item quantity="one">%1$d Treffer</item>
+        <item quantity="other">%1$d Treffer</item>
+    </plurals>
+    <plurals name="tool_msg_count_file">
+        <item quantity="one">%1$d Datei</item>
+        <item quantity="other">%1$d Dateien</item>
+    </plurals>
+    <plurals name="tool_msg_count_search">
+        <item quantity="one">%1$d Suche</item>
+        <item quantity="other">%1$d Suchen</item>
+    </plurals>
+    <plurals name="tool_msg_count_source">
+        <item quantity="one">%1$d Quelle</item>
+        <item quantity="other">%1$d Quellen</item>
+    </plurals>
+    <plurals name="tool_msg_count_document">
+        <item quantity="one">%1$d Dokument</item>
+        <item quantity="other">%1$d Dokumente</item>
+    </plurals>
+    <plurals name="tool_msg_count_step">
+        <item quantity="one">%1$d Schritt</item>
+        <item quantity="other">%1$d Schritte</item>
+    </plurals>
+    <plurals name="tool_msg_count_row">
+        <item quantity="one">%1$d Zeile</item>
+        <item quantity="other">%1$d Zeilen</item>
+    </plurals>
+    <plurals name="tool_msg_count_skill">
+        <item quantity="one">%1$d Skill</item>
+        <item quantity="other">%1$d Skills</item>
+    </plurals>
+    <plurals name="tool_msg_more_commands">
+        <item quantity="one">%1$s + %2$d Befehl</item>
+        <item quantity="other">%1$s + %2$d Befehle</item>
+    </plurals>
+    <string name="tool_title_web_searching">Suche „%1$s“</string>
+    <string name="tool_title_web_searched">„%1$s“ gesucht</string>
+    <string name="tool_msg_query">Suchanfrage: %1$s</string>
+    <string name="tool_msg_queried_web">Webquellen abgefragt</string>
+    <string name="tool_msg_search_results">Suchergebnisse</string>
+    <string name="tool_title_reading">Lese %1$s</string>
+    <string name="tool_title_read">%1$s gelesen</string>
+    <string name="tool_msg_fetched_webpage">Webseite abgerufen</string>
+    <string name="tool_msg_no_citations_suffix">%1$s (ohne Quellenangaben)</string>
+    <string name="tool_msg_queried_x">X abgefragt</string>
+    <string name="tool_msg_citations_header">━━━ Quellen ━━━</string>
+    <string name="tool_msg_source">Quelle</string>
+    <string name="tool_msg_no_citations_note">⚠️ Keine Quellenangaben – die Antwort beruht auf dem Wissen des Modells</string>
+    <string name="tool_msg_no_results">Keine Ergebnisse</string>
+    <string name="tool_title_opening">Öffne %1$s</string>
+    <string name="tool_title_opened">%1$s geöffnet</string>
+    <string name="tool_title_open_failed">%1$s konnte nicht geöffnet werden</string>
+    <string name="tool_msg_navigated_in_browser">Im Browser navigiert</string>
+    <plurals name="tool_msg_snapshot_buttons">
+        <item quantity="one">%1$d Schaltfläche</item>
+        <item quantity="other">%1$d Schaltflächen</item>
+    </plurals>
+    <plurals name="tool_msg_snapshot_links">
+        <item quantity="one">%1$d Link</item>
+        <item quantity="other">%1$d Links</item>
+    </plurals>
+    <plurals name="tool_msg_snapshot_inputs">
+        <item quantity="one">%1$d Eingabefeld</item>
+        <item quantity="other">%1$d Eingabefelder</item>
+    </plurals>
+    <string name="tool_msg_top_controls">Wichtigste Elemente: %1$s</string>
+    <string name="tool_msg_snapshot_captured">Barrierefreiheits-Snapshot des Browsers erstellt</string>
+    <string name="tool_msg_clicked_on_page">Auf die Seite geklickt</string>
+    <string name="tool_msg_clicked_internal_ref">Seitenelement angeklickt (interne Ref. %1$s)</string>
+    <string name="tool_msg_clicked">%1$s angeklickt</string>
+    <string name="tool_msg_field">Feld: %1$s</string>
+    <string name="tool_msg_value">Wert: %1$s</string>
+    <string name="tool_msg_filled_input">Eingabefeld ausgefüllt</string>
+    <string name="tool_title_scrolled">Gescrollt: %1$s</string>
+    <string name="tool_title_went_back_to">Zurück zu %1$s</string>
+    <string name="tool_title_went_back">Zurück navigiert</string>
+    <string name="tool_title_pressed">Gedrückt: %1$s</string>
+    <plurals name="tool_title_found_images">
+        <item quantity="one">%1$d Bild gefunden</item>
+        <item quantity="other">%1$d Bilder gefunden</item>
+    </plurals>
+    <string name="tool_title_looking_at_page">Sehe mir die Seite an</string>
+    <string name="tool_title_analyzed_page">Seite analysiert</string>
+    <string name="tool_title_evaluated_js">JS ausgewertet</string>
+    <plurals name="tool_msg_console_messages">
+        <item quantity="one">%1$d Meldung</item>
+        <item quantity="other">%1$d Meldungen</item>
+    </plurals>
+    <plurals name="tool_msg_console_errors">
+        <item quantity="one">%1$d Fehler</item>
+        <item quantity="other">%1$d Fehler</item>
+    </plurals>
+    <string name="tool_title_console">Konsole: %1$s</string>
+    <string name="tool_title_console_with_errors">Konsole: %1$s, %2$s</string>
+    <plurals name="tool_msg_app_count">
+        <item quantity="one">%1$d App</item>
+        <item quantity="other">%1$d Apps</item>
+    </plurals>
+    <plurals name="tool_msg_element_count">
+        <item quantity="one">%1$d Element</item>
+        <item quantity="other">%1$d Elemente</item>
+    </plurals>
+    <string name="tool_msg_computer_use">Computersteuerung</string>
+    <plurals name="tool_msg_interactable_elements">
+        <item quantity="one">🖥️ %1$d bedienbares Element</item>
+        <item quantity="other">🖥️ %1$d bedienbare Elemente</item>
+    </plurals>
+    <string name="tool_msg_mode">(Modus: %1$s)</string>
+    <string name="tool_msg_and_more">... und %1$d weitere</string>
+    <string name="tool_msg_ok_mark">✅ ok</string>
+    <string name="tool_msg_failed_mark">❌ fehlgeschlagen</string>
+    <string name="tool_msg_computer_use_action">Aktion der Computersteuerung</string>
+    <string name="tool_msg_vision_analysis_header">━━━ Bildanalyse ━━━</string>
+    <!-- Plugins -->
+    <string name="plugins_msg_load_failed">Plugins konnten nicht geladen werden: %1$s</string>
+    <string name="plugins_msg_identifier_required">Gib eine Plugin-Kennung ein</string>
+    <string name="plugins_msg_installed">Plugin installiert</string>
+    <string name="plugins_msg_install_failed">Plugin konnte nicht installiert werden: %1$s</string>
+    <string name="plugins_msg_providers_saved">Plugin-Provider gespeichert</string>
+    <string name="plugins_msg_providers_save_failed">Provider konnten nicht gespeichert werden: %1$s</string>
+    <string name="plugins_msg_rescanned">Plugins neu eingelesen</string>
+    <string name="plugins_msg_rescan_failed">Neu einlesen fehlgeschlagen: %1$s</string>
+    <string name="plugins_msg_toggle_failed">Plugin konnte nicht umgeschaltet werden: %1$s</string>
+    <string name="plugins_msg_enabled">Plugin aktiviert</string>
+    <string name="plugins_msg_enable_failed">Plugin konnte nicht aktiviert werden: %1$s</string>
+    <string name="plugins_msg_uninstall_failed">Plugin konnte nicht deinstalliert werden: %1$s</string>
+    <string name="plugins_msg_gateway_refused_removal">Gateway hat das Entfernen abgelehnt</string>
+    <string name="plugins_msg_gateway_unavailable">Gateway nicht erreichbar</string>
+    <string name="plugins_msg_uninstalled">Plugin deinstalliert</string>
+    <string name="plugins_msg_uninstall_unverified">Entfernen gemeldet, aber %1$s steht noch in der Plugin-Liste</string>
+    <string name="plugins_msg_uninstall_verify_failed">Entfernen gesendet; Plugin-Liste konnte nicht geprüft werden: %1$s</string>
+    <string name="plugins_msg_update_failed">Plugin konnte nicht aktualisiert werden: %1$s</string>
+    <string name="plugins_msg_update_refused">Aktualisierung abgelehnt</string>
+    <string name="plugins_msg_already_up_to_date">Plugin ist bereits aktuell</string>
+    <string name="plugins_msg_updated">Plugin aktualisiert</string>
+    <string name="plugins_msg_visibility_updated">Plugin-Sichtbarkeit aktualisiert</string>
+    <string name="plugins_msg_visibility_failed">Sichtbarkeit konnte nicht aktualisiert werden: %1$s</string>
+    <string name="plugins_msg_catalog_load_failed">Katalog konnte nicht geladen werden: %1$s</string>
+    <string name="plugins_msg_catalog_installed">Plugin „%1$s“ installiert</string>
+    <string name="plugins_msg_catalog_install_failed">„%1$s“ konnte nicht installiert werden: %2$s</string>
+    <string name="plugins_msg_secret_update_failed">Secret %1$s konnte nicht aktualisiert werden: %2$s</string>
+    <string name="plugins_msg_setting_expected_number">%1$s: Zahl erwartet</string>
+    <string name="plugins_msg_setting_must_be_one_of">%1$s: muss einer dieser Werte sein: %2$s</string>
+    <string name="plugins_msg_settings_saved">Plugin-Einstellungen gespeichert</string>
+    <string name="plugins_msg_settings_save_failed">Einstellungen konnten nicht gespeichert werden: %1$s</string>
+    <string name="plugins_msg_memory_provider_saved">Einstellungen des Memory-Providers gespeichert</string>
+    <string name="plugins_msg_setup_completed">Einrichtung abgeschlossen</string>
+    <string name="plugins_msg_setup_finished_with_failures">Einrichtung mit Fehlern beendet</string>
+    <string name="plugins_msg_setup_failed">Einrichtung fehlgeschlagen: %1$s</string>
+    <string name="plugins_memory_status_ready">Bereit</string>
+    <string name="plugins_memory_status_needs_config">Konfiguration nötig</string>
+    <string name="plugins_memory_status_unavailable">Nicht verfügbar</string>
+    <string name="plugins_memory_status_missing">Fehlt</string>
+    <string name="tool_msg_task_n">Aufgabe %1$d</string>
+    <string name="tool_title_listing_subagents">Subagenten werden aufgelistet</string>
+    <string name="tool_title_steering_subagent">Subagent wird gesteuert</string>
+    <string name="tool_title_stopping_subagent">Subagent wird gestoppt</string>
+    <plurals name="tool_title_delegating_tasks">
+        <item quantity="one">Delegiere %1$d Aufgabe</item>
+        <item quantity="other">Delegiere %1$d Aufgaben</item>
+    </plurals>
+    <plurals name="tool_title_subagent_count">
+        <item quantity="one">%1$d Subagent</item>
+        <item quantity="other">%1$d Subagenten</item>
+    </plurals>
+    <string name="tool_title_steer_queued">Steuerung eingereiht</string>
+    <string name="tool_title_stop_requested">Stopp angefordert</string>
+    <plurals name="tool_title_dispatched_tasks">
+        <item quantity="one">%1$d Hintergrundaufgabe gestartet</item>
+        <item quantity="other">%1$d Hintergrundaufgaben gestartet</item>
+    </plurals>
+    <plurals name="tool_title_delegated_tasks_failed">
+        <item quantity="one">%1$d Aufgabe delegiert · %2$d fehlgeschlagen</item>
+        <item quantity="other">%1$d Aufgaben delegiert · %2$d fehlgeschlagen</item>
+    </plurals>
+    <plurals name="tool_title_delegated_tasks">
+        <item quantity="one">%1$d Aufgabe delegiert</item>
+        <item quantity="other">%1$d Aufgaben delegiert</item>
+    </plurals>
+    <string name="tool_msg_generated">✅ Erzeugt</string>
+    <string name="tool_msg_no_description">Keine Beschreibung verfügbar</string>
+    <string name="tool_title_generating_speech">Sprache wird erzeugt</string>
+    <string name="tool_title_generated_speech">Sprache erzeugt</string>
+    <plurals name="tool_msg_chunk_count">
+        <item quantity="one">%1$d Abschnitt</item>
+        <item quantity="other">%1$d Abschnitte</item>
+    </plurals>
+    <string name="tool_msg_saved_to">Gespeichert unter %1$s</string>
+    <string name="tool_title_memory_saving">Wird gespeichert</string>
+    <string name="tool_title_memory_updated">Erinnerung aktualisiert</string>
+    <string name="tool_title_memory_removed">Erinnerung entfernt</string>
+    <string name="tool_title_memory_saved">Erinnerung gespeichert</string>
+    <string name="tool_title_memory_action">Erinnerung: %1$s</string>
+    <string name="tool_msg_fact_added_id">Fakt hinzugefügt (ID: %1$d)</string>
+    <string name="tool_msg_fact_added">Fakt hinzugefügt</string>
+    <string name="tool_msg_fact_removed">Fakt entfernt</string>
+    <string name="tool_msg_fact_updated">Fakt aktualisiert</string>
+    <plurals name="tool_msg_fact_count">
+        <item quantity="one">%1$d Fakt</item>
+        <item quantity="other">%1$d Fakten</item>
+    </plurals>
+    <string name="tool_msg_trust">Vertrauen: %1$s</string>
+    <plurals name="tool_msg_project_count">
+        <item quantity="one">%1$d Projekt</item>
+        <item quantity="other">%1$d Projekte</item>
+    </plurals>
+    <string name="tool_msg_one_active">(1 aktiv)</string>
+    <string name="tool_msg_projects">Projekte</string>
+    <string name="tool_msg_active_project">✅ AKTIVES PROJEKT</string>
+    <string name="tool_msg_project_created">Erstellt</string>
+    <string name="tool_msg_project_switched">Gewechselt zu</string>
+    <string name="tool_msg_project_created_named">%1$s erstellt</string>
+    <string name="tool_msg_project_switched_named">Zu %1$s gewechselt</string>
+    <string name="tool_title_files_searching">Suche „%1$s“</string>
+    <string name="tool_title_files_searched">„%1$s“ gesucht</string>
+    <plurals name="tool_title_files_searched_matches">
+        <item quantity="one">„%1$s“ gesucht · %2$d Treffer</item>
+        <item quantity="other">„%1$s“ gesucht · %2$d Treffer</item>
+    </plurals>
+    <string name="tool_msg_results_truncated">Ergebnisse gekürzt</string>
+    <string name="tool_msg_matches">Treffer</string>
+    <string name="tool_msg_no_skills_found">Keine Skills gefunden</string>
+    <string name="tool_msg_more_chars">... [%1$d weitere Zeichen]</string>
+    <string name="tool_msg_linked_files_header">━━━ Verknüpfte Dateien ━━━</string>
+    <string name="tool_msg_no_content">Kein Inhalt verfügbar</string>
+    <string name="tool_msg_skill_action_named">Skill %1$s: %2$s</string>
+    <string name="tool_msg_skill_action">Skill %1$s</string>
+    <string name="tool_msg_skill_failed">Skill-Vorgang fehlgeschlagen</string>
+    <string name="tool_msg_skill_done">Skill-Vorgang abgeschlossen</string>
+    <plurals name="tool_msg_query_matches">
+        <item quantity="one">%1$s (%2$d Treffer)</item>
+        <item quantity="other">%1$s (%2$d Treffer)</item>
+    </plurals>
+    <string name="tool_msg_required">Erforderlich: %1$s</string>
+    <string name="tool_msg_no_matching_tools">Keine passenden Tools</string>
+    <plurals name="tool_msg_names_tools">
+        <item quantity="one">%1$s (%2$d Tool)</item>
+        <item quantity="other">%1$s (%2$d Tools)</item>
+    </plurals>
+    <string name="tool_msg_parameters">Parameter: %1$s</string>
+    <string name="tool_msg_default_value">[Standard: %1$s]</string>
+    <string name="tool_msg_no_tool_descriptions">Keine Tool-Beschreibungen erhalten</string>
+    <string name="tool_title_cron">Cron %1$s</string>
+    <plurals name="tool_msg_cron_job_count">
+        <item quantity="one">%1$d Cron-Job</item>
+        <item quantity="other">%1$d Cron-Jobs</item>
+    </plurals>
+    <string name="tool_msg_no_cron_jobs">Keine Cron-Jobs</string>
+    <string name="tool_msg_no_cron_jobs_scheduled">Keine Cron-Jobs geplant</string>
+    <string name="tool_msg_job">Job</string>
+    <string name="tool_msg_cron_schedule">Zeitplan</string>
+    <string name="tool_msg_cron_repeat">Wiederholung</string>
+    <string name="tool_msg_cron_delivery">Zustellung</string>
+    <string name="tool_msg_cron_next_run">Nächste Ausführung</string>
+    <string name="tool_msg_todo_pending">%1$d offen</string>
+    <string name="tool_msg_todo_in_progress">%1$d in Arbeit</string>
+    <string name="tool_msg_todo_completed">%1$d erledigt</string>
+    <string name="tool_msg_todo_cancelled">%1$d abgebrochen</string>
+    <plurals name="tool_msg_session_count">
+        <item quantity="one">%1$d Sitzung</item>
+        <item quantity="other">%1$d Sitzungen</item>
+    </plurals>
+    <plurals name="tool_msg_messages_scroll">
+        <item quantity="one">%1$d Nachricht (Scrollen)</item>
+        <item quantity="other">%1$d Nachrichten (Scrollen)</item>
+    </plurals>
+    <plurals name="tool_msg_message_count">
+        <item quantity="one">%1$d Nachricht</item>
+        <item quantity="other">%1$d Nachrichten</item>
+    </plurals>
+    <string name="tool_msg_truncated_suffix">(gekürzt)</string>
+    <plurals name="tool_msg_recent_sessions">
+        <item quantity="one">%1$d letzte Sitzung</item>
+        <item quantity="other">%1$d letzte Sitzungen</item>
+    </plurals>
+    <string name="tool_msg_matched_role">🎯 Treffer: %1$s</string>
+    <plurals name="tool_msg_msgs_count">
+        <item quantity="one">%1$d Nachr.</item>
+        <item quantity="other">%1$d Nachr.</item>
+    </plurals>
+    <string name="tool_msg_in_progress">⏳ %1$s läuft</string>
+    <string name="tool_msg_process_operation">Prozessvorgang</string>
+    <string name="tool_msg_status">Status: %1$s</string>
+    <string name="tool_msg_running_flag">Läuft: %1$s</string>
+    <string name="tool_msg_action_done">✅ %1$s erledigt</string>
+    <string name="tool_msg_done">erledigt</string>
+    <string name="tool_title_running_code">Code wird ausgeführt: %1$s</string>
+    <string name="tool_title_ran_code">Code ausgeführt: %1$s</string>
+    <string name="tool_title_running">Wird ausgeführt: %1$s</string>
+    <string name="tool_title_ran">Ausgeführt: %1$s</string>
+    <string name="tool_msg_terminal_output">Terminalausgabe</string>
+    <string name="tool_msg_terminal_lines">Zeilen %1$d–%2$d von %3$d</string>
+    <string name="tool_msg_terminal_lines_cursor">Zeilen %1$d–%2$d von %3$d, Cursor in Zeile %4$d</string>
+    <string name="tool_msg_cursor_row">│ Cursor-Zeile %1$d</string>
+    <string name="tool_msg_no_terminal_output">Keine Terminalausgabe</string>
+    <!-- Chat -->
+    <plurals name="system_notice_stopped_background_processes">
+        <item quantity="one">%1$d Hintergrundprozess gestoppt.</item>
+        <item quantity="other">%1$d Hintergrundprozesse gestoppt.</item>
+    </plurals>
+    <string name="system_notice_stop_background_processes_failed">Hintergrundprozesse konnten nicht gestoppt werden: %1$s</string>
+    <string name="system_notice_rewound_to">↶ Zurückgespult zu: „%1$s“</string>
+    <string name="system_notice_notice_rewound_to">%1$s (zurückgespult zu: „%2$s“)</string>
+    <string name="chat_msg_attachment_too_large">Anhang zu groß: %1$s (maximal 10 MB)</string>
+    <string name="chat_msg_attachment_unavailable">Anhang nicht verfügbar: %1$s</string>
+    <string name="chat_msg_backend_error">Backend-Fehler: %1$s</string>
+    <string name="chat_msg_unknown_gateway_error">Unbekannter Gateway-Fehler</string>
+    <string name="chat_msg_error">Fehler: %1$s</string>
+    <string name="chat_msg_rpc_error">Fehler (%1$s): %2$s</string>
+    <string name="chat_msg_background_job_finished">Hintergrundjob abgeschlossen</string>
+    <string name="chat_msg_background_job_finished_named">Hintergrundjob abgeschlossen: %1$s</string>
+    <string name="chat_msg_bot_chat_compacting">Bot-Chats sind ein durchgehendes Gespräch – stattdessen wird komprimiert. Für eine Wegwerf-Sitzung erstelle einen normalen Chat.</string>
+    <string name="chat_msg_btw_dispatch_failed">Nebenfrage konnte nicht gesendet werden</string>
+    <string name="chat_msg_btw_no_session">Keine aktive Sitzung für Nebenfragen. Starte zuerst einen Chat.</string>
+    <string name="chat_msg_btw_usage">Verwendung: `/btw &lt;Frage&gt;` – stelle eine Nebenfrage zu dieser Sitzung, ohne ihren Verlauf zu ändern.</string>
+    <string name="chat_msg_command_no_output">/%1$s: keine Ausgabe</string>
+    <string name="chat_msg_command_not_supported_mobile">%1$s wird auf dem Smartphone nicht unterstützt</string>
+    <string name="chat_msg_compress_no_session">Keine aktive Sitzung zum Komprimieren.</string>
+    <string name="chat_msg_compressed_history_incomplete">%1$s\nVerlauf nicht vollständig aktualisiert; zwischengespeicherter Verlauf bleibt erhalten.</string>
+    <string name="chat_msg_context_compressed">Kontext komprimiert.</string>
+    <string name="chat_msg_create_session_failed">Sitzung konnte nicht erstellt werden: %1$s</string>
+    <string name="chat_msg_file_access_denied">Zugriff verweigert: %1$s</string>
+    <string name="chat_msg_file_not_found_gateway">Datei auf dem Gateway nicht gefunden: %1$s</string>
+    <string name="chat_msg_file_open_failed">%1$s konnte nicht geöffnet werden: %2$s</string>
+    <string name="chat_msg_file_save_failed">%1$s konnte nicht gespeichert werden: %2$s</string>
+    <string name="chat_msg_file_saved">%1$s gespeichert</string>
+    <string name="chat_msg_file_session_expired_open">Sitzung abgelaufen – verbinde dich neu, um zu öffnen: %1$s</string>
+    <string name="chat_msg_file_session_expired_save">Sitzung abgelaufen – verbinde dich neu, um zu speichern: %1$s</string>
+    <string name="chat_msg_file_too_large_open">Datei zu groß zum Öffnen: %1$s</string>
+    <string name="chat_msg_file_too_large_save">Datei zu groß zum Speichern: %1$s</string>
+    <string name="chat_msg_open_file_chooser">Datei öffnen</string>
+    <string name="chat_msg_history_page_limit">Die Verlaufsantwort hat das Seitenlimit überschritten.</string>
+    <string name="chat_msg_prompt_unavailable">Der ausgewählte Prompt ist nicht mehr verfügbar.</string>
+    <string name="chat_msg_invalid_session_create_response">Ungültige Antwort beim Erstellen der Sitzung</string>
+    <string name="chat_msg_invalid_session_resume_response">Ungültige Antwort beim Fortsetzen der Sitzung</string>
+    <string name="chat_msg_load_cached_failed">Zwischengespeicherte Nachrichten konnten nicht geladen werden: %1$s</string>
+    <string name="chat_msg_load_message_failed">Nachricht konnte nicht geladen werden: %1$s</string>
+    <string name="chat_msg_load_messages_failed">Nachrichten konnten nicht geladen werden: %1$s</string>
+    <string name="chat_msg_load_models_failed">Modelle konnten nicht geladen werden: %1$s</string>
+    <string name="chat_msg_load_older_failed">Ältere Nachrichten konnten nicht geladen werden: %1$s</string>
+    <string name="chat_msg_load_timeline_failed">Zeitleiste konnte nicht geladen werden: %1$s</string>
+    <string name="chat_msg_sync_failed">Nachrichten konnten nicht synchronisiert werden: %1$s</string>
+    <string name="chat_msg_model_switch_confirm">Für den Wechsel zu diesem Modell ist eine Bestätigung nötig. Fortfahren?</string>
+    <string name="chat_msg_no_active_session">Keine aktive Sitzung. Erstelle mit `/new` eine neue.</string>
+    <string name="chat_msg_reasoning_always_on">Reasoning lässt sich bei diesem Modell nicht abschalten (immer aktiv).</string>
+    <string name="chat_msg_reasoning_change_failed">Reasoning konnte nicht geändert werden: %1$s</string>
+    <string name="chat_msg_reasoning_confirm_failed">Reasoning-Änderung konnte nicht bestätigt werden: %1$s</string>
+    <string name="chat_msg_reasoning_not_supported">Das aktuelle Modell unterstützt kein Reasoning.</string>
+    <string name="chat_msg_reasoning_requires_session">Reasoning-Einstellungen brauchen eine aktive Sitzung.</string>
+    <string name="chat_msg_reasoning_status_failed">Reasoning-Status konnte nicht gelesen werden: %1$s</string>
+    <string name="chat_msg_retain_attachment_failed">Anhang konnte nicht behalten werden</string>
+    <string name="chat_msg_retain_queued_attachment_failed">Eingereihter Anhang konnte nicht behalten werden</string>
+    <string name="chat_msg_save_for_delivery_failed">Nachricht konnte nicht für die Zustellung gespeichert werden</string>
+    <string name="chat_msg_save_message_failed">Nachricht konnte nicht gespeichert werden</string>
+    <string name="chat_msg_upload_failed">Hochladen fehlgeschlagen: %1$s</string>
+    <string name="chat_msg_wait_for_send">Warte, bis der aktuelle Sendevorgang abgeschlossen ist</string>
+    <string name="chat_msg_session_not_found_cached">Sitzung auf dem Server nicht gefunden (zwischengespeicherte Nachrichten werden angezeigt)</string>
+    <string name="chat_msg_session_reclaimed">Die Live-Sitzung wurde vom Server übernommen. Versuche es erneut, um dich neu zu verbinden.</string>
+    <string name="chat_msg_subagent_course_correction">Kurskorrektur: „%1$s“</string>
+    <string name="chat_msg_subagent_stopped">Sub-Agent gestoppt</string>
+    <string name="chat_msg_subagent_transcript_failed">Transkript konnte nicht geladen werden</string>
+    <string name="chat_msg_undo_failed">Rückgängig machen fehlgeschlagen.</string>
+    <string name="chat_msg_undo_no_session">Keine aktive Sitzung zum Rückgängigmachen.</string>
+    <string name="chat_msg_update_no_action_name">Update gestartet, aber das Backend hat keinen Aktionsnamen gemeldet</string>
+    <string name="chat_msg_update_start_failed">Update konnte nicht gestartet werden: %1$s</string>
+    <string name="chat_msg_voice_note_empty">Keine Sprache in der Sprachnachricht erkannt</string>
+    <string name="chat_msg_voice_note_failed">Transkription der Sprachnachricht fehlgeschlagen: %1$s</string>
+    <string name="chat_msg_voice_note_offline">Sprachnachricht nicht gesendet – keine Verbindung</string>
+    <string name="chat_msg_voice_note_unsent">Sprachnachricht nicht gesendet – Transkript bleibt im Eingabefeld</string>
+    <!-- Sessions -->
+    <string name="sessions_msg_load_failed">Sitzungen konnten nicht geladen werden: %1$s</string>
+    <string name="sessions_msg_load_more_failed_reason">Weitere Einträge konnten nicht geladen werden: %1$s</string>
+    <string name="sessions_msg_load_more_failed">Weitere Einträge konnten nicht geladen werden</string>
+    <string name="sessions_msg_search_failed">Suche fehlgeschlagen: %1$s</string>
+    <string name="sessions_msg_title_empty">Der Titel darf nicht leer sein</string>
+    <string name="sessions_msg_renamed">Sitzung umbenannt</string>
+    <string name="sessions_msg_rename_failed">Umbenennen fehlgeschlagen: %1$s</string>
+    <string name="sessions_msg_pinned">Sitzung angeheftet</string>
+    <string name="sessions_msg_unpinned">Sitzung losgelöst</string>
+    <string name="sessions_msg_pin_failed">Anheften fehlgeschlagen: %1$s</string>
+    <string name="sessions_msg_archived">Sitzung archiviert</string>
+    <string name="sessions_msg_unarchived">Sitzung wiederhergestellt</string>
+    <string name="sessions_msg_archive_failed">Archivieren fehlgeschlagen: %1$s</string>
+    <string name="sessions_msg_deleted">Sitzung gelöscht</string>
+    <string name="sessions_msg_delete_failed">Löschen fehlgeschlagen: %1$s</string>
+    <plurals name="sessions_msg_bulk_deleted">
+        <item quantity="one">%1$d Sitzung gelöscht</item>
+        <item quantity="other">%1$d Sitzungen gelöscht</item>
+    </plurals>
+    <string name="sessions_msg_bulk_none_deleted">Keine Sitzungen gelöscht</string>
+    <plurals name="sessions_msg_bulk_skipped_active">
+        <item quantity="one">%1$s, %2$d übersprungen (aktiv)</item>
+        <item quantity="other">%1$s, %2$d übersprungen (aktiv)</item>
+    </plurals>
+    <string name="sessions_msg_pruned">Alte Sitzungen bereinigt</string>
+    <string name="sessions_msg_prune_failed">Bereinigen fehlgeschlagen: %1$s</string>
+    <plurals name="sessions_msg_empty_deleted">
+        <item quantity="one">%1$d leere Sitzung gelöscht</item>
+        <item quantity="other">%1$d leere Sitzungen gelöscht</item>
+    </plurals>
+    <string name="sessions_msg_no_empty_sessions">Keine leeren Sitzungen zum Löschen</string>
+    <string name="sessions_msg_cleanup_failed">Bereinigen fehlgeschlagen: %1$s</string>
+    <string name="sessions_played_just_now">gerade eben</string>
+    <string name="sessions_played_minutes_ago">vor %1$d Min.</string>
+    <string name="sessions_played_hours_ago">vor %1$d Std.</string>
+    <string name="sessions_played_days_ago">vor %1$d T.</string>
+    <string name="sessions_branch_title">Zweig %1$d</string>
+    <!-- System -->
+    <string name="system_msg_migration_already_multiplexed">Gateway ist bereits gemultiplext</string>
+    <string name="system_msg_migration_blocked">Migration wird durch den Vorabprüfungsplan blockiert</string>
+    <string name="system_msg_migration_rejected">Migration wurde vom Backend abgelehnt</string>
+    <string name="system_msg_migration_no_action_name">Migration wurde angenommen, aber das Backend hat keinen Aktionsnamen gemeldet</string>
+    <string name="system_msg_migration_start_failed">Migration konnte nicht gestartet werden: %1$s</string>
+    <string name="system_msg_gateway_started">Gateway gestartet</string>
+    <string name="system_msg_gateway_stopped">Gateway gestoppt</string>
+    <string name="system_msg_gateway_restarted">Gateway neu gestartet</string>
+    <string name="system_msg_gateway_start_failed">Gateway konnte nicht gestartet werden: %1$s</string>
+    <string name="system_msg_gateway_stop_failed">Gateway konnte nicht gestoppt werden: %1$s</string>
+    <string name="system_msg_gateway_restart_failed">Gateway konnte nicht neu gestartet werden: %1$s</string>
+    <string name="system_msg_update_check_failed">Update-Prüfung fehlgeschlagen: %1$s</string>
+    <string name="system_msg_update_no_action_name">Update gestartet, aber das Backend hat keinen Aktionsnamen gemeldet</string>
+    <string name="system_msg_update_start_failed">Update konnte nicht gestartet werden: %1$s</string>
+    <string name="system_msg_curator_paused">Curator pausiert</string>
+    <string name="system_msg_curator_resumed">Curator fortgesetzt</string>
+    <string name="system_msg_curator_toggle_failed">Curator konnte nicht umgeschaltet werden: %1$s</string>
+    <string name="system_msg_credential_key_required">Schlüssel/Token ist erforderlich</string>
+    <string name="system_msg_credential_added">Zugangsdaten hinzugefügt</string>
+    <string name="system_msg_credential_add_failed">Zugangsdaten konnten nicht hinzugefügt werden: %1$s</string>
+    <string name="system_msg_credential_removed">Zugangsdaten entfernt</string>
+    <string name="system_msg_credential_remove_failed">Zugangsdaten konnten nicht entfernt werden: %1$s</string>
+    <string name="system_msg_backup_triggered">Backup gestartet</string>
+    <string name="system_msg_backup_trigger_failed">Backup konnte nicht gestartet werden: %1$s</string>
+    <string name="system_msg_backup_none">Kein Backup-Archiv verfügbar</string>
+    <string name="system_msg_backup_waiting">Warte auf Backup… %1$d s</string>
+    <string name="system_msg_backup_download_failed">Backup konnte nicht heruntergeladen werden: %1$s</string>
+    <string name="system_msg_backup_still_creating">Backup wird noch erstellt – versuch es gleich noch einmal</string>
+    <string name="system_msg_import_started">Import gestartet</string>
+    <string name="system_msg_import_failed">Import fehlgeschlagen: %1$s</string>
+    <string name="system_msg_debug_share_created">Debug-Freigabe erstellt</string>
+    <string name="system_msg_debug_share_failed">Debug-Freigabe fehlgeschlagen: %1$s</string>
+    <string name="system_msg_hook_command_required">Befehl ist erforderlich</string>
+    <string name="system_msg_hook_created">Hook erstellt</string>
+    <string name="system_msg_hook_create_failed">Hook konnte nicht erstellt werden: %1$s</string>
+    <string name="system_msg_hook_deleted">Hook gelöscht</string>
+    <string name="system_msg_hook_delete_failed">Hook konnte nicht gelöscht werden: %1$s</string>
+    <string name="system_msg_receipt_title">Update-Beleg</string>
+    <string name="system_msg_receipt_outcome">Ergebnis: %1$s</string>
+    <string name="system_msg_receipt_version">Version: %1$s → %2$s</string>
+    <string name="system_msg_receipt_version_to">Version: → %1$s</string>
+    <string name="system_msg_receipt_fleet">Flotte: %1$s</string>
+    <string name="system_msg_receipt_followup">Offener Folgeschritt: %1$s</string>
+    <string name="system_msg_receipt_followup_reason">Offener Folgeschritt: %1$s – %2$s</string>
+    <string name="system_msg_receipt_user_action">Aktion von dir erforderlich</string>
+    <string name="system_msg_receipt_user_action_detail">Aktion von dir erforderlich: %1$s</string>
+    <plurals name="system_gateway_session_count">
+        <item quantity="one">%1$d Sitzung</item>
+        <item quantity="other">%1$d Sitzungen</item>
+    </plurals>
+    <!-- Profiles -->
+    <string name="profiles_msg_hidden">Profil %1$s ausgeblendet</string>
+    <string name="profiles_msg_unhidden">Profil %1$s eingeblendet</string>
+    <string name="profiles_msg_status_success">Erfolgreich</string>
+    <string name="profiles_msg_load_partial_failed">Profile/aktives Profil konnten nicht geladen werden: Profile: %1$s, Aktiv: %2$s</string>
+    <string name="profiles_msg_load_failed">Profile konnten nicht geladen werden: %1$s</string>
+    <string name="profiles_msg_switched">Zu Profil %1$s gewechselt</string>
+    <string name="profiles_msg_switch_failed">Profilwechsel fehlgeschlagen: %1$s</string>
+    <string name="profiles_msg_load_soul_failed">Soul konnte nicht geladen werden: %1$s</string>
+    <string name="profiles_msg_soul_updated">Soul aktualisiert</string>
+    <string name="profiles_msg_soul_save_failed">Soul konnte nicht gespeichert werden: %1$s</string>
+    <string name="profiles_msg_model_settings_updated">Modelleinstellungen aktualisiert</string>
+    <string name="profiles_msg_model_settings_failed">Modelleinstellungen konnten nicht aktualisiert werden: %1$s</string>
+    <string name="profiles_msg_cloned">Profil „%1$s“ nach „%2$s“ geklont</string>
+    <string name="profiles_msg_clone_failed">Profil „%1$s“ konnte nicht geklont werden: %2$s</string>
+    <string name="profiles_msg_description_updated">Beschreibung von Profil „%1$s“ aktualisiert</string>
+    <string name="profiles_msg_description_failed">Beschreibung von „%1$s“ konnte nicht aktualisiert werden: %2$s</string>
+    <string name="profiles_msg_renamed">Profil „%1$s“ in „%2$s“ umbenannt</string>
+    <string name="profiles_msg_rename_failed">Profil „%1$s“ konnte nicht umbenannt werden: %2$s</string>
+    <string name="profiles_msg_deleted">Profil „%1$s“ gelöscht</string>
+    <string name="profiles_msg_delete_failed">Profil „%1$s“ konnte nicht gelöscht werden: %2$s</string>
+    <string name="profiles_msg_auto_described">Profil „%1$s“ automatisch beschrieben</string>
+    <string name="profiles_msg_auto_describe_failed">Automatische Beschreibung für „%1$s“ fehlgeschlagen: %2$s</string>
+    <string name="profiles_msg_unknown_reason">unbekannter Grund</string>
+    <string name="profiles_msg_auto_describe_error">Profil „%1$s“ konnte nicht automatisch beschrieben werden: %2$s</string>
+    <string name="profiles_msg_setup_command_failed">Einrichtungsbefehl konnte nicht abgerufen werden: %1$s</string>
+    <string name="profiles_msg_load_models_failed">Modelle konnten nicht geladen werden: %1$s</string>
+    <string name="profiles_msg_builder_partial_failed">Builder-Daten konnten nicht geladen werden: Modelle: %1$s, Skills: %2$s</string>
+    <string name="profiles_msg_builder_failed">Builder-Daten konnten nicht geladen werden: %1$s</string>
+    <string name="profiles_msg_skills_search_failed">Suche im Skills-Hub fehlgeschlagen: %1$s</string>
+    <string name="profiles_msg_created">Profil %1$s erstellt</string>
+    <string name="profiles_msg_create_failed">Profil konnte nicht erstellt werden: %1$s</string>
+    <!-- App update -->
+    <string name="update_msg_network_error">Netzwerkfehler – prüfe deine Verbindung</string>
+    <string name="update_msg_check_failed">Suche nach Updates fehlgeschlagen</string>
+    <string name="update_msg_no_release">Noch kein Release gefunden</string>
+    <string name="update_msg_no_apk">Das Release enthält keine APK-Datei</string>
+    <string name="update_msg_download_failed">Download fehlgeschlagen – tippe, um es erneut zu versuchen</string>
+    <string name="update_msg_installer_failed">Installationsprogramm konnte nicht geöffnet werden</string>
+    <string name="server_cleartext_warning">Unverschlüsseltes HTTP legt Zugangsdaten und Nachrichten offen. Nutze HTTPS, außer in einem vertrauenswürdigen Entwicklungsnetz.</string>
 </resources>

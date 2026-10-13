@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.ModelCapabilities
@@ -14,6 +15,7 @@ import io.wutz.apollo.data.model.PinnedModel
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.ModelOptionsRepository
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -306,8 +308,7 @@ class ModelViewModelTest {
         assertNull(state.pinnedModels.find { it.providerSlug == "overflow" })
 
         // Toast should be set
-        val toastMessage = state.toastMessage
-        assertTrue(toastMessage?.contains("15") == true)
+        assertEquals(UiText.plural(R.plurals.model_msg_pin_limit, 15), state.toastMessage)
     }
 
     @Test

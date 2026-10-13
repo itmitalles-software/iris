@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.channels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.MessagingPlatform
 import io.wutz.apollo.data.model.MessagingPlatformUpdate
@@ -13,6 +14,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.ws.ChangeEvents
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import kotlinx.coroutines.Job
@@ -35,8 +37,8 @@ enum class OnboardingPhase {
 data class ChannelsUiState(
     val isLoading: Boolean = false,
     val platforms: List<MessagingPlatform> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val restartNeeded: Boolean = false,
     val isRestarting: Boolean = false,
     val togglingId: String? = null,
@@ -51,8 +53,9 @@ data class ChannelsUiState(
     val onboardingAllowedIds: List<String> = emptyList(),
     val onboardingDetectedOwnerId: String? = null,
     val onboardingNewAllowedId: String = "",
-    val onboardingError: String? = null,
-    val onboardingExpiresIn: String = "",
+    val onboardingError: UiText? = null,
+    /** Countdown ("m:ss") or "expired" for the QR code; null when unknown. */
+    val onboardingExpiresIn: UiText? = null,
     // Admin section
     val envPath: String = "~/.hermes/.env",
 )
@@ -105,7 +108,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load platforms: $errorMsg",
+                        errorMessage = UiText.res(R.string.channels_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -152,7 +155,7 @@ class ChannelsViewModel :
                         togglingId = null,
                         toastMessage =
                             if (hotServed) {
-                                "$platformId updated live"
+                                UiText.res(R.string.channels_msg_updated_live, platformId)
                             } else {
                                 null
                             },
@@ -164,7 +167,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         togglingId = null,
-                        toastMessage = "Toggle failed: $error",
+                        toastMessage = UiText.res(R.string.channels_msg_toggle_failed, error),
                     )
                 }
             },
@@ -220,9 +223,9 @@ class ChannelsViewModel :
                         restartNeeded = state.restartNeeded || !response.hotServed,
                         toastMessage =
                             if (response.hotServed) {
-                                "Platform disconnected and credentials cleared live"
+                                UiText.res(R.string.channels_msg_disconnected_live)
                             } else {
-                                "Platform disconnected and credentials cleared; restart the gateway"
+                                UiText.res(R.string.channels_msg_disconnected_restart)
                             },
                     )
                 }
@@ -232,7 +235,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         removingId = null,
-                        toastMessage = "Disconnect failed: $error. Refresh platform settings before retrying.",
+                        toastMessage = UiText.res(R.string.channels_msg_disconnect_failed, error),
                     )
                 }
             },
@@ -259,9 +262,9 @@ class ChannelsViewModel :
                 val hotServed = response.hotServed
                 val message =
                     if (hotServed) {
-                        "$platformId configured and reloaded live"
+                        UiText.res(R.string.channels_msg_configured_live, platformId)
                     } else {
-                        "$platformId configured successfully — restart the gateway for changes to take effect"
+                        UiText.res(R.string.channels_msg_configured_restart, platformId)
                     }
                 _uiState.update {
                     it.copy(
@@ -276,7 +279,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        toastMessage = "Failed to configure: $errorMsg",
+                        toastMessage = UiText.res(R.string.channels_msg_configure_failed, errorMsg),
                     )
                 }
             },
@@ -300,12 +303,12 @@ class ChannelsViewModel :
             onSuccess = { result ->
                 val msg = result.message
                 _uiState.update {
-                    it.copy(testingId = null, toastMessage = msg)
+                    it.copy(testingId = null, toastMessage = UiText.raw(msg))
                 }
             },
             onError = { error ->
                 _uiState.update {
-                    it.copy(testingId = null, toastMessage = "Test failed: $error")
+                    it.copy(testingId = null, toastMessage = UiText.res(R.string.channels_msg_test_failed, error))
                 }
             },
         )
@@ -333,7 +336,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         isRestarting = false,
-                        toastMessage = "Restart failed: $error",
+                        toastMessage = UiText.res(R.string.channels_msg_restart_failed, error),
                     )
                 }
             },
@@ -381,7 +384,7 @@ class ChannelsViewModel :
                     is io.wutz.apollo.data.remote.NetworkResult.Failure -> {
                         it.copy(
                             onboardingPhase = OnboardingPhase.IDLE,
-                            onboardingError = result.error.message,
+                            onboardingError = UiText.raw(result.error.message),
                         )
                     }
                 }
@@ -436,16 +439,14 @@ class ChannelsViewModel :
                                         onboardingPhase = OnboardingPhase.IDLE,
                                         onboardingSetup = null,
                                         onboardingQrDataUrl = null,
-                                        onboardingError =
-                                            "Telegram pairing expired. " +
-                                                "Start a new QR setup to try again.",
+                                        onboardingError = UiText.res(R.string.channels_msg_onboarding_expired),
                                     )
                                 }
                                 return@launch
                             }
                             _uiState.update {
                                 it.copy(
-                                    onboardingError = "Still waiting for Telegram. Retrying…",
+                                    onboardingError = UiText.res(R.string.channels_msg_onboarding_waiting),
                                 )
                             }
                         }
@@ -482,7 +483,7 @@ class ChannelsViewModel :
         if (!TELEGRAM_USER_ID_RE.matches(trimmed)) {
             _uiState.update {
                 it.copy(
-                    onboardingError = "Allowed Telegram user IDs must be numeric.",
+                    onboardingError = UiText.res(R.string.channels_msg_onboarding_ids_numeric),
                 )
             }
             return
@@ -512,7 +513,7 @@ class ChannelsViewModel :
         if (allowedIds.isEmpty()) {
             _uiState.update {
                 it.copy(
-                    onboardingError = "Add at least one allowed Telegram user ID.",
+                    onboardingError = UiText.res(R.string.channels_msg_onboarding_ids_required),
                 )
             }
             return
@@ -538,7 +539,7 @@ class ChannelsViewModel :
                     val applyResult = result.data
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Telegram saved. Restarting gateway…",
+                            toastMessage = UiText.res(R.string.channels_msg_telegram_saved),
                         )
                     }
                     resetOnboarding()
@@ -553,7 +554,7 @@ class ChannelsViewModel :
                     _uiState.update {
                         it.copy(
                             onboardingPhase = OnboardingPhase.READY,
-                            onboardingError = result.error.message,
+                            onboardingError = UiText.raw(result.error.message),
                         )
                     }
                 }
@@ -573,7 +574,7 @@ class ChannelsViewModel :
                 onboardingDetectedOwnerId = null,
                 onboardingNewAllowedId = "",
                 onboardingError = null,
-                onboardingExpiresIn = "",
+                onboardingExpiresIn = null,
             )
         }
     }
@@ -590,8 +591,8 @@ private val isoTimestampParser =
         timeZone = java.util.TimeZone.getTimeZone("UTC")
     }
 
-private fun formatExpiry(expiresAt: String?): String {
-    if (expiresAt == null) return ""
+private fun formatExpiry(expiresAt: String?): UiText? {
+    if (expiresAt == null) return null
     val ms =
         try {
             isoTimestampParser
@@ -601,12 +602,12 @@ private fun formatExpiry(expiresAt: String?): String {
         } catch (_: Exception) {
             null
         }
-            ?: return ""
-    if (ms <= 0) return "expired"
+            ?: return null
+    if (ms <= 0) return UiText.res(R.string.channels_msg_qr_expired)
     val seconds = (ms / 1000).toInt()
     val mins = seconds / 60
     val secs = seconds % 60
-    return "$mins:${secs.toString().padStart(2, '0')}"
+    return UiText.raw("$mins:${secs.toString().padStart(2, '0')}")
 }
 
 private fun isOnboardingExpired(setup: io.wutz.apollo.data.model.TelegramOnboardingStartResponse?): Boolean {

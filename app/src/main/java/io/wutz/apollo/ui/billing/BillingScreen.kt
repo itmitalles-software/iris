@@ -36,6 +36,7 @@ import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.LoadingState
 import io.wutz.apollo.ui.common.NavIcon
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -71,7 +72,7 @@ fun BillingScreen(
 
             state.errorMessage != null && state.subscription == null && state.usage == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: stringResource(R.string.error_unknown),
+                    message = state.errorMessage?.asString() ?: stringResource(R.string.error_unknown),
                     onRetry = { viewModel.load() },
                 )
             }
@@ -135,7 +136,7 @@ private fun BillingContent(
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Text(
-                        text = state.errorMessage,
+                        text = state.errorMessage.asString(),
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer,
@@ -152,7 +153,7 @@ private fun BillingContent(
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Text(
-                        text = state.actionMessage,
+                        text = state.actionMessage.asString(),
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodyMedium,
                     )

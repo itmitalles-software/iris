@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.McpServer
@@ -14,6 +15,7 @@ import io.wutz.apollo.data.model.McpServersResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -163,25 +165,25 @@ class McpOwnershipTest {
                 .single()
                 .enabled,
         )
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
         coEvery { api.deleteMcpServer(any()) } returns conflictResponse()
         vm.deleteServer(config.name)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
         coEvery { api.replaceMcpServers(any()) } coAnswers { conflictResponse() }
         vm.updateEnvKey("KEY")
         vm.addEnvVar(config.name)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
         vm.clearToast()
         vm.removeEnvVar(config.name, "KEY")
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
         coEvery { api.authMcpServer(any()) } returns conflictResponse()
         vm.clearToast()
         vm.startMcpOAuthFlow(config) { error("Must not open browser") }
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -193,7 +195,7 @@ class McpOwnershipTest {
         vm.addEnvVar(config.name)
         dispatcher.scheduler.advanceUntilIdle()
         coVerify(exactly = 0) { api.replaceMcpServers(any()) }
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -204,9 +206,12 @@ class McpOwnershipTest {
         vm.removeEnvVar(config.name, "KEY")
         dispatcher.scheduler.advanceUntilIdle()
         coVerify(exactly = 0) { api.replaceMcpServers(any()) }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("not editable"),
+        assertEquals(
+            UiText.res(
+                R.string.mcp_msg_env_remove_failed,
+                "An unexpected error occurred: Server is not editable in the saved configuration",
+            ),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -224,10 +229,7 @@ class McpOwnershipTest {
         vm.addEnvVar(config.name)
         dispatcher.scheduler.advanceUntilIdle()
         coVerify(exactly = 0) { api.replaceMcpServers(any()) }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("profile changed"),
-        )
+        assertEquals(UiText.res(R.string.mcp_msg_edit_context_changed), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -245,10 +247,7 @@ class McpOwnershipTest {
         vm.addEnvVar(config.name)
         dispatcher.scheduler.advanceUntilIdle()
         coVerify(exactly = 0) { api.replaceMcpServers(any()) }
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Server or profile changed"),
-        )
+        assertEquals(UiText.res(R.string.mcp_msg_edit_context_changed), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -275,7 +274,7 @@ class McpOwnershipTest {
         vm.updateAddServerUrl("https://example.com/mcp")
         vm.submitAddServer()
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(conflict, vm.uiState.value.toastMessage)
+        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
         assertFalse(vm.uiState.value.addingServer)
         assertTrue(vm.uiState.value.showAddForm)
         assertEquals(owned.name, vm.uiState.value.addServerName)

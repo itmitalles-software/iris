@@ -29,6 +29,7 @@ import io.wutz.apollo.theme.CodeTerminalText
 import io.wutz.apollo.ui.chat.components.CodeTerminalCard
 import io.wutz.apollo.ui.chat.components.highlightSyntax
 import io.wutz.apollo.ui.chat.tool.ToolJson
+import io.wutz.apollo.ui.chat.tool.rememberToolText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -38,14 +39,15 @@ internal fun ToolRawJsonView(
     modifier: Modifier = Modifier,
 ) {
     var formatJson by remember { mutableStateOf(true) }
-    val clampedRaw = remember(rawContent) { ToolJson.clampForDisplay(rawContent) }
+    val toolText = rememberToolText()
+    val clampedRaw = remember(rawContent, toolText) { ToolJson.clampForDisplay(rawContent, toolText) }
 
     // Full pretty text (for copy) + clamped copy (for display); null when formatting changes nothing.
-    val formatted by produceState<Pair<String, String>?>(initialValue = null, key1 = rawContent) {
+    val formatted by produceState<Pair<String, String>?>(initialValue = null, key1 = rawContent, key2 = toolText) {
         value =
             withContext(Dispatchers.Default) {
                 val full = ToolJson.prettyPrintJson(rawContent)
-                if (full != rawContent) full to ToolJson.clampForDisplay(full) else null
+                if (full != rawContent) full to ToolJson.clampForDisplay(full, toolText) else null
             }
     }
 

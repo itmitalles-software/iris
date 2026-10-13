@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat.tool
 
+import io.wutz.apollo.R
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -18,14 +19,15 @@ internal object ToolJson {
 
     const val MAX_TOOL_RENDER_CHARS = 20_000
 
+    /** Caps [value] at [max] characters and appends a localized truncation note. */
     fun clampForDisplay(
         value: String,
+        res: ToolText,
         max: Int = MAX_TOOL_RENDER_CHARS,
     ): String {
         if (value.length <= max) return value
         val omitted = value.length - max
-        return value.take(max) +
-            "\n… $omitted more characters truncated — use Copy for the full output."
+        return value.take(max) + "\n" + res.plural(R.plurals.tool_msg_output_truncated, omitted)
     }
 
     /** First non-blank string value among [keys], trimmed. */
@@ -254,10 +256,14 @@ internal object ToolJson {
             .ifEmpty { name }
     }
 
-    /** Generic detail: prefer a fresh result context, then args, then the heuristic summary. */
+    /**
+     * Generic detail: prefer a fresh result context, then args, then the heuristic summary.
+     * [res] localizes the summary's words; null keeps English nouns for count parsing only.
+     */
     fun fallbackDetailText(
         args: JsonElement?,
         result: JsonElement?,
+        res: ToolText?,
     ): String {
         val argContext = contextValue(args)
         val resultContext = contextValue(result)
@@ -271,10 +277,10 @@ internal object ToolJson {
         }
 
         if (result != null) {
-            return ToolResultSummary.formatToolResultSummary(result)
+            return ToolResultSummary.formatToolResultSummary(result, res)
         }
 
-        return ToolResultSummary.formatToolResultSummary(args)
+        return ToolResultSummary.formatToolResultSummary(args, res)
     }
 
     fun formatDurationSeconds(seconds: Double): String {

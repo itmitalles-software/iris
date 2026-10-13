@@ -5,9 +5,11 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.StatusResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -85,10 +87,7 @@ class GatewayViewModelTest {
 
             assertFalse(viewModel.uiState.value.isLoading)
             assertNull(viewModel.uiState.value.status)
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("500") == true,
-            )
+            assertLoadStatusError(viewModel, "500")
         }
 
     @Test
@@ -104,9 +103,15 @@ class GatewayViewModelTest {
 
             assertFalse(viewModel.uiState.value.isLoading)
             assertNull(viewModel.uiState.value.status)
-            assertTrue(
-                viewModel.uiState.value.errorMessage
-                    ?.contains("Network timeout") == true,
-            )
+            assertLoadStatusError(viewModel, "Network timeout")
         }
+
+    private fun assertLoadStatusError(
+        viewModel: GatewayViewModel,
+        expectedDetail: String,
+    ) {
+        val error = viewModel.uiState.value.errorMessage as UiText.Resource
+        assertEquals(R.string.gateway_msg_load_status_failed, error.id)
+        assertTrue((error.args.single() as String).contains(expectedDetail))
+    }
 }

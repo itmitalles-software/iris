@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewExtras
 import io.wutz.apollo.ui.chat.tool.ToolViewStatus
 import kotlinx.serialization.json.JsonArray
@@ -16,23 +18,41 @@ import kotlinx.serialization.json.JsonPrimitive
 internal object SearchFilesRenderer : ToolRenderer {
     private fun pattern(call: ToolCall) = ToolJson.firstString(call.args, listOf("pattern"))
 
-    override fun pendingTitle(call: ToolCall): String? =
-        pattern(call).takeIf { it.isNotEmpty() }?.let { "Searching “${ToolJson.compactPreview(it, 48)}”" }
+    override fun pendingTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? =
+        pattern(call).takeIf { it.isNotEmpty() }?.let {
+            res.get(R.string.tool_title_files_searching, ToolJson.compactPreview(it, 48))
+        }
 
-    override fun doneTitle(call: ToolCall): String? {
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String? {
         val p = pattern(call).takeIf { it.isNotEmpty() } ?: return null
         val total = ToolJson.intValue(call.result?.get("total_count"))
-        val suffix = total?.let { " · $it match${if (it == 1) "" else "es"}" } ?: ""
-        return "Searched “${ToolJson.compactPreview(p, 48)}”$suffix"
+        val shown = ToolJson.compactPreview(p, 48)
+        return if (total != null) {
+            res.plural(R.plurals.tool_title_files_searched_matches, total, shown, total)
+        } else {
+            res.get(R.string.tool_title_files_searched, shown)
+        }
     }
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val path = ToolJson.firstString(call.args, listOf("path")).takeIf { it != "." && it.isNotEmpty() } ?: ""
         val glob = ToolJson.firstString(call.args, listOf("file_glob"))
         return listOf(path, glob).filter { it.isNotEmpty() }.joinToString(" · ")
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result ?: return ""
         // Dense ≥5-match block: already ripgrep-grouped, use verbatim.
         val dense = ToolJson.firstString(result, listOf("matches_text"))
@@ -55,7 +75,7 @@ internal object SearchFilesRenderer : ToolRenderer {
             }
         val hint =
             if (ToolJson.boolTrue(result["truncated"])) {
-                ToolJson.firstString(result, listOf("_hint")).ifEmpty { "Results truncated" }
+                ToolJson.firstString(result, listOf("_hint")).ifEmpty { res.get(R.string.tool_msg_results_truncated) }
             } else {
                 ""
             }
@@ -65,5 +85,6 @@ internal object SearchFilesRenderer : ToolRenderer {
     override fun extras(
         call: ToolCall,
         status: ToolViewStatus,
-    ): ToolViewExtras = ToolViewExtras(detailLabel = "Matches")
+        res: ToolText,
+    ): ToolViewExtras = ToolViewExtras(detailLabel = res.get(R.string.tool_msg_matches))
 }

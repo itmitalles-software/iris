@@ -50,9 +50,11 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.ServerEndpoint
+import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.data.ws.KanbanEventsClient
 import io.wutz.apollo.data.ws.ModelOptionsRepository
 import io.wutz.apollo.ui.channels.ChannelsViewModel
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.connect.ConnectViewModel
 import io.wutz.apollo.ui.cron.CronJobsViewModel
 import io.wutz.apollo.ui.kanban.KanbanTaskAction
@@ -112,8 +114,7 @@ class E2eIntegrationTest {
         every { AuthManager.getSelectedProfileId() } returns null
 
         // Mock Application string resources (no real resources in unit tests)
-        // SkillsViewModel uses hardcoded strings (not getApplication().getString()),
-        // so only resources used by ConnectViewModel + enum labels need stubs.
+        // ViewModel messages are UiText (resource id + args), so only enum labels need stubs.
         every { mockApp.getString(any<Int>()) } returns ""
         every { AuthManager.setSelectedProfileId(any()) } returns Unit
         every { AuthManager.ensureDefaultSelected() } returns Unit
@@ -122,9 +123,6 @@ class E2eIntegrationTest {
         every { AuthManager.saveConnectionProfiles(any()) } returns Unit
         every { AuthManager.getPinnedModels() } returns emptyList()
         every { AuthManager.savePinnedModels(any()) } returns Unit
-
-        // Application stubs
-        every { mockApp.getString(R.string.connect_error_401) } returns "Invalid token (401 Unauthorized)"
     }
 
     @After
@@ -146,6 +144,18 @@ class E2eIntegrationTest {
         Dispatchers.resetMain()
         unmockkAll()
         NavigationController.backStack = null
+    }
+
+    /** Connection failures carry the data layer's raw message as the only format argument. */
+    private fun assertConnectionFailure(
+        expectedId: Int,
+        actual: UiText?,
+        rawFragment: String,
+    ) {
+        val resource = actual as UiText.Resource
+        assertEquals(expectedId, resource.id)
+        assertEquals(1, resource.args.size)
+        assertTrue((resource.args[0] as String).contains(rawFragment))
     }
 
     private fun <T> createErrorResponse(code: Int): Response<T> {
@@ -266,9 +276,9 @@ class E2eIntegrationTest {
                     .enabled,
             )
             assertNotNull(viewModel.uiState.value.toastMessage)
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -283,9 +293,9 @@ class E2eIntegrationTest {
 
             assertFalse(viewModel.uiState.value.isLoading)
             assertNotNull(viewModel.uiState.value.errorMessage)
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(500).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -376,9 +386,9 @@ class E2eIntegrationTest {
             advanceUntilIdle()
             assertFalse(viewModel.uiState.value.isHubSearching)
             assertNotNull(viewModel.uiState.value.hubSearchError)
-            assertTrue(
-                viewModel.uiState.value.hubSearchError!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_search_failed, mapHttpError(500).message),
+                viewModel.uiState.value.hubSearchError,
             )
         }
 
@@ -415,9 +425,9 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isInstalling)
             assertNull(viewModel.uiState.value.installingSkillName)
             assertNotNull(viewModel.uiState.value.toastMessage)
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("Installed"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_installed, "new-skill"),
+                viewModel.uiState.value.toastMessage,
             )
             // Refresh was called
             assertFalse(viewModel.uiState.value.isLoading)
@@ -437,9 +447,9 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isInstalling)
             assertNull(viewModel.uiState.value.installingSkillName)
             assertNotNull(viewModel.uiState.value.toastMessage)
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_install_failed, "failing-skill", mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -458,9 +468,9 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isUninstalling)
             assertNull(viewModel.uiState.value.uninstallingSkillName)
             assertNotNull(viewModel.uiState.value.toastMessage)
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("Uninstalled"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_uninstalled, "hub-skill"),
+                viewModel.uiState.value.toastMessage,
             )
             // Refresh was called — skills list is now empty
             assertEquals(0, viewModel.uiState.value.skills.size)
@@ -479,9 +489,9 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isUninstalling)
             assertNull(viewModel.uiState.value.uninstallingSkillName)
             assertNotNull(viewModel.uiState.value.toastMessage)
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_uninstall_failed, "failing-skill", mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -592,7 +602,7 @@ class E2eIntegrationTest {
             viewModel.triggerCronJob("id1")
             advanceUntilIdle()
 
-            assertEquals("Job triggered successfully", viewModel.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.cron_msg_triggered), viewModel.uiState.value.toastMessage)
         }
 
     @Test
@@ -633,9 +643,9 @@ class E2eIntegrationTest {
 
             assertFalse(viewModel.uiState.value.isLoading)
             assertNotNull(viewModel.uiState.value.errorMessage)
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.cron_msg_load_failed, mapHttpError(500).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -689,9 +699,9 @@ class E2eIntegrationTest {
 
             assertFalse(viewModel.uiState.value.isLoading)
             assertNotNull(viewModel.uiState.value.errorMessage)
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.sessions_msg_load_failed, mapHttpError(500).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -759,9 +769,9 @@ class E2eIntegrationTest {
             val viewModel = SkillsViewModel(mockApp)
             viewModel.loadSkills()
             advanceUntilIdle()
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 400"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(400).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -772,9 +782,9 @@ class E2eIntegrationTest {
             val viewModel = SkillsViewModel(mockApp)
             viewModel.loadSkills()
             advanceUntilIdle()
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 404"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(404).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -785,9 +795,9 @@ class E2eIntegrationTest {
             val viewModel = SkillsViewModel(mockApp)
             viewModel.loadSkills()
             advanceUntilIdle()
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(500).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -798,10 +808,7 @@ class E2eIntegrationTest {
             val viewModel = SkillsViewModel(mockApp)
             viewModel.loadSkills()
             advanceUntilIdle()
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("Timeout"),
-            )
+            assertConnectionFailure(R.string.skills_msg_load_failed, viewModel.uiState.value.errorMessage, "Timeout")
         }
 
     @Test
@@ -837,9 +844,9 @@ class E2eIntegrationTest {
                 viewModel.uiState.value.skills[0]
                     .enabled,
             )
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -851,9 +858,9 @@ class E2eIntegrationTest {
             val viewModel = CronJobsViewModel()
             viewModel.loadCronJobs()
             advanceUntilIdle()
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.cron_msg_load_failed, mapHttpError(500).message),
+                viewModel.uiState.value.errorMessage,
             )
         }
 
@@ -876,9 +883,9 @@ class E2eIntegrationTest {
                 viewModel.uiState.value.jobs[0]
                     .state,
             )
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.cron_msg_pause_failed, mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -891,9 +898,9 @@ class E2eIntegrationTest {
             viewModel.triggerCronJob("id1")
             advanceUntilIdle()
 
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.cron_msg_trigger_failed, mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -912,9 +919,9 @@ class E2eIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(1, viewModel.uiState.value.jobs.size)
-            assertTrue(
-                viewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.cron_msg_delete_failed, mapHttpError(500).message),
+                viewModel.uiState.value.toastMessage,
             )
         }
 
@@ -925,10 +932,7 @@ class E2eIntegrationTest {
             val viewModel = CronJobsViewModel()
             viewModel.loadCronJobs()
             advanceUntilIdle()
-            assertTrue(
-                viewModel.uiState.value.errorMessage!!
-                    .contains("Timeout"),
-            )
+            assertConnectionFailure(R.string.cron_msg_load_failed, viewModel.uiState.value.errorMessage, "Timeout")
         }
 
     @Test
@@ -992,7 +996,7 @@ class E2eIntegrationTest {
             advanceUntilIdle()
 
             // Verify state is updated with error message
-            assertEquals("Invalid token (401 Unauthorized)", viewModel.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_401), viewModel.uiState.value.errorMessage)
             assertFalse(viewModel.uiState.value.connectionSuccess)
             // Verify AuthManager.setToken(null) was called
         }
@@ -1048,9 +1052,9 @@ class E2eIntegrationTest {
                 skillsViewModel.uiState.value.skills[0]
                     .enabled,
             )
-            assertTrue(
-                skillsViewModel.uiState.value.toastMessage!!
-                    .contains("HTTP 500"),
+            assertEquals(
+                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).message),
+                skillsViewModel.uiState.value.toastMessage,
             )
 
             // Step 4: User navigates to CronJobsScreen
@@ -1063,7 +1067,7 @@ class E2eIntegrationTest {
             cronViewModel.triggerCronJob("job-1")
             advanceUntilIdle()
 
-            assertEquals("Job triggered successfully", cronViewModel.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.cron_msg_triggered), cronViewModel.uiState.value.toastMessage)
         }
 
     @Test
@@ -1147,7 +1151,7 @@ class E2eIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(
-                "telegram configured successfully — restart the gateway for changes to take effect",
+                UiText.res(R.string.channels_msg_configured_restart, "telegram"),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -1172,7 +1176,7 @@ class E2eIntegrationTest {
             viewModel.updateKey("KEY1", "newValue")
             advanceUntilIdle()
 
-            assertEquals("Key updated successfully", viewModel.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.keys_msg_updated), viewModel.uiState.value.toastMessage)
         }
 
     @Test
@@ -1214,7 +1218,7 @@ class E2eIntegrationTest {
             viewModel.triggerBackup()
             advanceUntilIdle()
 
-            assertEquals("Backup triggered", viewModel.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.system_msg_backup_triggered), viewModel.uiState.value.toastMessage)
         }
 
     @Test
@@ -1284,7 +1288,7 @@ class E2eIntegrationTest {
                 )
             viewModel.createTask("Fresh task", null, "todo")
             advanceUntilIdle()
-            assertEquals("Task created successfully", viewModel.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_task_created), viewModel.uiState.value.toastMessage)
         }
 
     @Test
@@ -1340,7 +1344,10 @@ class E2eIntegrationTest {
             advanceUntilIdle()
 
             coVerify { mockApiService.updateProfileModel("default", any()) }
-            assertEquals("Successfully set profile model to llama3", viewModel.uiState.value.toastMessage)
+            assertEquals(
+                UiText.res(R.string.model_msg_profile_model_set, "llama3"),
+                viewModel.uiState.value.toastMessage,
+            )
         }
 
     @Test

@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.plugins
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
@@ -23,6 +24,7 @@ import io.wutz.apollo.data.ws.PluginRemovalRepository
 import io.wutz.apollo.data.ws.PluginSettingField
 import io.wutz.apollo.data.ws.PluginSettingFieldType
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchAction
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
@@ -57,8 +59,8 @@ data class PluginsUiState(
     val isLoading: Boolean = false,
     val plugins: List<PluginInfo> = emptyList(),
     val orphanPlugins: List<PluginInfo> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     // Install state
     val installUrl: String = "",
     val installForce: Boolean = false,
@@ -86,7 +88,7 @@ data class PluginsUiState(
     // Catalog state
     val catalogEntries: List<PluginCatalogEntry> = emptyList(),
     val isCatalogLoading: Boolean = false,
-    val catalogErrorMessage: String? = null,
+    val catalogErrorMessage: UiText? = null,
     val catalogInstallingName: String? = null,
     val catalogQuery: String = "",
     val catalogTierFilter: String? = null,
@@ -194,7 +196,7 @@ class PluginsViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load plugins: $errorMsg",
+                        errorMessage = UiText.res(R.string.plugins_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -216,7 +218,7 @@ class PluginsViewModel(
     fun installPluginFromUrl() {
         val url = _uiState.value.installUrl.trim()
         if (url.isEmpty()) {
-            _uiState.update { it.copy(toastMessage = "Please enter a plugin identifier") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.plugins_msg_identifier_required)) }
             return
         }
         viewModelScope.launch {
@@ -239,7 +241,7 @@ class PluginsViewModel(
                         it.copy(
                             installUrl = "",
                             installBusy = false,
-                            toastMessage = "Plugin installed successfully",
+                            toastMessage = UiText.res(R.string.plugins_msg_installed),
                         )
                     }
                     loadPlugins(forceRefresh = true)
@@ -249,7 +251,7 @@ class PluginsViewModel(
                     _uiState.update {
                         it.copy(
                             installBusy = false,
-                            toastMessage = "Failed to install plugin: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.plugins_msg_install_failed, result.error.message),
                         )
                     }
                 }
@@ -282,7 +284,12 @@ class PluginsViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(providerBusy = false, toastMessage = "Plugin providers saved") }
+                    _uiState.update {
+                        it.copy(
+                            providerBusy = false,
+                            toastMessage = UiText.res(R.string.plugins_msg_providers_saved),
+                        )
+                    }
                     loadPlugins(forceRefresh = true)
                 }
 
@@ -290,7 +297,7 @@ class PluginsViewModel(
                     _uiState.update {
                         it.copy(
                             providerBusy = false,
-                            toastMessage = "Failed to save providers: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.plugins_msg_providers_save_failed, result.error.message),
                         )
                     }
                 }
@@ -307,7 +314,12 @@ class PluginsViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(rescanBusy = false, toastMessage = "Plugins rescanned") }
+                    _uiState.update {
+                        it.copy(
+                            rescanBusy = false,
+                            toastMessage = UiText.res(R.string.plugins_msg_rescanned),
+                        )
+                    }
                     loadPlugins(forceRefresh = true)
                 }
 
@@ -315,7 +327,7 @@ class PluginsViewModel(
                     _uiState.update {
                         it.copy(
                             rescanBusy = false,
-                            toastMessage = "Failed to rescan: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.plugins_msg_rescan_failed, result.error.message),
                         )
                     }
                 }
@@ -359,7 +371,11 @@ class PluginsViewModel(
                     pluginsCache.put(requestScope.scopedKey("default"), PluginsHubResponse(plugins = updated))
                 }
             } else if (result is NetworkResult.Failure) {
-                revertPluginToggle(plugin.name, originalEnabled, "Failed to toggle plugin: ${result.error.message}")
+                revertPluginToggle(
+                    plugin.name,
+                    originalEnabled,
+                    UiText.res(R.string.plugins_msg_toggle_failed, result.error.message),
+                )
                 val reverted = _uiState.value.plugins
                 if (requestScope != null) {
                     pluginsCache.put(requestScope.scopedKey("default"), PluginsHubResponse(plugins = reverted))
@@ -374,11 +390,11 @@ class PluginsViewModel(
             onStart = { setRowBusy(plugin.name) },
             apiCall = { safeApiCall { ApiClient.hermesApi.enablePlugin(plugin.name) } },
             onSuccess = {
-                _uiState.update { it.copy(toastMessage = "Plugin enabled successfully") }
+                _uiState.update { it.copy(toastMessage = UiText.res(R.string.plugins_msg_enabled)) }
                 loadPlugins(forceRefresh = true)
             },
             onError = { error ->
-                _uiState.update { it.copy(toastMessage = "Failed to enable plugin: $error") }
+                _uiState.update { it.copy(toastMessage = UiText.res(R.string.plugins_msg_enable_failed, error)) }
             },
             onComplete = { clearRowBusy(plugin.name) },
         )
@@ -416,7 +432,11 @@ class PluginsViewModel(
                 if (!result.ok) {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to uninstall plugin: ${result.error ?: "Gateway refused removal"}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.plugins_msg_uninstall_failed,
+                                    result.error ?: UiText.res(R.string.plugins_msg_gateway_refused_removal),
+                                ),
                         )
                     }
                     return@launch
@@ -448,9 +468,9 @@ class PluginsViewModel(
                                 contextOptions = data.providers?.contextOptions.orEmpty(),
                                 toastMessage =
                                     if (data.plugins.none { it.name == name }) {
-                                        "Plugin uninstalled successfully"
+                                        UiText.res(R.string.plugins_msg_uninstalled)
                                     } else {
-                                        "Removal returned success, but $name still appears in the plugin list"
+                                        UiText.res(R.string.plugins_msg_uninstall_unverified, name)
                                     },
                             )
                         }
@@ -459,7 +479,11 @@ class PluginsViewModel(
                     is NetworkResult.Failure -> {
                         _uiState.update {
                             it.copy(
-                                toastMessage = "Removal sent; could not verify plugin list: ${refreshed.error.message}",
+                                toastMessage =
+                                    UiText.res(
+                                        R.string.plugins_msg_uninstall_verify_failed,
+                                        refreshed.error.message,
+                                    ),
                             )
                         }
                     }
@@ -470,7 +494,11 @@ class PluginsViewModel(
                 if (generation == scopeGeneration) {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to uninstall plugin: ${e.message ?: "Gateway unavailable"}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.plugins_msg_uninstall_failed,
+                                    e.message ?: UiText.res(R.string.plugins_msg_gateway_unavailable),
+                                ),
                         )
                     }
                 }
@@ -529,7 +557,11 @@ class PluginsViewModel(
                             !update.ok -> {
                                 _uiState.update {
                                     it.copy(
-                                        toastMessage = "Failed to update plugin: ${update.error ?: "Update refused"}",
+                                        toastMessage =
+                                            UiText.res(
+                                                R.string.plugins_msg_update_failed,
+                                                update.error ?: UiText.res(R.string.plugins_msg_update_refused),
+                                            ),
                                     )
                                 }
                             }
@@ -539,9 +571,9 @@ class PluginsViewModel(
                                     it.copy(
                                         toastMessage =
                                             if (update.unchanged) {
-                                                "Plugin is already up to date"
+                                                UiText.res(R.string.plugins_msg_already_up_to_date)
                                             } else {
-                                                "Plugin updated successfully"
+                                                UiText.res(R.string.plugins_msg_updated)
                                             },
                                     )
                                 }
@@ -552,7 +584,7 @@ class PluginsViewModel(
 
                     is NetworkResult.Failure -> {
                         _uiState.update {
-                            it.copy(toastMessage = "Failed to update plugin: ${result.error.message}")
+                            it.copy(toastMessage = UiText.res(R.string.plugins_msg_update_failed, result.error.message))
                         }
                     }
                 }
@@ -577,13 +609,17 @@ class PluginsViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Plugin visibility updated") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.plugins_msg_visibility_updated)) }
                     clearRowBusy(plugin.name)
                     loadPlugins(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = "Failed to update visibility: ${result.error.message}") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.plugins_msg_visibility_failed, result.error.message),
+                        )
+                    }
                     clearRowBusy(plugin.name)
                 }
             }
@@ -593,7 +629,7 @@ class PluginsViewModel(
     private fun revertPluginToggle(
         name: String,
         originalEnabled: Boolean,
-        errorMsg: String,
+        errorMsg: UiText,
     ) {
         _uiState.update { state ->
             state.copy(
@@ -649,7 +685,7 @@ class PluginsViewModel(
                 _uiState.update {
                     it.copy(
                         isCatalogLoading = false,
-                        catalogErrorMessage = "Failed to load catalog: $errorMsg",
+                        catalogErrorMessage = UiText.res(R.string.plugins_msg_catalog_load_failed, errorMsg),
                     )
                 }
             },
@@ -686,7 +722,7 @@ class PluginsViewModel(
             onSuccess = {
                 _uiState.update {
                     it.copy(
-                        toastMessage = "Plugin \"${entry.displayName}\" installed successfully",
+                        toastMessage = UiText.res(R.string.plugins_msg_catalog_installed, entry.displayName),
                     )
                 }
                 loadPlugins(forceRefresh = true)
@@ -695,7 +731,12 @@ class PluginsViewModel(
             onError = { errorMsg ->
                 _uiState.update {
                     it.copy(
-                        toastMessage = "Failed to install \"${entry.displayName}\": $errorMsg",
+                        toastMessage =
+                            UiText.res(
+                                R.string.plugins_msg_catalog_install_failed,
+                                entry.displayName,
+                                errorMsg,
+                            ),
                     )
                 }
             },
@@ -794,8 +835,12 @@ class PluginsViewModel(
                                         ApiClient.hermesApi.updateEnvVar(EnvVarUpdate(key = envVar, value = raw))
                                     }
                                 if (envResult is NetworkResult.Failure) {
-                                    throw IllegalStateException(
-                                        "Failed to update secret $envVar: ${envResult.error.message}",
+                                    throw SettingsSaveException(
+                                        UiText.res(
+                                            R.string.plugins_msg_secret_update_failed,
+                                            envVar,
+                                            envResult.error.message,
+                                        ),
                                     )
                                 }
                             }
@@ -813,7 +858,9 @@ class PluginsViewModel(
                                 valuesToSave[field.key] =
                                     if (num is Long) JsonPrimitive(num) else JsonPrimitive(num as Double)
                             } else if (raw.trim().isNotEmpty()) {
-                                throw IllegalArgumentException("${field.label}: expected a number")
+                                throw SettingsSaveException(
+                                    UiText.res(R.string.plugins_msg_setting_expected_number, field.label),
+                                )
                             }
                         }
 
@@ -823,8 +870,12 @@ class PluginsViewModel(
 
                         PluginSettingFieldType.ENUM -> {
                             if (!field.choices.isNullOrEmpty() && raw.trim() !in field.choices) {
-                                throw IllegalArgumentException(
-                                    "${field.label}: must be one of ${field.choices.joinToString()}",
+                                throw SettingsSaveException(
+                                    UiText.res(
+                                        R.string.plugins_msg_setting_must_be_one_of,
+                                        field.label,
+                                        field.choices.joinToString(),
+                                    ),
                                 )
                             }
                             valuesToSave[field.key] = JsonPrimitive(raw.trim())
@@ -845,7 +896,9 @@ class PluginsViewModel(
                 if (valuesToSave.isNotEmpty()) {
                     val result = pluginManage.saveSettings(canonicalKey, valuesToSave, profile)
                     if (!result.ok) {
-                        throw IllegalStateException(result.error ?: "Failed to save settings")
+                        throw SettingsSaveException(
+                            result.error?.let { UiText.raw(it) } ?: UiText.res(R.string.error_unknown),
+                        )
                     }
                     if (result.plugin != null) {
                         val refreshed = result.plugin
@@ -866,7 +919,7 @@ class PluginsViewModel(
                                 isPluginDetailSaving = false,
                                 pluginDetailRow = refreshed,
                                 pluginDetailEdits = newEdits,
-                                toastMessage = "Plugin settings saved",
+                                toastMessage = UiText.res(R.string.plugins_msg_settings_saved),
                             )
                         }
                         return@launch
@@ -881,16 +934,17 @@ class PluginsViewModel(
                             it.pluginDetailEdits.filterKeys { k ->
                                 schema.none { f -> f.key == k && f.type == PluginSettingFieldType.SECRET }
                             },
-                        toastMessage = "Plugin settings saved",
+                        toastMessage = UiText.res(R.string.plugins_msg_settings_saved),
                     )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                val detail = if (e is SettingsSaveException) e.detail else UiText.raw(e.message.orEmpty())
                 _uiState.update {
                     it.copy(
                         isPluginDetailSaving = false,
-                        toastMessage = "Failed to save settings: ${e.message}",
+                        toastMessage = UiText.res(R.string.plugins_msg_settings_save_failed, detail),
                     )
                 }
             }
@@ -900,4 +954,9 @@ class PluginsViewModel(
     override fun clearToast() {
         _uiState.update { it.copy(toastMessage = null) }
     }
+
+    /** A settings-save failure with a user-facing [detail] (field validation or a server error). */
+    private class SettingsSaveException(
+        val detail: UiText,
+    ) : Exception()
 }

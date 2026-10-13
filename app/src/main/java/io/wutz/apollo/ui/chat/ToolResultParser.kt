@@ -1,6 +1,7 @@
 package io.wutz.apollo.ui.chat
 
 import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolView
 import io.wutz.apollo.ui.chat.tool.ToolViewBuilder
 import kotlinx.serialization.json.JsonArray
@@ -22,6 +23,7 @@ fun parseToolOutput(
     content: String,
     toolName: String?,
     isRunning: Boolean,
+    res: ToolText,
 ): ToolView? {
     val trimmed = content.trim()
     if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
@@ -75,6 +77,7 @@ fun parseToolOutput(
             result = result,
             isError = false,
             running = isRunning,
+            res = res,
         )
     } catch (_: Exception) {
         null

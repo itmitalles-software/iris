@@ -1,6 +1,7 @@
 package io.wutz.apollo.ui.achievements
 
 import androidx.lifecycle.ViewModel
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.Achievement
@@ -9,6 +10,7 @@ import io.wutz.apollo.data.model.RecentUnlock
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +27,7 @@ data class AchievementsUiState(
     val totalCount: Int = 0,
     val isStale: Boolean = false,
     val generatedAt: Long? = null,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     // Scan status
     val scanState: String = "idle",
     val scanLastError: String? = null,
@@ -40,7 +42,7 @@ data class AchievementsUiState(
     // Action states
     val isRescanning: Boolean = false,
     val isResetting: Boolean = false,
-    val toastMessage: String? = null,
+    val toastMessage: UiText? = null,
 )
 
 class AchievementsViewModel :
@@ -129,7 +131,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load achievements: $errorMsg",
+                        errorMessage = UiText.res(R.string.achievements_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -181,7 +183,7 @@ class AchievementsViewModel :
                         scanLastDurationMs = data.scanMeta?.status?.lastDurationMs,
                         scanRunCount = data.scanMeta?.status?.runCount ?: 0,
                         categories = categories,
-                        toastMessage = "Rescan complete",
+                        toastMessage = UiText.res(R.string.achievements_msg_rescan_complete),
                     )
                 }
             },
@@ -189,7 +191,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     it.copy(
                         isRescanning = false,
-                        toastMessage = "Rescan failed: $errorMsg",
+                        toastMessage = UiText.res(R.string.achievements_msg_rescan_failed, errorMsg),
                     )
                 }
             },
@@ -207,7 +209,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     AchievementsUiState(
                         isLoading = true,
-                        toastMessage = "Achievement state reset",
+                        toastMessage = UiText.res(R.string.achievements_msg_reset_done),
                     )
                 }
                 loadAchievements(forceRefresh = true)
@@ -216,7 +218,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     it.copy(
                         isResetting = false,
-                        toastMessage = "Reset failed: $errorMsg",
+                        toastMessage = UiText.res(R.string.achievements_msg_reset_failed, errorMsg),
                     )
                 }
             },

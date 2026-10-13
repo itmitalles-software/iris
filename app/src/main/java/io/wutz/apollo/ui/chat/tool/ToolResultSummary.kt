@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat.tool
 
+import io.wutz.apollo.R
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -70,10 +71,19 @@ object ToolResultSummary {
             .filter { it.isNotEmpty() }
             .joinToString(" ") { capitalize(it) }
 
-    private fun pluralize(
+    /**
+     * "N fields" / "N items" in the current locale. Without [res] (count parsing in [ToolCounts],
+     * never displayed) the summary keeps the English nouns the count regexes match.
+     */
+    private fun fieldCount(
         n: Int,
-        noun: String,
-    ): String = "$n $noun${if (n == 1) "" else "s"}"
+        res: ToolText?,
+    ): String = res?.plural(R.plurals.tool_msg_field_count, n) ?: "$n field${if (n == 1) "" else "s"}"
+
+    private fun itemCount(
+        n: Int,
+        res: ToolText?,
+    ): String = res?.plural(R.plurals.tool_msg_item_count, n) ?: "$n item${if (n == 1) "" else "s"}"
 
     /** Trim + collapse whitespace, truncate with ellipsis. */
     private fun clipInline(
@@ -198,9 +208,10 @@ object ToolResultSummary {
     private fun summarizeRecordInline(
         record: JsonObject,
         depth: Int,
+        res: ToolText?,
     ): String {
         if (depth > 3) {
-            return pluralize(record.keys.size, "field")
+            return fieldCount(record.keys.size, res)
         }
 
         val title =
@@ -228,12 +239,13 @@ object ToolResultSummary {
                     if (s.isEmpty()) null else "${titleCase(k)}: $s"
                 }.take(2)
 
-        return if (pairs.isNotEmpty()) pairs.joinToString(" · ") else pluralize(record.keys.size, "field")
+        return if (pairs.isNotEmpty()) pairs.joinToString(" · ") else fieldCount(record.keys.size, res)
     }
 
     private fun summarizeListItem(
         item: JsonElement?,
         depth: Int,
+        res: ToolText?,
     ): String {
         val v = norm(item)
         if (v is JsonNull || v == null) {
@@ -246,11 +258,11 @@ object ToolResultSummary {
         }
 
         if (v is JsonArray) {
-            return pluralize(v.size, "item")
+            return itemCount(v.size, res)
         }
 
         if (v is JsonObject) {
-            return summarizeRecordInline(v, depth + 1)
+            return summarizeRecordInline(v, depth + 1, res)
         }
 
         return clipInline(v.toString())
@@ -259,6 +271,7 @@ object ToolResultSummary {
     private fun formatFieldValue(
         value: JsonElement?,
         depth: Int,
+        res: ToolText?,
     ): String {
         val v = norm(value)
         val scalar = summarizeScalar(v)
@@ -282,13 +295,13 @@ object ToolResultSummary {
                 return clipInline(scalars.joinToString(", "))
             }
 
-            val first = summarizeListItem(v.firstOrNull(), depth + 1)
+            val first = summarizeListItem(v.firstOrNull(), depth + 1, res)
 
-            return if (first.isNotEmpty()) "${pluralize(v.size, "item")} ($first)" else pluralize(v.size, "item")
+            return if (first.isNotEmpty()) "${itemCount(v.size, res)} ($first)" else itemCount(v.size, res)
         }
 
         if (v is JsonObject) {
-            return summarizeRecordInline(v, depth + 1)
+            return summarizeRecordInline(v, depth + 1, res)
         }
 
         return clipInline(v.toString())
@@ -301,6 +314,7 @@ object ToolResultSummary {
     private fun formatArraySummary(
         value: JsonArray,
         depth: Int,
+        res: ToolText?,
     ): String {
         if (value.isEmpty()) {
             return ""
@@ -310,7 +324,7 @@ object ToolResultSummary {
         val lines =
             value
                 .take(max)
-                .mapNotNull { item -> summarizeListItem(item, depth + 1).takeIf { it.isNotEmpty() } }
+                .mapNotNull { item -> summarizeListItem(item, depth + 1, res).takeIf { it.isNotEmpty() } }
                 .map { "- $it" }
                 .toMutableList()
 
@@ -320,7 +334,10 @@ object ToolResultSummary {
 
         if (value.size > max) {
             val remaining = value.size - max
-            lines += "- … $remaining more ${if (remaining == 1) "item" else "items"}"
+            lines += "- " + (
+                res?.plural(R.plurals.tool_msg_more_items, remaining)
+                    ?: "… $remaining more ${if (remaining == 1) "item" else "items"}"
+            )
         }
 
         return lines.joinToString("\n")
@@ -329,6 +346,7 @@ object ToolResultSummary {
     private fun formatRecordSummary(
         record: JsonObject,
         depth: Int,
+        res: ToolText?,
     ): String {
         val keys = record.keys.toList()
 
@@ -350,7 +368,7 @@ object ToolResultSummary {
         val lines = mutableListOf<String>()
 
         for (k in candidates) {
-            val v = formatFieldValue(record[k], depth + 1)
+            val v = formatFieldValue(record[k], depth + 1, res)
 
             if (v.isEmpty()) {
                 continue
@@ -369,7 +387,7 @@ object ToolResultSummary {
 
         if (candidates.size > lines.size) {
             val remaining = candidates.size - lines.size
-            lines += "- … ${pluralize(remaining, "field")}"
+            lines += "- … ${fieldCount(remaining, res)}"
         }
 
         return lines.joinToString("\n")
@@ -378,6 +396,7 @@ object ToolResultSummary {
     private fun formatSummaryValue(
         value: JsonElement?,
         depth: Int,
+        res: ToolText?,
     ): String {
         if (depth > 4) {
             return ""
@@ -398,11 +417,11 @@ object ToolResultSummary {
         }
 
         if (v is JsonArray) {
-            return formatArraySummary(v, depth + 1)
+            return formatArraySummary(v, depth + 1, res)
         }
 
         if (v is JsonObject) {
-            return formatRecordSummary(v, depth + 1)
+            return formatRecordSummary(v, depth + 1, res)
         }
 
         return clipInline(v.toString())
@@ -424,10 +443,17 @@ object ToolResultSummary {
 
     // ── public API ───────────────────────────────────────────────────────
 
-    fun formatToolResultSummary(value: JsonElement?): String {
-        val unwrapped = formatSummaryValue(unwrapPayload(value), 0)
+    /**
+     * Human summary of [value]. [res] localizes the summary's own words ("3 items", "2 fields"); pass
+     * null only for internal parsing (see [ToolCounts]) — the result then keeps English nouns.
+     */
+    fun formatToolResultSummary(
+        value: JsonElement?,
+        res: ToolText? = null,
+    ): String {
+        val unwrapped = formatSummaryValue(unwrapPayload(value), 0, res)
 
-        return if (unwrapped.isNotEmpty()) unwrapped else formatSummaryValue(value, 0)
+        return if (unwrapped.isNotEmpty()) unwrapped else formatSummaryValue(value, 0, res)
     }
 
     // ── error extraction ─────────────────────────────────────────────────

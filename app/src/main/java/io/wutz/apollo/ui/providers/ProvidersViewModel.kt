@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.providers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.OAuthPollResponse
 import io.wutz.apollo.data.model.OAuthProvider
@@ -13,6 +14,7 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.Job
@@ -47,8 +49,8 @@ enum class OAuthFlowPhase {
 data class ProvidersUiState(
     val isLoading: Boolean = false,
     val providers: List<OAuthProvider> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val actingId: String? = null,
     // ── Re-auth flow ──
     val flowPhase: OAuthFlowPhase = OAuthFlowPhase.IDLE,
@@ -58,8 +60,8 @@ data class ProvidersUiState(
     val flowProviderId: String = "",
     val flowCodeInput: String = "",
     val flowStatus: String = "pending",
-    val flowErrorMessage: String? = null,
-    val flowExpiresIn: String = "",
+    val flowErrorMessage: UiText? = null,
+    val flowExpiresIn: UiText? = null,
 )
 
 class ProvidersViewModel :
@@ -114,7 +116,7 @@ class ProvidersViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load providers: $errorMsg",
+                        errorMessage = UiText.res(R.string.providers_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -131,7 +133,7 @@ class ProvidersViewModel :
                 _uiState.update {
                     it.copy(
                         actingId = null,
-                        toastMessage = "Disconnected",
+                        toastMessage = UiText.res(R.string.providers_msg_disconnected),
                     )
                 }
                 load(forceRefresh = true)
@@ -140,7 +142,7 @@ class ProvidersViewModel :
                 _uiState.update {
                     it.copy(
                         actingId = null,
-                        toastMessage = "Disconnect failed: $error",
+                        toastMessage = UiText.res(R.string.providers_msg_disconnect_failed, error),
                     )
                 }
             },
@@ -213,7 +215,7 @@ class ProvidersViewModel :
                     _uiState.update {
                         it.copy(
                             flowPhase = OAuthFlowPhase.IDLE,
-                            flowErrorMessage = result.error.message,
+                            flowErrorMessage = UiText.raw(result.error.message),
                         )
                     }
                 }
@@ -229,7 +231,7 @@ class ProvidersViewModel :
         val state = _uiState.value
         val code = state.flowCodeInput.trim()
         if (code.isEmpty()) {
-            _uiState.update { it.copy(flowErrorMessage = "Paste the authorization code first.") }
+            _uiState.update { it.copy(flowErrorMessage = UiText.res(R.string.providers_msg_paste_code_first)) }
             return
         }
         _uiState.update { it.copy(flowStatus = "pending", flowErrorMessage = null) }
@@ -250,7 +252,9 @@ class ProvidersViewModel :
                         _uiState.update {
                             it.copy(
                                 flowStatus = submit.status ?: "error",
-                                flowErrorMessage = submit.message ?: "Submission rejected",
+                                flowErrorMessage =
+                                    submit.message?.let(UiText::raw)
+                                        ?: UiText.res(R.string.providers_msg_submission_rejected),
                             )
                         }
                     }
@@ -260,7 +264,7 @@ class ProvidersViewModel :
                     _uiState.update {
                         it.copy(
                             flowStatus = "error",
-                            flowErrorMessage = result.error.message,
+                            flowErrorMessage = UiText.raw(result.error.message),
                         )
                     }
                 }
@@ -298,8 +302,8 @@ class ProvidersViewModel :
                                             flowPhase = OAuthFlowPhase.ERROR,
                                             flowStatus = status,
                                             flowErrorMessage =
-                                                poll?.errorMessage
-                                                    ?: "OAuth flow ended ($status)",
+                                                poll?.errorMessage?.let(UiText::raw)
+                                                    ?: UiText.res(R.string.providers_msg_flow_ended, status),
                                         )
                                     }
                                     return@launch
@@ -317,7 +321,7 @@ class ProvidersViewModel :
                                 _uiState.update {
                                     it.copy(
                                         flowPhase = OAuthFlowPhase.ERROR,
-                                        flowErrorMessage = result.error.message,
+                                        flowErrorMessage = UiText.raw(result.error.message),
                                     )
                                 }
                                 return@launch
@@ -339,7 +343,7 @@ class ProvidersViewModel :
                 flowPhase = OAuthFlowPhase.DONE,
                 flowStatus = status,
                 flowErrorMessage = null,
-                toastMessage = "OAuth connected",
+                toastMessage = UiText.res(R.string.providers_msg_oauth_connected),
             )
         }
     }
@@ -384,10 +388,14 @@ class ProvidersViewModel :
         _uiState.update { it.copy(toastMessage = null) }
     }
 
-    private fun formatExpiry(seconds: Int?): String {
-        if (seconds == null) return ""
+    private fun formatExpiry(seconds: Int?): UiText? {
+        if (seconds == null) return null
         val m = seconds / 60
         val s = seconds % 60
-        return if (m > 0) "$m min ${s}s" else "${s}s"
+        return if (m > 0) {
+            UiText.res(R.string.providers_msg_expiry_min_sec, m, s)
+        } else {
+            UiText.res(R.string.providers_msg_expiry_sec, s)
+        }
     }
 }

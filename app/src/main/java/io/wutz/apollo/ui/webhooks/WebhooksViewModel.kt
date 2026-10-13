@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.webhooks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.CreateWebhookRequest
 import io.wutz.apollo.data.model.WebhookSubscription
@@ -12,6 +13,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +30,8 @@ data class WebhooksUiState(
     val enabled: Boolean = false,
     val baseUrl: String? = null,
     val subscriptions: List<WebhookSubscription> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     // Create form state
     val showCreateDialog: Boolean = false,
     val createFormName: String = "",
@@ -37,7 +39,7 @@ data class WebhooksUiState(
     val createFormEvents: String = "",
     val createFormDeliver: String = "log",
     val createFormSecret: String = "",
-    val createFormError: String? = null,
+    val createFormError: UiText? = null,
     // Delete confirmation state
     val deleteTarget: WebhookSubscription? = null,
     val isDeleting: Boolean = false,
@@ -99,7 +101,7 @@ class WebhooksViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load webhooks: $errorMsg",
+                        errorMessage = UiText.res(R.string.webhooks_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -119,7 +121,12 @@ class WebhooksViewModel :
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Webhooks global status ${if (targetEnabled) "enabled" else "disabled"}",
+                            toastMessage =
+                                if (targetEnabled) {
+                                    UiText.res(R.string.webhooks_msg_global_enabled)
+                                } else {
+                                    UiText.res(R.string.webhooks_msg_global_disabled)
+                                },
                         )
                     }
                     loadWebhooks(forceRefresh = true)
@@ -129,7 +136,7 @@ class WebhooksViewModel :
                     _uiState.update {
                         it.copy(
                             enabled = originalEnabled,
-                            toastMessage = "Failed to toggle webhooks: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.webhooks_msg_toggle_global_failed, result.error.message),
                         )
                     }
                 }
@@ -181,7 +188,7 @@ class WebhooksViewModel :
         val state = _uiState.value
         val name = state.createFormName.trim()
         if (name.isBlank()) {
-            _uiState.update { it.copy(createFormError = "Name is required") }
+            _uiState.update { it.copy(createFormError = UiText.res(R.string.webhooks_msg_name_required)) }
             return
         }
 
@@ -214,7 +221,7 @@ class WebhooksViewModel :
                         it.copy(
                             isActionRunning = false,
                             showCreateDialog = false,
-                            toastMessage = "Subscription \"$name\" created",
+                            toastMessage = UiText.res(R.string.webhooks_msg_subscription_created, name),
                         )
                     }
                     loadWebhooks(forceRefresh = true)
@@ -224,7 +231,7 @@ class WebhooksViewModel :
                     _uiState.update {
                         it.copy(
                             isActionRunning = false,
-                            createFormError = result.error.message,
+                            createFormError = UiText.raw(result.error.message),
                         )
                     }
                 }
@@ -255,7 +262,12 @@ class WebhooksViewModel :
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Subscription \"$name\" ${if (enabled) "enabled" else "disabled"}",
+                            toastMessage =
+                                if (enabled) {
+                                    UiText.res(R.string.webhooks_msg_subscription_enabled, name)
+                                } else {
+                                    UiText.res(R.string.webhooks_msg_subscription_disabled, name)
+                                },
                         )
                     }
                     loadWebhooks(forceRefresh = true)
@@ -263,7 +275,9 @@ class WebhooksViewModel :
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Failed to toggle \"$name\": ${result.error.message}")
+                        it.copy(
+                            toastMessage = UiText.res(R.string.webhooks_msg_toggle_failed, name, result.error.message),
+                        )
                     }
                 }
             }
@@ -293,14 +307,21 @@ class WebhooksViewModel :
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Subscription \"${target.name}\" deleted")
+                        it.copy(toastMessage = UiText.res(R.string.webhooks_msg_subscription_deleted, target.name))
                     }
                     loadWebhooks(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Failed to delete \"${target.name}\": ${result.error.message}")
+                        it.copy(
+                            toastMessage =
+                                UiText.res(
+                                    R.string.webhooks_msg_delete_failed,
+                                    target.name,
+                                    result.error.message,
+                                ),
+                        )
                     }
                 }
             }

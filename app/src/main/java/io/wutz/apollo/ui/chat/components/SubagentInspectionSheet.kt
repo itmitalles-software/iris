@@ -78,6 +78,7 @@ import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.chat.SubagentIndicator
 import io.wutz.apollo.ui.chat.SubagentTranscriptUiState
 import io.wutz.apollo.ui.chat.TodoItem
+import io.wutz.apollo.ui.common.asString
 
 /**
  * Inspection sheet displaying active & completed subagent tasks and agent todos (issue #1030).
@@ -968,7 +969,7 @@ private fun SubagentTranscriptView(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(
-                            text = state.error,
+                            text = state.error.asString(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -1067,7 +1068,7 @@ private fun SubagentTranscriptView(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                text = state.error,
+                                text = state.error.asString(),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.weight(1f),

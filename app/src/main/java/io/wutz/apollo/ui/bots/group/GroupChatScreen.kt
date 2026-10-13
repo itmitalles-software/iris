@@ -79,6 +79,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -104,12 +105,14 @@ import io.wutz.apollo.ui.chat.components.ChatScrollToBottomFab
 import io.wutz.apollo.ui.chat.components.rememberChatScrollController
 import io.wutz.apollo.ui.chat.components.tailContentKey
 import io.wutz.apollo.ui.chat.formatTimestamp
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.common.BotAvatar
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.util.BidiUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -120,7 +123,10 @@ fun GroupChatScreen(
     groupName: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: GroupChatViewModel = viewModel { GroupChatViewModel() },
+    viewModel: GroupChatViewModel =
+        LocalResources.current.let { resources ->
+            viewModel { GroupChatViewModel(toolText = ToolText.of(resources)) }
+        },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -235,7 +241,7 @@ fun GroupChatScreen(
 
                 state.errorMessage != null -> {
                     ErrorState(
-                        message = state.errorMessage ?: "",
+                        message = state.errorMessage?.asString() ?: "",
                         onRetry = { viewModel.setGroup(groupName) },
                         modifier =
                             Modifier

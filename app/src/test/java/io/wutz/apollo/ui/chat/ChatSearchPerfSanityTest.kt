@@ -31,7 +31,7 @@ class ChatSearchPerfSanityTest {
     @Test
     fun `common word across a long session reports the exact total and caps storage`() {
         val messages = longSession()
-        val result = ChatSearchController().findMatches(messages, "the")
+        val result = ChatSearchController { EnglishTestResources.toolText }.findMatches(messages, "the")
         // "the" never appears (content is alpha/beta/...), so no matches.
         assertEquals(0, result.totalMatches)
         assertEquals(0, result.matches.size)
@@ -41,7 +41,7 @@ class ChatSearchPerfSanityTest {
     @Test
     fun `long session search returns exact counts for a frequent word`() {
         val messages = longSession()
-        val result = ChatSearchController().findMatches(messages, "deploy")
+        val result = ChatSearchController { EnglishTestResources.toolText }.findMatches(messages, "deploy")
 
         // "deploy" is the 4th of 5 rotating words → appears 16× per message,
         // 2000 messages → 32_000 total occurrences.
@@ -63,7 +63,7 @@ class ChatSearchPerfSanityTest {
     @Test
     fun `long session search finds a unique word at scale`() {
         val messages = longSession()
-        val result = ChatSearchController().findMatches(messages, "needle-1999")
+        val result = ChatSearchController { EnglishTestResources.toolText }.findMatches(messages, "needle-1999")
 
         assertEquals(1, result.totalMatches)
         assertEquals(1, result.matches.size)
@@ -84,7 +84,7 @@ class ChatSearchPerfSanityTest {
                 }
             }
         // The only real visible hit is the assistant message's own needle.
-        val result = ChatSearchController().findMatches(messages, "needle-1999")
+        val result = ChatSearchController { EnglishTestResources.toolText }.findMatches(messages, "needle-1999")
         assertEquals(1, result.totalMatches)
         assertEquals(1999, result.matches.single().messageIndex)
     }

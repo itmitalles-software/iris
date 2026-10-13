@@ -34,6 +34,7 @@ import io.wutz.apollo.R
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.channels.ChannelsUiState
 import io.wutz.apollo.ui.channels.OnboardingPhase
+import io.wutz.apollo.ui.common.asString
 
 @Composable
 internal fun TelegramOnboardingDialog(
@@ -63,7 +64,7 @@ internal fun TelegramOnboardingDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                state.onboardingError?.let { error ->
+                state.onboardingError?.asString()?.let { error ->
                     Surface(
                         color = LocalHermesStatusColors.current.errorContainer,
                         shape = RoundedCornerShape(8.dp),
@@ -92,9 +93,9 @@ internal fun TelegramOnboardingDialog(
                             text = stringResource(R.string.tg_onboarding_scan_hint),
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                        if (state.onboardingExpiresIn.isNotEmpty()) {
+                        state.onboardingExpiresIn?.let { expiresIn ->
                             Text(
-                                text = stringResource(R.string.tg_onboarding_qr_expires, state.onboardingExpiresIn),
+                                text = stringResource(R.string.tg_onboarding_qr_expires, expiresIn.asString()),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

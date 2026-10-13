@@ -1,7 +1,9 @@
 package io.wutz.apollo.data.update
 
 import io.wutz.apollo.BuildConfig
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -147,10 +149,10 @@ object UpdateNoticeManager {
         }
     }
 
-    private const val NETWORK_ERROR = "Network error — check your connection"
-    private const val GENERIC_CHECK_ERROR = "Couldn't check for updates"
-    private const val NO_RELEASE_ERROR = "No release found yet"
-    private const val NO_APK_ERROR = "Release has no APK asset"
+    private val NETWORK_ERROR = UiText.res(R.string.update_msg_network_error)
+    private val GENERIC_CHECK_ERROR = UiText.res(R.string.update_msg_check_failed)
+    private val NO_RELEASE_ERROR = UiText.res(R.string.update_msg_no_release)
+    private val NO_APK_ERROR = UiText.res(R.string.update_msg_no_apk)
 
     /** Explicit check action; shares in-flight work but bypasses the local debounce. */
     fun checkNow(

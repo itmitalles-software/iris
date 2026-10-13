@@ -3,9 +3,11 @@ package io.wutz.apollo.ui.settings
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.VaultItem
 import io.wutz.apollo.data.model.VaultSource
 import io.wutz.apollo.data.ws.VaultRepository
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -123,7 +125,7 @@ class SettingsVaultViewModelTest {
             viewModel.uiState.value.sources[1]
                 .unlocked,
         )
-        assertEquals("Unlocked onepassword", viewModel.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.vault_msg_unlocked, "onepassword"), viewModel.uiState.value.toastMessage)
     }
 
     @Test
@@ -138,6 +140,6 @@ class SettingsVaultViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) { mockRepo.lockSource(null) }
-        assertEquals("All password managers locked", viewModel.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.vault_msg_all_locked), viewModel.uiState.value.toastMessage)
     }
 }

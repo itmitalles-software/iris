@@ -2,11 +2,13 @@ package io.wutz.apollo.ui.logs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.LogResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,8 +33,8 @@ data class LogsFilters(
 data class LogsUiState(
     val isLoading: Boolean = false,
     val logs: List<String> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val filters: LogsFilters = LogsFilters(),
 )
 
@@ -82,7 +84,7 @@ class LogsViewModel :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "Failed to load logs: $errorMsg",
+                            errorMessage = UiText.res(R.string.logs_msg_load_failed, errorMsg),
                         )
                     }
                 },

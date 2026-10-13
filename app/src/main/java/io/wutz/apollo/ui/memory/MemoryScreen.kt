@@ -59,9 +59,10 @@ import io.wutz.apollo.ui.common.StatCard
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
-import io.wutz.apollo.ui.plugins.memoryProviderStatusLabel
+import io.wutz.apollo.ui.plugins.memoryProviderStatusText
 import io.wutz.apollo.ui.plugins.memoryProviderStatusType
 import io.wutz.apollo.util.formatBytes
 
@@ -123,7 +124,7 @@ fun MemoryScreen(
 
             state.errorMessage != null && state.memory == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.load() },
                     modifier = Modifier,
                 )
@@ -412,7 +413,7 @@ private fun MemoryProviderRow(
                     )
                 }
                 StatusBadge(
-                    text = memoryProviderStatusLabel(provider.status),
+                    text = memoryProviderStatusText(provider.status).asString(),
                     status = memoryProviderStatusType(provider.status),
                 )
             }

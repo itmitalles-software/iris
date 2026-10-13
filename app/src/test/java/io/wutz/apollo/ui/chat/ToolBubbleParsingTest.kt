@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat
 
+import io.wutz.apollo.ui.chat.tool.TestToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -20,6 +21,7 @@ class ToolBubbleParsingTest {
                 """{"args":{"command":"ls"},"result":{"output":"wiring.tsx","exit_code":0}}""",
                 "terminal",
                 false,
+                TestToolText.english,
             )
 
         assertNotNull(view)
@@ -31,7 +33,8 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `float exit code does not null the parse`() {
-        val view = parseToolOutput("""{"result":{"output":"ok","exit_code":0.0}}""", "terminal", false)
+        val view =
+            parseToolOutput("""{"result":{"output":"ok","exit_code":0.0}}""", "terminal", false, TestToolText.english)
 
         assertNotNull(view)
         assertEquals(0, view!!.exitCode)
@@ -39,7 +42,8 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `string exit code parses like the desktop engine`() {
-        val view = parseToolOutput("""{"result":{"output":"ok","exit_code":"0.0"}}""", "terminal", false)
+        val view =
+            parseToolOutput("""{"result":{"output":"ok","exit_code":"0.0"}}""", "terminal", false, TestToolText.english)
 
         assertNotNull(view)
         assertEquals(0, view!!.exitCode)
@@ -47,7 +51,7 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `non-zero exit without output becomes an error`() {
-        val view = parseToolOutput("""{"result":{"exit_code":1}}""", "terminal", false)
+        val view = parseToolOutput("""{"result":{"exit_code":1}}""", "terminal", false, TestToolText.english)
 
         assertNotNull(view)
         assertEquals(ToolViewStatus.ERROR, view!!.status)
@@ -56,7 +60,13 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `terminal error field surfaces`() {
-        val view = parseToolOutput("""{"result":{"error":"Invalid command: frobnicate"}}""", "terminal", false)
+        val view =
+            parseToolOutput(
+                """{"result":{"error":"Invalid command: frobnicate"}}""",
+                "terminal",
+                false,
+                TestToolText.english,
+            )
 
         assertNotNull(view)
         assertEquals(ToolViewStatus.ERROR, view!!.status)
@@ -65,7 +75,8 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `old-format payload without result sub-object parses`() {
-        val view = parseToolOutput("""{"name":"terminal","output":"hi","exit_code":0}""", null, false)
+        val view =
+            parseToolOutput("""{"name":"terminal","output":"hi","exit_code":0}""", null, false, TestToolText.english)
 
         assertNotNull(view)
         assertEquals("hi", view!!.stdout)
@@ -79,6 +90,7 @@ class ToolBubbleParsingTest {
                 """{"tool_id":"call_010","name":"terminal","args":{"command":"sleep 10"}}""",
                 null,
                 false,
+                TestToolText.english,
             )
 
         assertNotNull(view)
@@ -88,7 +100,7 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `running flag drives running status and pending title`() {
-        val view = parseToolOutput("""{"args":{"command":"sleep 10"}}""", "terminal", true)
+        val view = parseToolOutput("""{"args":{"command":"sleep 10"}}""", "terminal", true, TestToolText.english)
 
         assertNotNull(view)
         assertEquals(ToolViewStatus.RUNNING, view!!.status)
@@ -105,6 +117,7 @@ class ToolBubbleParsingTest {
                 ]}}}""",
                 "web_search",
                 false,
+                TestToolText.english,
             )
 
         assertNotNull(view)
@@ -121,6 +134,7 @@ class ToolBubbleParsingTest {
                     """"--- a/wiring.tsx\n+++ b/wiring.tsx\n@@ -1,1 +1,1 @@\n-old\n+new"}}""",
                 "patch",
                 false,
+                TestToolText.english,
             )
 
         assertNotNull(view)
@@ -137,6 +151,7 @@ class ToolBubbleParsingTest {
                 """{"result":{"data":{"title":"Build report","completed":true}}}""",
                 "weird_tool",
                 false,
+                TestToolText.english,
             )
 
         assertNotNull(view)
@@ -147,18 +162,23 @@ class ToolBubbleParsingTest {
 
     @Test
     fun `non-json content returns null`() {
-        assertNull(parseToolOutput("just plain text", "terminal", false))
+        assertNull(parseToolOutput("just plain text", "terminal", false, TestToolText.english))
     }
 
     @Test
     fun `non-object json returns null`() {
-        assertNull(parseToolOutput("[1,2,3]", "terminal", false))
+        assertNull(parseToolOutput("[1,2,3]", "terminal", false, TestToolText.english))
     }
 
     @Test
     fun `memory summary keeps its target`() {
         val view =
-            parseToolOutput("""{"args":{"action":"add","target":"user"},"result":{"success":true}}""", "memory", false)
+            parseToolOutput(
+                """{"args":{"action":"add","target":"user"},"result":{"success":true}}""",
+                "memory",
+                false,
+                TestToolText.english,
+            )
 
         assertNotNull(view)
         assertEquals("Memory Saved (user)", view!!.title)

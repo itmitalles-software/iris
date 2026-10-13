@@ -21,6 +21,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.requiresLocalNetworkPermission
 import io.wutz.apollo.data.remote.safeApiCall
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +34,7 @@ data class ConnectUiState(
     val transportWarning: String? = null,
     val isConnecting: Boolean = false,
     val connectionSuccess: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
     val lanPermissionNeeded: Boolean = false,
     val profileName: String = "",
     val saveProfile: Boolean = false,
@@ -189,7 +190,7 @@ class ConnectViewModel(
             _uiState.update {
                 it.copy(
                     lanPermissionNeeded = false,
-                    errorMessage = app.getString(R.string.connect_error_lan_permission_denied),
+                    errorMessage = UiText.res(R.string.connect_error_lan_permission_denied),
                 )
             }
         }
@@ -198,13 +199,13 @@ class ConnectViewModel(
     fun connect() {
         val state = _uiState.value
         if (state.token.isBlank()) {
-            _uiState.update { it.copy(errorMessage = app.getString(R.string.connect_error_token_required)) }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.connect_error_token_required)) }
             return
         }
         val endpoint =
             runCatching { ServerEndpoint.parseForBuild(state.baseUrl) }.getOrNull()
         if (endpoint == null) {
-            _uiState.update { it.copy(errorMessage = app.getString(R.string.connect_error_url_invalid)) }
+            _uiState.update { it.copy(errorMessage = UiText.res(R.string.connect_error_url_invalid)) }
             return
         }
 
@@ -276,15 +277,15 @@ class ConnectViewModel(
                                         if (AuthManager.getSelectedProfileId() != null) {
                                             AuthManager.setProfileToken(AuthManager.getSelectedProfileId()!!, null)
                                         }
-                                        app.getString(R.string.connect_error_401)
+                                        UiText.res(R.string.connect_error_401)
                                     }
 
                                     403 -> {
-                                        app.getString(R.string.connect_error_403)
+                                        UiText.res(R.string.connect_error_403)
                                     }
 
                                     else -> {
-                                        String.format(app.getString(R.string.connect_error_http_code), err.code)
+                                        UiText.res(R.string.connect_error_http_code, err.code)
                                     }
                                 }
                             }
@@ -294,7 +295,7 @@ class ConnectViewModel(
                                 if (AuthManager.getSelectedProfileId() != null) {
                                     AuthManager.setProfileToken(AuthManager.getSelectedProfileId()!!, null)
                                 }
-                                app.getString(R.string.connect_error_401)
+                                UiText.res(R.string.connect_error_401)
                             }
 
                             is NetworkError.Connection -> {
@@ -304,26 +305,26 @@ class ConnectViewModel(
                                         "timeout",
                                         true,
                                     ) -> {
-                                        app.getString(R.string.connect_error_timeout)
+                                        UiText.res(R.string.connect_error_timeout)
                                     }
 
                                     causeMessage.contains(
                                         "refused",
                                         true,
                                     ) -> {
-                                        app.getString(R.string.connect_error_refused)
+                                        UiText.res(R.string.connect_error_refused)
                                     }
 
                                     causeMessage.contains(
                                         "resolve",
                                         true,
                                     ) -> {
-                                        app.getString(R.string.connect_error_resolve)
+                                        UiText.res(R.string.connect_error_resolve)
                                     }
 
                                     else -> {
-                                        String.format(
-                                            app.getString(R.string.connect_error_connection_failed),
+                                        UiText.res(
+                                            R.string.connect_error_connection_failed,
                                             err.cause.message ?: "",
                                         )
                                     }
@@ -337,26 +338,26 @@ class ConnectViewModel(
                                         "timeout",
                                         true,
                                     ) -> {
-                                        app.getString(R.string.connect_error_timeout)
+                                        UiText.res(R.string.connect_error_timeout)
                                     }
 
                                     causeMessage.contains(
                                         "refused",
                                         true,
                                     ) -> {
-                                        app.getString(R.string.connect_error_refused)
+                                        UiText.res(R.string.connect_error_refused)
                                     }
 
                                     causeMessage.contains(
                                         "resolve",
                                         true,
                                     ) -> {
-                                        app.getString(R.string.connect_error_resolve)
+                                        UiText.res(R.string.connect_error_resolve)
                                     }
 
                                     else -> {
-                                        String.format(
-                                            app.getString(R.string.connect_error_connection_failed),
+                                        UiText.res(
+                                            R.string.connect_error_connection_failed,
                                             err.cause.message ?: "",
                                         )
                                     }

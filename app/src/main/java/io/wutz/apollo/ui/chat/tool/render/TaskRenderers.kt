@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewExtras
 import io.wutz.apollo.ui.chat.tool.ToolViewStatus
 import kotlinx.serialization.json.JsonArray
@@ -12,17 +14,23 @@ import kotlinx.serialization.json.longOrNull
 
 /** `cronjob`: job listings with schedules, or the mutated job's key fields. */
 internal object CronjobRenderer : ToolRenderer {
-    override fun doneTitle(call: ToolCall): String =
-        "Cron ${ToolJson.firstString(call.args, listOf("action")).ifEmpty { "manage" }}"
+    override fun doneTitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
+        res.get(R.string.tool_title_cron, ToolJson.firstString(call.args, listOf("action")).ifEmpty { "manage" })
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val jobs = call.result?.get("jobs") as? JsonArray
 
         if (jobs != null) {
             return if (jobs.isNotEmpty()) {
-                "${jobs.size} cron ${if (jobs.size == 1) "job" else "jobs"}"
+                res.plural(R.plurals.tool_msg_cron_job_count, jobs.size)
             } else {
-                "No cron jobs"
+                res.get(R.string.tool_msg_no_cron_jobs)
             }
         }
 
@@ -38,23 +46,31 @@ internal object CronjobRenderer : ToolRenderer {
                 .ifEmpty { ToolJson.firstString(call.args, listOf("name", "job_id")) }
         val label = action.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
-        return if (name.isNotEmpty()) "$label $name" else "Cron $action"
+        return if (name.isNotEmpty()) "$label $name" else res.get(R.string.tool_title_cron, action)
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         val jobs = result?.get("jobs") as? JsonArray
 
         if (jobs != null) {
             if (jobs.isEmpty()) {
-                return "No cron jobs scheduled"
+                return res.get(R.string.tool_msg_no_cron_jobs_scheduled)
             }
 
             return jobs
                 .take(20)
                 .mapNotNull { job ->
                     val row = ToolJson.parseMaybeObject(job) ?: return@mapNotNull null
-                    val name = ToolJson.firstString(row, listOf("name", "id")).ifEmpty { "job" }
+                    val name =
+                        ToolJson
+                            .firstString(
+                                row,
+                                listOf("name", "id"),
+                            ).ifEmpty { res.get(R.string.tool_msg_job) }
                     val sched = ToolJson.firstString(row, listOf("schedule_display", "schedule"))
                     if (sched.isNotEmpty()) "- $name · $sched" else "- $name"
                 }.joinToString("\n")
@@ -62,10 +78,10 @@ internal object CronjobRenderer : ToolRenderer {
 
         val rows =
             listOf(
-                "Schedule" to ToolJson.firstString(result, listOf("schedule")),
-                "Repeat" to ToolJson.firstString(result, listOf("repeat")),
-                "Delivery" to ToolJson.firstString(result, listOf("deliver")),
-                "Next run" to ToolJson.firstString(result, listOf("next_run_at")),
+                res.get(R.string.tool_msg_cron_schedule) to ToolJson.firstString(result, listOf("schedule")),
+                res.get(R.string.tool_msg_cron_repeat) to ToolJson.firstString(result, listOf("repeat")),
+                res.get(R.string.tool_msg_cron_delivery) to ToolJson.firstString(result, listOf("deliver")),
+                res.get(R.string.tool_msg_cron_next_run) to ToolJson.firstString(result, listOf("next_run_at")),
             ).filter { it.second.isNotEmpty() }
 
         return if (rows.isNotEmpty()) {
@@ -73,14 +89,17 @@ internal object CronjobRenderer : ToolRenderer {
                 "\n",
             ) { (k, v) -> "$k: $v" }
         } else {
-            ToolJson.fallbackDetailText(call.args, result)
+            ToolJson.fallbackDetailText(call.args, result, res)
         }
     }
 }
 
 /** `todo`: status-count subtitle plus a checklist with [x]/[>]/[~] markers. */
 internal object TodoRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val summary = call.result?.get("summary") as? JsonObject ?: return ""
         val total = ToolJson.intValue(summary["total"]) ?: 0
         val pending = ToolJson.intValue(summary["pending"]) ?: 0
@@ -90,18 +109,23 @@ internal object TodoRenderer : ToolRenderer {
 
         val parts =
             listOf(
-                pending.takeIf { it > 0 }?.let { "$it pending" },
-                inProgress.takeIf { it > 0 }?.let { "$it in_progress" },
-                completed.takeIf { it > 0 }?.let { "$it completed" },
-                cancelled.takeIf { it > 0 }?.let { "$it cancelled" },
+                pending.takeIf { it > 0 }?.let { res.get(R.string.tool_msg_todo_pending, it) },
+                inProgress.takeIf { it > 0 }?.let { res.get(R.string.tool_msg_todo_in_progress, it) },
+                completed.takeIf { it > 0 }?.let { res.get(R.string.tool_msg_todo_completed, it) },
+                cancelled.takeIf { it > 0 }?.let { res.get(R.string.tool_msg_todo_cancelled, it) },
             ).filterNotNull()
 
-        val itemWord = if (total == 1) "item" else "items"
-
-        return if (parts.isEmpty()) "0 items" else "$total $itemWord (${parts.joinToString(", ")})"
+        return if (parts.isEmpty()) {
+            res.plural(R.plurals.tool_msg_item_count, 0)
+        } else {
+            "${res.plural(R.plurals.tool_msg_item_count, total)} (${parts.joinToString(", ")})"
+        }
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val todos = call.result?.get("todos") as? JsonArray ?: return ""
 
         return todos
@@ -126,7 +150,10 @@ internal object TodoRenderer : ToolRenderer {
 
 /** `session_search`: mode-specific subtitles and rich session/message lists. */
 internal object SessionSearchRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         val mode = ToolJson.firstString(result, listOf("mode"))
         val query = ToolJson.firstString(result, listOf("query"))
@@ -136,23 +163,34 @@ internal object SessionSearchRenderer : ToolRenderer {
         val truncated = ToolJson.boolTrue(result?.get("truncated"))
 
         return when (mode) {
-            "discover" -> "${count ?: 0} session${if (count == 1) "" else "s"}${query.takeIf { it.isNotEmpty() }?.let {
-                ": ${it.take(
-                    60,
-                )}"
-            } ?: ""}"
+            "discover" -> {
+                res.plural(R.plurals.tool_msg_session_count, count ?: 0) +
+                    (query.takeIf { it.isNotEmpty() }?.let { ": ${it.take(60)}" } ?: "")
+            }
 
-            "scroll" -> "${messages?.size ?: 0} messages (scroll)"
+            "scroll" -> {
+                res.plural(R.plurals.tool_msg_messages_scroll, messages?.size ?: 0)
+            }
 
-            "read" -> "${msgCount ?: messages?.size ?: 0} messages${if (truncated) " (truncated)" else ""}"
+            "read" -> {
+                res.plural(R.plurals.tool_msg_message_count, msgCount ?: messages?.size ?: 0) +
+                    if (truncated) " " + res.get(R.string.tool_msg_truncated_suffix) else ""
+            }
 
-            "browse" -> "${count ?: 0} recent sessions"
+            "browse" -> {
+                res.plural(R.plurals.tool_msg_recent_sessions, count ?: 0)
+            }
 
-            else -> "session_search"
+            else -> {
+                "session_search"
+            }
         }
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         val results = result?.get("results") as? JsonArray
         val messages = result?.get("messages") as? JsonArray
@@ -176,8 +214,12 @@ internal object SessionSearchRenderer : ToolRenderer {
                     val sourceTag = source.takeIf { it.isNotEmpty() }?.let { "[$it]" } ?: ""
                     val titleLine = title.takeIf { it.isNotEmpty() }?.let { "\n     📄 $it" } ?: ""
                     val modelLine = model.takeIf { it.isNotEmpty() }?.let { "\n     🤖 $it" } ?: ""
-                    val matchedLine = matchedRole.takeIf { it.isNotEmpty() }?.let { "\n     🎯 matched: $it" } ?: ""
-                    val countLine = sessionMsgCount?.let { "\n     $it msgs" } ?: ""
+                    val matchedLine =
+                        matchedRole.takeIf { it.isNotEmpty() }?.let {
+                            "\n     " + res.get(R.string.tool_msg_matched_role, it)
+                        } ?: ""
+                    val countLine =
+                        sessionMsgCount?.let { "\n     " + res.plural(R.plurals.tool_msg_msgs_count, it) } ?: ""
                     val snippetLine =
                         snippet.takeIf { it.isNotEmpty() }?.let { "\n     ┃ ${it.take(200).replace("\n", " ")}" } ?: ""
 
@@ -220,25 +262,35 @@ internal object ProcessRenderer : ToolRenderer {
     override fun extras(
         call: ToolCall,
         status: ToolViewStatus,
+        res: ToolText,
     ): ToolViewExtras {
         if (status == ToolViewStatus.RUNNING) return ToolViewExtras.NONE
         val count = (call.result?.get("output_cut") as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
         return ToolViewExtras(outputCut = count?.takeIf { it > 0 })
     }
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val action = ToolJson.firstString(call.args, listOf("action"))
         val procId = ToolJson.firstString(call.args, listOf("session_id"))
 
         return if (procId.isNotEmpty()) "$action: $procId" else action
     }
 
-    override fun pendingDetail(call: ToolCall): String {
+    override fun pendingDetail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val action = ToolJson.firstString(call.args, listOf("action"))
-        return "⏳ ${action.ifEmpty { "Process operation" }} in progress"
+        return res.get(R.string.tool_msg_in_progress, action.ifEmpty { res.get(R.string.tool_msg_process_operation) })
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val result = call.result
         val error = ToolJson.firstString(result, listOf("error"))
         if (error.isNotEmpty()) {
@@ -259,8 +311,8 @@ internal object ProcessRenderer : ToolRenderer {
                     val running =
                         (p["running"] as? JsonPrimitive)?.let { !it.isString && it.content == "true" }
                     val parts = mutableListOf("📌 $pid${cmd.takeIf { it.isNotEmpty() }?.let { ": $it" } ?: ""}")
-                    if (pStatus.isNotEmpty()) parts += "     Status: $pStatus"
-                    if (running != null) parts += "     Running: $running"
+                    if (pStatus.isNotEmpty()) parts += "     " + res.get(R.string.tool_msg_status, pStatus)
+                    if (running != null) parts += "     " + res.get(R.string.tool_msg_running_flag, running.toString())
                     parts.joinToString("\n")
                 }.joinToString("\n\n")
         }
@@ -268,7 +320,12 @@ internal object ProcessRenderer : ToolRenderer {
         val output = ToolJson.firstString(result, listOf("output", "output_preview"))
         if (output.isNotEmpty()) {
             val status = ToolJson.firstString(result, listOf("status"))
-            return "${status.takeIf { it.isNotEmpty() }?.let { "Status: $it\n" } ?: ""}$output"
+            return "${status.takeIf { it.isNotEmpty() }?.let {
+                res.get(
+                    R.string.tool_msg_status,
+                    it,
+                ) + "\n"
+            } ?: ""}$output"
         }
 
         val status = ToolJson.firstString(result, listOf("status"))
@@ -277,6 +334,6 @@ internal object ProcessRenderer : ToolRenderer {
         }
 
         val action = ToolJson.firstString(call.args, listOf("action"))
-        return "✅ ${action.ifEmpty { "done" }} done"
+        return res.get(R.string.tool_msg_action_done, action.ifEmpty { res.get(R.string.tool_msg_done) })
     }
 }

@@ -132,6 +132,7 @@ class ChatCompressRpcTest {
         every { ProfileSwitchCoordinator.connectionSwitched } returns MutableSharedFlow<String>()
 
         app = mockk(relaxed = true)
+        EnglishTestResources.install(app)
         fakeRepo = FakeChatPersistenceRepository()
         mockConnectionStatus.value = ConnectionStatus.DISCONNECTED
     }

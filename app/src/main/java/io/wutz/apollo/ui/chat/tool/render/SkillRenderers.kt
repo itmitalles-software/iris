@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.chat.tool.render
 
+import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.tool.ToolCall
 import io.wutz.apollo.ui.chat.tool.ToolJson
 import io.wutz.apollo.ui.chat.tool.ToolRenderer
+import io.wutz.apollo.ui.chat.tool.ToolText
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -13,18 +15,25 @@ internal object SkillsListRenderer : ToolRenderer {
         (call.result?.get("skills") as? JsonArray)
             ?: (call.result?.get("results") as? JsonArray)
 
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val category = ToolJson.firstString(call.args, listOf("category"))
         val count = skills(call)?.size ?: 0
 
         return if (count > 0) {
-            "$count skills${category.takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: ""}"
+            res.plural(R.plurals.tool_msg_count_skill, count) +
+                (category.takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: "")
         } else {
-            "No skills found"
+            res.get(R.string.tool_msg_no_skills_found)
         }
     }
 
-    override fun detail(call: ToolCall): String =
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
         skills(call)
             ?.mapNotNull { el ->
                 val s = ToolJson.parseMaybeObject(el) ?: return@mapNotNull null
@@ -36,21 +45,25 @@ internal object SkillsListRenderer : ToolRenderer {
                 if (cat.isNotEmpty()) lines += "     [$cat]"
                 lines.joinToString("\n")
             }?.joinToString("\n\n")
-            ?: "No skills found"
+            ?: res.get(R.string.tool_msg_no_skills_found)
 }
 
 /** `skill_view`: content preview capped at 500 chars plus linked files. */
 internal object SkillViewRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String = ToolJson.firstString(call.args, listOf("name"))
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String = ToolJson.firstString(call.args, listOf("name"))
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val content = ToolJson.firstString(call.result, listOf("content"))
         val linkedFiles = call.result?.get("linked_files") as? JsonObject
         val contentPreview =
             if (content.length > 500) {
-                "${content.take(
-                    500,
-                )}\n... [${content.length - 500} more chars]"
+                content.take(500) + "\n" + res.get(R.string.tool_msg_more_chars, content.length - 500)
             } else {
                 content
             }
@@ -81,23 +94,33 @@ internal object SkillViewRenderer : ToolRenderer {
             if (contentPreview.isNotEmpty()) append(contentPreview)
             if (filesInfo != null) {
                 if (contentPreview.isNotEmpty()) append("\n\n")
-                append("━━━ Linked Files ━━━\n$filesInfo")
+                append(res.get(R.string.tool_msg_linked_files_header) + "\n$filesInfo")
             }
-            if (content.isEmpty() && linkedFiles == null) append("No content available")
+            if (content.isEmpty() && linkedFiles == null) append(res.get(R.string.tool_msg_no_content))
         }
     }
 }
 
 /** `skill_manage`: action ack with the skill name. */
 internal object SkillManageRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val action = ToolJson.firstString(call.args, listOf("action"))
         val name = ToolJson.firstString(call.args, listOf("name"))
 
-        return if (name.isNotEmpty()) "Skill $action: $name" else "Skill $action"
+        return if (name.isNotEmpty()) {
+            res.get(R.string.tool_msg_skill_action_named, action, name)
+        } else {
+            res.get(R.string.tool_msg_skill_action, action)
+        }
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val error = ToolJson.firstString(call.result, listOf("error"))
         if (error.isNotEmpty()) {
             return "❌ $error"
@@ -108,16 +131,19 @@ internal object SkillManageRenderer : ToolRenderer {
         val succeeded = ToolJson.boolTrue(call.result?.get("success"))
 
         return when {
-            failed -> "❌ ${msg.ifEmpty { "Skill operation failed" }}"
-            succeeded -> "✅ ${msg.ifEmpty { "Skill operation done" }}"
-            else -> "❌ ${msg.ifEmpty { "Skill operation failed" }}"
+            failed -> "❌ ${msg.ifEmpty { res.get(R.string.tool_msg_skill_failed) }}"
+            succeeded -> "✅ ${msg.ifEmpty { res.get(R.string.tool_msg_skill_done) }}"
+            else -> "❌ ${msg.ifEmpty { res.get(R.string.tool_msg_skill_failed) }}"
         }
     }
 }
 
 /** `tool_search`: on-demand tool discovery matches. */
 internal object ToolSearchRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val query =
             ToolJson
                 .firstString(call.args, listOf("query"))
@@ -127,10 +153,13 @@ internal object ToolSearchRenderer : ToolRenderer {
                 (ToolJson.parseMaybeObject(row)?.get("matches") as? JsonArray)?.size ?: 0
             } ?: (call.result?.get("matches") as? JsonArray)?.size
 
-        return if (matches != null) "$query ($matches ${if (matches == 1) "match" else "matches"})" else query
+        return if (matches != null) res.plural(R.plurals.tool_msg_query_matches, matches, query, matches) else query
     }
 
-    override fun detail(call: ToolCall): String {
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val tools = call.result?.get("tools") as? JsonObject
         val matches =
             (call.result?.get("results") as? JsonArray)
@@ -152,23 +181,29 @@ internal object ToolSearchRenderer : ToolRenderer {
                     append("🔧 $name")
                     if (source.isNotEmpty()) append(" · $source")
                     if (desc.isNotEmpty()) append("\n     $desc")
-                    if (required.isNotEmpty()) append("\n     Required: $required")
+                    if (required.isNotEmpty()) append("\n     " + res.get(R.string.tool_msg_required, required))
                 }
             }.distinct()
             .joinToString("\n\n")
-            .ifEmpty { "No matching tools" }
+            .ifEmpty { res.get(R.string.tool_msg_no_matching_tools) }
     }
 }
 
 /** `tool_describe`: readable schema summaries instead of a collapsed JSON object. */
 internal object ToolDescribeRenderer : ToolRenderer {
-    override fun subtitle(call: ToolCall): String {
+    override fun subtitle(
+        call: ToolCall,
+        res: ToolText,
+    ): String {
         val names = (call.args?.get("names") as? JsonArray)?.joinToString(", ") { text(it) }.orEmpty()
         val count = (call.result?.get("tools") as? JsonObject)?.size
-        return if (count != null) "$names ($count ${if (count == 1) "tool" else "tools"})" else names
+        return if (count != null) res.plural(R.plurals.tool_msg_names_tools, count, names, count) else names
     }
 
-    override fun detail(call: ToolCall): String =
+    override fun detail(
+        call: ToolCall,
+        res: ToolText,
+    ): String =
         (call.result?.get("tools") as? JsonObject)
             ?.entries
             ?.joinToString("\n\n") { (name, value) ->
@@ -181,8 +216,7 @@ internal object ToolDescribeRenderer : ToolRenderer {
                     append("🔧 $name")
                     if (desc.isNotEmpty()) append("\n     $desc")
                     if (!properties.isNullOrEmpty()) {
-                        append("\n     Parameters: ")
-                        append(
+                        val parameters =
                             properties.entries.joinToString("; ") { (paramName, value) ->
                                 val param = ToolJson.parseMaybeObject(value)
                                 val type = ToolJson.firstString(param, listOf("type"))
@@ -193,15 +227,19 @@ internal object ToolDescribeRenderer : ToolRenderer {
                                     if (type.isNotEmpty()) append(" ($type)")
                                     if (paramName in required) append(" *")
                                     if (help.isNotEmpty()) append(" — $help")
-                                    if (default != null) append(" [default: ${text(default)}]")
+                                    if (default !=
+                                        null
+                                    ) {
+                                        append(" " + res.get(R.string.tool_msg_default_value, text(default)))
+                                    }
                                 }
-                            },
-                        )
+                            }
+                        append("\n     " + res.get(R.string.tool_msg_parameters, parameters))
                     } else if (required.isNotEmpty()) {
-                        append("\n     Required: ${required.joinToString(", ")}")
+                        append("\n     " + res.get(R.string.tool_msg_required, required.joinToString(", ")))
                     }
                 }
-            }?.ifEmpty { "No tool descriptions returned" } ?: "No tool descriptions returned"
+            }?.ifEmpty { null } ?: res.get(R.string.tool_msg_no_tool_descriptions)
 }
 
 private fun text(value: kotlinx.serialization.json.JsonElement): String =

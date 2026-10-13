@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.HubSkill
 import io.wutz.apollo.data.model.SkillHubSource
 import io.wutz.apollo.data.model.SkillHubSourcesResponse
@@ -14,6 +15,7 @@ import io.wutz.apollo.data.model.SkillScanFinding
 import io.wutz.apollo.data.model.SkillScanResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -121,9 +123,8 @@ class SkillsViewModelTest {
         settle()
 
         assertEquals(
-            true,
-            vm.uiState.value.hubSourcesError
-                ?.contains("Failed to load hub sources"),
+            UiText.res(R.string.skills_msg_hub_sources_failed, "Hub sources unavailable"),
+            vm.uiState.value.hubSourcesError,
         )
         assertEquals(false, vm.uiState.value.isHubSourcesLoading)
     }

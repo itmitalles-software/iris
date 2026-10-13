@@ -15,6 +15,18 @@ data class ReplyFailureProjection(
     val completionId: String? = null,
 )
 
+/**
+ * English placeholder for a failure without error text. It stays English inside [ReplyFailure.details]
+ * (copied into bug reports and matched here); [localizeReplyFailureDetails] translates it for display.
+ */
+internal const val UNKNOWN_GATEWAY_ERROR = "Unknown gateway error"
+
+/** Display form of failure details: the [UNKNOWN_GATEWAY_ERROR] line is translated, everything else stays raw. */
+internal fun localizeReplyFailureDetails(
+    details: String,
+    unknownGatewayError: String,
+): String = details.split("\n").joinToString("\n") { if (it == UNKNOWN_GATEWAY_ERROR) unknownGatewayError else it }
+
 /** Only a terminal turn failure is a failed reply; RPC/transport errors are separate. */
 internal fun replyFailureFromPayload(
     payload: Map<String, Any?>?,
@@ -28,14 +40,14 @@ internal fun replyFailureFromPayload(
                 (surface?.get(key) as? String)?.takeIf { it.isNotBlank() }?.let { add("$key: $it") }
             }
             val error = (payload["error"] as? String)?.takeIf { it.isNotBlank() }
-            add(error ?: if (payload["partial"] == true) "Unknown gateway error" else fallback)
+            add(error ?: if (payload["partial"] == true) UNKNOWN_GATEWAY_ERROR else fallback)
         }.joinToString("\n")
     return ReplyFailure(sanitizeReplyErrorDetails(details))
 }
 
 /** Best-effort scrubbing before display/copy/share; never includes a transcript or request payload. */
 internal fun sanitizeReplyErrorDetails(raw: String?): String {
-    if (raw.isNullOrBlank()) return "Unknown gateway error"
+    if (raw.isNullOrBlank()) return UNKNOWN_GATEWAY_ERROR
     var safe = raw.take(8_192)
     safe = PRIVATE_KEY.replace(safe, "[REDACTED]")
     safe = HEADER.replace(safe) { "${it.groupValues[1]}[REDACTED]" }

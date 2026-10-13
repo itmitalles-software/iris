@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.chat.ReplyFailure
+import io.wutz.apollo.ui.chat.localizeReplyFailureDetails
 import io.wutz.apollo.ui.chat.sanitizeReplyErrorDetails
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -56,7 +57,11 @@ fun ReplyErrorCard(
 ) {
     var expanded by rememberSaveable(failure.id) { mutableStateOf(false) }
 
-    val details = remember(failure.details) { sanitizeReplyErrorDetails(failure.details) }
+    val unknownGatewayError = stringResource(R.string.chat_msg_unknown_gateway_error)
+    val details =
+        remember(failure.details, unknownGatewayError) {
+            localizeReplyFailureDetails(sanitizeReplyErrorDetails(failure.details), unknownGatewayError)
+        }
     val detailsStateDescription =
         stringResource(
             if (expanded) {

@@ -1,13 +1,16 @@
 package io.wutz.apollo.ui.gateway
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.StatusResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,8 +23,8 @@ data class GatewayUiState(
     val isLoading: Boolean = false,
     val isActionRunning: Boolean = false,
     val status: StatusResponse? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
 )
 
 class GatewayViewModel :
@@ -52,7 +55,7 @@ class GatewayViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load status: $errorMsg",
+                        errorMessage = UiText.res(R.string.gateway_msg_load_status_failed, errorMsg),
                     )
                 }
             },
@@ -60,19 +63,26 @@ class GatewayViewModel :
     }
 
     fun startGateway() {
-        runGatewayAction("start") { safeApiCall { ApiClient.hermesApi.startGateway() } }
+        runGatewayAction(R.string.gateway_msg_started, R.string.gateway_msg_start_failed) {
+            safeApiCall { ApiClient.hermesApi.startGateway() }
+        }
     }
 
     fun stopGateway() {
-        runGatewayAction("stop") { safeApiCall { ApiClient.hermesApi.stopGateway() } }
+        runGatewayAction(R.string.gateway_msg_stopped, R.string.gateway_msg_stop_failed) {
+            safeApiCall { ApiClient.hermesApi.stopGateway() }
+        }
     }
 
     fun restartGateway() {
-        runGatewayAction("restart") { safeApiCall { ApiClient.hermesApi.restartGateway() } }
+        runGatewayAction(R.string.gateway_msg_restarted, R.string.gateway_msg_restart_failed) {
+            safeApiCall { ApiClient.hermesApi.restartGateway() }
+        }
     }
 
     private fun runGatewayAction(
-        actionName: String,
+        @StringRes successMessage: Int,
+        @StringRes failureMessage: Int,
         apiCall: suspend () -> NetworkResult<Unit>,
     ) {
         _uiState.update { it.copy(isActionRunning = true) }
@@ -83,7 +93,7 @@ class GatewayViewModel :
                     _uiState.update {
                         it.copy(
                             isActionRunning = false,
-                            toastMessage = "Gateway ${actionName}ed successfully",
+                            toastMessage = UiText.res(successMessage),
                         )
                     }
                     loadStatus(forceRefresh = true)
@@ -93,7 +103,7 @@ class GatewayViewModel :
                     _uiState.update {
                         it.copy(
                             isActionRunning = false,
-                            toastMessage = "Failed to $actionName gateway: ${result.error.message}",
+                            toastMessage = UiText.res(failureMessage, result.error.message),
                         )
                     }
                 }

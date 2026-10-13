@@ -18,7 +18,7 @@ class ToolViewBuilderTest {
         result: String,
         isError: Boolean = false,
         running: Boolean = false,
-    ) = ToolViewBuilder.build(tool, parse(args), parse(result), isError, running)
+    ) = ToolViewBuilder.build(tool, parse(args), parse(result), isError, running, TestToolText.english)
 
     // ── status heuristics ────────────────────────────────────────────────
 
@@ -180,7 +180,7 @@ class ToolViewBuilderTest {
             )
 
         assertTrue(view.subtitle, view.subtitle.contains("2 buttons"))
-        assertTrue(view.subtitle.contains("1 links"))
+        assertTrue(view.subtitle.contains("1 link ·"))
         assertTrue(view.subtitle.contains("Top controls: Save, Cancel"))
     }
 
@@ -208,7 +208,7 @@ class ToolViewBuilderTest {
                     """"category":"user_pref","trust_score":0.8}]}""",
             )
 
-        assertEquals("1 facts (search: x)", view.subtitle)
+        assertEquals("1 fact (search: x)", view.subtitle)
         assertTrue(view.detail, view.detail.contains("#7  user likes tea"))
         assertTrue(view.detail.contains("trust: 0.80"))
     }

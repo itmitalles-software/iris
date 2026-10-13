@@ -56,6 +56,7 @@ import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -112,7 +113,7 @@ fun ProvidersScreen(
 
             state.errorMessage != null && state.providers.isEmpty() -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.load() },
                     modifier = Modifier.padding(paddingValues),
                 )
@@ -323,7 +324,7 @@ private fun OAuthFlowDialog(
                             code = state.flowCodeInput,
                             onCodeChange = onCodeChange,
                             onOpenBrowser = onOpenBrowser,
-                            error = state.flowErrorMessage,
+                            error = state.flowErrorMessage?.asString(),
                         )
                     }
 
@@ -331,8 +332,8 @@ private fun OAuthFlowDialog(
                         DeviceCodeFlowContent(
                             start = start,
                             status = state.flowStatus,
-                            expiresIn = state.flowExpiresIn,
-                            error = state.flowErrorMessage,
+                            expiresIn = state.flowExpiresIn?.asString().orEmpty(),
+                            error = state.flowErrorMessage?.asString(),
                         )
                     }
 
@@ -345,7 +346,7 @@ private fun OAuthFlowDialog(
 
                     state.flowErrorMessage != null -> {
                         Text(
-                            text = state.flowErrorMessage,
+                            text = state.flowErrorMessage.asString(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
                         )

@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.MemoryProviderConfigResponse
 import io.wutz.apollo.data.model.MemoryProviderConfigUpdateRequest
 import io.wutz.apollo.data.model.MemoryProviderConfigUpdateResponse
@@ -16,6 +17,8 @@ import io.wutz.apollo.data.model.MemoryProviderStatusRow
 import io.wutz.apollo.data.model.MemoryResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.mapHttpError
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -197,7 +200,7 @@ class MemoryProviderDetailViewModelTest {
                 ),
             )
         }
-        assertEquals("Memory provider settings saved", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.plugins_msg_memory_provider_saved), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -229,10 +232,9 @@ class MemoryProviderDetailViewModelTest {
         vm.saveConfig()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage
-                .orEmpty()
-                .contains("Failed to save"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_settings_save_failed, mapHttpError(500).message),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -244,7 +246,7 @@ class MemoryProviderDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertEquals("Setup completed", state.toastMessage)
+        assertEquals(UiText.res(R.string.plugins_msg_setup_completed), state.toastMessage)
         assertTrue(state.setupResult?.ok == true)
         assertEquals(
             "installed",
@@ -263,10 +265,9 @@ class MemoryProviderDetailViewModelTest {
         vm.runSetup()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(
-            vm.uiState.value.toastMessage
-                .orEmpty()
-                .contains("Setup failed"),
+        assertEquals(
+            UiText.res(R.string.plugins_msg_setup_failed, mapHttpError(400).message),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -281,7 +282,7 @@ class MemoryProviderDetailViewModelTest {
 
         assertNull(vm.uiState.value.config)
         assertEquals(
-            "Not Found (HTTP 404): The requested resource could not be found.",
+            UiText.raw("Not Found (HTTP 404): The requested resource could not be found."),
             vm.uiState.value.errorMessage,
         )
     }

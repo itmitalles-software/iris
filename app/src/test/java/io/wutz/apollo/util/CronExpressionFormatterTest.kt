@@ -4,6 +4,8 @@ import android.util.Log
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
+import io.wutz.apollo.R
+import io.wutz.apollo.ui.common.UiText
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -21,31 +23,101 @@ class CronExpressionFormatterTest {
         unmockkAll()
     }
 
+    private fun f(cron: String): UiText = CronExpressionFormatter.cronToHumanReadable(cron)
+
+    private fun res(
+        id: Int,
+        vararg args: Any,
+    ) = UiText.res(id, *args)
+
+    private val midnight = res(R.string.cron_time_midnight)
+
     @Test
     fun testCronToHumanReadable() {
-        assertEquals("At 09:00 and 21:00 every day", CronExpressionFormatter.cronToHumanReadable("0 9,21 * * *"))
-        assertEquals("At 08:30 Monday through Friday", CronExpressionFormatter.cronToHumanReadable("30 8 * * 1-5"))
-        assertEquals("Every day at midnight", CronExpressionFormatter.cronToHumanReadable("0 0 * * *"))
-        assertEquals("Every 15 minutes", CronExpressionFormatter.cronToHumanReadable("*/15 * * * *"))
-        assertEquals("Every Monday at 09:00", CronExpressionFormatter.cronToHumanReadable("0 9 * * 1"))
-        assertEquals("Every Sunday at 06:00", CronExpressionFormatter.cronToHumanReadable("0 6 * * 0"))
-        assertEquals("On the 1st of every month at 12:00", CronExpressionFormatter.cronToHumanReadable("0 12 1 * *"))
-        assertEquals("On January 1st at midnight", CronExpressionFormatter.cronToHumanReadable("0 0 1 1 *"))
-        assertEquals("Every 2 hours", CronExpressionFormatter.cronToHumanReadable("0 */2 * * *"))
+        assertEquals(
+            res(
+                R.string.cron_desc_daily_at,
+                res(R.string.cron_list_last, UiText.raw("09:00"), UiText.raw("21:00")),
+            ),
+            f("0 9,21 * * *"),
+        )
+        assertEquals(
+            res(
+                R.string.cron_desc_at_time_day_range,
+                UiText.raw("08:30"),
+                res(R.string.cron_dow_monday),
+                res(R.string.cron_dow_friday),
+            ),
+            f("30 8 * * 1-5"),
+        )
+        assertEquals(res(R.string.cron_desc_every_day_midnight), f("0 0 * * *"))
+        assertEquals(UiText.plural(R.plurals.cron_desc_every_minutes, 15), f("*/15 * * * *"))
+        assertEquals(
+            res(R.string.cron_desc_every_weekday_at, res(R.string.cron_dow_monday), UiText.raw("09:00")),
+            f("0 9 * * 1"),
+        )
+        assertEquals(
+            res(R.string.cron_desc_every_weekday_at, res(R.string.cron_dow_sunday), UiText.raw("06:00")),
+            f("0 6 * * 0"),
+        )
+        assertEquals(
+            res(R.string.cron_desc_monthly_on_day_at, res(R.string.cron_ordinal_st, 1), UiText.raw("12:00")),
+            f("0 12 1 * *"),
+        )
+        assertEquals(
+            res(
+                R.string.cron_desc_on_month_day_at,
+                res(R.string.cron_month_january),
+                res(R.string.cron_ordinal_st, 1),
+                midnight,
+            ),
+            f("0 0 1 1 *"),
+        )
+        assertEquals(UiText.plural(R.plurals.cron_desc_every_hours, 2), f("0 */2 * * *"))
+    }
+
+    @Test
+    fun testListOfThreeTimesAndOrdinals() {
+        assertEquals(
+            res(
+                R.string.cron_desc_daily_at,
+                res(
+                    R.string.cron_list_last,
+                    res(R.string.cron_list_separator, midnight, UiText.raw("09:00")),
+                    UiText.raw("21:00"),
+                ),
+            ),
+            f("0 0,9,21 * * *"),
+        )
+        assertEquals(
+            res(R.string.cron_desc_monthly_on_day_at, res(R.string.cron_ordinal_nd, 22), UiText.raw("12:00")),
+            f("0 12 22 * *"),
+        )
+        assertEquals(
+            res(R.string.cron_desc_monthly_on_day_at, res(R.string.cron_ordinal_th, 13), UiText.raw("12:00")),
+            f("0 12 13 * *"),
+        )
+        assertEquals(
+            res(R.string.cron_desc_monthly_on_day_at, res(R.string.cron_ordinal_rd, 3), UiText.raw("12:00")),
+            f("0 12 3 * *"),
+        )
     }
 
     @Test
     fun testMalformedCron() {
-        assertEquals("invalid cron string", CronExpressionFormatter.cronToHumanReadable("invalid cron string"))
-        assertEquals("0 9 * *", CronExpressionFormatter.cronToHumanReadable("0 9 * *"))
+        assertEquals(UiText.raw("invalid cron string"), f("invalid cron string"))
+        assertEquals(UiText.raw("0 9 * *"), f("0 9 * *"))
     }
 
     @Test
     fun testExceptionFallback() {
         // This will cause an IndexOutOfBoundsException because 15 is out of bounds for monthNames
-        assertEquals("Raw: 0 12 1 15 *", CronExpressionFormatter.cronToHumanReadable("0 12 1 15 *"))
+        assertEquals(res(R.string.cron_desc_raw, "0 12 1 15 *"), f("0 12 1 15 *"))
 
         // This will cause an IndexOutOfBoundsException because 8 is out of bounds for dowNames
-        assertEquals("Raw: 0 9 * * 8", CronExpressionFormatter.cronToHumanReadable("0 9 * * 8"))
+        assertEquals(res(R.string.cron_desc_raw, "0 9 * * 8"), f("0 9 * * 8"))
+
+        // Month 0 does not exist; it must not turn into a resource id of 0.
+        assertEquals(res(R.string.cron_desc_raw, "0 12 1 0 *"), f("0 12 1 0 *"))
     }
 }

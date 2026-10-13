@@ -7,6 +7,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.wutz.apollo.BuildConfig
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.update.AppUpdateCache
 import io.wutz.apollo.data.update.AppUpdateChecker
@@ -14,6 +15,7 @@ import io.wutz.apollo.data.update.AppUpdateState
 import io.wutz.apollo.data.update.UpdateNoticeManager
 import io.wutz.apollo.data.update.isReleaseCandidateVersion
 import io.wutz.apollo.data.update.releaseTag
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -279,8 +281,8 @@ class AppUpdateViewModel(
     }
 
     private companion object {
-        val DOWNLOAD_ERROR = "Download failed — tap to retry"
-        val INSTALLER_ERROR = "Couldn't open the installer"
+        val DOWNLOAD_ERROR = UiText.res(R.string.update_msg_download_failed)
+        val INSTALLER_ERROR = UiText.res(R.string.update_msg_installer_failed)
     }
 }
 

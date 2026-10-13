@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.ModelCapabilities
 import io.wutz.apollo.data.model.ModelInfoResponse
@@ -9,6 +10,7 @@ import io.wutz.apollo.data.model.PinnedModel
 import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.ws.contract.ConfigSetParams
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +37,7 @@ class ChatModelSwitchDelegateTest {
     private var runtimeId: String? = "runtime-1"
     private val sentParams = mutableListOf<ConfigSetParams>()
     private val slashCommands = mutableListOf<String>()
-    private val assistantMessages = mutableListOf<String>()
+    private val assistantMessages = mutableListOf<UiText>()
     private var contextRefetched = 0
     private var modelSwitchInitiated = 0
     private var pinnedList = mutableListOf(PinnedModel("anthropic", "claude-3"))
@@ -269,7 +271,7 @@ class ChatModelSwitchDelegateTest {
             delegate.openModelPicker()
             advanceUntilIdle()
             assertFalse(uiState.value.modelPickerLoading)
-            assertEquals("Failed to load models: Unavailable", uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.chat_msg_load_models_failed, "Unavailable"), uiState.value.errorMessage)
         }
 
     @Test
@@ -317,7 +319,7 @@ class ChatModelSwitchDelegateTest {
                         "confirm_message" to "High token cost ahead",
                     ),
             )
-            assertEquals("High token cost ahead", uiState.value.modelSwitchConfirmMessage)
+            assertEquals(UiText.raw("High token cost ahead"), uiState.value.modelSwitchConfirmMessage)
 
             delegate.confirmModelSwitchExpensive()
             advanceUntilIdle()
@@ -552,7 +554,10 @@ class ChatModelSwitchDelegateTest {
 
             assertNull(uiState.value.reasoningLevel)
             assertNull(uiState.value.pendingReasoningLevel)
-            assertTrue(uiState.value.errorMessage?.contains("4002") == true)
+            assertEquals(
+                UiText.res(R.string.chat_msg_reasoning_confirm_failed, "4002 unknown reasoning value"),
+                uiState.value.errorMessage,
+            )
         }
 
     @Test
@@ -672,7 +677,7 @@ class ChatModelSwitchDelegateTest {
             )
 
             assertEquals(1, assistantMessages.size)
-            assertEquals("⚠ $warningText", assistantMessages.first())
+            assertEquals(UiText.raw("⚠ $warningText"), assistantMessages.first())
         }
 
     @Test
@@ -693,7 +698,7 @@ class ChatModelSwitchDelegateTest {
                     ),
             )
 
-            assertEquals(listOf(warningText), assistantMessages)
+            assertEquals(listOf(UiText.raw(warningText)), assistantMessages)
         }
 
     @Test

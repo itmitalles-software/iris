@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.profiles
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
@@ -22,6 +23,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -40,8 +42,8 @@ data class ProfilesUiState(
     val sharedGatewayProfiles: List<String> = emptyList(),
     val selectedSoulContent: String? = null,
     val isLoadingSoul: Boolean = false,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val showHidden: Boolean = false,
     val hiddenProfiles: Set<String> = emptySet(),
     // Rename / delete / auto-describe / setup-command states
@@ -100,7 +102,7 @@ class ProfilesViewModel(
         _uiState.update {
             it.copy(
                 hiddenProfiles = AuthManager.getHiddenProfiles().toSet(),
-                toastMessage = "Profile $name hidden",
+                toastMessage = UiText.res(R.string.profiles_msg_hidden, name),
             )
         }
     }
@@ -110,7 +112,7 @@ class ProfilesViewModel(
         _uiState.update {
             it.copy(
                 hiddenProfiles = AuthManager.getHiddenProfiles().toSet(),
-                toastMessage = "Profile $name unhidden",
+                toastMessage = UiText.res(R.string.profiles_msg_unhidden, name),
             )
         }
     }
@@ -199,14 +201,13 @@ class ProfilesViewModel(
                             }
                         }
                     } else if (cached == null || forceRefresh) {
-                        val profilesError = (profilesResult as? NetworkResult.Failure)?.error?.message ?: "Success"
-                        val activeError = (activeResult as? NetworkResult.Failure)?.error?.message ?: "Success"
+                        val profilesError = partialLoadStatus(profilesResult)
+                        val activeError = partialLoadStatus(activeResult)
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 errorMessage =
-                                    "Failed to load profiles/active: " +
-                                        "Profiles: $profilesError, Active: $activeError",
+                                    UiText.res(R.string.profiles_msg_load_partial_failed, profilesError, activeError),
                             )
                         }
                     }
@@ -215,7 +216,10 @@ class ProfilesViewModel(
                 val currentScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
                 if (currentScope == requestScope && (cached == null || forceRefresh)) {
                     _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "Failed to load profiles: ${e.message}")
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = UiText.res(R.string.profiles_msg_load_failed, e.message.toString()),
+                        )
                     }
                 }
             }
@@ -233,7 +237,7 @@ class ProfilesViewModel(
             // re-dial (desktop's requestFreshSession + socket swap).
             when (val result = ProfileSwitchCoordinator.switchProfile(name)) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Switched to profile $name") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.profiles_msg_switched, name)) }
                     loadProfiles(forceRefresh = true)
                 }
 
@@ -241,7 +245,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             activeProfileName = originalActive,
-                            toastMessage = "Failed to switch profile: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_switch_failed, result.error.message),
                         )
                     }
                 }
@@ -270,7 +274,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingSoul = false,
-                            toastMessage = "Failed to load soul: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_load_soul_failed, result.error.message),
                         )
                     }
                 }
@@ -297,7 +301,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             selectedSoulContent = null,
-                            toastMessage = "Soul updated successfully",
+                            toastMessage = UiText.res(R.string.profiles_msg_soul_updated),
                         )
                     }
                     loadProfiles(forceRefresh = true)
@@ -306,7 +310,7 @@ class ProfilesViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to save soul: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_soul_save_failed, result.error.message),
                         )
                     }
                 }
@@ -331,14 +335,18 @@ class ProfilesViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Model settings updated") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.profiles_msg_model_settings_updated)) }
                     loadProfiles(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Failed to update model settings: ${result.error.message}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.profiles_msg_model_settings_failed,
+                                    result.error.message,
+                                ),
                         )
                     }
                 }
@@ -349,6 +357,11 @@ class ProfilesViewModel(
     override fun clearToast() {
         _uiState.update { it.copy(toastMessage = null) }
     }
+
+    /** Server error of one half of a combined load, or "Success" when that half loaded. */
+    private fun partialLoadStatus(result: NetworkResult<*>): UiText =
+        (result as? NetworkResult.Failure)?.error?.message?.let { UiText.raw(it) }
+            ?: UiText.res(R.string.profiles_msg_status_success)
 
     fun closeSoulDialog() {
         _uiState.update { it.copy(selectedSoulContent = null) }
@@ -375,7 +388,7 @@ class ProfilesViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Profile '$sourceProfileName' cloned successfully to '$newProfileName'",
+                            toastMessage = UiText.res(R.string.profiles_msg_cloned, sourceProfileName, newProfileName),
                         )
                     }
                     loadProfiles(forceRefresh = true)
@@ -385,7 +398,8 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to clone profile '$sourceProfileName': ${result.error.message}",
+                            toastMessage =
+                                UiText.res(R.string.profiles_msg_clone_failed, sourceProfileName, result.error.message),
                         )
                     }
                 }
@@ -412,7 +426,7 @@ class ProfilesViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Profile '$profileName' description updated",
+                            toastMessage = UiText.res(R.string.profiles_msg_description_updated, profileName),
                         )
                     }
                     loadProfiles(forceRefresh = true)
@@ -422,7 +436,8 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to update description for '$profileName': ${result.error.message}",
+                            toastMessage =
+                                UiText.res(R.string.profiles_msg_description_failed, profileName, result.error.message),
                         )
                     }
                 }
@@ -450,7 +465,7 @@ class ProfilesViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Profile '$oldName' renamed to '$newName'",
+                            toastMessage = UiText.res(R.string.profiles_msg_renamed, oldName, newName),
                         )
                     }
                     loadProfiles(forceRefresh = true)
@@ -460,7 +475,12 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to rename profile '$oldName': ${result.error.message}",
+                            toastMessage =
+                                UiText.res(
+                                    R.string.profiles_msg_rename_failed,
+                                    oldName,
+                                    result.error.message,
+                                ),
                         )
                     }
                 }
@@ -479,7 +499,7 @@ class ProfilesViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Profile '$name' deleted",
+                            toastMessage = UiText.res(R.string.profiles_msg_deleted, name),
                         )
                     }
                     loadProfiles(forceRefresh = true)
@@ -489,7 +509,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to delete profile '$name': ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_delete_failed, name, result.error.message),
                         )
                     }
                 }
@@ -516,7 +536,7 @@ class ProfilesViewModel(
                         _uiState.update {
                             it.copy(
                                 isAutoDescribing = false,
-                                toastMessage = "Auto-described profile '$name'",
+                                toastMessage = UiText.res(R.string.profiles_msg_auto_described, name),
                             )
                         }
                         loadProfiles(forceRefresh = true)
@@ -527,8 +547,12 @@ class ProfilesViewModel(
                             it.copy(
                                 isAutoDescribing = false,
                                 toastMessage =
-                                    "Auto-describe failed for '$name': " +
-                                        (body.reason ?: "unknown reason"),
+                                    UiText.res(
+                                        R.string.profiles_msg_auto_describe_failed,
+                                        name,
+                                        body.reason?.let { UiText.raw(it) }
+                                            ?: UiText.res(R.string.profiles_msg_unknown_reason),
+                                    ),
                             )
                         }
                     }
@@ -538,7 +562,8 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isAutoDescribing = false,
-                            toastMessage = "Failed to auto-describe profile '$name': ${result.error.message}",
+                            toastMessage =
+                                UiText.res(R.string.profiles_msg_auto_describe_error, name, result.error.message),
                         )
                     }
                 }
@@ -567,7 +592,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingSetupCommand = false,
-                            toastMessage = "Failed to fetch setup command: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_setup_command_failed, result.error.message),
                         )
                     }
                 }
@@ -599,7 +624,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingBuilderData = false,
-                            toastMessage = "Failed to load models: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_load_models_failed, result.error.message),
                         )
                     }
                 }
@@ -642,14 +667,13 @@ class ProfilesViewModel(
                             )
                         }
                     } else {
-                        val modelsError = (modelsResult as? NetworkResult.Failure)?.error?.message ?: "Success"
-                        val skillsError = (skillsResult as? NetworkResult.Failure)?.error?.message ?: "Success"
+                        val modelsError = partialLoadStatus(modelsResult)
+                        val skillsError = partialLoadStatus(skillsResult)
                         _uiState.update {
                             it.copy(
                                 isLoadingBuilderData = false,
                                 errorMessage =
-                                    "Failed to load builder data: " +
-                                        "Models: $modelsError, Skills: $skillsError",
+                                    UiText.res(R.string.profiles_msg_builder_partial_failed, modelsError, skillsError),
                             )
                         }
                     }
@@ -658,7 +682,7 @@ class ProfilesViewModel(
                 _uiState.update {
                     it.copy(
                         isLoadingBuilderData = false,
-                        errorMessage = "Failed to load builder data: ${e.message}",
+                        errorMessage = UiText.res(R.string.profiles_msg_builder_failed, e.message.toString()),
                     )
                 }
             }
@@ -687,7 +711,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isSearchingHub = false,
-                            toastMessage = "Failed to search skills hub: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_skills_search_failed, result.error.message),
                         )
                     }
                 }
@@ -709,7 +733,7 @@ class ProfilesViewModel(
                 is NetworkResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = "Profile ${request.name} created successfully",
+                            toastMessage = UiText.res(R.string.profiles_msg_created, request.name),
                         )
                     }
                     loadProfiles(forceRefresh = true)
@@ -720,7 +744,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to create profile: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.profiles_msg_create_failed, result.error.message),
                         )
                     }
                 }

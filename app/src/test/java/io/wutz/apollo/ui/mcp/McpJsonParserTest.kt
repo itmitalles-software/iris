@@ -1,7 +1,9 @@
 package io.wutz.apollo.ui.mcp
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.McpServerTestResponse
 import io.wutz.apollo.data.model.McpServerToolInfo
+import io.wutz.apollo.ui.common.UiText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -154,7 +156,10 @@ class McpJsonParserTest {
         assertEquals(201, est)
 
         val formatted = McpTokenEstimator.formatTokenOverhead(tools.size, est)
-        assertEquals("3 tools • ~201 tokens", formatted)
+        assertEquals(
+            UiText.res(R.string.mcp_msg_tool_token_overhead, UiText.plural(R.plurals.mcp_msg_tool_count, 3), "201"),
+            formatted,
+        )
     }
 
     @Test
@@ -168,7 +173,10 @@ class McpJsonParserTest {
         val est = McpTokenEstimator.estimateTokens(tools)
         assertEquals(3200, est)
         val formatted = McpTokenEstimator.formatTokenOverhead(49, est)
-        assertEquals("49 tools • ~3.2k tokens", formatted)
+        assertEquals(
+            UiText.res(R.string.mcp_msg_tool_token_overhead, UiText.plural(R.plurals.mcp_msg_tool_count, 49), "3.2k"),
+            formatted,
+        )
     }
 
     @Test
@@ -181,7 +189,7 @@ class McpJsonParserTest {
 
         val est = McpTokenEstimator.estimateTokens(tools)
         assertNull(est)
-        assertEquals("2 tools", McpTokenEstimator.formatTokenOverhead(2, est))
+        assertEquals(UiText.plural(R.plurals.mcp_msg_tool_count, 2), McpTokenEstimator.formatTokenOverhead(2, est))
     }
 
     @Test

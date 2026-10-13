@@ -1,6 +1,7 @@
 package io.wutz.apollo.ui.chat
 
 import io.wutz.apollo.data.model.SessionMessage
+import io.wutz.apollo.ui.chat.tool.TestToolText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -192,7 +193,7 @@ class PersistedEditPreviewHydrationTest {
             }
             """.trimIndent()
 
-        val view = parseToolOutput(content = content, toolName = "patch", isRunning = false)
+        val view = parseToolOutput(content = content, toolName = "patch", isRunning = false, res = TestToolText.english)
 
         assertNotNull("Expected parseToolOutput to return a ToolView", view)
         assertEquals(rawDiff, view?.inlineDiff)
@@ -217,7 +218,8 @@ class PersistedEditPreviewHydrationTest {
             }
             """.trimIndent()
 
-        val view = parseToolOutput(content = content, toolName = "edit_file", isRunning = false)
+        val view =
+            parseToolOutput(content = content, toolName = "edit_file", isRunning = false, res = TestToolText.english)
 
         assertNotNull(view)
         assertEquals(rawDiff, view?.inlineDiff)
@@ -242,7 +244,7 @@ class PersistedEditPreviewHydrationTest {
             }
             """.trimIndent()
 
-        val view = parseToolOutput(content = content, toolName = "patch", isRunning = false)
+        val view = parseToolOutput(content = content, toolName = "patch", isRunning = false, res = TestToolText.english)
 
         assertNotNull(view)
         assertEquals(rawDiff, view?.inlineDiff)
@@ -267,7 +269,13 @@ class PersistedEditPreviewHydrationTest {
               }
             }
             """.trimIndent()
-        val noDiffView = parseToolOutput(content = emptyDiffContent, toolName = "patch", isRunning = false)
+        val noDiffView =
+            parseToolOutput(
+                content = emptyDiffContent,
+                toolName = "patch",
+                isRunning = false,
+                res = TestToolText.english,
+            )
         assertNotNull(noDiffView)
         assertNull(noDiffView?.inlineDiff)
 
@@ -283,7 +291,13 @@ class PersistedEditPreviewHydrationTest {
               }
             }
             """.trimIndent()
-        val missingDiffView = parseToolOutput(content = missingDiffContent, toolName = "patch", isRunning = false)
+        val missingDiffView =
+            parseToolOutput(
+                content = missingDiffContent,
+                toolName = "patch",
+                isRunning = false,
+                res = TestToolText.english,
+            )
         assertNotNull(missingDiffView)
         assertNull(missingDiffView?.inlineDiff)
     }
@@ -316,6 +330,7 @@ class PersistedEditPreviewHydrationTest {
                 content = chatMessage.content,
                 toolName = "patch",
                 isRunning = false,
+                res = TestToolText.english,
             )
 
         assertNotNull("Expected parseToolOutput to succeed for hydrated message content", toolView)

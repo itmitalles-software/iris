@@ -276,7 +276,7 @@ fun AppUpdateDialog(
                     is AppUpdateState.Error -> {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = state.message,
+                                text = state.message.asString(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                             )

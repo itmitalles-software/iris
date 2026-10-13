@@ -70,6 +70,7 @@ import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.StatusFilter
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.common.toDetailRows
@@ -247,7 +248,7 @@ fun PluginsScreen(
 
                         state.errorMessage != null && state.plugins.isEmpty() -> {
                             ErrorState(
-                                message = state.errorMessage ?: "",
+                                message = state.errorMessage?.asString() ?: "",
                                 onRetry = { viewModel.loadPlugins() },
                             )
                         }

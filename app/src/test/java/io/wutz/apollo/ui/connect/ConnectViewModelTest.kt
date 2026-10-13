@@ -10,6 +10,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.ServerEndpoint
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -64,16 +65,6 @@ class ConnectViewModelTest {
         every { AuthManager.getSelectedProfileId() } returns null
         every { AuthManager.setSelectedProfileId(any()) } returns Unit
         every { AuthManager.ensureDefaultSelected() } returns Unit
-
-        // Mock Application string resources
-        every { mockApp.getString(R.string.connect_error_token_required) } returns "Token is required"
-        every { mockApp.getString(R.string.connect_error_url_invalid) } returns "URL is invalid"
-        every { mockApp.getString(R.string.connect_error_401) } returns "Invalid token (401 Unauthorized)"
-        every { mockApp.getString(R.string.connect_error_403) } returns "Access denied (403 Forbidden)"
-        every { mockApp.getString(R.string.connect_error_http_code) } returns "Server returned HTTP %1\$d"
-        every { mockApp.getString(R.string.connect_error_refused) } returns "Connection refused – is Hermes running?"
-        every { mockApp.getString(R.string.connect_error_timeout) } returns "Connection timed out"
-        every { mockApp.getString(R.string.connect_error_connection_failed) } returns "Connection failed: %1\$s"
     }
 
     @After
@@ -110,7 +101,7 @@ class ConnectViewModelTest {
         val viewModel = ConnectViewModel(mockApp)
         viewModel.onTokenChange("")
         viewModel.connect()
-        assertEquals("Token is required", viewModel.uiState.value.errorMessage)
+        assertEquals(UiText.res(R.string.connect_error_token_required), viewModel.uiState.value.errorMessage)
     }
 
     @Test
@@ -120,11 +111,11 @@ class ConnectViewModelTest {
 
         viewModel.onBaseUrlChange("https://127.0.0.1:65536/")
         viewModel.connect()
-        assertEquals("URL is invalid", viewModel.uiState.value.errorMessage)
+        assertEquals(UiText.res(R.string.connect_error_url_invalid), viewModel.uiState.value.errorMessage)
 
         viewModel.onBaseUrlChange("not-a-url")
         viewModel.connect()
-        assertEquals("URL is invalid", viewModel.uiState.value.errorMessage)
+        assertEquals(UiText.res(R.string.connect_error_url_invalid), viewModel.uiState.value.errorMessage)
     }
 
     @Test
@@ -182,7 +173,7 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Invalid token (401 Unauthorized)", state.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_401), state.errorMessage)
         }
 
     @Test
@@ -208,7 +199,7 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Invalid token (401 Unauthorized)", state.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_401), state.errorMessage)
         }
 
     @Test
@@ -229,7 +220,7 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Access denied (403 Forbidden)", state.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_403), state.errorMessage)
         }
 
     @Test
@@ -250,7 +241,7 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Server returned HTTP 500", state.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_http_code, 500), state.errorMessage)
         }
 
     @Test
@@ -268,7 +259,7 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Connection refused – is Hermes running?", state.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_refused), state.errorMessage)
         }
 
     @Test
@@ -286,7 +277,7 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Connection timed out", state.errorMessage)
+            assertEquals(UiText.res(R.string.connect_error_timeout), state.errorMessage)
         }
 
     @Test
@@ -304,7 +295,10 @@ class ConnectViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isConnecting)
             assertFalse(state.connectionSuccess)
-            assertEquals("Connection failed: Something went wrong", state.errorMessage)
+            assertEquals(
+                UiText.res(R.string.connect_error_connection_failed, "Something went wrong"),
+                state.errorMessage,
+            )
         }
 
     @Test

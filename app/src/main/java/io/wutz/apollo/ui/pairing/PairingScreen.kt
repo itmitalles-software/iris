@@ -41,6 +41,7 @@ import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -75,7 +76,7 @@ fun PairingScreen(
 
             state.errorMessage != null && pairing == null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadPairing() },
                     modifier = Modifier.padding(paddingValues),
                 )

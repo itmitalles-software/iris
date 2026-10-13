@@ -1,9 +1,12 @@
 package io.wutz.apollo.ui.sessions
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SessionSearchResult
+import io.wutz.apollo.ui.common.UiText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SessionSearchFormattingTest {
@@ -95,5 +98,15 @@ class SessionSearchFormattingTest {
     fun `formatPlayedAt returns formatted string for valid timestamp`() {
         val result = formatPlayedAt(1700000000.0)
         assertNotNull(result)
+    }
+
+    @Test
+    fun `formatPlayedAt uses relative resources for recent timestamps`() {
+        val now = 1_700_000_000L
+        assertEquals(UiText.res(R.string.sessions_played_just_now), formatPlayedAt(now - 30.0, now))
+        assertEquals(UiText.res(R.string.sessions_played_minutes_ago, 5), formatPlayedAt(now - 300.0, now))
+        assertEquals(UiText.res(R.string.sessions_played_hours_ago, 2), formatPlayedAt(now - 7_200.0, now))
+        assertEquals(UiText.res(R.string.sessions_played_days_ago, 3), formatPlayedAt(now - 3 * 86_400.0, now))
+        assertTrue(formatPlayedAt(now - 30 * 86_400.0, now) is UiText.Raw)
     }
 }

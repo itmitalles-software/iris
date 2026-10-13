@@ -1,12 +1,14 @@
 package io.wutz.apollo.ui.chat
 
 import android.app.Application
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.Attachment
 import io.wutz.apollo.data.model.AttachmentSource
 import io.wutz.apollo.data.remote.GatewayFile
 import io.wutz.apollo.data.remote.GatewayFileClient
 import io.wutz.apollo.data.remote.GatewayFileResult
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -123,23 +125,29 @@ class ChatMediaDelegate(
                     }
 
                     is GatewayFileResult.NotFound -> {
-                        showOpenError("File not found on gateway: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_not_found_gateway, attachment.name))
                     }
 
                     is GatewayFileResult.Forbidden -> {
-                        showOpenError("Access denied: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_access_denied, attachment.name))
                     }
 
                     is GatewayFileResult.TooLarge -> {
-                        showOpenError("File too large to open: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_too_large_open, attachment.name))
                     }
 
                     is GatewayFileResult.Unauthorized -> {
-                        showOpenError("Session expired — reconnect to open: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_session_expired_open, attachment.name))
                     }
 
                     is GatewayFileResult.Failure -> {
-                        showOpenError("Could not open ${attachment.name}: ${result.throwable.message}")
+                        showOpenError(
+                            UiText.res(
+                                R.string.chat_msg_file_open_failed,
+                                attachment.name,
+                                result.throwable.message.toString(),
+                            ),
+                        )
                     }
                 }
             } finally {
@@ -175,32 +183,38 @@ class ChatMediaDelegate(
                                 }
                                 ?: error("destination is unavailable")
                         }.onSuccess {
-                            showOpenError("Saved ${result.file.name}")
+                            showOpenError(UiText.res(R.string.chat_msg_file_saved, result.file.name))
                         }.onFailure {
-                            showOpenError("Could not save ${attachment.name}: ${it.message}")
+                            showOpenError(
+                                UiText.res(R.string.chat_msg_file_save_failed, attachment.name, it.message.toString()),
+                            )
                         }
                     }
 
                     is GatewayFileResult.NotFound -> {
-                        showOpenError("File not found on gateway: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_not_found_gateway, attachment.name))
                     }
 
                     is GatewayFileResult.Forbidden -> {
-                        showOpenError("Access denied: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_access_denied, attachment.name))
                     }
 
                     is GatewayFileResult.TooLarge -> {
-                        showOpenError("File too large to save: ${attachment.name}")
+                        showOpenError(UiText.res(R.string.chat_msg_file_too_large_save, attachment.name))
                     }
 
                     is GatewayFileResult.Unauthorized -> {
-                        showOpenError(
-                            "Session expired — reconnect to save: ${attachment.name}",
-                        )
+                        showOpenError(UiText.res(R.string.chat_msg_file_session_expired_save, attachment.name))
                     }
 
                     is GatewayFileResult.Failure -> {
-                        showOpenError("Could not save ${attachment.name}: ${result.throwable.message}")
+                        showOpenError(
+                            UiText.res(
+                                R.string.chat_msg_file_save_failed,
+                                attachment.name,
+                                result.throwable.message.toString(),
+                            ),
+                        )
                     }
                 }
             } finally {
@@ -233,7 +247,9 @@ class ChatMediaDelegate(
                     file.cacheFile,
                 )
             openWithView(ctx, uri, file.mimeType)
-        }.onFailure { showOpenError("Could not open ${file.name}: ${it.message}") }
+        }.onFailure {
+            showOpenError(UiText.res(R.string.chat_msg_file_open_failed, file.name, it.message.toString()))
+        }
     }
 
     /** Fire an ACTION_VIEW intent; throws if no activity can handle the type. */
@@ -258,14 +274,18 @@ class ChatMediaDelegate(
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             val chooser =
-                android.content.Intent.createChooser(fallbackIntent, "Open file").apply {
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
+                android.content.Intent
+                    .createChooser(
+                        fallbackIntent,
+                        ctx.getString(R.string.chat_msg_open_file_chooser),
+                    ).apply {
+                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
             ctx.startActivity(chooser)
         }
     }
 
-    private fun showOpenError(message: String) {
+    private fun showOpenError(message: UiText) {
         uiState.update { it.copy(openError = message) }
     }
 

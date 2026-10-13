@@ -11,8 +11,8 @@ import io.wutz.apollo.ui.chat.parseToolOutput
  * event that lands before prewarm finishes) parses synchronously exactly like
  * before, so the rendered result — and its height — never changes.
  *
- * Keyed by the payload itself (not its hash), so a hit is always the view the
- * same inputs would produce.
+ * Keyed by the payload itself (not its hash) and the [ToolText.localeKey], so
+ * a hit is always the view the same inputs would produce in the same language.
  */
 internal object ToolViewCache {
     private const val MAX_ENTRIES = 512
@@ -21,6 +21,7 @@ internal object ToolViewCache {
         val content: String,
         val toolName: String?,
         val isRunning: Boolean,
+        val localeKey: String,
     )
 
     /** Boxes the result so a null parse (non-JSON content) is cached too. */
@@ -37,10 +38,11 @@ internal object ToolViewCache {
         content: String,
         toolName: String?,
         isRunning: Boolean,
+        res: ToolText,
     ): ToolView? {
-        val key = Key(content, toolName, isRunning)
+        val key = Key(content, toolName, isRunning, res.localeKey)
         synchronized(entries) { entries[key] }?.let { return it.view }
-        val view = parseToolOutput(content, toolName, isRunning)
+        val view = parseToolOutput(content, toolName, isRunning, res)
         synchronized(entries) { entries[key] = Entry(view) }
         return view
     }
@@ -49,8 +51,9 @@ internal object ToolViewCache {
         content: String,
         toolName: String?,
         isRunning: Boolean,
+        res: ToolText,
     ) {
-        getOrParse(content, toolName, isRunning)
+        getOrParse(content, toolName, isRunning, res)
     }
 
     internal fun size(): Int = synchronized(entries) { entries.size }

@@ -27,7 +27,7 @@ class ToolViewCharacterizationTest {
         result: String? = null,
         isError: Boolean = false,
         running: Boolean = false,
-    ) = ToolViewBuilder.build(tool, args?.let(::json), result?.let(::json), isError, running)
+    ) = ToolViewBuilder.build(tool, args?.let(::json), result?.let(::json), isError, running, TestToolText.english)
 
     // ── terminal: streams, exit codes, command line ──────────────────────
 
@@ -172,7 +172,14 @@ class ToolViewCharacterizationTest {
 
     @Test
     fun `isError with string result uses the string as error`() {
-        val view = ToolViewBuilder.build("weird_tool", null, JsonPrimitive("everything broke"), isError = true)
+        val view =
+            ToolViewBuilder.build(
+                "weird_tool",
+                null,
+                JsonPrimitive("everything broke"),
+                isError = true,
+                res = TestToolText.english,
+            )
 
         assertEquals(ToolViewStatus.ERROR, view.status)
         assertEquals("everything broke", view.error)
@@ -413,7 +420,7 @@ class ToolViewCharacterizationTest {
                 """{"snapshot":"button \"Save\"\nbutton \"Cancel\"\nlink \"Docs\"\ntextbox \"Name\""}""",
             )
 
-        assertEquals("2 buttons · 1 links · 1 inputs\nTop controls: Save, Cancel, Docs, Name", view.subtitle)
+        assertEquals("2 buttons · 1 link · 1 input\nTop controls: Save, Cancel, Docs, Name", view.subtitle)
         // detailFor returns the same summary; redundancy filter clears it.
         assertEquals("", view.detail)
     }
@@ -467,7 +474,7 @@ class ToolViewCharacterizationTest {
                 """{"count":1,"results":[{"fact_id":7,"content":"user likes tea",""" +
                     """"category":"user_pref","trust_score":0.8}]}""",
             )
-        assertEquals("1 facts (search: x)", listed.subtitle)
+        assertEquals("1 fact (search: x)", listed.subtitle)
         assertEquals("#7  user likes tea\n      [user_pref]  trust: 0.80", listed.detail)
     }
 
@@ -697,7 +704,7 @@ class ToolViewCharacterizationTest {
                 Json.parseToJsonElement("""{"success":false,"message":"Permission denied"}"""),
             )
 
-        assertEquals("❌ Permission denied", SkillManageRenderer.detail(call))
+        assertEquals("❌ Permission denied", SkillManageRenderer.detail(call, TestToolText.english))
     }
 
     @Test
@@ -723,7 +730,7 @@ class ToolViewCharacterizationTest {
                 Json.parseToJsonElement("""{"success":false,"error":"Permission denied"}"""),
             )
 
-        assertEquals("❌ Permission denied", SkillManageRenderer.detail(call))
+        assertEquals("❌ Permission denied", SkillManageRenderer.detail(call, TestToolText.english))
     }
 
     @Test
@@ -741,8 +748,8 @@ class ToolViewCharacterizationTest {
                 Json.parseToJsonElement("""{"success":"true","message":"unexpected payload"}"""),
             )
 
-        assertEquals("❌ unexpected payload", SkillManageRenderer.detail(missing))
-        assertEquals("❌ unexpected payload", SkillManageRenderer.detail(invalid))
+        assertEquals("❌ unexpected payload", SkillManageRenderer.detail(missing, TestToolText.english))
+        assertEquals("❌ unexpected payload", SkillManageRenderer.detail(invalid, TestToolText.english))
     }
 
     @Test
@@ -809,7 +816,7 @@ class ToolViewCharacterizationTest {
     @Test
     fun `computer_use apps list and action ack`() {
         val apps = build("computer_use", """{"action":"list_apps"}""", """{"apps":[{"name":"Firefox","pid":42}]}""")
-        assertEquals("1 apps", apps.subtitle)
+        assertEquals("1 app", apps.subtitle)
         assertEquals("1. Firefox (PID: 42)", apps.detail.trim())
 
         val action = build("computer_use", """{"action":"click"}""", """{"ok":true}""")
@@ -836,6 +843,7 @@ class ToolViewCharacterizationTest {
                 "terminal",
                 json("""{"command":"ls"}"""),
                 JsonPrimitive("""{"output":"hi","exit_code":0}"""),
+                res = TestToolText.english,
             )
 
         assertEquals("hi", view.stdout)
@@ -844,7 +852,13 @@ class ToolViewCharacterizationTest {
 
     @Test
     fun `malformed json string result degrades to success with no streams`() {
-        val view = ToolViewBuilder.build("terminal", json("""{"command":"ls"}"""), JsonPrimitive("{not json"))
+        val view =
+            ToolViewBuilder.build(
+                "terminal",
+                json("""{"command":"ls"}"""),
+                JsonPrimitive("{not json"),
+                res = TestToolText.english,
+            )
 
         assertEquals(ToolViewStatus.SUCCESS, view.status)
         assertEquals("Ran ls", view.title)
@@ -854,7 +868,13 @@ class ToolViewCharacterizationTest {
 
     @Test
     fun `array result summarizes items generically`() {
-        val view = ToolViewBuilder.build("weird_tool", null, json("""[{"name":"alpha"},{"name":"beta"}]"""))
+        val view =
+            ToolViewBuilder.build(
+                "weird_tool",
+                null,
+                json("""[{"name":"alpha"},{"name":"beta"}]"""),
+                res = TestToolText.english,
+            )
 
         assertEquals(ToolViewStatus.SUCCESS, view.status)
         assertEquals("- alpha\n- beta", view.detail)

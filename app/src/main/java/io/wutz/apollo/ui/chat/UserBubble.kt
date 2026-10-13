@@ -64,6 +64,7 @@ import io.wutz.apollo.theme.LocalThemePreset
 import io.wutz.apollo.theme.ThemePreset
 import io.wutz.apollo.ui.chat.components.rememberCopyFeedback
 import io.wutz.apollo.ui.chat.tool.ToolJson
+import io.wutz.apollo.ui.chat.tool.rememberToolText
 import io.wutz.apollo.util.BidiUtils
 import kotlinx.coroutines.launch
 
@@ -121,12 +122,13 @@ fun UserBubble(
 
         // #1432: also protect cached/legacy rows and unexpectedly large plain-string payloads.
         // Keep the original content for Copy; only the layout input is bounded.
+        val toolText = rememberToolText()
         val displayContent =
-            remember(message.content, message.attachments) {
+            remember(message.content, message.attachments, toolText) {
                 // #1432: the path is only hidden when its image renders as an attachment below.
                 val visible =
                     if (message.attachments.isNullOrEmpty()) message.content else hideImageRefLines(message.content)
-                ToolJson.clampForDisplay(visible)
+                ToolJson.clampForDisplay(visible, toolText)
             }
         val highlightedText =
             remember(displayContent, searchQuery, isCurrentMatch, statusColors) {

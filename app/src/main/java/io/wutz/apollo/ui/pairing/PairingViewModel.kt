@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.pairing
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.SwrCache
 import io.wutz.apollo.data.model.PairingApproveRequest
@@ -12,6 +13,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.ws.ChangeEvents
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
@@ -28,8 +30,8 @@ import kotlinx.coroutines.withContext
 data class PairingUiState(
     val isLoading: Boolean = false,
     val pairing: PairingResponse? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     /** Key of the item whose approve/revoke/clear action is in flight. */
     val actionKey: String? = null,
 )
@@ -82,7 +84,7 @@ class PairingViewModel :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "Failed to load pairing: $errorMsg",
+                            errorMessage = UiText.res(R.string.pairing_msg_load_failed, errorMsg),
                         )
                     }
                 },
@@ -96,7 +98,7 @@ class PairingViewModel :
     ) {
         runAction(
             actionKey = "approve:$requestId",
-            onSuccess = { it.copy(toastMessage = "Pairing request approved") },
+            onSuccess = { it.copy(toastMessage = UiText.res(R.string.pairing_msg_approved)) },
             apiCall = {
                 safeApiCall {
                     ApiClient.hermesApi.approvePairing(
@@ -114,7 +116,7 @@ class PairingViewModel :
     ) {
         runAction(
             actionKey = "revoke:$platform:$userId",
-            onSuccess = { it.copy(toastMessage = "Access revoked for $userId") },
+            onSuccess = { it.copy(toastMessage = UiText.res(R.string.pairing_msg_revoked, userId)) },
             apiCall = {
                 safeApiCall {
                     ApiClient.hermesApi.revokePairing(
@@ -129,7 +131,7 @@ class PairingViewModel :
     fun clearPending() {
         runAction(
             actionKey = "clear",
-            onSuccess = { it.copy(toastMessage = "Pending requests cleared") },
+            onSuccess = { it.copy(toastMessage = UiText.res(R.string.pairing_msg_pending_cleared)) },
             apiCall = { safeApiCall { ApiClient.hermesApi.clearPendingPairing() } },
         )
     }
@@ -153,7 +155,7 @@ class PairingViewModel :
                     _uiState.update {
                         it.copy(
                             actionKey = null,
-                            toastMessage = "Action failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.pairing_msg_action_failed, result.error.message),
                         )
                     }
                 }

@@ -65,6 +65,7 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 
 @Composable
 fun AchievementsScreen(
@@ -180,7 +181,7 @@ fun AchievementsScreen(
 
             state.errorMessage != null && state.achievements.isEmpty() -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadAchievements() },
                     modifier = Modifier.padding(paddingValues),
                 )

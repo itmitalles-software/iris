@@ -8,6 +8,7 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.KanbanBoard
 import io.wutz.apollo.data.model.KanbanBoardResponse
 import io.wutz.apollo.data.model.KanbanBoardsResponse
@@ -22,6 +23,7 @@ import io.wutz.apollo.data.ws.KanbanEvent
 import io.wutz.apollo.data.ws.KanbanEventsClient
 import io.wutz.apollo.data.ws.KanbanEventsEnvelope
 import io.wutz.apollo.data.ws.KanbanLiveStatus
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -145,7 +147,7 @@ class KanbanViewModelTest {
             vm.uiState.value.boards
                 .map { it.id },
         )
-        assertEquals("Board \"Work\" is no longer available", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.kanban_msg_board_unavailable, "Work"), vm.uiState.value.toastMessage)
         verify { mockEventsClient.connect(any(), eq("ops"), any(), any(), any()) }
     }
 
@@ -337,9 +339,12 @@ class KanbanViewModelTest {
                 .first { it.id == "t1" }
                 .status,
         )
-        assertTrue(
-            vm.uiState.value.toastMessage
-                ?.contains("Move failed") == true,
+        assertEquals(
+            UiText.res(
+                R.string.kanban_msg_move_failed,
+                "Conflict (HTTP 409): The request conflicts with current server state.",
+            ),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -362,10 +367,14 @@ class KanbanViewModelTest {
                 .single()
                 .status,
         )
-        assertTrue(
-            vm.uiState.value.toastMessage
-                .orEmpty()
-                .contains("t_parent"),
+        assertEquals(
+            UiText.res(
+                R.string.kanban_msg_move_blocked_by_parents,
+                "t_parent",
+                "running",
+                "Cannot move to 'ready': blocked by parent(s) not done — 'Build' (t_parent, status=running)",
+            ),
+            vm.uiState.value.toastMessage,
         )
     }
 

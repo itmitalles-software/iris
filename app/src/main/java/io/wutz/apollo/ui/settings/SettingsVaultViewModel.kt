@@ -2,9 +2,11 @@ package io.wutz.apollo.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.VaultItem
 import io.wutz.apollo.data.model.VaultSource
 import io.wutz.apollo.data.ws.VaultRepository
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +20,8 @@ data class SettingsVaultUiState(
     val items: List<VaultItem> = emptyList(),
     val isLoading: Boolean = false,
     val isActionInProgress: Boolean = false,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val unlockDialogSource: VaultSource? = null,
 )
 
@@ -56,7 +58,7 @@ class SettingsVaultViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = e.message ?: "Failed to load vault status",
+                        errorMessage = e.message?.let(UiText::raw) ?: UiText.res(R.string.vault_msg_load_failed),
                     )
                 }
             }
@@ -77,7 +79,12 @@ class SettingsVaultViewModel(
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        toastMessage = "Failed to update ${source.displayName}: ${e.message}",
+                        toastMessage =
+                            UiText.res(
+                                R.string.vault_msg_update_failed,
+                                source.displayName,
+                                e.message.toString(),
+                            ),
                     )
                 }
             }
@@ -104,14 +111,18 @@ class SettingsVaultViewModel(
                         sources = sources,
                         items = items,
                         isActionInProgress = false,
-                        toastMessage = if (success) "Unlocked $name" else "Failed to unlock $name",
+                        toastMessage =
+                            UiText.res(
+                                if (success) R.string.vault_msg_unlocked else R.string.vault_msg_unlock_failed,
+                                name,
+                            ),
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        toastMessage = "Error unlocking $name: ${e.message}",
+                        toastMessage = UiText.res(R.string.vault_msg_unlock_error, name, e.message.toString()),
                     )
                 }
             }
@@ -135,14 +146,19 @@ class SettingsVaultViewModel(
                         sources = sources,
                         items = items,
                         isActionInProgress = false,
-                        toastMessage = if (name != null) "Locked $name" else "All password managers locked",
+                        toastMessage =
+                            if (name != null) {
+                                UiText.res(R.string.vault_msg_locked, name)
+                            } else {
+                                UiText.res(R.string.vault_msg_all_locked)
+                            },
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isActionInProgress = false,
-                        toastMessage = "Error locking vault: ${e.message}",
+                        toastMessage = UiText.res(R.string.vault_msg_lock_error, e.message.toString()),
                     )
                 }
             }

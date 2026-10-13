@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.chat
 
 import androidx.annotation.StringRes
 import io.wutz.apollo.R
+import io.wutz.apollo.ui.common.UiText
 
 /**
  * Fixed texts of local system rows (Apollo, issue #8).
@@ -9,6 +10,13 @@ import io.wutz.apollo.R
  * The English text is what gets stored in Room and compared against (session start markers, tests,
  * transcript merge), so it must never be localized at creation time. [displayResOf] maps a known
  * constant to its string resource; the UI translates only when rendering.
+ *
+ * Parameterized rows (issue #10) are stored as English text too, built by the functions below
+ * ([stoppedBackgroundProcesses], [stopBackgroundProcessesFailed], [rewoundTo], [noticeRewoundTo]).
+ * [displayUiText] parses them back with anchored patterns into a resource plus the original
+ * argument, so rows written by older app versions (same English wording) are translated as well,
+ * and anything that does not match exactly is shown as stored. The argument (an error detail, the
+ * rewound prompt or a server notice) is never translated.
  */
 internal object SystemNotice {
     const val SESSION_CREATED = "Session created"
@@ -26,6 +34,27 @@ internal object SystemNotice {
 
     /** Heading line of an approval request row; the command description follows on the next line. */
     const val APPROVAL_REQUIRED_HEADING = "**Approval Required**"
+
+    private val STOPPED_BACKGROUND_PROCESSES = Regex("""^Stopped (\d{1,9}) background process(?:es)?\.$""")
+    private const val STOP_BACKGROUND_PROCESSES_FAILED_PREFIX = "Could not stop background processes: "
+    private const val REWOUND_TO_PREFIX = "↶ Rewound to: \""
+    private val NOTICE_REWOUND_TO = Regex("""^(.+?) \(Rewound to: "(.*)"\)$""", RegexOption.DOT_MATCHES_ALL)
+
+    /** Stored text of the `/stop` row after [killed] (> 0) background processes were stopped. */
+    fun stoppedBackgroundProcesses(killed: Int): String =
+        "Stopped $killed background process${if (killed == 1) "" else "es"}."
+
+    /** Stored text of the `/stop` row when `process.stop` failed; [reason] is the raw error detail. */
+    fun stopBackgroundProcessesFailed(reason: String): String = STOP_BACKGROUND_PROCESSES_FAILED_PREFIX + reason
+
+    /** Stored text of a rewind row that restored [message] into the composer. */
+    fun rewoundTo(message: String): String = "$REWOUND_TO_PREFIX$message\""
+
+    /** Stored text of a rewind row that carries a server [notice] and the restored [message]. */
+    fun noticeRewoundTo(
+        notice: String,
+        message: String,
+    ): String = "$notice (Rewound to: \"$message\")"
 
     /** Rows that mark the start of a session transcript. */
     val SESSION_START_MARKERS: Set<String> = setOf(SESSION_CREATED, SESSION_BRANCHED)
@@ -45,16 +74,51 @@ internal object SystemNotice {
         }
 
     /**
-     * Returns the display text for a stored system row: a known constant becomes its translation, and the
-     * English approval heading is replaced by its translation. Anything else is shown as stored.
+     * Returns the translatable form of a stored system row: a known constant or one of the parsed
+     * parameterized variants (see the class KDoc). Returns null for any other content.
+     */
+    fun displayUiText(content: String): UiText? {
+        displayResOf(content)?.let { return UiText.res(it) }
+        STOPPED_BACKGROUND_PROCESSES.matchEntire(content)?.let { match ->
+            val killed = match.groupValues[1].toIntOrNull() ?: return null
+            return UiText.plural(R.plurals.system_notice_stopped_background_processes, killed)
+        }
+        if (content.startsWith(STOP_BACKGROUND_PROCESSES_FAILED_PREFIX)) {
+            return UiText.res(
+                R.string.system_notice_stop_background_processes_failed,
+                content.removePrefix(STOP_BACKGROUND_PROCESSES_FAILED_PREFIX),
+            )
+        }
+        if (content.startsWith(REWOUND_TO_PREFIX) && content.endsWith("\"") &&
+            content.length >= REWOUND_TO_PREFIX.length + 1
+        ) {
+            return UiText.res(
+                R.string.system_notice_rewound_to,
+                content.substring(REWOUND_TO_PREFIX.length, content.length - 1),
+            )
+        }
+        NOTICE_REWOUND_TO.matchEntire(content)?.let { match ->
+            return UiText.res(
+                R.string.system_notice_notice_rewound_to,
+                match.groupValues[1],
+                match.groupValues[2],
+            )
+        }
+        return null
+    }
+
+    /**
+     * Returns the display text for a stored system row: a known constant or parsed variant becomes its
+     * translation, and the English approval heading is replaced by its translation. Anything else is shown
+     * as stored.
      */
     fun displayText(
         content: String,
-        resolve: (Int) -> String,
+        resolve: (UiText) -> String,
     ): String {
-        displayResOf(content)?.let { return resolve(it) }
+        displayUiText(content)?.let { return resolve(it) }
         if (content.startsWith(APPROVAL_REQUIRED_HEADING)) {
-            return "**" + resolve(R.string.system_notice_approval_required) + "**" +
+            return "**" + resolve(UiText.res(R.string.system_notice_approval_required)) + "**" +
                 content.removePrefix(APPROVAL_REQUIRED_HEADING)
         }
         return content

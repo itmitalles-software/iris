@@ -3,6 +3,16 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
+## Unreleased
+
+### Fixed
+
+- The remaining English messages (toasts, errors, snackbars, tool titles,
+  cron descriptions, relative times, update and MCP import summaries, system
+  rows such as "Stopped N background processes.") are now shown in German too
+  (#10). Counts use proper singular/plural forms. The cleartext HTTP warning on
+  the login and connect screens is localized.
+
 ## 0.1.1 — 2026-10-13
 
 ### Added

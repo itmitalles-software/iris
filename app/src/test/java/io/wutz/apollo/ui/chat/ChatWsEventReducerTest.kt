@@ -1,8 +1,10 @@
 package io.wutz.apollo.ui.chat
 
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.MessageReaction
 import io.wutz.apollo.data.model.UsageSnapshotResponse
 import io.wutz.apollo.data.ws.WsEvent
+import io.wutz.apollo.ui.common.UiText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -1742,5 +1744,54 @@ class ChatWsEventReducerTest {
                 "s",
             )
         assertEquals(state, otherSession.state)
+    }
+
+    @Test
+    fun gatewayError_surfacesLocalizedBackendErrorWithRawServerText() {
+        val result =
+            ChatWsEventReducer.reduce(
+                ChatUiState(),
+                StreamingState(),
+                WsEvent.GatewayError("quota exceeded"),
+                "rt-1",
+            )
+        assertEquals(UiText.res(R.string.chat_msg_backend_error, "quota exceeded"), result.state.errorMessage)
+
+        val unknown = ChatWsEventReducer.reduce(ChatUiState(), StreamingState(), WsEvent.GatewayError(null), "rt-1")
+        assertEquals(
+            UiText.res(R.string.chat_msg_backend_error, UiText.res(R.string.chat_msg_unknown_gateway_error)),
+            unknown.state.errorMessage,
+        )
+        assertEquals("Backend error: Unknown gateway error", EnglishTestResources.resolve(unknown.state.errorMessage!!))
+    }
+
+    @Test
+    fun backgroundComplete_namesTheJobWhenTheGatewayLabelsIt() {
+        val labeled =
+            ChatWsEventReducer.reduce(
+                ChatUiState(),
+                StreamingState(),
+                WsEvent.BackgroundComplete(mapOf("label" to "nightly report")),
+                "rt-1",
+            )
+        assertEquals(
+            UiText.res(R.string.chat_msg_background_job_finished_named, "nightly report"),
+            labeled.state.backgroundCompleteMessage,
+        )
+
+        val named =
+            ChatWsEventReducer.reduce(
+                ChatUiState(),
+                StreamingState(),
+                WsEvent.BackgroundComplete(mapOf("name" to "job-7")),
+                "rt-1",
+            )
+        assertEquals(
+            UiText.res(R.string.chat_msg_background_job_finished_named, "job-7"),
+            named.state.backgroundCompleteMessage,
+        )
+
+        val bare = ChatWsEventReducer.reduce(ChatUiState(), StreamingState(), WsEvent.BackgroundComplete(null), "rt-1")
+        assertEquals(UiText.res(R.string.chat_msg_background_job_finished), bare.state.backgroundCompleteMessage)
     }
 }

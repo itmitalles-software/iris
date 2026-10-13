@@ -86,6 +86,8 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.kanban.components.KanbanBoardSettingsDialog
 import io.wutz.apollo.ui.kanban.components.KanbanCreateTaskDialog
 import io.wutz.apollo.ui.kanban.components.KanbanFilterSheet
@@ -187,21 +189,26 @@ fun KanbanScreen(
             if (uri != null) {
                 coroutineScope.launch {
                     try {
-                        val cachedFile = File(checkNotNull(pendingExportPath) { "No pending board export" })
+                        val cachedFile =
+                            File(
+                                checkNotNull(
+                                    pendingExportPath,
+                                ) { resources.getString(R.string.kanban_msg_no_pending_export) },
+                            )
                         withContext(Dispatchers.IO) {
-                            check(cachedFile.isFile) { "Cached board export is missing; export the board again" }
+                            check(cachedFile.isFile) { resources.getString(R.string.kanban_msg_cached_export_missing) }
                             context.contentResolver.openOutputStream(uri)?.use { output ->
                                 cachedFile.inputStream().use { input ->
                                     input.copyTo(output)
                                 }
-                            } ?: error("Unable to open selected destination")
+                            } ?: error(resources.getString(R.string.kanban_msg_open_destination_failed))
                         }
-                        viewModel.showToast(resources.getString(R.string.kanban_export_success))
+                        viewModel.showToast(UiText.res(R.string.kanban_export_success))
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
                         viewModel.showToast(
-                            resources.getString(R.string.kanban_export_save_failed, e.message.orEmpty()),
+                            UiText.res(R.string.kanban_export_save_failed, e.message.orEmpty()),
                         )
                     } finally {
                         pendingExportPath = null
@@ -270,11 +277,16 @@ fun KanbanScreen(
                                             )
                                         check(
                                             response.isSuccessful,
-                                        ) { "Archive cleanup failed (HTTP ${response.code()})" }
+                                        ) {
+                                            resources.getString(
+                                                R.string.kanban_msg_archive_cleanup_failed_http,
+                                                response.code(),
+                                            )
+                                        }
                                     },
                                     onCleanupFailure = {
                                         viewModel.showToast(
-                                            resources.getString(
+                                            UiText.res(
                                                 R.string.kanban_import_cleanup_failed,
                                                 it.message.orEmpty(),
                                             ),
@@ -288,13 +300,13 @@ fun KanbanScreen(
                                             val res = importResult.data
                                             val msg =
                                                 if (res.renamed) {
-                                                    resources.getString(
+                                                    UiText.res(
                                                         R.string.kanban_import_success_renamed,
                                                         res.name,
                                                         res.board,
                                                     )
                                                 } else {
-                                                    resources.getString(R.string.kanban_import_success, res.name)
+                                                    UiText.res(R.string.kanban_import_success, res.name)
                                                 }
                                             viewModel.showToast(msg)
                                             viewModel.loadBoards()
@@ -302,7 +314,7 @@ fun KanbanScreen(
 
                                         is NetworkResult.Failure -> {
                                             viewModel.showToast(
-                                                resources.getString(
+                                                UiText.res(
                                                     R.string.kanban_import_failed,
                                                     importResult.error.message,
                                                 ),
@@ -315,7 +327,7 @@ fun KanbanScreen(
                             is NetworkResult.Failure -> {
                                 coroutineContext.ensureActive()
                                 viewModel.showToast(
-                                    resources.getString(
+                                    UiText.res(
                                         R.string.kanban_import_upload_failed,
                                         uploadResult.error.message,
                                     ),
@@ -325,7 +337,7 @@ fun KanbanScreen(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        viewModel.showToast(resources.getString(R.string.kanban_import_failed, e.message.orEmpty()))
+                        viewModel.showToast(UiText.res(R.string.kanban_import_failed, e.message.orEmpty()))
                     }
                 }
             }
@@ -413,14 +425,14 @@ fun KanbanScreen(
                                                     exportLauncher.launch("${b.slug}.tar.gz")
                                                 } else {
                                                     viewModel.showToast(
-                                                        resources.getString(R.string.kanban_export_download_failed),
+                                                        UiText.res(R.string.kanban_export_download_failed),
                                                     )
                                                 }
                                             }
 
                                             is NetworkResult.Failure -> {
                                                 viewModel.showToast(
-                                                    resources.getString(
+                                                    UiText.res(
                                                         R.string.kanban_export_failed,
                                                         res.error.message,
                                                     ),
@@ -479,7 +491,7 @@ fun KanbanScreen(
 
             state.errorMessage != null -> {
                 ErrorState(
-                    message = state.errorMessage ?: "",
+                    message = state.errorMessage?.asString() ?: "",
                     onRetry = { viewModel.loadBoards() },
                     modifier = Modifier.padding(paddingValues),
                 )
@@ -491,7 +503,7 @@ fun KanbanScreen(
                         CircularProgressIndicator()
                     } else if (state.errorMessage != null) {
                         Text(
-                            text = state.errorMessage ?: "",
+                            text = state.errorMessage?.asString() ?: "",
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(paddingValues),
                         )

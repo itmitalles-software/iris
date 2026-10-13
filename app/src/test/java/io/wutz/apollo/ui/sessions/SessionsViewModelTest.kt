@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.R
 import io.wutz.apollo.data.model.LiveSessionSnapshot
 import io.wutz.apollo.data.model.ProjectInfo
 import io.wutz.apollo.data.model.SessionInfo
@@ -23,6 +24,7 @@ import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.data.ws.ProjectsSource
 import io.wutz.apollo.data.ws.SessionLiveStatusSource
 import io.wutz.apollo.data.ws.WsEvent
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -263,7 +265,15 @@ class SessionsViewModelTest {
             io.wutz.apollo.data.local.AuthManager
                 .clearLastOpenedSessionId()
         }
-        assertEquals("1 session(s) deleted, 1 skipped (active)", vm.uiState.value.toastMessage)
+        assertEquals(
+            UiText.plural(
+                R.plurals.sessions_msg_bulk_skipped_active,
+                1,
+                UiText.plural(R.plurals.sessions_msg_bulk_deleted, 1),
+                1,
+            ),
+            vm.uiState.value.toastMessage,
+        )
     }
 
     @Test
@@ -294,7 +304,15 @@ class SessionsViewModelTest {
             vm.uiState.value.searchResults
                 .map { it.session_id },
         )
-        assertEquals("No sessions were deleted, 2 skipped (active)", vm.uiState.value.toastMessage)
+        assertEquals(
+            UiText.plural(
+                R.plurals.sessions_msg_bulk_skipped_active,
+                2,
+                UiText.res(R.string.sessions_msg_bulk_none_deleted),
+                2,
+            ),
+            vm.uiState.value.toastMessage,
+        )
     }
 
     @Test
@@ -419,7 +437,7 @@ class SessionsViewModelTest {
             vm.uiState.value.searchResults
                 .map { it.session_id },
         )
-        assertNotNull(vm.uiState.value.searchLoadMoreError)
+        assertEquals(UiText.res(R.string.sessions_msg_load_more_failed), vm.uiState.value.searchLoadMoreError)
         assertNull(vm.uiState.value.searchError)
         vm.loadMoreSearch()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -789,7 +807,7 @@ class SessionsViewModelTest {
             vm.uiState.value.pinnedSessions
                 .map { it.id },
         )
-        assertEquals("Session pinned", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.sessions_msg_pinned), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -819,10 +837,12 @@ class SessionsViewModelTest {
             vm.uiState.value.sessions[1]
                 .pinned ?: false,
         )
-        assertNotNull(vm.uiState.value.toastMessage)
-        assertTrue(
-            vm.uiState.value.toastMessage!!
-                .contains("Pin failed"),
+        assertEquals(
+            UiText.res(
+                R.string.sessions_msg_pin_failed,
+                "Server Error (HTTP 500): The server encountered an error.",
+            ),
+            vm.uiState.value.toastMessage,
         )
     }
 
@@ -892,7 +912,7 @@ class SessionsViewModelTest {
             vm.uiState.value.sessions
                 .map { it.id },
         )
-        assertEquals("Session archived", vm.uiState.value.toastMessage)
+        assertEquals(UiText.res(R.string.sessions_msg_archived), vm.uiState.value.toastMessage)
     }
 
     @Test

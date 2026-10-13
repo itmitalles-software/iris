@@ -179,6 +179,7 @@ fun SessionCard(
     session: SessionInfo,
     displayTitle: String,
     branchStem: String?,
+    branchNumber: Int? = null,
     isFork: Boolean = false,
     forkDepth: Int = 0,
     query: String,
@@ -205,7 +206,11 @@ fun SessionCard(
     val palette = sessionCardPalette()
     var menuExpanded by remember { mutableStateOf(false) }
     val shownTitle =
-        if (displayTitle == UNTITLED_SESSION_TITLE) stringResource(R.string.history_untitled) else displayTitle
+        when {
+            branchNumber != null -> stringResource(R.string.sessions_branch_title, branchNumber)
+            displayTitle == UNTITLED_SESSION_TITLE -> stringResource(R.string.history_untitled)
+            else -> displayTitle
+        }
 
     Card(
         modifier =

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +20,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -36,6 +38,8 @@ import io.wutz.apollo.ui.chat.ChatViewModel
 import io.wutz.apollo.ui.chat.ClarifyUi
 import io.wutz.apollo.ui.chat.SecretPromptUi
 import io.wutz.apollo.ui.chat.SudoPromptUi
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.resolve
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -45,9 +49,9 @@ fun ChatLifecycleEffects(
     connectionStatus: ConnectionStatus,
     currentSessionId: String?,
     messages: List<ChatMessage>,
-    errorMessage: String?,
-    backgroundCompleteMessage: String?,
-    openError: String?,
+    errorMessage: UiText?,
+    backgroundCompleteMessage: UiText?,
+    openError: UiText?,
     clarifyRequest: ClarifyUi?,
     sudoPrompt: SudoPromptUi?,
     secretPrompt: SecretPromptUi?,
@@ -153,8 +157,10 @@ fun ChatLifecycleEffects(
     val copyLabel = stringResource(R.string.action_copy_error)
     // Own scope + immediate clear: a later `errorMessage = null` elsewhere must not cancel a visible popup.
     val snackbarScope = rememberCoroutineScope()
+    val resources = LocalResources.current
     LaunchedEffect(errorMessage) {
-        errorMessage?.let { error ->
+        errorMessage?.let { errorText ->
+            val error = errorText.resolve(resources)
             viewModel.clearError()
             snackbarScope.launch {
                 val result =
@@ -174,7 +180,7 @@ fun ChatLifecycleEffects(
     // Show background-complete as a non-blocking snackbar (issue #527)
     LaunchedEffect(backgroundCompleteMessage) {
         backgroundCompleteMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
+            snackbarHostState.showSnackbar(message.resolve(resources))
             viewModel.clearBackgroundComplete()
         }
     }
@@ -182,7 +188,12 @@ fun ChatLifecycleEffects(
     // Show attachment-open failures as a non-blocking snackbar (issue #724)
     LaunchedEffect(openError) {
         openError?.let { message ->
-            snackbarHostState.showSnackbar(message)
+            val text = message.resolve(resources)
+            if (message is UiText.Resource && message.id == R.string.chat_msg_file_saved) {
+                snackbarHostState.showSnackbar(ChatSuccessSnackbarVisuals(text))
+            } else {
+                snackbarHostState.showSnackbar(text)
+            }
             viewModel.clearOpenError()
         }
     }
@@ -203,4 +214,16 @@ fun ChatLifecycleEffects(
             prompt = prompt.prompt,
         )
     }
+}
+
+/**
+ * Snackbar visuals for a success notice (a saved attachment); the chat snackbar host shows these in the
+ * success colors. Replaces matching the English "Saved " prefix, which broke once the text was localized.
+ */
+internal class ChatSuccessSnackbarVisuals(
+    override val message: String,
+) : SnackbarVisuals {
+    override val actionLabel: String? = null
+    override val withDismissAction: Boolean = false
+    override val duration: SnackbarDuration = SnackbarDuration.Short
 }

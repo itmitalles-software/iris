@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatSearchControllerTest {
-    private val controller = ChatSearchController()
+    private val controller = ChatSearchController { EnglishTestResources.toolText }
 
     private fun message(
         role: MessageRole,

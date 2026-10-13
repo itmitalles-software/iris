@@ -16,6 +16,7 @@ import io.wutz.apollo.data.remote.ClientCertificates
 import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.await
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -56,9 +57,6 @@ class AuthLoginViewModelTest {
         mockkStatic("io.wutz.apollo.data.remote.CallExtKt")
         every { android.util.Log.w(any(), any<String>()) } returns 0
         every { android.util.Log.d(any(), any()) } returns 0
-
-        every { app.getString(R.string.auth_login_error_unreachable) } returns "Dashboard unreachable"
-        every { app.getString(R.string.mtls_prompt_connection_error) } returns "mTLS client certificate required"
 
         viewModel = AuthLoginViewModel(app)
     }
@@ -112,7 +110,7 @@ class AuthLoginViewModelTest {
         val state = runBlocking { viewModel.uiState.first { !it.probing } }
         assertFalse(state.probing)
         assertNull(state.authMode)
-        assertEquals("Dashboard unreachable", state.errorMessage)
+        assertEquals(UiText.res(R.string.auth_login_error_unreachable), state.errorMessage)
     }
 
     @Test
@@ -128,7 +126,7 @@ class AuthLoginViewModelTest {
         val state = runBlocking { viewModel.uiState.first { !it.probing } }
         assertFalse(state.probing)
         assertNull(state.authMode)
-        assertEquals("Dashboard unreachable", state.errorMessage)
+        assertEquals(UiText.res(R.string.auth_login_error_unreachable), state.errorMessage)
     }
 
     @Test
@@ -145,7 +143,7 @@ class AuthLoginViewModelTest {
                 viewModel.probe()
                 val state = viewModel.uiState.first { !it.probing }
                 withTimeout(5000) { viewModel.certificatePrompt.state.first { it.origin != null } }
-                assertEquals("mTLS client certificate required", state.errorMessage)
+                assertEquals(UiText.res(R.string.mtls_prompt_connection_error), state.errorMessage)
                 assertEquals(
                     "https://127.0.0.1:9119/",
                     viewModel.certificatePrompt.state.value.origin
@@ -167,7 +165,7 @@ class AuthLoginViewModelTest {
             withTimeout(5000) { viewModel.certificatePrompt.state.first { it.origin != null } }
             viewModel.certificatePrompt.reset()
             assertNull(viewModel.certificatePrompt.state.value.origin)
-            assertEquals("mTLS client certificate required", viewModel.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.mtls_prompt_connection_error), viewModel.uiState.value.errorMessage)
             verify(exactly = 1) { mockProbeClient.newCall(any()) }
             viewModel.probe()
             viewModel.uiState.first { !it.probing }
@@ -183,7 +181,7 @@ class AuthLoginViewModelTest {
         coEvery { call.await() } throws javax.net.ssl.SSLHandshakeException("CERTIFICATE_VERIFY_FAILED")
         viewModel.probe()
         val state = runBlocking { viewModel.uiState.first { !it.probing } }
-        assertEquals("Dashboard unreachable", state.errorMessage)
+        assertEquals(UiText.res(R.string.auth_login_error_unreachable), state.errorMessage)
         assertNull(viewModel.certificatePrompt.state.value.origin)
     }
 
@@ -245,7 +243,7 @@ class AuthLoginViewModelTest {
             viewModel.probe()
             viewModel.uiState.first { !it.probing }
             withTimeout(5000) { viewModel.certificatePrompt.state.first { it.origin != null } }
-            assertEquals("mTLS client certificate required", viewModel.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.mtls_prompt_connection_error), viewModel.uiState.value.errorMessage)
             viewModel.certificatePrompt.selected(
                 requireNotNull(viewModel.certificatePrompt.beginSelection()),
                 "candidate",
@@ -261,7 +259,7 @@ class AuthLoginViewModelTest {
             coEvery { call.await() } throws IOException("Connection refused")
             viewModel.probe()
             viewModel.uiState.first { !it.probing }
-            assertEquals("Dashboard unreachable", viewModel.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.auth_login_error_unreachable), viewModel.uiState.value.errorMessage)
             assertNull(viewModel.certificatePrompt.state.value.origin)
             verify(exactly = 2) { mockProbeClient.newCall(any()) }
         }
@@ -290,7 +288,7 @@ class AuthLoginViewModelTest {
             withTimeout(5000) { viewModel.certificatePrompt.state.first { it.error != null } }
             assertEquals(expected, bindings.state.value)
             assertEquals(origin, viewModel.certificatePrompt.state.value.origin)
-            assertEquals("mTLS client certificate required", viewModel.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.mtls_prompt_connection_error), viewModel.uiState.value.errorMessage)
             assertNull(viewModel.certificatePrompt.state.value.savedOrigin)
             verify(exactly = 0) { ClientCertificates.save(any(), any(), any(), any()) }
 
@@ -302,7 +300,7 @@ class AuthLoginViewModelTest {
                 viewModel.certificatePrompt.state.first { it.error == R.string.mtls_prompt_verification_details }
             }
             assertEquals(expected, bindings.state.value)
-            assertEquals("mTLS client certificate required", viewModel.uiState.value.errorMessage)
+            assertEquals(UiText.res(R.string.mtls_prompt_connection_error), viewModel.uiState.value.errorMessage)
             assertNull(viewModel.certificatePrompt.state.value.savedOrigin)
         }
 

@@ -78,6 +78,7 @@ import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.asString
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -365,7 +366,7 @@ fun BotsScreen(
 
                                 state.errorMessage != null && state.profiles.isEmpty() -> {
                                     ErrorState(
-                                        message = state.errorMessage ?: "",
+                                        message = state.errorMessage?.asString() ?: "",
                                         onRetry = { viewModel.loadBots() },
                                     )
                                 }

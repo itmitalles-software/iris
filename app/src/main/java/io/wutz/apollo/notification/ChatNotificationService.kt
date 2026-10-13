@@ -316,7 +316,10 @@ class ChatNotificationService : Service() {
                                                     val failure =
                                                         replyFailureFromPayload(
                                                             event.rawPayload,
-                                                            fallback = "Unknown gateway error",
+                                                            fallback =
+                                                                getString(
+                                                                    R.string.chat_msg_unknown_gateway_error,
+                                                                ),
                                                         )
                                                     val snippet =
                                                         (failure?.details ?: event.text)

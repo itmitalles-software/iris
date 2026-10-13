@@ -1,14 +1,18 @@
 package io.wutz.apollo.ui.analytics
 
 import android.app.Application
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AnalyticsCacheStore
 import io.wutz.apollo.data.model.AnalyticsResponse
 import io.wutz.apollo.data.model.ModelsAnalyticsResponse
 import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +43,7 @@ data class AnalyticsUiState(
     // (models + totals) shows immediately and the slow half (usage charts) streams
     // in behind a slim placeholder instead of holding the whole tab hostage.
     val usageLoading: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
 )
 
 class AnalyticsViewModel(
@@ -162,15 +166,15 @@ class AnalyticsViewModel(
                 val error =
                     when {
                         usage == null && models == null -> {
-                            failure?.message ?: "Failed to load analytics"
+                            failure.rawOr(R.string.analytics_msg_load_failed)
                         }
 
                         usage == null -> {
-                            failure?.message ?: "Failed to load usage analytics"
+                            failure.rawOr(R.string.analytics_msg_load_usage_failed)
                         }
 
                         models == null -> {
-                            failure?.message ?: "Failed to load model analytics"
+                            failure.rawOr(R.string.analytics_msg_load_models_failed)
                         }
 
                         else -> {
@@ -224,3 +228,8 @@ class AnalyticsViewModel(
         load()
     }
 }
+
+/** The real network failure stays raw (never hidden behind a generic text); the fallback is localized. */
+private fun NetworkError?.rawOr(
+    @StringRes fallback: Int,
+): UiText = this?.message?.let(UiText::raw) ?: UiText.res(fallback)

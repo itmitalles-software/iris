@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.bots
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.BotAvatarMeta
 import io.wutz.apollo.data.model.BotRosterMeta
@@ -21,6 +22,7 @@ import io.wutz.apollo.data.ws.contract.ProfilesListParams
 import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.toJsonElement
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -56,8 +58,8 @@ data class BotsUiState(
     val showHidden: Boolean = false,
     val hiddenProfiles: Set<String> = emptySet(),
     val selectedTab: BotsTab = BotsTab.BOTS,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
 ) {
     val hasHiddenBots: Boolean
         get() = profiles.any { it.isHidden || it.name in hiddenProfiles }
@@ -292,8 +294,8 @@ class BotsViewModel(
                     }
                 } else {
                     val err =
-                        (profilesResult as? NetworkResult.Failure)?.error?.message
-                            ?: "Failed to load bots"
+                        (profilesResult as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                            ?: UiText.res(R.string.bots_msg_load_failed)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -323,7 +325,7 @@ class BotsViewModel(
         return result is NetworkResult.Success
     }
 
-    fun showToast(message: String) {
+    fun showToast(message: UiText) {
         _uiState.update { it.copy(toastMessage = message) }
     }
 
@@ -371,8 +373,8 @@ class BotsViewModel(
                 onSuccess()
             } else {
                 val err =
-                    (result as? NetworkResult.Failure)?.error?.message
-                        ?: "Failed to create bot"
+                    (result as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                        ?: UiText.res(R.string.bots_msg_create_failed)
                 _uiState.update { it.copy(errorMessage = err) }
             }
         }
@@ -419,8 +421,8 @@ class BotsViewModel(
                 onSuccess()
             } else {
                 val err =
-                    (result as? NetworkResult.Failure)?.error?.message
-                        ?: "Failed to delete bot"
+                    (result as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                        ?: UiText.res(R.string.bots_msg_delete_failed)
                 _uiState.update { it.copy(errorMessage = err) }
             }
         }

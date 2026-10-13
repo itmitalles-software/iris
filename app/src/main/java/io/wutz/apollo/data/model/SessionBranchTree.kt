@@ -90,11 +90,14 @@ private fun SessionInfo.toTreeItem(
 ): SessionTreeItem {
     // G4 fix: fork identity from the field itself, never from load-set membership.
     val isFork = !parent_session_id.isNullOrBlank()
-    val title =
+    val ownTitle =
         title?.takeIf(String::isNotBlank)
             ?: display_name?.takeIf(String::isNotBlank)
-            ?: if (isFork && depth > 0) {
-                "branch ${siblingIndex + 1}"
+    val branchNumber = if (ownTitle == null && isFork && depth > 0) siblingIndex + 1 else null
+    val title =
+        ownTitle
+            ?: if (branchNumber != null) {
+                branchFallbackTitle(branchNumber)
             } else {
                 preview?.takeIf(String::isNotBlank)?.take(80) ?: UNTITLED_SESSION_TITLE
             }
@@ -112,5 +115,6 @@ private fun SessionInfo.toTreeItem(
         isFork = isFork,
         forkDepth = if (depth > 0) depth else 0,
         displayTitle = title,
+        branchNumber = branchNumber,
     )
 }

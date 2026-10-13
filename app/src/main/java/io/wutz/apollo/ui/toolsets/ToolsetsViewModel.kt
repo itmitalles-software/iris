@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.toolsets
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
@@ -11,6 +12,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.Dispatchers
@@ -24,8 +26,8 @@ import kotlinx.coroutines.withContext
 data class ToolsetsUiState(
     val isLoading: Boolean = false,
     val toolsets: List<Toolset> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
 )
 
 class ToolsetsViewModel :
@@ -56,7 +58,7 @@ class ToolsetsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load toolsets: $errorMsg",
+                        errorMessage = UiText.res(R.string.toolsets_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -91,7 +93,11 @@ class ToolsetsViewModel :
                     toolsetsCache.put(requestScope.scopedKey("default"), updated)
                 }
             } else if (result is NetworkResult.Failure) {
-                revertToggle(toolset.name, originalEnabled, "Failed to toggle toolset: ${result.error.message}")
+                revertToggle(
+                    toolset.name,
+                    originalEnabled,
+                    UiText.res(R.string.toolsets_msg_toggle_failed, result.error.message),
+                )
                 val reverted = _uiState.value.toolsets
                 if (requestScope != null) {
                     toolsetsCache.put(requestScope.scopedKey("default"), reverted)
@@ -103,7 +109,7 @@ class ToolsetsViewModel :
     private fun revertToggle(
         name: String,
         originalEnabled: Boolean,
-        errorMsg: String,
+        errorMsg: UiText,
     ) {
         _uiState.update { state ->
             state.copy(

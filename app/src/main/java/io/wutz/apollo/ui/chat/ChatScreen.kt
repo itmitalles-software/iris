@@ -104,6 +104,7 @@ import io.wutz.apollo.ui.chat.components.ChatLifecycleEffects
 import io.wutz.apollo.ui.chat.components.ChatLoadingOverlay
 import io.wutz.apollo.ui.chat.components.ChatResumeErrorOverlay
 import io.wutz.apollo.ui.chat.components.ChatScrollToBottomFab
+import io.wutz.apollo.ui.chat.components.ChatSuccessSnackbarVisuals
 import io.wutz.apollo.ui.chat.components.ChatTimelineNoPrefetchStrategy
 import io.wutz.apollo.ui.chat.components.ChatTimelineSheet
 import io.wutz.apollo.ui.chat.components.ConnectionSetupSheet
@@ -138,6 +139,7 @@ import io.wutz.apollo.ui.common.AutoScrollingTitleText
 import io.wutz.apollo.ui.common.CredentialWarningBanner
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.model.components.ModelPickerDialog
 import io.wutz.apollo.ui.settings.SettingsViewModel
 import io.wutz.apollo.util.ConnectorUrlValidator
@@ -540,7 +542,7 @@ fun ChatScreen(
         snackbarHost = {
             SnackbarHost(snackbarHostState, modifier = Modifier.imePadding()) { data ->
                 val statusColors = LocalHermesStatusColors.current
-                val isDownloadComplete = data.visuals.message.startsWith("Saved ")
+                val isDownloadComplete = data.visuals is ChatSuccessSnackbarVisuals
                 Snackbar(
                     snackbarData = data,
                     containerColor =
@@ -842,7 +844,7 @@ fun ChatScreen(
                 // of an infinite spinner (desktop parity).
                 if (!timelineState.isHistorical) {
                     ChatResumeErrorOverlay(
-                        errorMessage = state.resumeError,
+                        errorMessage = state.resumeError?.asString(),
                         onRetry = viewModel::retryResumeSession,
                     )
                 }
@@ -1033,7 +1035,7 @@ fun ChatScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.dismissModelSwitchConfirm() },
                 title = { Text(stringResource(R.string.model_expensive_title)) },
-                text = { Text(state.modelSwitchConfirmMessage!!) },
+                text = { Text(state.modelSwitchConfirmMessage!!.asString()) },
                 confirmButton = {
                     Button(onClick = { viewModel.confirmModelSwitchExpensive() }) {
                         Text(stringResource(R.string.model_confirm_continue))

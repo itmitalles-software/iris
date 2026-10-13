@@ -2,6 +2,7 @@ package io.wutz.apollo.ui.memory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
@@ -13,6 +14,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -26,8 +28,8 @@ data class MemoryUiState(
     val isLoading: Boolean = false,
     val memory: MemoryResponse? = null,
     val learningGraph: LearningGraphResponse? = null,
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val resetting: String? = null,
 )
 
@@ -115,7 +117,7 @@ class MemoryViewModel :
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        errorMessage = memoryResult.error.message,
+                                        errorMessage = UiText.raw(memoryResult.error.message),
                                     )
                                 }
                             }
@@ -140,7 +142,7 @@ class MemoryViewModel :
                     _uiState.update {
                         it.copy(
                             resetting = null,
-                            toastMessage = "Memory ($target) reset successfully",
+                            toastMessage = UiText.res(R.string.memory_msg_reset_done, target),
                         )
                     }
                 }
@@ -149,7 +151,7 @@ class MemoryViewModel :
                     _uiState.update {
                         it.copy(
                             resetting = null,
-                            toastMessage = "Failed to reset memory: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.memory_msg_reset_failed, result.error.message),
                         )
                     }
                 }

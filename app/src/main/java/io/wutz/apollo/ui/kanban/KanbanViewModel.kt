@@ -1,7 +1,9 @@
 package io.wutz.apollo.ui.kanban
 
+import androidx.annotation.PluralsRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.InMemoryKanbanPreferencesStore
 import io.wutz.apollo.data.local.KanbanPreferencesStore
@@ -35,6 +37,7 @@ import io.wutz.apollo.data.repository.KanbanRepositoryImpl
 import io.wutz.apollo.data.ws.KanbanEventsClient
 import io.wutz.apollo.data.ws.KanbanLiveStatus
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -64,8 +67,8 @@ data class KanbanUiState(
     val includeArchived: Boolean = false,
     val groupRunning: Boolean = false,
     val columnCollapseOverrides: Map<String, Boolean> = emptyMap(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     val selectedWorkflowTemplateId: String? = null,
     val selectedCurrentStepKey: String? = null,
     val activeWorkers: List<KanbanActiveWorker> = emptyList(),
@@ -251,7 +254,11 @@ class KanbanViewModel(
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
-                                    errorMessage = "Failed to load Kanban boards: ${result.error.message}",
+                                    errorMessage =
+                                        UiText.res(
+                                            R.string.kanban_msg_load_boards_failed,
+                                            result.error.message,
+                                        ),
                                 )
                             }
                         }
@@ -333,7 +340,11 @@ class KanbanViewModel(
                             it.copy(
                                 isLoadingWorkers = false,
                                 activeWorkers = emptyList(),
-                                toastMessage = "Failed to load active workers: ${result.error.message}",
+                                toastMessage =
+                                    UiText.res(
+                                        R.string.kanban_msg_load_workers_failed,
+                                        result.error.message,
+                                    ),
                             )
                         } else {
                             it
@@ -431,14 +442,16 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             orchestration = res.data,
-                            toastMessage = "Orchestration settings saved",
+                            toastMessage = UiText.res(R.string.kanban_msg_orchestration_saved),
                         )
                     }
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Failed to save orchestration: ${res.error.message}")
+                        it.copy(
+                            toastMessage = UiText.res(R.string.kanban_msg_orchestration_save_failed, res.error.message),
+                        )
                     }
                 }
             }
@@ -452,13 +465,23 @@ class KanbanViewModel(
         viewModelScope.launch {
             when (val res = repository.updateProfileDescription(name, description)) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Profile description saved") }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = UiText.res(R.string.kanban_msg_profile_description_saved),
+                        )
+                    }
                     loadProfiles()
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Failed to save profile description: ${res.error.message}")
+                        it.copy(
+                            toastMessage =
+                                UiText.res(
+                                    R.string.kanban_msg_profile_description_save_failed,
+                                    res.error.message,
+                                ),
+                        )
                     }
                 }
             }
@@ -473,12 +496,20 @@ class KanbanViewModel(
             when (val res = repository.autoDescribeProfile(name)) {
                 is NetworkResult.Success -> {
                     if (res.data.ok) {
-                        _uiState.update { it.copy(toastMessage = "Profile auto-described") }
+                        _uiState.update {
+                            it.copy(
+                                toastMessage = UiText.res(R.string.kanban_msg_profile_auto_described),
+                            )
+                        }
                         loadProfiles()
                         onComplete?.invoke(res.data.description)
                     } else {
                         _uiState.update {
-                            it.copy(toastMessage = res.data.reason ?: "Auto-describe failed")
+                            it.copy(
+                                toastMessage =
+                                    res.data.reason?.let { UiText.raw(it) }
+                                        ?: UiText.res(R.string.kanban_msg_auto_describe_failed),
+                            )
                         }
                         onComplete?.invoke(null)
                     }
@@ -486,7 +517,13 @@ class KanbanViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = "Failed to auto-describe: ${res.error.message}")
+                        it.copy(
+                            toastMessage =
+                                UiText.res(
+                                    R.string.kanban_msg_auto_describe_failed_reason,
+                                    res.error.message,
+                                ),
+                        )
                     }
                     onComplete?.invoke(null)
                 }
@@ -523,9 +560,9 @@ class KanbanViewModel(
                     val warning = result.data.warning
                     val msg =
                         if (!warning.isNullOrBlank()) {
-                            "Task created: $warning"
+                            UiText.res(R.string.kanban_msg_task_created_warning, warning)
                         } else {
-                            "Task created successfully"
+                            UiText.res(R.string.kanban_msg_task_created)
                         }
                     _uiState.update { it.copy(isCreatingTask = false, toastMessage = msg) }
                     reloadBoardSilently()
@@ -535,7 +572,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isCreatingTask = false,
-                            toastMessage = "Failed to create task: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_task_create_failed, result.error.message),
                         )
                     }
                 }
@@ -590,7 +627,7 @@ class KanbanViewModel(
             when (val res = repository.createBoard(body)) {
                 is NetworkResult.Success -> {
                     val boardName = res.data.board?.name ?: slug
-                    _uiState.update { it.copy(toastMessage = "Board created: $boardName") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.kanban_msg_board_created, boardName)) }
                     loadBoards()
                 }
 
@@ -598,7 +635,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to create board: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_board_create_failed, res.error.message),
                         )
                     }
                 }
@@ -615,7 +652,7 @@ class KanbanViewModel(
             when (val res = repository.updateBoard(slug, body)) {
                 is NetworkResult.Success -> {
                     val boardName = res.data.board?.displayName ?: slug
-                    _uiState.update { it.copy(toastMessage = "Board updated: $boardName") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.kanban_msg_board_updated, boardName)) }
                     loadBoards()
                 }
 
@@ -623,7 +660,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to update board: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_board_update_failed, res.error.message),
                         )
                     }
                 }
@@ -640,7 +677,7 @@ class KanbanViewModel(
 
     fun deleteBoard(slug: String) {
         if (slug.equals("default", ignoreCase = true)) {
-            _uiState.update { it.copy(toastMessage = "Cannot delete or archive the default board") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.kanban_msg_default_board_protected)) }
             return
         }
         viewModelScope.launch {
@@ -649,7 +686,12 @@ class KanbanViewModel(
                 is NetworkResult.Success -> {
                     val endpoint = endpointProvider()
                     preferences.clearSelectedBoard(endpoint)
-                    _uiState.update { it.copy(selectedBoard = null, toastMessage = "Board archived") }
+                    _uiState.update {
+                        it.copy(
+                            selectedBoard = null,
+                            toastMessage = UiText.res(R.string.kanban_msg_board_archived),
+                        )
+                    }
                     loadBoards()
                 }
 
@@ -657,7 +699,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to archive board: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_board_archive_failed, res.error.message),
                         )
                     }
                 }
@@ -671,7 +713,7 @@ class KanbanViewModel(
             _uiState.update { it.copy(isLoading = true) }
             when (val res = repository.deleteTask(taskId = taskId, board = board.id)) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Task deleted") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.kanban_msg_task_deleted)) }
                     reloadBoardSilently()
                 }
 
@@ -679,7 +721,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Failed to delete task: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_task_delete_failed, res.error.message),
                         )
                     }
                 }
@@ -696,7 +738,7 @@ class KanbanViewModel(
         val board = _uiState.value.selectedBoard ?: return
         val completionSummary = summary?.trim()?.takeIf { it.isNotEmpty() }
         if (targetStatus.equals("done", ignoreCase = true) && completionSummary == null) {
-            _uiState.update { it.copy(toastMessage = "Completion summary is required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.kanban_msg_completion_summary_required)) }
             onComplete?.invoke(taskIds.toSet())
             return
         }
@@ -717,9 +759,27 @@ class KanbanViewModel(
                     val firstError = results.firstOrNull { !it.ok }?.error
                     val msg =
                         when {
-                            failed.isEmpty() -> "Moved ${succeeded.size} tasks to $targetStatus"
-                            succeeded.isEmpty() -> "Failed to move tasks: ${firstError ?: "unknown error"}"
-                            else -> "Moved ${succeeded.size} tasks, ${failed.size} failed: ${firstError ?: ""}"
+                            failed.isEmpty() -> {
+                                UiText.plural(
+                                    R.plurals.kanban_msg_bulk_moved,
+                                    succeeded.size,
+                                    succeeded.size,
+                                    targetStatus,
+                                )
+                            }
+
+                            succeeded.isEmpty() -> {
+                                UiText.res(R.string.kanban_msg_bulk_move_failed_all, bulkErrorText(firstError))
+                            }
+
+                            else -> {
+                                bulkPartial(
+                                    R.plurals.kanban_msg_bulk_moved_partial,
+                                    succeeded.size,
+                                    failed.size,
+                                    firstError,
+                                )
+                            }
                         }
                     _uiState.update { it.copy(toastMessage = msg) }
                     reloadBoardSilently()
@@ -730,7 +790,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Bulk move failed: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_bulk_move_failed, res.error.message),
                         )
                     }
                     onComplete?.invoke(taskIds.toSet())
@@ -754,9 +814,22 @@ class KanbanViewModel(
                     val firstError = results.firstOrNull { !it.ok }?.error
                     val msg =
                         when {
-                            failed.isEmpty() -> "Archived ${succeeded.size} tasks"
-                            succeeded.isEmpty() -> "Failed to archive tasks: ${firstError ?: "unknown error"}"
-                            else -> "Archived ${succeeded.size} tasks, ${failed.size} failed: ${firstError ?: ""}"
+                            failed.isEmpty() -> {
+                                UiText.plural(R.plurals.kanban_msg_bulk_archived, succeeded.size)
+                            }
+
+                            succeeded.isEmpty() -> {
+                                UiText.res(R.string.kanban_msg_bulk_archive_failed_all, bulkErrorText(firstError))
+                            }
+
+                            else -> {
+                                bulkPartial(
+                                    R.plurals.kanban_msg_bulk_archived_partial,
+                                    succeeded.size,
+                                    failed.size,
+                                    firstError,
+                                )
+                            }
                         }
                     _uiState.update { it.copy(toastMessage = msg) }
                     reloadBoardSilently()
@@ -767,7 +840,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Bulk archive failed: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_bulk_archive_failed, res.error.message),
                         )
                     }
                     onComplete?.invoke(taskIds.toSet())
@@ -796,12 +869,36 @@ class KanbanViewModel(
                     val succeeded = results.filter { it.ok }.map { it.id }.toSet()
                     val failed = results.filter { !it.ok }.map { it.id }.toSet()
                     val firstError = results.firstOrNull { !it.ok }?.error
-                    val actionName = if (!assignee.isNullOrBlank()) "Assigned" else "Unassigned"
+                    val assigned = !assignee.isNullOrBlank()
                     val msg =
                         when {
-                            failed.isEmpty() -> "$actionName ${succeeded.size} tasks"
-                            succeeded.isEmpty() -> "Failed to update assignment: ${firstError ?: "unknown error"}"
-                            else -> "$actionName ${succeeded.size} tasks, ${failed.size} failed: ${firstError ?: ""}"
+                            failed.isEmpty() -> {
+                                UiText.plural(
+                                    if (assigned) {
+                                        R.plurals.kanban_msg_bulk_assigned
+                                    } else {
+                                        R.plurals.kanban_msg_bulk_unassigned
+                                    },
+                                    succeeded.size,
+                                )
+                            }
+
+                            succeeded.isEmpty() -> {
+                                UiText.res(R.string.kanban_msg_bulk_assign_failed_all, bulkErrorText(firstError))
+                            }
+
+                            else -> {
+                                bulkPartial(
+                                    if (assigned) {
+                                        R.plurals.kanban_msg_bulk_assigned_partial
+                                    } else {
+                                        R.plurals.kanban_msg_bulk_unassigned_partial
+                                    },
+                                    succeeded.size,
+                                    failed.size,
+                                    firstError,
+                                )
+                            }
                         }
                     _uiState.update { it.copy(toastMessage = msg) }
                     reloadBoardSilently()
@@ -812,7 +909,7 @@ class KanbanViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = "Bulk assign failed: ${res.error.message}",
+                            toastMessage = UiText.res(R.string.kanban_msg_bulk_assign_failed, res.error.message),
                         )
                     }
                     onComplete?.invoke(taskIds.toSet())
@@ -847,9 +944,17 @@ class KanbanViewModel(
 
             val msg =
                 when {
-                    failed.isEmpty() -> "Deleted ${succeeded.size} tasks"
-                    succeeded.isEmpty() -> "Failed to delete tasks: ${firstError ?: "unknown error"}"
-                    else -> "Deleted ${succeeded.size} tasks, ${failed.size} failed: ${firstError ?: ""}"
+                    failed.isEmpty() -> {
+                        UiText.plural(R.plurals.kanban_msg_bulk_deleted, succeeded.size)
+                    }
+
+                    succeeded.isEmpty() -> {
+                        UiText.res(R.string.kanban_msg_bulk_delete_failed_all, bulkErrorText(firstError))
+                    }
+
+                    else -> {
+                        bulkPartial(R.plurals.kanban_msg_bulk_deleted_partial, succeeded.size, failed.size, firstError)
+                    }
                 }
             _uiState.update { it.copy(toastMessage = msg) }
             reloadBoardSilently()
@@ -942,10 +1047,14 @@ class KanbanViewModel(
                             ?.let { kanbanTransitionRefusal(it.message) }
                     val message =
                         if (refusal != null) {
-                            "Move blocked by parents ${refusal.blockingParentIds.joinToString()} " +
-                                "(${refusal.blockingParentStatuses.joinToString()}): ${result.error.message}"
+                            UiText.res(
+                                R.string.kanban_msg_move_blocked_by_parents,
+                                refusal.blockingParentIds.joinToString(),
+                                refusal.blockingParentStatuses.joinToString(),
+                                result.error.message,
+                            )
                         } else {
-                            "Move failed: ${result.error.message}"
+                            UiText.res(R.string.kanban_msg_move_failed, result.error.message)
                         }
                     revertTaskMove(task.id, originalStatus, message)
                 }
@@ -956,7 +1065,7 @@ class KanbanViewModel(
     private fun revertTaskMove(
         taskId: String,
         originalStatus: String,
-        errorMsg: String,
+        errorMsg: UiText,
     ) {
         _uiState.update { state ->
             val updatedTasks =
@@ -1032,7 +1141,15 @@ class KanbanViewModel(
                 boards.find { it.id == result.data.current }
                     ?: boards.find { it.id.equals("default", ignoreCase = true) }
                     ?: boards.firstOrNull()
-            _uiState.update { it.copy(toastMessage = "Board \"${board.name ?: board.id}\" is no longer available") }
+            _uiState.update {
+                it.copy(
+                    toastMessage =
+                        UiText.res(
+                            R.string.kanban_msg_board_unavailable,
+                            board.name ?: board.id,
+                        ),
+                )
+            }
             if (fallback != null) {
                 selectBoard(fallback)
             } else {
@@ -1111,7 +1228,7 @@ class KanbanViewModel(
                     } else {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "Failed to load Kanban tasks: ${result.error.message}",
+                            errorMessage = UiText.res(R.string.kanban_msg_load_tasks_failed, result.error.message),
                         )
                     }
                 }
@@ -1133,9 +1250,20 @@ class KanbanViewModel(
         applyBoardResult(board, result, gen)
     }
 
-    fun showToast(message: String) {
+    fun showToast(message: UiText) {
         _uiState.update { it.copy(toastMessage = message) }
     }
+
+    /** Server error of a bulk result, or the localized "unknown error" when the server sent none. */
+    private fun bulkErrorText(firstError: String?): UiText =
+        firstError?.let { UiText.raw(it) } ?: UiText.res(R.string.kanban_msg_unknown_error)
+
+    private fun bulkPartial(
+        @PluralsRes id: Int,
+        succeeded: Int,
+        failed: Int,
+        firstError: String?,
+    ): UiText = UiText.plural(id, succeeded, succeeded, failed, firstError.orEmpty())
 
     override fun clearToast() {
         _uiState.update { it.copy(toastMessage = null) }

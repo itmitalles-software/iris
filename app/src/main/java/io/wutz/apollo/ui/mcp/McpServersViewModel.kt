@@ -1,7 +1,9 @@
 package io.wutz.apollo.ui.mcp
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
@@ -19,6 +21,7 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,8 +46,8 @@ data class McpServersUiState(
     val selectedTab: McpTab = McpTab.INSTALLED,
     val isLoading: Boolean = false,
     val servers: List<McpServer> = emptyList(),
-    val errorMessage: String? = null,
-    val toastMessage: String? = null,
+    val errorMessage: UiText? = null,
+    val toastMessage: UiText? = null,
     // Add server form
     val showAddForm: Boolean = false,
     val addMode: AddServerMode = AddServerMode.HTTP,
@@ -71,7 +74,7 @@ data class McpServersUiState(
     val catalogQuery: String = "",
     val catalogEntries: List<McpCatalogEntry> = emptyList(),
     val catalogLoading: Boolean = false,
-    val catalogError: String? = null,
+    val catalogError: UiText? = null,
     val installingCatalogEntry: String? = null,
     val catalogInstallEnv: Map<String, String> = emptyMap(),
     val activeOAuthFlow: McpOAuthFlowResponse? = null,
@@ -133,7 +136,7 @@ class McpServersViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load MCP servers: $errorMsg",
+                        errorMessage = UiText.res(R.string.mcp_msg_load_failed, errorMsg),
                     )
                 }
             },
@@ -168,15 +171,17 @@ class McpServersViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            toastMessage = "Server '${server.name}' ${if (targetEnabled) "enabled" else "disabled"}",
-                        )
-                    }
+                    val messageRes =
+                        if (targetEnabled) R.string.mcp_msg_server_enabled else R.string.mcp_msg_server_disabled
+                    _uiState.update { it.copy(toastMessage = UiText.res(messageRes, server.name)) }
                 }
 
                 is NetworkResult.Failure -> {
-                    revertToggle(server.name, originalEnabled, mutationError(result.error, "Failed to toggle server"))
+                    revertToggle(
+                        server.name,
+                        originalEnabled,
+                        mutationError(result.error, R.string.mcp_msg_toggle_failed),
+                    )
                 }
             }
         }
@@ -187,7 +192,7 @@ class McpServersViewModel(
             _uiState.update {
                 it.copy(
                     testingServers = it.testingServers + name,
-                    toastMessage = "Testing server '$name'…",
+                    toastMessage = UiText.res(R.string.mcp_msg_testing_server, name),
                 )
             }
             val result =
@@ -206,9 +211,13 @@ class McpServersViewModel(
                             testingServers = state.testingServers - name,
                             toastMessage =
                                 if (response.ok) {
-                                    "Server '$name' tested — OK ($tokenStr)"
+                                    UiText.res(R.string.mcp_msg_test_ok, name, tokenStr)
                                 } else {
-                                    "Server '$name' test failed: ${response.error ?: "unknown error"}"
+                                    UiText.res(
+                                        R.string.mcp_msg_test_failed,
+                                        name,
+                                        response.error ?: UiText.res(R.string.error_unknown),
+                                    )
                                 },
                         )
                     }
@@ -220,7 +229,7 @@ class McpServersViewModel(
                         state.copy(
                             serverTestResults = state.serverTestResults + (name to errResp),
                             testingServers = state.testingServers - name,
-                            toastMessage = "Server '$name' test failed: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.mcp_msg_test_failed, name, result.error.message),
                         )
                     }
                 }
@@ -231,7 +240,7 @@ class McpServersViewModel(
     fun testAllServers() {
         val enabledServers = _uiState.value.servers.filter { it.enabled }
         if (enabledServers.isEmpty()) {
-            _uiState.update { it.copy(toastMessage = "No enabled servers to test") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_no_enabled_servers)) }
             return
         }
 
@@ -241,7 +250,7 @@ class McpServersViewModel(
                 it.copy(
                     isTestingAll = true,
                     testingServers = it.testingServers + names,
-                    toastMessage = "Testing ${enabledServers.size} server(s)…",
+                    toastMessage = UiText.plural(R.plurals.mcp_msg_testing_servers, enabledServers.size),
                 )
             }
 
@@ -277,7 +286,13 @@ class McpServersViewModel(
                     serverTestResults = state.serverTestResults + newResults,
                     testingServers = state.testingServers - names,
                     toastMessage =
-                        "Tested ${enabledServers.size} servers: $passCount passed, $failCount failed",
+                        UiText.plural(
+                            R.plurals.mcp_msg_tested_servers,
+                            enabledServers.size,
+                            enabledServers.size,
+                            passCount,
+                            failCount,
+                        ),
                 )
             }
         }
@@ -292,12 +307,16 @@ class McpServersViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Server '$name' deleted") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_server_deleted, name)) }
                     loadServers(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = mutationError(result.error, "Failed to delete server")) }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = mutationError(result.error, R.string.mcp_msg_delete_failed),
+                        )
+                    }
                 }
             }
         }
@@ -317,7 +336,7 @@ class McpServersViewModel(
         val input = _uiState.value.importJsonInput
         val requests = McpJsonParser.parse(input)
         if (requests.isEmpty()) {
-            _uiState.update { it.copy(toastMessage = "Invalid JSON or no MCP servers found in input") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_import_invalid)) }
             return
         }
 
@@ -394,7 +413,7 @@ class McpServersViewModel(
     fun submitAddServer() {
         val state = _uiState.value
         if (state.addServerName.isBlank()) {
-            _uiState.update { it.copy(toastMessage = "Server name is required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_name_required)) }
             return
         }
         _uiState.update { it.copy(addingServer = true) }
@@ -416,7 +435,7 @@ class McpServersViewModel(
                             addServerArgs = "",
                             addServerAuth = "none",
                             addServerBearerToken = "",
-                            toastMessage = "Server '${request.name}' added",
+                            toastMessage = UiText.res(R.string.mcp_msg_server_added, request.name),
                         )
                     }
                     loadServers(forceRefresh = true)
@@ -426,7 +445,7 @@ class McpServersViewModel(
                     _uiState.update {
                         it.copy(
                             addingServer = false,
-                            toastMessage = mutationError(result.error, "Failed to add server"),
+                            toastMessage = mutationError(result.error, R.string.mcp_msg_add_failed),
                         )
                     }
                 }
@@ -459,7 +478,7 @@ class McpServersViewModel(
         val key = state.envKeyInput.trim()
         val value = state.envValueInput.trim()
         if (key.isBlank()) {
-            _uiState.update { it.copy(toastMessage = "Key is required") }
+            _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_env_key_required)) }
             return
         }
         val scope = AuthManager.currentDataScope()
@@ -477,14 +496,18 @@ class McpServersViewModel(
                         it.copy(
                             envKeyInput = "",
                             envValueInput = "",
-                            toastMessage = "Env var '$key' added",
+                            toastMessage = UiText.res(R.string.mcp_msg_env_added, key),
                         )
                     }
                     loadServers(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = mutationError(result.error, "Failed to add env var")) }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = envMutationError(result.error, R.string.mcp_msg_env_add_failed),
+                        )
+                    }
                 }
             }
         }
@@ -506,12 +529,16 @@ class McpServersViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = "Env var '$key' removed") }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_env_removed, key)) }
                     loadServers(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = mutationError(result.error, "Failed to remove env var")) }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = envMutationError(result.error, R.string.mcp_msg_env_remove_failed),
+                        )
+                    }
                 }
             }
         }
@@ -530,8 +557,8 @@ class McpServersViewModel(
         profile: String?,
     ): Response<Unit> =
         envMutationMutex.withLock {
-            check(AuthManager.currentDataScope() == scope && AuthManager.activeProfileId.value == profile) {
-                "Server or profile changed; retry this edit in the selected profile"
+            if (AuthManager.currentDataScope() != scope || AuthManager.activeProfileId.value != profile) {
+                throw EditContextChangedException()
             }
             val api = ApiClient.hermesApi
             val saved = api.getSavedConfig(profile)
@@ -543,9 +570,9 @@ class McpServersViewModel(
             }
             val config = saved.body() ?: error("Saved MCP configuration is empty")
             val replacement = replaceMcpEnvValue(config, serverName, key, value, profile)
-            check(
-                AuthManager.currentDataScope() == scope && AuthManager.activeProfileId.value == profile,
-            ) { "Server or profile changed; retry this edit in the selected profile" }
+            if (AuthManager.currentDataScope() != scope || AuthManager.activeProfileId.value != profile) {
+                throw EditContextChangedException()
+            }
             api.replaceMcpServers(replacement)
         }
 
@@ -570,7 +597,7 @@ class McpServersViewModel(
                     _uiState.update {
                         it.copy(
                             catalogLoading = false,
-                            catalogError = "Failed to load catalog: ${result.error.message}",
+                            catalogError = UiText.res(R.string.mcp_msg_catalog_load_failed, result.error.message),
                         )
                     }
                 }
@@ -609,7 +636,7 @@ class McpServersViewModel(
                         it.copy(
                             installingCatalogEntry = null,
                             catalogInstallEnv = emptyMap(),
-                            toastMessage = "Catalog entry '${entry.name}' installed",
+                            toastMessage = UiText.res(R.string.mcp_msg_catalog_installed, entry.name),
                         )
                     }
                     loadServers(forceRefresh = true)
@@ -620,7 +647,7 @@ class McpServersViewModel(
                     _uiState.update {
                         it.copy(
                             installingCatalogEntry = null,
-                            toastMessage = "Failed to install: ${result.error.message}",
+                            toastMessage = UiText.res(R.string.mcp_msg_catalog_install_failed, result.error.message),
                         )
                     }
                 }
@@ -645,7 +672,7 @@ class McpServersViewModel(
     ) {
         if (server.isPluginOwned || isPluginOwned(server.name)) return
         oauthPollJob?.cancel()
-        _uiState.update { it.copy(toastMessage = "Starting OAuth authorization…") }
+        _uiState.update { it.copy(toastMessage = UiText.res(R.string.mcp_msg_oauth_starting)) }
         viewModelScope.launch {
             val result =
                 withContext(ioDispatcher) {
@@ -661,14 +688,18 @@ class McpServersViewModel(
                     } ?: run {
                         _uiState.update {
                             it.copy(
-                                toastMessage = "Failed to start OAuth: No authorization URL returned",
+                                toastMessage = UiText.res(R.string.mcp_msg_oauth_no_url),
                             )
                         }
                     }
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = mutationError(result.error, "Failed to start OAuth")) }
+                    _uiState.update {
+                        it.copy(
+                            toastMessage = mutationError(result.error, R.string.mcp_msg_oauth_start_failed),
+                        )
+                    }
                 }
             }
         }
@@ -696,7 +727,7 @@ class McpServersViewModel(
                                     _uiState.update {
                                         it.copy(
                                             activeOAuthFlow = null,
-                                            toastMessage = "OAuth authorization successful!",
+                                            toastMessage = UiText.res(R.string.mcp_msg_oauth_success),
                                         )
                                     }
                                     loadServers(forceRefresh = true)
@@ -707,7 +738,11 @@ class McpServersViewModel(
                                     _uiState.update {
                                         it.copy(
                                             activeOAuthFlow = null,
-                                            toastMessage = "OAuth failed: ${flow.error ?: "Unknown error"}",
+                                            toastMessage =
+                                                UiText.res(
+                                                    R.string.mcp_msg_oauth_failed,
+                                                    flow.error ?: UiText.res(R.string.error_unknown),
+                                                ),
                                         )
                                     }
                                 }
@@ -730,7 +765,7 @@ class McpServersViewModel(
                                 _uiState.update {
                                     it.copy(
                                         activeOAuthFlow = null,
-                                        toastMessage = "OAuth polling timed out after repeated network failures",
+                                        toastMessage = UiText.res(R.string.mcp_msg_oauth_poll_timeout),
                                     )
                                 }
                             }
@@ -752,15 +787,36 @@ class McpServersViewModel(
     private fun isPluginOwned(name: String): Boolean =
         _uiState.value.servers.any { it.name == name && it.isPluginOwned }
 
+    /** A 409 carries the server's ownership conflict detail, shown verbatim; anything else gets [prefixRes]. */
     private fun mutationError(
         error: NetworkError,
-        prefix: String,
-    ): String = if (error is NetworkError.Http && error.code == 409) error.message else "$prefix: ${error.message}"
+        @StringRes prefixRes: Int,
+    ): UiText =
+        if (error is NetworkError.Http && error.code == 409) {
+            UiText.raw(error.message)
+        } else {
+            UiText.res(prefixRes, error.message)
+        }
+
+    /** Like [mutationError], but a server/profile switch during the edit gets its own localized message. */
+    private fun envMutationError(
+        error: NetworkError,
+        @StringRes prefixRes: Int,
+    ): UiText =
+        if ((error as? NetworkError.Unknown)?.cause is EditContextChangedException) {
+            UiText.res(R.string.mcp_msg_edit_context_changed)
+        } else {
+            mutationError(error, prefixRes)
+        }
+
+    /** Thrown when the server or profile changed while an env edit was in flight; the write is skipped. */
+    private class EditContextChangedException :
+        IllegalStateException("Server or profile changed; retry this edit in the selected profile")
 
     private fun revertToggle(
         name: String,
         originalEnabled: Boolean,
-        errorMsg: String,
+        errorMsg: UiText,
     ) {
         _uiState.update { state ->
             state.copy(

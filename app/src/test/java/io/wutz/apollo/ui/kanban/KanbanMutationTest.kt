@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.InMemoryKanbanPreferencesStore
 import io.wutz.apollo.data.model.BulkTaskResult
 import io.wutz.apollo.data.model.BulkTasksResponse
@@ -23,6 +24,7 @@ import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.repository.KanbanRepository
 import io.wutz.apollo.data.ws.KanbanEventsClient
+import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -96,9 +98,9 @@ class KanbanMutationTest {
                     match { it.title == "New task" && it.body == "Description" },
                 )
             }
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("Dispatcher not running") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_task_created_warning, "Dispatcher not running"),
+                vm.uiState.value.toastMessage,
             )
         }
 
@@ -118,9 +120,9 @@ class KanbanMutationTest {
             vm.createTask("Bad task", null, "todo")
             testDispatcher.scheduler.advanceUntilIdle()
 
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("Validation failed") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_task_create_failed, "Validation failed"),
+                vm.uiState.value.toastMessage,
             )
             assertFalse(vm.uiState.value.isCreatingTask)
         }
@@ -235,9 +237,9 @@ class KanbanMutationTest {
                     .tasks
                     .none { it.id == "t_1" },
             )
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("Parent blocked") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_move_failed, "Parent blocked"),
+                vm.uiState.value.toastMessage,
             )
             assertFalse(
                 vm.uiState.value.operatingTaskIds
@@ -392,7 +394,7 @@ class KanbanMutationTest {
                     },
                 )
             }
-            assertEquals("Board created: Sprint 2", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_board_created, "Sprint 2"), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -448,7 +450,7 @@ class KanbanMutationTest {
             coVerify {
                 mockRepository.updateBoard("dev", match { it.name == "Dev Renamed" })
             }
-            assertEquals("Board updated: Dev Renamed", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_board_updated, "Dev Renamed"), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -468,7 +470,7 @@ class KanbanMutationTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             coVerify { mockRepository.deleteBoard("old-board", delete = false) }
-            assertEquals("Board archived", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_board_archived), vm.uiState.value.toastMessage)
             assertEquals(null, preferences.getSelectedBoard("http://127.0.0.1:9119"))
         }
 
@@ -480,9 +482,9 @@ class KanbanMutationTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 0) { mockRepository.deleteBoard(any(), any()) }
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("default board") == true,
+            assertEquals(
+                UiText.res(R.string.kanban_msg_default_board_protected),
+                vm.uiState.value.toastMessage,
             )
         }
 
@@ -537,9 +539,9 @@ class KanbanMutationTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(setOf("t_2"), reportedFailed)
-            assertTrue(
-                vm.uiState.value.toastMessage
-                    ?.contains("1 failed") == true,
+            assertEquals(
+                UiText.plural(R.plurals.kanban_msg_bulk_moved_partial, 1, 1, 1, "Conflict"),
+                vm.uiState.value.toastMessage,
             )
         }
 
@@ -600,7 +602,10 @@ class KanbanMutationTest {
                     },
                 )
             }
-            assertEquals("Moved 2 tasks to done", vm.uiState.value.toastMessage)
+            assertEquals(
+                UiText.plural(R.plurals.kanban_msg_bulk_moved, 2, 2, "done"),
+                vm.uiState.value.toastMessage,
+            )
         }
 
     @Test
@@ -622,7 +627,7 @@ class KanbanMutationTest {
 
             coVerify(exactly = 0) { mockRepository.bulkTasks(any(), any()) }
             assertEquals(setOf("t_1", "t_2"), reportedFailed)
-            assertEquals("Completion summary is required", vm.uiState.value.toastMessage)
+            assertEquals(UiText.res(R.string.kanban_msg_completion_summary_required), vm.uiState.value.toastMessage)
         }
 
     @Test
@@ -653,7 +658,7 @@ class KanbanMutationTest {
                     match { it.ids == listOf("t_1") && it.archive },
                 )
             }
-            assertEquals("Archived 1 tasks", vm.uiState.value.toastMessage)
+            assertEquals(UiText.plural(R.plurals.kanban_msg_bulk_archived, 1), vm.uiState.value.toastMessage)
         }
 
     @Test
