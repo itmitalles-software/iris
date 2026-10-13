@@ -79,6 +79,7 @@ class GatewayContractFramesTest {
             HermesWsClient.releaseExternalActivityConnectionLease()
             HermesWsClient.releaseBackgroundConnectionLease()
             HermesWsClient.disconnect(clearPendingMessages = true)
+            awaitWsHandshakeForTest()
             runBlocking {
                 withTimeout(5000) { HermesWsClient.connectionStatus.first { it == ConnectionStatus.DISCONNECTED } }
             }
