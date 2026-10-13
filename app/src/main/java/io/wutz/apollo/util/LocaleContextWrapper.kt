@@ -8,7 +8,7 @@ import java.util.Locale
 /**
  * Static helpers for applying a user-selected in-app display language.
  *
- * Hermes Mobile's [io.wutz.apollo.MainActivity] extends the plain
+ * Apollo's [io.wutz.apollo.MainActivity] extends the plain
  * `ComponentActivity` (not `AppCompatActivity`), so we apply the locale through
  * `attachBaseContext` + [ContextWrapper.wrap] rather than relying on
  * AppCompatDelegate. Works on minSdk 26.

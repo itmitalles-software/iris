@@ -2,9 +2,9 @@
 
 Thank you for your interest in contributing to Apollo! To maintain high code quality and consistency, we ask all contributors to follow the workflow and guidelines outlined below.
 
-> Apollo is a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile).
-> Fixes that are not Apollo-specific help more people when contributed
-> upstream first; Apollo merges them back (see [UPSTREAM.md](UPSTREAM.md)).
+> Apollo started as a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile)
+> and is developed independently; it does not merge upstream changes
+> (see [ORIGIN.md](ORIGIN.md)).
 > Every new user-visible string needs English and German text.
 
 ---
@@ -100,9 +100,8 @@ If you use AI coding tools (including agents) to contribute:
 ## Translations
 
 English (`values/`) and German (`values-de/`) are maintained in this repository and must both be updated
-with every new string. Arabic, Chinese, Italian, Korean and Spanish come from upstream Hermes Mobile's
-[Weblate project](https://hosted.weblate.org/projects/hermes-mobile/hermes-mobile/) and arrive with upstream merges;
-Apollo-only strings fall back to English there.
+with every new string. The Arabic, Chinese, Italian, Korean and Spanish files date from the Hermes Mobile
+fork point and are not maintained; strings added since fall back to English there.
 
 ---
 

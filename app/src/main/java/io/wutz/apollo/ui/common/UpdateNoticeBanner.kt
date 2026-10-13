@@ -19,7 +19,7 @@ import io.wutz.apollo.R
 
 /**
  * Chat-screen banner for the launch update check (issue #890): a newer
- * Hermes Mobile release exists. "Update" jumps into the About-tab install
+ * Apollo release exists. "Update" jumps into the About-tab install
  * flow; "Later" dismisses for the session (the banner returns next launch).
  */
 @Composable

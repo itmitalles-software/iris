@@ -376,9 +376,6 @@
     <string name="settings_about_update_retry">Retry</string>
     <string name="settings_about_rc_updates_title">Check release candidate updates</string>
     <string name="settings_about_rc_updates_desc">Install pre-release RC builds. They may be less stable.</string>
-    <string name="settings_support_title">Support Hermes Mobile (upstream)</string>
-    <string name="settings_support_message">Apollo is built on Hermes Mobile by Hy4ri. If it saves you time, consider supporting the upstream project.</string>
-    <string name="settings_support_action">Support Hy4ri on Ko-fi</string>
 
     <!-- Settings list summaries (drill-down) -->
     <string name="settings_summary_profiles">%1$d saved</string>

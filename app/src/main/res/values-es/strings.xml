@@ -332,9 +332,6 @@
     <string name="settings_about_update_retry">Reintentar</string>
     <string name="settings_about_rc_updates_title">Verificar las actualizaciones candidatas a la versión</string>
     <string name="settings_about_rc_updates_desc">Instalar versiones RC preliminares. Puede que sean menos estables.</string>
-    <string name="settings_support_title">Soporte Apollo</string>
-    <string name="settings_support_message">Si Apollo le ahorra tiempo, puede apoyar su desarrollo.</string>
-    <string name="settings_support_action">Apoyame en Ko-fi</string>
 
     <!-- Settings list summaries (drill-down) -->
     <string name="settings_summary_profiles">%1$d guardados</string>

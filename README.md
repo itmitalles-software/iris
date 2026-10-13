@@ -11,8 +11,9 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
 
 > Apollo is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research.
 >
-> Apollo is a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile) by Hy4ri. See
-> [UPSTREAM.md](UPSTREAM.md) and [NOTICE](NOTICE).
+> Apollo started as a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile) by Hy4ri
+> and has been developed independently since 2026-10-13. See [ORIGIN.md](ORIGIN.md) and
+> [NOTICE](NOTICE).
 
 ## Screenshots
 
@@ -50,9 +51,10 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
 - **Look and language:** the Apollo design system (true-black AMOLED dark by
   default, antique gold accents, classical display type; see
   [docs/BRANDING.md](docs/BRANDING.md)), an optional light mode, Material You
-  and seven upstream themes. English and German follow
-  the system language, with a manual switch in Settings (plus Arabic,
-  Chinese, Italian, Korean and Spanish from upstream).
+  and seven further themes. English and German follow
+  the system language, with a manual switch in Settings (plus partial
+  Arabic, Chinese, Italian, Korean and Spanish from Hermes Mobile; newer
+  strings fall back to English).
 - **Privacy:** no telemetry, ads or trackers. Credentials live in encrypted
   storage backed by the Android Keystore. The only outbound request besides
   your Hermes server is the optional GitHub release check.
@@ -143,10 +145,10 @@ and multiple servers. Plain `http://` works for trusted networks only.
 
 - [BUILD.md](BUILD.md): build, test, versioning, release signing
 - [AGENTS.md](AGENTS.md): rules for (AI) contributors
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture conventions inherited from upstream
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture conventions (inherited from Hermes Mobile)
 - [DESIGN.md](DESIGN.md): visual and interaction requirements
 - [docs/BRANDING.md](docs/BRANDING.md): Apollo brand, colours, typography and assets
-- [UPSTREAM.md](UPSTREAM.md): fork point and how to merge upstream changes
+- [ORIGIN.md](ORIGIN.md): where Apollo comes from and what it changed
 - [CHANGELOG.md](CHANGELOG.md)
 
 ## License

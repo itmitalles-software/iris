@@ -224,8 +224,8 @@ def main():
     pr = event["pull_request"]
     repo = event["repository"]["full_name"]
 
-    # Bots (dependabot) and dev -> main release PRs do not use the template.
-    if pr["user"]["type"] == "Bot" or (pr["head"]["ref"] == "dev" and pr["base"]["ref"] == "main"):
+    # Bots (dependabot) do not use the template.
+    if pr["user"]["type"] == "Bot":
         print("PR exempt from template check.")
         return 0
 

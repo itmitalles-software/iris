@@ -1,7 +1,7 @@
 # Connection and authentication reference
 
-Detailed reference for Apollo's connection options. It is inherited from the
-upstream Hermes Mobile README and kept in sync with upstream behavior. For the
+Detailed reference for Apollo's connection options, originally taken from the
+Hermes Mobile README. For the
 recommended Tailscale setup see the [README](../README.md#connect-over-tailscale-recommended).
 
 ## Authentication modes

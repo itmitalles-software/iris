@@ -1,6 +1,6 @@
 # Themes
 
-How theming works in Hermes Mobile, and how to add or edit a theme.
+How theming works in Apollo, and how to add or edit a theme.
 
 This is the implementation guide. [DESIGN.md](../../../../../../../../DESIGN.md)
 defines visual and interaction requirements; the Kotlin sources define the actual
