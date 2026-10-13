@@ -19,7 +19,7 @@ import sys
 import urllib.request
 
 MARKER = "<!-- pr-template-check -->"
-TEMPLATE = "https://github.com/{repo}/blob/dev/.github/PULL_REQUEST_TEMPLATE.md"
+TEMPLATE = "https://github.com/{repo}/blob/main/.github/PULL_REQUEST_TEMPLATE.md"
 REQUIRED = ["Summary", "Description", "Type of Change", "How to test", "Checklist"]
 MIN_SUMMARY = 10
 MIN_DESCRIPTION = 20
@@ -75,11 +75,12 @@ def validate(body, ui_files=(), title=None, base=None):
                 "Types: feat, fix, refactor, docs, test, ci, chore, perf, i18n, build.",
             )
         )
-    if base is not None and base != "dev":
+    # Apollo develops on `main` (upstream Hermes Mobile uses `dev`).
+    if base is not None and base != "main":
         problems.append(
             (
-                f"PR targets `{base}`, but every change must target `dev`.",
-                "Change the base branch (Edit next to the title) to `dev`.",
+                f"PR targets `{base}`, but every change must target `main`.",
+                "Change the base branch (Edit next to the title) to `main`.",
             )
         )
 
