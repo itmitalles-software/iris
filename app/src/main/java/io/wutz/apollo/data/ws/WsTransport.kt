@@ -79,6 +79,9 @@ internal class WsTransport(
     @Volatile
     private var outboundDrainJob: Job? = null
 
+    /** In-flight handshakes from [openSocket]; [disconnect] cancels them. */
+    private val openSocketJobs: MutableSet<Job> = ConcurrentHashMap.newKeySet()
+
     private val networkCollectorStarted = AtomicBoolean(false)
 
     private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
@@ -362,6 +365,7 @@ internal class WsTransport(
             reconnectJob = null
             outboundDrainJob?.cancel()
             outboundDrainJob = null
+            openSocketJobs.forEach { it.cancel() }
             connectionHealth.cancelForegroundProbe()
             connectionHealth.stop()
             webSocket?.close(1000, "Client closed")
@@ -565,26 +569,35 @@ internal class WsTransport(
                 if (intentionalClose.get()) return
                 connectionGeneration.incrementAndGet()
             }
-        scope.launch(Dispatchers.IO) {
-            if (!refreshWsTicketIfNeeded(generation)) {
-                Log.w(TAG, "Aborting openSocket: WS ticket refresh failed")
-                return@launch
-            }
-            if (!isCurrentGeneration(generation)) return@launch
-            val url = AuthManager.wsUrl()
-            val safeUrl = url.replace(Regex("token=[^&]+"), "token=REDACTED")
-            if (BuildConfig.DEBUG) Log.d(TAG, "Connecting to $safeUrl")
+        val job =
+            scope.launch(Dispatchers.IO) {
+                if (!isCurrentGeneration(generation)) return@launch
+                if (!refreshWsTicketIfNeeded(generation)) {
+                    Log.w(TAG, "Aborting openSocket: WS ticket refresh failed")
+                    return@launch
+                }
+                if (!isCurrentGeneration(generation)) return@launch
+                val url = AuthManager.wsUrl()
+                val safeUrl = url.replace(Regex("token=[^&]+"), "token=REDACTED")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Connecting to $safeUrl")
 
-            val request = Request.Builder().url(url).build()
-            val newSocket = OkHttpProvider.websocket.newWebSocket(request, WsListenerImpl(generation))
-            synchronized(outboundLock) {
-                if (connectionGeneration.get() == generation && !intentionalClose.get()) {
-                    webSocket = newSocket
-                } else {
-                    newSocket.cancel()
+                val request = Request.Builder().url(url).build()
+                val newSocket = OkHttpProvider.websocket.newWebSocket(request, WsListenerImpl(generation))
+                synchronized(outboundLock) {
+                    if (connectionGeneration.get() == generation && !intentionalClose.get()) {
+                        webSocket = newSocket
+                    } else {
+                        newSocket.cancel()
+                    }
                 }
             }
-        }
+        openSocketJobs.add(job)
+        job.invokeOnCompletion { openSocketJobs.remove(job) }
+    }
+
+    @VisibleForTesting
+    internal suspend fun awaitOpenSocketForTest() {
+        openSocketJobs.toList().forEach { it.join() }
     }
 
     private fun isCurrentGeneration(generation: Int): Boolean =

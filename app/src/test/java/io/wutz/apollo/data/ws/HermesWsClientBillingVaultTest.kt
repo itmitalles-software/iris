@@ -47,6 +47,7 @@ class HermesWsClientBillingVaultTest {
 
     @Before
     fun setUp() {
+        prepareWsClientForTest()
         mockkStatic(Log::class)
         every { Log.d(any<String>(), any<String>()) } returns 0
         every { Log.i(any<String>(), any<String>()) } returns 0
@@ -84,6 +85,7 @@ class HermesWsClientBillingVaultTest {
         HermesWsClient.releaseExternalActivityConnectionLease()
         HermesWsClient.releaseBackgroundConnectionLease()
         HermesWsClient.disconnect(clearPendingMessages = true)
+        awaitWsHandshakeForTest()
         runBlocking {
             withTimeoutOrNull(5000) {
                 HermesWsClient.connectionStatus.first { it == ConnectionStatus.DISCONNECTED }

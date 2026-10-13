@@ -373,6 +373,10 @@ object HermesWsClient {
     @VisibleForTesting
     internal fun scheduleReconnectForTest() = transport.scheduleReconnectForTest()
 
+    /** Waits for a cancelled or finished handshake so it cannot touch the next test's mocks. */
+    @VisibleForTesting
+    internal suspend fun awaitOpenSocketForTest() = transport.awaitOpenSocketForTest()
+
     @VisibleForTesting
     internal fun createListenerForTest(generation: Int): WebSocketListener = transport.createListenerForTest(generation)
 

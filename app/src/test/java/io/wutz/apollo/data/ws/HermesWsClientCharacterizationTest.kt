@@ -48,6 +48,7 @@ class HermesWsClientCharacterizationTest {
 
     @Before
     fun setUp() {
+        prepareWsClientForTest()
         serverSockets.clear()
         serverClosed = CountDownLatch(1)
         mockkStatic(Log::class)
@@ -98,6 +99,7 @@ class HermesWsClientCharacterizationTest {
         HermesWsClient.releaseExternalActivityConnectionLease()
         HermesWsClient.releaseBackgroundConnectionLease()
         HermesWsClient.disconnect(clearPendingMessages = true)
+        awaitWsHandshakeForTest()
         runBlocking {
             withTimeout(3000) {
                 HermesWsClient.connectionStatus.first { it == ConnectionStatus.DISCONNECTED }
