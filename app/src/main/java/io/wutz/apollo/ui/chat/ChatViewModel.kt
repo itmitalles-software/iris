@@ -519,10 +519,20 @@ class ChatViewModel(
             engineFactory = { listener -> AndroidVoiceEngine(getApplication(), listener, voiceNoteRepository) },
             host =
                 object : VoiceConversationHost {
+                    override fun isTurnRunning(): Boolean = mainTurnBusy
+
+                    // A spoken transcript is plain text: no staged attachments, no slash commands, and
+                    // never steered or redirected into a running turn, so its reply starts a turn of
+                    // its own (the conversation waits for that turn's message.start).
                     override fun submitTranscript(
                         text: String,
                         interruptRunningTurn: Boolean,
-                    ): Boolean = sendMessage(text, if (interruptRunningTurn) BusySendMode.INTERRUPT else null)
+                    ): Boolean =
+                        sendMessage(
+                            text,
+                            if (interruptRunningTurn) BusySendMode.INTERRUPT else BusySendMode.QUEUE,
+                            plainText = true,
+                        )
 
                     override fun restoreTranscript(text: String) {
                         _uiState.update { it.copy(composerTextToRestore = text) }
@@ -3282,16 +3292,21 @@ class ChatViewModel(
      * 5. For each image → await `image.attach_bytes` (requires session_id)
      * 6. For each file → await `file.attach` (requires session_id), collect @file: refs
      * 7. Send `prompt.submit` with text + @file: refs — images auto-picked up by backend
+     *
+     * [plainText] (voice transcripts) sends only [text]: staged attachments stay in the composer
+     * and a leading `/` is not run as a slash command.
      */
     fun sendMessage(
         text: String,
         modeOverride: BusySendMode? = null,
+        plainText: Boolean = false,
     ): Boolean {
         if (!canSubmitMessage()) return false
-        if (text.isBlank() && _uiState.value.pendingAttachments.isEmpty()) return false
+        val stagedAttachments = if (plainText) emptyList() else _uiState.value.pendingAttachments
+        if (text.isBlank() && stagedAttachments.isEmpty()) return false
 
         val trimmed = text.trim()
-        if (trimmed.startsWith("/", ignoreCase = true)) {
+        if (!plainText && trimmed.startsWith("/", ignoreCase = true)) {
             // Issue #589: a bare "/model" (no argument) opens the picker instead
             // of requiring the user to hand-type the provider/model.
             if (modelSwitchDelegate.isModelPickerCommand(trimmed)) {
@@ -3303,7 +3318,7 @@ class ChatViewModel(
         }
 
         val oversizedAttachment =
-            _uiState.value.pendingAttachments.firstOrNull {
+            stagedAttachments.firstOrNull {
                 it.size > MAX_CHAT_ATTACHMENT_BYTES
             }
         if (oversizedAttachment != null) {
@@ -3315,7 +3330,7 @@ class ChatViewModel(
             return false
         }
 
-        val attachments = _uiState.value.pendingAttachments.toList()
+        val attachments = stagedAttachments.toList()
         val submissionKey =
             listOf(_uiState.value.currentSessionId, text, attachments.joinToString { it.uri }).joinToString("\u001f")
         val now = System.nanoTime()
@@ -3384,7 +3399,7 @@ class ChatViewModel(
                 )
             lastSubmissionKey = submissionKey
             lastSubmissionAt = now
-            clearAttachments()
+            if (!plainText) clearAttachments()
             enqueuePendingSendReservation(
                 PendingSendReservation(
                     pending = pending,
@@ -3425,7 +3440,7 @@ class ChatViewModel(
         }
         lastSubmissionKey = submissionKey
         lastSubmissionAt = now
-        clearAttachments()
+        if (!plainText) clearAttachments()
 
         _uiState.update { state ->
             state.copy(

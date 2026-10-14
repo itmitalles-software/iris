@@ -63,10 +63,13 @@ class VoiceConversationControllerTest {
 
     private class FakeHost(
         var accept: Boolean = true,
+        var turnRunning: Boolean = false,
     ) : VoiceConversationHost {
         val submitted = mutableListOf<Pair<String, Boolean>>()
         val restored = mutableListOf<String>()
         val notices = mutableListOf<VoiceNotice>()
+
+        override fun isTurnRunning(): Boolean = turnRunning
 
         override fun submitTranscript(
             text: String,
@@ -229,6 +232,44 @@ class VoiceConversationControllerTest {
         }
 
     @Test
+    fun `a transcript sent behind a running turn ignores that turn's completion`() =
+        runTest {
+            host.turnRunning = true
+            val controller = controller()
+            controller.start()
+            val engine = engines.single()
+            engine.listener.onSpeechStarted()
+            engine.listener.onSpeechEnded()
+            engine.listener.onTranscribed("what about tomorrow")
+            assertEquals(VoicePhase.THINKING, controller.state.value.phase)
+
+            // The running turn ends (interrupted) after our transcript went out.
+            controller.onReplyCompleted("Today it is", failed = true)
+            assertEquals(VoicePhase.THINKING, controller.state.value.phase)
+            assertEquals(listOf("acquire:true", "listen:false", "end"), engine.calls)
+
+            controller.onReplyStarted()
+            controller.onReplyDelta("Rain.")
+            controller.onReplyCompleted("Rain.", failed = false)
+            assertEquals(
+                listOf("acquire:true", "listen:false", "end", "open", "append:Rain.", "finish"),
+                engine.calls,
+            )
+        }
+
+    @Test
+    fun `losing the audio focus ends the conversation`() =
+        runTest {
+            val controller = controller()
+            controller.start()
+            val engine = engines.single()
+            engine.listener.onAudioFocusLost()
+            assertEquals("release", engine.calls.last())
+            assertEquals(VoicePhase.OFF, controller.state.value.phase)
+            assertEquals(listOf<VoiceNotice>(VoiceNotice.AudioFocusLost), host.notices)
+        }
+
+    @Test
     fun `level updates reach the UI state`() =
         runTest {
             val controller = controller()
@@ -242,6 +283,7 @@ class VoiceConversationControllerTest {
     @Test
     fun `notices map to localized text`() {
         assertEquals(UiText.res(R.string.voice_conversation_err_stt_disabled), VoiceNotice.SttDisabled.toUiText())
+        assertEquals(UiText.res(R.string.voice_conversation_err_audio_focus), VoiceNotice.AudioFocusLost.toUiText())
         assertEquals(
             UiText.res(R.string.voice_conversation_err_transcription, "HTTP 500"),
             VoiceNotice.TranscriptionFailed("HTTP 500").toUiText(),

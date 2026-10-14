@@ -60,6 +60,10 @@ class AndroidVoiceEngine(
     @Volatile
     private var speech: ReplySpeech? = null
 
+    /** The relay player (ExoPlayer) takes audio focus itself; that loss must not end the conversation. */
+    @Volatile
+    private var relaySpeaking = false
+
     override suspend fun resolveCapabilities(): VoiceCapabilities =
         withContext(Dispatchers.IO) {
             try {
@@ -96,18 +100,26 @@ class AndroidVoiceEngine(
     }
 
     override fun listen(alreadySpeaking: Boolean) {
-        synchronized(lock) {
-            if (released) return
-            val buffer = utterance ?: return
-            if (alreadySpeaking && buffer.isCapturing) {
-                vad.arm(VoiceActivityDetector.Mode.LISTEN, alreadySpeaking = true)
-                return
+        val keptBargeIn =
+            synchronized(lock) {
+                if (released) return
+                val buffer = utterance ?: return
+                // A barge-in capture (with its pre-roll) is already running: keep it, also when the
+                // reply ended before the posted BargeIn reached the conversation.
+                if (buffer.isCapturing) {
+                    val stillSpeaking = vad.inSpeech
+                    vad.arm(VoiceActivityDetector.Mode.LISTEN, alreadySpeaking = true)
+                    return@synchronized stillSpeaking && !alreadySpeaking
+                }
+                buffer.finish()
+                liveStream?.cancel()
+                liveStream = null
+                vad.arm(VoiceActivityDetector.Mode.LISTEN)
+                false
             }
-            buffer.finish()
-            liveStream?.cancel()
-            liveStream = null
-            vad.arm(VoiceActivityDetector.Mode.LISTEN)
-        }
+        // The conversation dropped the barge-in (it arrived after the reply ended): report the
+        // running utterance as speech. Its end is reported by the detector as usual.
+        if (keptBargeIn) listener.onSpeechStarted()
     }
 
     override fun watchForBargeIn() {
@@ -135,6 +147,10 @@ class AndroidVoiceEngine(
             }
             val live = stream?.takeUnless { it.hasFailed }?.finish(LIVE_FINAL_TIMEOUT_MS)
             stream?.cancel()
+            if (stream?.wasRejected == true) {
+                // The server refused live STT: upload the rest of this conversation's utterances.
+                synchronized(lock) { liveTranscription = false }
+            }
             if (live != null) {
                 listener.onTranscribed(live)
                 return@launch
@@ -264,7 +280,7 @@ class AndroidVoiceEngine(
     private fun createSink(
         sampleRate: Int,
         channels: Int,
-        onDrained: () -> Unit,
+        onDrained: (played: Boolean) -> Unit,
     ): PcmSink =
         try {
             AudioTrackPcmSink(sampleRate, channels, onDrained)
@@ -294,6 +310,7 @@ class AndroidVoiceEngine(
             }
         return withContext(Dispatchers.Main) {
             val player = AndroidSpeechPlayer(appContext)
+            relaySpeaking = true
             try {
                 onPlaying()
                 suspendCancellableCoroutine { continuation ->
@@ -306,6 +323,7 @@ class AndroidVoiceEngine(
             } finally {
                 player.stop()
                 audio.dispose()
+                relaySpeaking = false
             }
         }
     }
@@ -316,8 +334,16 @@ class AndroidVoiceEngine(
             AudioFocusRequest
                 .Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(voiceReplyAudioAttributes())
+                .setOnAudioFocusChangeListener(::onAudioFocusChange)
                 .build()
         if (manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) focusRequest = request
+    }
+
+    /** A call, navigation prompt or other app took the audio: end the conversation (mic and speech). */
+    private fun onAudioFocusChange(change: Int) {
+        val lost = change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+        if (!lost || relaySpeaking || synchronized(lock) { released }) return
+        listener.onAudioFocusLost()
     }
 
     private fun abandonAudioFocus() {
@@ -339,12 +365,13 @@ class AndroidVoiceEngine(
         }
     }
 
+    /** No usable AudioTrack: the reply audio cannot be played, so speech output fails. */
     private class FailedPcmSink(
-        private val onDrained: () -> Unit,
+        private val onDrained: (played: Boolean) -> Unit,
     ) : PcmSink {
         override fun write(bytes: ByteArray) = Unit
 
-        override fun finish() = onDrained()
+        override fun finish() = onDrained(false)
 
         override fun stop() = Unit
 

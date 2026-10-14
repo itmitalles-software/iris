@@ -473,6 +473,39 @@ class ChatViewModelTest {
             assertFalse(viewModel.addPastedAttachments(target, emptyList()))
         }
 
+    @Test
+    fun plainTextSend_leavesStagedAttachmentsInTheComposer() =
+        runTest(testDispatcher) {
+            val (viewModel, _) = createViewModelWithSession()
+            val target = checkNotNull(viewModel.captureAttachmentTarget())
+            val image = Attachment("content://test/staged.png", "staged.png", "image/png", 4)
+            assertTrue(viewModel.addPastedAttachments(target, listOf(image)))
+            runCurrent()
+
+            assertTrue(viewModel.sendMessage("Turn on the lights", BusySendMode.QUEUE, plainText = true))
+            advanceUntilIdle()
+
+            verify { HermesWsClient.sendMessage(any(), "Turn on the lights", any(), any()) }
+            assertEquals(listOf(image), viewModel.uiState.value.pendingAttachments)
+            val sent =
+                viewModel.uiState.value.messages
+                    .last { it.role == MessageRole.USER }
+            assertEquals("Turn on the lights", sent.content)
+            assertNull(sent.attachments)
+        }
+
+    @Test
+    fun plainTextSend_doesNotRunSlashCommands() =
+        runTest(testDispatcher) {
+            val (viewModel, _) = createViewModelWithSession()
+
+            assertTrue(viewModel.sendMessage("/stop the music", BusySendMode.QUEUE, plainText = true))
+            advanceUntilIdle()
+
+            verify { HermesWsClient.sendMessage(any(), "/stop the music", any(), any()) }
+            verify(exactly = 0) { HermesWsClient.send(WsMethods.SESSION_INTERRUPT, any(), any()) }
+        }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /** Create a ViewModel with the fake repo injected directly. */

@@ -1,5 +1,7 @@
 package io.wutz.apollo.ui.chat.voice
 
+import java.util.Arrays
+
 /**
  * Tuning of [VoiceActivityDetector]. Levels are int16 RMS values and mirror the Hermes voice
  * loop (hermes-agent `tools/voice_mode.py` full-duplex constants and the desktop's
@@ -72,7 +74,13 @@ class VoiceActivityDetector(
 
     private val sustainedFrames = (config.sustainedMs / config.frameMs).coerceAtLeast(1)
     private val window = ArrayDeque<Boolean>()
-    private val floorSamples = ArrayDeque<Double>()
+
+    // Noise-floor ring buffer and a reused scratch array for its median: the detector runs on the
+    // mic thread every 20 ms, so it must not allocate per frame.
+    private val floorSamples = DoubleArray(config.floorSampleCap.coerceAtLeast(1))
+    private val floorScratch = DoubleArray(floorSamples.size)
+    private var floorCount = 0
+    private var floorNext = 0
     private var quietFloor = 0.0
     private var calibratedFrames = 0
     private var framesInMode = 0
@@ -188,9 +196,12 @@ class VoiceActivityDetector(
     private fun calibrated(): Boolean = calibratedFrames * config.frameMs >= config.calibrationMs
 
     private fun addFloorSample(rms: Double) {
-        floorSamples.addLast(rms)
-        while (floorSamples.size > config.floorSampleCap) floorSamples.removeFirst()
-        quietFloor = floorSamples.sorted()[floorSamples.size / 2]
+        floorSamples[floorNext] = rms
+        floorNext = (floorNext + 1) % floorSamples.size
+        if (floorCount < floorSamples.size) floorCount++
+        System.arraycopy(floorSamples, 0, floorScratch, 0, floorCount)
+        Arrays.sort(floorScratch, 0, floorCount)
+        quietFloor = floorScratch[floorCount / 2]
         calibratedFrames++
     }
 

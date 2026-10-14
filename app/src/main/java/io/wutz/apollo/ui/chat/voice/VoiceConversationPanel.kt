@@ -59,6 +59,10 @@ fun VoiceNotice.toUiText(): UiText =
             UiText.res(R.string.voice_conversation_err_connection_lost)
         }
 
+        VoiceNotice.AudioFocusLost -> {
+            UiText.res(R.string.voice_conversation_err_audio_focus)
+        }
+
         VoiceNotice.SpeechOutputFailed -> {
             UiText.res(R.string.voice_conversation_err_speech)
         }

@@ -18,6 +18,7 @@
     <string name="voice_conversation_err_microphone">Das Mikrofon ist nicht verfügbar</string>
     <string name="voice_conversation_err_nothing_heard">Sprachunterhaltung beendet: nichts gehört</string>
     <string name="voice_conversation_err_connection_lost">Sprachunterhaltung beendet: Verbindung verloren</string>
+    <string name="voice_conversation_err_audio_focus">Sprachunterhaltung beendet: Eine andere App nutzt die Audioausgabe</string>
     <string name="voice_conversation_err_speech">Sprachausgabe fehlgeschlagen; Antworten bleiben als Text</string>
     <string name="voice_conversation_err_unsent">Sprachunterhaltung beendet: Transkript bleibt im Eingabefeld</string>
     <string name="voice_conversation_err_transcription">Transkription fehlgeschlagen: %1$s</string>

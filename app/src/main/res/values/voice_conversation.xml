@@ -18,6 +18,7 @@
     <string name="voice_conversation_err_microphone">The microphone is not available</string>
     <string name="voice_conversation_err_nothing_heard">Voice conversation ended: nothing was heard</string>
     <string name="voice_conversation_err_connection_lost">Voice conversation ended: connection lost</string>
+    <string name="voice_conversation_err_audio_focus">Voice conversation ended: another app is using the audio</string>
     <string name="voice_conversation_err_speech">Speech output failed; replies stay as text</string>
     <string name="voice_conversation_err_unsent">Voice conversation ended: transcript kept in the input field</string>
     <string name="voice_conversation_err_transcription">Transcription failed: %1$s</string>

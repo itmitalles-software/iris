@@ -12,7 +12,10 @@ import kotlinx.coroutines.launch
 interface PcmSink {
     fun write(bytes: ByteArray)
 
-    /** No more PCM: play out what is buffered, then call the drained callback. */
+    /**
+     * No more PCM: play out what is buffered, then call the drained callback with `played = true`.
+     * A playback failure calls it with `played = false` instead.
+     */
     fun finish()
 
     /** Cut playback immediately; the drained callback is not called. */
@@ -26,14 +29,16 @@ interface PcmSink {
  * Speaks one agent reply: deltas go to the speak-stream socket while the reply generates, PCM
  * plays as it arrives. When the socket yields no audio (`fallback` frame, or it failed before the
  * first PCM) the whole reply is spoken through [relaySpeaker] (`POST /api/audio/speak`) instead,
- * the same last resort the desktop client uses. Exactly one of [Listener.onFinished] or
+ * the same last resort the desktop client uses. When the socket breaks off after audio played, or
+ * playback itself fails, what arrived plays out and the reply counts as failed (the rest of it
+ * was never spoken; it stays as text). Exactly one of [Listener.onFinished] or
  * [Listener.onFailed] is reported, and only after [finish]; [cancel] (barge-in) reports nothing.
  */
 class ReplySpeech(
     private val scope: CoroutineScope,
     private val listener: Listener,
     streamFactory: (SpeakStreamCallbacks) -> SpeakStream,
-    private val sinkFactory: (sampleRate: Int, channels: Int, onDrained: () -> Unit) -> PcmSink,
+    private val sinkFactory: (sampleRate: Int, channels: Int, onDrained: (played: Boolean) -> Unit) -> PcmSink,
     private val relaySpeaker: suspend (text: String, onPlaying: () -> Unit) -> Boolean,
     private val clock: () -> Long = System::currentTimeMillis,
     private val stallTimeoutMs: Long = DEFAULT_STALL_TIMEOUT_MS,
@@ -46,11 +51,15 @@ class ReplySpeech(
         fun onFailed()
     }
 
-    private enum class Next { NOTHING, RELAY, FINISHED }
+    private enum class Next { NOTHING, RELAY, FINISHED, FAILED }
 
     private val lock = Any()
     private val text = StringBuilder()
     private var sink: PcmSink? = null
+
+    /** Format announced by the server; the sink (and its AudioTrack) is only created for real PCM. */
+    private var format: Pair<Int, Int>? = null
+    private var playbackFailed = false
     private var finishRequested = false
     private var audioStarted = false
     private var drained = false
@@ -130,8 +139,11 @@ class ReplySpeech(
         }
     }
 
-    private fun onDrained() {
-        synchronized(lock) { drained = true }
+    private fun onDrained(played: Boolean) {
+        synchronized(lock) {
+            drained = true
+            if (!played) playbackFailed = true
+        }
         evaluate()
     }
 
@@ -149,7 +161,8 @@ class ReplySpeech(
                     }
 
                     audioStarted && drained -> {
-                        Next.FINISHED
+                        // A socket that broke off before `end` left the rest of the reply unspoken.
+                        if (playbackFailed || (streamFailed && !streamEnded)) Next.FAILED else Next.FINISHED
                     }
 
                     !audioStarted && streamEnded -> {
@@ -166,6 +179,10 @@ class ReplySpeech(
 
             Next.FINISHED -> {
                 settle(ok = true)
+            }
+
+            Next.FAILED -> {
+                settle(ok = false)
             }
 
             Next.RELAY -> {
@@ -211,9 +228,9 @@ class ReplySpeech(
             channels: Int,
         ) {
             synchronized(lock) {
-                if (cancelled || settled || sink != null) return
+                if (cancelled || settled || format != null) return
                 lastProgressAt = clock()
-                sink = sinkFactory(sampleRate, channels, ::onDrained)
+                format = sampleRate to channels
             }
         }
 
@@ -225,7 +242,11 @@ class ReplySpeech(
                     lastProgressAt = clock()
                     first = !audioStarted
                     audioStarted = true
-                    sink ?: sinkFactory(SPEAK_STREAM_DEFAULT_SAMPLE_RATE, 1, ::onDrained).also { sink = it }
+                    sink ?: sinkFactory(
+                        format?.first ?: SPEAK_STREAM_DEFAULT_SAMPLE_RATE,
+                        format?.second ?: 1,
+                        ::onDrained,
+                    ).also { sink = it }
                 }
             target.write(bytes)
             if (first) scope.launch { listener.onAudioStarted() }

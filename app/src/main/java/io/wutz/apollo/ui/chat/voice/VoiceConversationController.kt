@@ -33,6 +33,9 @@ interface VoiceEngineListener {
     fun onSpeechFailed()
 
     fun onMicrophoneFailed()
+
+    /** Another app (a call, navigation) took the audio focus. */
+    fun onAudioFocusLost()
 }
 
 /**
@@ -64,6 +67,9 @@ interface VoiceEngine {
 
 /** What the conversation needs from the chat. */
 interface VoiceConversationHost {
+    /** True while an agent turn runs in the chat's session (its reply events are not ours). */
+    fun isTurnRunning(): Boolean
+
     /** Sends [text] as the next user message; false when the chat cannot accept it right now. */
     fun submitTranscript(
         text: String,
@@ -186,8 +192,11 @@ class VoiceConversationController(
             }
 
             is VoiceEffect.Submit -> {
+                val behindRunningTurn = host.isTurnRunning()
                 if (!host.submitTranscript(effect.text, effect.interruptRunningTurn)) {
                     dispatch(VoiceEvent.SubmitRejected(effect.text))
+                } else if (behindRunningTurn) {
+                    dispatch(VoiceEvent.SubmittedBehindRunningTurn)
                 }
             }
 
@@ -258,5 +267,7 @@ class VoiceConversationController(
         override fun onSpeechFailed() = post { dispatch(VoiceEvent.SpeechFailed) }
 
         override fun onMicrophoneFailed() = post { dispatch(VoiceEvent.Fatal(VoiceNotice.MicrophoneUnavailable)) }
+
+        override fun onAudioFocusLost() = post { dispatch(VoiceEvent.Fatal(VoiceNotice.AudioFocusLost)) }
     }
 }

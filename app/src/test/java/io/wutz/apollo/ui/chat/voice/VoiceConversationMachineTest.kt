@@ -104,6 +104,87 @@ class VoiceConversationMachineTest {
         assertFalse(state.bargedIntoRunningTurn)
     }
 
+    private fun bargeInAndResend(text: String) {
+        startListening()
+        sayAndSend("Tell me a story")
+        send(VoiceEvent.ReplyStarted)
+        send(VoiceEvent.ReplyDelta("Once upon a time"))
+        send(VoiceEvent.AudioStarted)
+        send(VoiceEvent.BargeIn)
+        send(VoiceEvent.SpeechEnded)
+        assertEquals(
+            listOf(VoiceEffect.Submit(text, interruptRunningTurn = true)),
+            send(VoiceEvent.Transcribed(text)),
+        )
+        // The interrupted turn was still running when the transcript went out.
+        assertTrue(send(VoiceEvent.SubmittedBehindRunningTurn).isEmpty())
+        assertEquals(ReplyTurn.BEHIND_RUNNING_TURN, state.turn)
+    }
+
+    @Test
+    fun `the interrupted turn's failed completion does not end the wait for the new reply`() {
+        bargeInAndResend("Stop, shorter please")
+
+        // message.complete of the interrupted turn (interrupt sentinel → failed).
+        assertTrue(send(VoiceEvent.ReplyCompleted("Once upon a time", failed = true)).isEmpty())
+        assertEquals(VoicePhase.THINKING, state.phase)
+        assertEquals(ReplyTurn.BEHIND_RUNNING_TURN, state.turn)
+
+        // The new turn's reply is spoken.
+        assertEquals(listOf(VoiceEffect.OpenSpeech), send(VoiceEvent.ReplyStarted))
+        assertEquals(listOf(VoiceEffect.AppendSpeech("Short one.")), send(VoiceEvent.ReplyDelta("Short one.")))
+        assertEquals(listOf(VoiceEffect.FinishSpeech), send(VoiceEvent.ReplyCompleted("Short one.", failed = false)))
+        assertEquals(ReplyTurn.COMPLETE, state.turn)
+    }
+
+    @Test
+    fun `the interrupted turn's partial completion is not spoken as the new reply`() {
+        bargeInAndResend("Stop, shorter please")
+
+        assertTrue(send(VoiceEvent.ReplyCompleted("Once upon a time there was", failed = false)).isEmpty())
+        assertFalse(effects.contains(VoiceEffect.AppendSpeech("Once upon a time there was")))
+        assertEquals(VoicePhase.THINKING, state.phase)
+
+        send(VoiceEvent.ReplyStarted)
+        assertEquals(
+            listOf(VoiceEffect.AppendSpeech("Short one."), VoiceEffect.FinishSpeech),
+            send(VoiceEvent.ReplyCompleted("Short one.", failed = false)),
+        )
+    }
+
+    @Test
+    fun `a transcript queued behind a running turn waits for its own reply`() {
+        startListening()
+        sayAndSend("And the weather?")
+        send(VoiceEvent.SubmittedBehindRunningTurn)
+
+        // Tokens and completion of the turn that was already running when voice mode started.
+        assertTrue(send(VoiceEvent.ReplyDelta("Earlier answer")).isEmpty())
+        assertTrue(send(VoiceEvent.ReplyCompleted("Earlier answer", failed = false)).isEmpty())
+        assertEquals(VoicePhase.THINKING, state.phase)
+
+        assertEquals(listOf(VoiceEffect.OpenSpeech), send(VoiceEvent.ReplyStarted))
+        assertEquals(listOf(VoiceEffect.AppendSpeech("Sunny.")), send(VoiceEvent.ReplyDelta("Sunny.")))
+    }
+
+    @Test
+    fun `tap while waiting behind a running turn interrupts it with the next transcript`() {
+        startListening()
+        sayAndSend("Hi")
+        send(VoiceEvent.SubmittedBehindRunningTurn)
+        assertEquals(listOf(VoiceEffect.Listen(alreadySpeaking = false)), send(VoiceEvent.Tap))
+        assertTrue(state.bargedIntoRunningTurn)
+    }
+
+    @Test
+    fun `behind-running-turn is only noted while our reply has not started`() {
+        startListening()
+        sayAndSend("Hi")
+        send(VoiceEvent.ReplyStarted)
+        assertTrue(send(VoiceEvent.SubmittedBehindRunningTurn).isEmpty())
+        assertEquals(ReplyTurn.STREAMING, state.turn)
+    }
+
     @Test
     fun `barge-in after the reply completed does not interrupt the next turn`() {
         startListening()

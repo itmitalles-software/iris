@@ -1,7 +1,9 @@
 package io.wutz.apollo.notification
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ServerRequestNoticeTest {
@@ -41,5 +43,34 @@ class ServerRequestNoticeTest {
     @Test
     fun unknownMethodsAreIgnored() {
         assertNull(serverRequestNotice("something.else", emptyMap()))
+    }
+
+    @Test
+    fun replayedRequestsAlertOnlyOnFirstSighting() {
+        val sightings = ServerRequestSightings()
+        assertTrue(sightings.onRequest("req-1"))
+        assertTrue(sightings.isOpen("req-1"))
+        // RpcChannel re-emits open_requests on every resume.
+        assertFalse(sightings.onRequest("req-1"))
+        assertTrue(sightings.onRequest("req-2"))
+    }
+
+    @Test
+    fun cancelledRequestsAreNoLongerOpen() {
+        val sightings = ServerRequestSightings()
+        sightings.onRequest("req-1")
+        sightings.onCancelled("req-1")
+        assertFalse(sightings.isOpen("req-1"))
+        assertFalse(sightings.onRequest("req-1"))
+    }
+
+    @Test
+    fun sightingsForgetTheOldestBeyondCapacity() {
+        val sightings = ServerRequestSightings(capacity = 2)
+        sightings.onRequest("a")
+        sightings.onRequest("b")
+        sightings.onRequest("c")
+        assertTrue(sightings.onRequest("a"))
+        assertFalse(sightings.onRequest("c"))
     }
 }

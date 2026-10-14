@@ -223,6 +223,7 @@ class ChatNotificationService : Service() {
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val serverRequestSightings = ServerRequestSightings()
     private var eventCollector: Job? = null
     private var statusCollector: Job? = null
 
@@ -238,6 +239,13 @@ class ChatNotificationService : Service() {
         eventCollector =
             serviceScope.launch {
                 HermesWsClient.events.collect { event ->
+                    // Resume replays re-send open requests: only the first sighting may alert.
+                    val firstServerRequestSighting =
+                        event is WsEvent.ServerRequest && serverRequestSightings.onRequest(event.id)
+                    if (event is WsEvent.ServerRequestCancelled) {
+                        serverRequestSightings.onCancelled(event.id)
+                        withdrawServerRequestNotification(event.id)
+                    }
                     if (!isAppInForeground.get()) {
                         val generation = lifecycle.generation
                         launch {
@@ -368,23 +376,29 @@ class ChatNotificationService : Service() {
                                     }
 
                                     is WsEvent.ServerRequest -> {
-                                        when (val notice = serverRequestNotice(event.method, event.params)) {
-                                            is ServerRequestNotice.Text -> {
-                                                showReplyNotification(notice.text, null)
-                                            }
+                                        val text =
+                                            when (val notice = serverRequestNotice(event.method, event.params)) {
+                                                is ServerRequestNotice.Text -> {
+                                                    notice.text
+                                                }
 
-                                            ServerRequestNotice.ClarificationNeeded -> {
-                                                showReplyNotification(
-                                                    getString(R.string.notif_clarification_needed),
-                                                    null,
-                                                )
-                                            }
+                                                ServerRequestNotice.ClarificationNeeded -> {
+                                                    getString(R.string.notif_clarification_needed)
+                                                }
 
-                                            ServerRequestNotice.InputNeeded -> {
-                                                showReplyNotification(getString(R.string.notif_input_needed), null)
-                                            }
+                                                ServerRequestNotice.InputNeeded -> {
+                                                    getString(R.string.notif_input_needed)
+                                                }
 
-                                            null -> {}
+                                                null -> {
+                                                    null
+                                                }
+                                            }
+                                        if (text != null &&
+                                            firstServerRequestSighting &&
+                                            serverRequestSightings.isOpen(event.id)
+                                        ) {
+                                            showReplyNotification(text, null, serverRequestId = event.id)
                                         }
                                     }
 
@@ -436,6 +450,7 @@ class ChatNotificationService : Service() {
         completionId: String? = null,
         serverMessageId: Int? = null,
         allowInlineReply: Boolean = true,
+        serverRequestId: String? = null,
     ) {
         val builder =
             NotificationCompat
@@ -478,6 +493,7 @@ class ChatNotificationService : Service() {
             builder.addExtras(
                 android.os.Bundle().apply {
                     putString(ReplyNotificationTracker.EXTRA_NOTIF_KIND, ReplyNotificationTracker.KIND_ACTION)
+                    serverRequestId?.let { putString(EXTRA_SERVER_REQUEST_ID, it) }
                 },
             )
         }
@@ -534,6 +550,19 @@ class ChatNotificationService : Service() {
                 context = this,
                 notification = notification,
             )
+        }
+    }
+
+    /** Withdraws the posted notification of a server request the gateway cancelled (timeout, interrupt). */
+    private fun withdrawServerRequestNotification(requestId: String) {
+        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val posted =
+            runCatching { manager.activeNotifications }
+                .getOrNull()
+                ?.firstOrNull { it.id == PENDING_NOTIFICATION_ID && it.tag == null }
+                ?: return
+        if (posted.notification.extras.getString(EXTRA_SERVER_REQUEST_ID) == requestId) {
+            manager.cancel(PENDING_NOTIFICATION_ID)
         }
     }
 

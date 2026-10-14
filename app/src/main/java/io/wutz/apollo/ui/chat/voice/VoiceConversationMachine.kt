@@ -28,6 +28,12 @@ enum class ReplyTurn {
     /** A transcript was sent; the next `message.start` is our reply. */
     AWAITING_START,
 
+    /**
+     * A transcript was sent while another turn was still running (it interrupts that turn or waits
+     * behind it). That turn's `message.complete` is not our reply; only the next `message.start` is.
+     */
+    BEHIND_RUNNING_TURN,
+
     /** The reply streams; deltas go to the speech stream. */
     STREAMING,
 
@@ -46,6 +52,9 @@ sealed interface VoiceNotice {
     data object NotConnected : VoiceNotice
 
     data object ConnectionLost : VoiceNotice
+
+    /** A call or another app took the audio. */
+    data object AudioFocusLost : VoiceNotice
 
     data object SpeechOutputFailed : VoiceNotice
 
@@ -90,6 +99,9 @@ sealed interface VoiceEvent {
     data class SubmitRejected(
         val text: String,
     ) : VoiceEvent
+
+    /** The transcript was accepted while another turn was still running in the session. */
+    data object SubmittedBehindRunningTurn : VoiceEvent
 
     data object ReplyStarted : VoiceEvent
 
@@ -330,8 +342,16 @@ object VoiceConversationMachine {
                 result.copy(effects = listOf(VoiceEffect.RestoreTranscript(event.text)) + result.effects)
             }
 
-            VoiceEvent.ReplyStarted -> {
+            VoiceEvent.SubmittedBehindRunningTurn -> {
                 if (state.turn == ReplyTurn.AWAITING_START) {
+                    same(state.copy(turn = ReplyTurn.BEHIND_RUNNING_TURN))
+                } else {
+                    same(state)
+                }
+            }
+
+            VoiceEvent.ReplyStarted -> {
+                if (state.turn == ReplyTurn.AWAITING_START || state.turn == ReplyTurn.BEHIND_RUNNING_TURN) {
                     VoiceTransition(
                         state.copy(turn = ReplyTurn.STREAMING, speechOpen = true),
                         listOf(VoiceEffect.OpenSpeech),
@@ -395,6 +415,7 @@ object VoiceConversationMachine {
         state: VoiceMachineState,
         event: VoiceEvent.ReplyCompleted,
     ): VoiceTransition {
+        // BEHIND_RUNNING_TURN: this completion ends the interrupted (or earlier) turn, not ours.
         if (state.turn != ReplyTurn.STREAMING && state.turn != ReplyTurn.AWAITING_START) return same(state)
         if (event.failed) {
             val cancel = if (state.speechOpen) listOf(VoiceEffect.CancelSpeech) else emptyList()
@@ -426,7 +447,10 @@ object VoiceConversationMachine {
         val effects = mutableListOf<VoiceEffect>()
         if (state.speechOpen) effects += VoiceEffect.CancelSpeech
         effects += VoiceEffect.Listen(alreadySpeaking)
-        val running = state.turn == ReplyTurn.STREAMING || state.turn == ReplyTurn.AWAITING_START
+        val running =
+            state.turn == ReplyTurn.STREAMING ||
+                state.turn == ReplyTurn.AWAITING_START ||
+                state.turn == ReplyTurn.BEHIND_RUNNING_TURN
         return VoiceTransition(
             state.copy(
                 phase = VoicePhase.LISTENING,
