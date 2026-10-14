@@ -122,12 +122,20 @@ class KanbanEventsClient {
     // client is only built when a stream is actually opened.
     private val httpClient by lazy { OkHttpProvider.websocket }
 
+    // connect()/disconnect() run on the caller's thread while the handshake and
+    // listener callbacks run on IO/OkHttp threads: [lock] guards the socket
+    // hand-off, and the flags are volatile so every thread sees a switch.
+    private val lock = Any()
     private var webSocket: WebSocket? = null
     private var reconnectJob: Job? = null
-    private var generation = 0
-    private var closed = true
-    private var backoffMs = INITIAL_BACKOFF_MS
-    private var cursor: Long = 0
+
+    @Volatile private var generation = 0
+
+    @Volatile private var closed = true
+
+    @Volatile private var backoffMs = INITIAL_BACKOFF_MS
+
+    @Volatile private var cursor: Long = 0
 
     /**
      * Open (or re-open) the events stream for [board]. A previous connection is
@@ -143,24 +151,33 @@ class KanbanEventsClient {
         onEvents: (KanbanEventsEnvelope) -> Unit,
         onStatus: (KanbanLiveStatus) -> Unit,
     ) {
-        val gen = ++generation
-        reconnectJob?.cancel()
-        webSocket?.cancel()
-        closed = false
-        backoffMs = INITIAL_BACKOFF_MS
-        cursor = since
+        val gen =
+            synchronized(lock) {
+                val next = ++generation
+                reconnectJob?.cancel()
+                webSocket?.cancel()
+                webSocket = null
+                closed = false
+                backoffMs = INITIAL_BACKOFF_MS
+                cursor = since
+                next
+            }
         openSocket(scope, gen, board, onEvents, onStatus)
     }
 
     /** Close the stream and cancel any pending reconnect. */
     fun disconnect() {
-        closed = true
-        generation++
-        reconnectJob?.cancel()
-        reconnectJob = null
-        webSocket?.cancel()
-        webSocket = null
+        synchronized(lock) {
+            closed = true
+            generation++
+            reconnectJob?.cancel()
+            reconnectJob = null
+            webSocket?.cancel()
+            webSocket = null
+        }
     }
+
+    private fun isStale(gen: Int): Boolean = closed || gen != generation
 
     private fun openSocket(
         scope: CoroutineScope,
@@ -169,13 +186,20 @@ class KanbanEventsClient {
         onEvents: (KanbanEventsEnvelope) -> Unit,
         onStatus: (KanbanLiveStatus) -> Unit,
     ) {
-        if (closed || gen != generation) return
+        if (isStale(gen)) return
 
         scope.launch(Dispatchers.IO) {
-            val credential = HermesWsClient.mintWsTicket()
-            if (closed || gen != generation) return@launch
+            val minted = HermesWsClient.mintWsCredential()
+            if (isStale(gen)) return@launch
+            val credential = minted.credential
             if (credential.isNullOrBlank()) {
-                scope.launch { onStatus(KanbanLiveStatus.AUTH_FAILED) }
+                // Only a rejected session is terminal; a network error, timeout or
+                // 5xx while minting keeps the stream reconnecting with backoff.
+                if (minted.retryable) {
+                    scheduleReconnect(scope, gen, board, onEvents, onStatus)
+                } else {
+                    scope.launch { onStatus(KanbanLiveStatus.AUTH_FAILED) }
+                }
                 return@launch
             }
 
@@ -192,7 +216,7 @@ class KanbanEventsClient {
             if (BuildConfig.DEBUG) Log.d(TAG, "Connecting to $safeUrl")
 
             val request = Request.Builder().url(url).build()
-            webSocket =
+            val socket =
                 httpClient.newWebSocket(
                     request,
                     object : WebSocketListener() {
@@ -200,7 +224,7 @@ class KanbanEventsClient {
                             webSocket: WebSocket,
                             response: Response,
                         ) {
-                            if (closed || gen != generation) return
+                            if (isStale(gen)) return
                             backoffMs = INITIAL_BACKOFF_MS
                             scope.launch { onStatus(KanbanLiveStatus.CONNECTED) }
                         }
@@ -209,7 +233,7 @@ class KanbanEventsClient {
                             webSocket: WebSocket,
                             text: String,
                         ) {
-                            if (closed || gen != generation) return
+                            if (isStale(gen)) return
                             val envelope = parseKanbanEventsFrame(text) ?: return
                             if (envelope.events.isEmpty()) return
                             envelope.cursor?.let { cursor = it }
@@ -234,7 +258,7 @@ class KanbanEventsClient {
                             code: Int,
                             reason: String,
                         ) {
-                            if (closed || gen != generation) return
+                            if (isStale(gen)) return
                             if (code == WS_1008_POLICY_VIOLATION) {
                                 scope.launch { onStatus(KanbanLiveStatus.BOARD_UNAVAILABLE) }
                                 return
@@ -247,12 +271,21 @@ class KanbanEventsClient {
                             t: Throwable,
                             response: Response?,
                         ) {
-                            if (closed || gen != generation) return
+                            if (isStale(gen)) return
                             if (BuildConfig.DEBUG) Log.d(TAG, "Stream failure: ${t.javaClass.simpleName}")
                             scheduleReconnect(scope, gen, board, onEvents, onStatus)
                         }
                     },
                 )
+            // disconnect() or a board switch may have run while the socket was
+            // being created: never let a stale socket replace (or outlive) them.
+            synchronized(lock) {
+                if (isStale(gen)) {
+                    socket.cancel()
+                } else {
+                    webSocket = socket
+                }
+            }
         }
     }
 
@@ -263,15 +296,17 @@ class KanbanEventsClient {
         onEvents: (KanbanEventsEnvelope) -> Unit,
         onStatus: (KanbanLiveStatus) -> Unit,
     ) {
-        if (closed || gen != generation) return
-        scope.launch { onStatus(KanbanLiveStatus.DISCONNECTED) }
-        reconnectJob?.cancel()
-        reconnectJob =
-            scope.launch {
-                delay(backoffMs)
-                backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
-                openSocket(scope, gen, board, onEvents, onStatus)
-            }
+        synchronized(lock) {
+            if (isStale(gen)) return
+            scope.launch { onStatus(KanbanLiveStatus.DISCONNECTED) }
+            reconnectJob?.cancel()
+            reconnectJob =
+                scope.launch {
+                    delay(backoffMs)
+                    backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+                    openSocket(scope, gen, board, onEvents, onStatus)
+                }
+        }
     }
 
     private companion object {

@@ -1,8 +1,13 @@
 package io.wutz.apollo.data.remote
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.CoroutineContext
 
 class LocalNetworkTest {
     @Test
@@ -46,5 +51,42 @@ class LocalNetworkTest {
     fun `malformed base url does not require permission`() {
         assertFalse(needsLocalNetworkPermission("not-a-url"))
         assertFalse(needsLocalNetworkPermission(""))
+    }
+
+    /** Runs blocks on Dispatchers.Default and records the thread that ran the last one. */
+    private class RecordingDispatcher : CoroutineDispatcher() {
+        val thread = AtomicReference<Thread?>()
+
+        override fun dispatch(
+            context: CoroutineContext,
+            block: Runnable,
+        ) {
+            Dispatchers.Default.dispatch(context) {
+                thread.set(Thread.currentThread())
+                block.run()
+            }
+        }
+    }
+
+    @Test
+    fun `permission gate resolves the host on the io dispatcher, not the caller thread`() {
+        val io = RecordingDispatcher()
+        val caller = Thread.currentThread()
+
+        val needed = runBlocking { requiresLocalNetworkPermission(37, "http://10.0.0.5:9119", io) }
+
+        assertTrue(needed)
+        val lookupThread = io.thread.get()
+        assertTrue(lookupThread != null && lookupThread != caller)
+    }
+
+    @Test
+    fun `permission gate skips the lookup below API 37`() {
+        val io = RecordingDispatcher()
+
+        val needed = runBlocking { requiresLocalNetworkPermission(36, "http://10.0.0.5:9119", io) }
+
+        assertFalse(needed)
+        assertTrue(io.thread.get() == null)
     }
 }

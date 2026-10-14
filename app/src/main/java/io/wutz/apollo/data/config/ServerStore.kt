@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.InputStream
@@ -32,13 +33,19 @@ class ServerStore private constructor(
 
     fun getLatestState(): ServerStoreState = _stateFlow.value
 
+    /**
+     * Apply [transform] atomically to the in-memory state (it may run more than once
+     * under contention, so it must be pure) and persist asynchronously.
+     */
     fun update(transform: (ServerStoreState) -> ServerStoreState) {
-        val current = getLatestState()
-        val updated = transform(current).selfHealed()
-        _stateFlow.value = updated
+        _stateFlow.update { transform(it).selfHealed() }
         scope.launch(Dispatchers.IO) {
             try {
-                dataStore.updateData { updated }
+                // DataStore runs updateData calls one after another. Each writes the
+                // state current at write time, not the snapshot of its own update, so
+                // the last write always carries every update and an older snapshot
+                // can never land on disk after a newer one.
+                dataStore.updateData { _stateFlow.value }
             } catch (e: Exception) {
                 // Fail-safe
             }

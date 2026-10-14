@@ -1,11 +1,26 @@
 package io.wutz.apollo.data.config
 
+import androidx.datastore.core.DataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ServerStoreTest {
@@ -107,4 +122,50 @@ class ServerStoreTest {
         val decoded = json.decodeFromString<ServerStoreState>("{}")
         assertFalse(decoded.checkReleaseCandidateUpdates)
     }
+
+    /** Serial like the real DataStore; the first write is slow to expose out-of-order persists. */
+    private class FakeDataStore(
+        initial: ServerStoreState,
+    ) : DataStore<ServerStoreState> {
+        private val mutex = Mutex()
+        private val writes = AtomicInteger(0)
+        val state = MutableStateFlow(initial)
+        override val data: StateFlow<ServerStoreState> = state
+
+        override suspend fun updateData(
+            transform: suspend (t: ServerStoreState) -> ServerStoreState,
+        ): ServerStoreState =
+            mutex.withLock {
+                val next = transform(state.value)
+                if (writes.incrementAndGet() == 1) delay(100)
+                state.value = next
+                next
+            }
+    }
+
+    @Test
+    fun concurrentUpdatesAreNotLostAndTheLatestStateIsPersisted() =
+        runBlocking {
+            val dataStore = FakeDataStore(ServerStoreState())
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val store = ServerStore.create(dataStore, scope)
+            val threads = 8
+            val perThread = 100
+            val start = CountDownLatch(1)
+            val workers =
+                (0 until threads).map { t ->
+                    thread {
+                        start.await()
+                        repeat(perThread) { i ->
+                            store.update { it.copy(lastOpenedSessionIds = it.lastOpenedSessionIds + ("$t-$i" to "s")) }
+                        }
+                    }
+                }
+            start.countDown()
+            workers.forEach { it.join() }
+
+            assertEquals(threads * perThread, store.getLatestState().lastOpenedSessionIds.size)
+            withTimeout(10_000) { scope.coroutineContext[Job]!!.children.forEach { it.join() } }
+            assertEquals(store.getLatestState(), dataStore.state.value)
+        }
 }

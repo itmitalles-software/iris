@@ -69,16 +69,19 @@ class RpcChannelTest {
         var idleCheckCount = 0
         var sendFrameReturnValue = true
 
+        /** False simulates a transport that neither sends nor queues the frame. */
+        var acceptSends = true
+
         var immediateResolveOnSend: ((id: String, onSent: ((String) -> Unit)?) -> Unit)? = null
 
         val channel: RpcChannel =
             RpcChannel(
                 scope = scope,
                 json = json,
-                sendRequest = { method, params, onSent ->
-                    val id = "req-${sentRequests.size + 1}"
-                    sentRequests.add(SentRequestRecord(id, method, params))
-                    onSent?.invoke(id)
+                sendRequest = { request, onSent ->
+                    val id = request.id
+                    sentRequests.add(SentRequestRecord(id, request.method, request.params))
+                    if (acceptSends) onSent?.invoke(id)
                     immediateResolveOnSend?.invoke(id, onSent)
                     id
                 },
@@ -786,5 +789,101 @@ class RpcChannelTest {
             assertEquals("reason", completeEvent.reasoning)
             assertEquals("active-session", completeEvent.sessionId)
             assertEquals("stored-active-session", completeEvent.storedSessionId)
+        }
+
+    @Test
+    fun requestFailsAtOnceWhenTheTransportNeitherSendsNorQueuesTheFrame() =
+        runTest {
+            val gateway = FakeGateway(this, testJson)
+            gateway.acceptSends = false
+
+            val deferred = gateway.channel.request("session.list")
+            val id = gateway.sentRequests.first().id
+
+            assertTrue(deferred.isCompleted)
+            assertFalse(gateway.channel.hasPendingCalls())
+            assertEquals(listOf(id), gateway.removedQueuedIds)
+            try {
+                deferred.await()
+                fail("Expected HermesRpcException for a rejected frame")
+            } catch (e: HermesWsClient.HermesRpcException) {
+                assertEquals("Request not sent: session.list", e.message)
+                assertEquals(-1, e.code)
+            }
+            // The timeout was cancelled with the call, so nothing fires later.
+            advanceTimeBy(HermesWsClient.REQUEST_TIMEOUT_MS + 1)
+            runCurrent()
+            assertEquals(1, gateway.idleCheckCount)
+        }
+
+    @Test
+    fun pendingCallAndTimeoutAreRegisteredBeforeTheFrameIsSent() =
+        runTest {
+            val gateway = FakeGateway(this, testJson)
+            var registeredBeforeSend = false
+            var timeoutArmedBeforeSend = false
+            gateway.immediateResolveOnSend = { id, _ ->
+                registeredBeforeSend = id in gateway.channel.pendingCallIdsForTest()
+                timeoutArmedBeforeSend = gateway.channel.pendingCallTimeoutForTest(id) != null
+            }
+
+            val deferred = gateway.channel.request("session.list")
+
+            assertTrue(registeredBeforeSend)
+            assertTrue(timeoutArmedBeforeSend)
+            assertFalse(deferred.isCompleted)
+            deferred.cancel()
+        }
+
+    @Test
+    fun handleIncomingFrameResolvesAResponseWhoseResultIsNull() =
+        runTest {
+            val events = mutableListOf<WsEvent>()
+            val gateway = FakeGateway(this, testJson)
+            val replayTracker =
+                ReplayTracker(
+                    scope = this,
+                    fetchEventsSince = { SessionEventsSinceResult() },
+                    emitEvent = {},
+                )
+            val deferred = gateway.channel.request("session.interrupt")
+            val id = gateway.sentRequests.first().id
+
+            gateway.channel.handleIncomingFrame("""{"jsonrpc":"2.0","id":"$id","result":null}""", replayTracker) {
+                events.add(it)
+            }
+
+            assertTrue(deferred.isCompleted)
+            assertNull(deferred.await())
+            assertFalse(gateway.channel.hasPendingCalls())
+            assertEquals(listOf(WsEvent.RpcResult(id, null)), events)
+        }
+
+    @Test
+    fun handleIncomingFrameSkipsMalformedOpenRequestsWithoutDroppingValidOnes() =
+        runTest {
+            val events = mutableListOf<WsEvent>()
+            val gateway = FakeGateway(this, testJson)
+            val replayTracker =
+                ReplayTracker(
+                    scope = this,
+                    fetchEventsSince = { SessionEventsSinceResult() },
+                    emitEvent = {},
+                )
+            val deferred = gateway.channel.request("session.resume")
+            val id = gateway.sentRequests.first().id
+            val frame =
+                """{"id":"$id","result":{"open_requests":[7,{"id":3,"method":"clarify"},""" +
+                    """{"id":"srq-ok","method":"sudo","params":{"n":1}}]}}"""
+
+            gateway.channel.handleIncomingFrame(frame, replayTracker) { events.add(it) }
+
+            val replayed = events.filterIsInstance<WsEvent.ServerRequest>()
+            assertEquals(1, replayed.size)
+            assertEquals("srq-ok", replayed.single().id)
+            assertEquals("sudo", replayed.single().method)
+            assertEquals(1, replayed.single().params["n"])
+            assertTrue(deferred.await() is JsonObject)
+            assertEquals(1, events.filterIsInstance<WsEvent.RpcResult>().size)
         }
 }

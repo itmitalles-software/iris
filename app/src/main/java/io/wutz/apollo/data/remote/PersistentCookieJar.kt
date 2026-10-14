@@ -52,6 +52,9 @@ class PersistentCookieJar(
 
     private val scopeMutex = Mutex()
 
+    /** Serializes store writes; see [persist]. */
+    private val writeMutex = Mutex()
+
     /** Atomically switch the active server scope and ensure its cookies are loaded. */
     suspend fun useStore(serverId: String) {
         scopeMutex.withLock {
@@ -200,10 +203,22 @@ class PersistentCookieJar(
         }
     }
 
+    /**
+     * Persist [serverId]'s cookies asynchronously. Writes run one at a time and each
+     * takes its snapshot when it runs, so the last write always holds the latest
+     * state; a slow older write can no longer land after a newer one. Buckets are
+     * copied under their own locks, as every writer mutates them under that lock.
+     */
     private fun persist(serverId: String) {
-        val snapshot =
-            cache[serverId]?.values?.flatten()?.toList() ?: return
-        storeScope.launch { store.save(serverId, snapshot) }
+        if (!cache.containsKey(serverId)) return
+        storeScope.launch {
+            writeMutex.withLock {
+                // Cleared since it was scheduled: clearActive/clearAll own the store now.
+                val hosts = cache[serverId] ?: return@withLock
+                val snapshot = hosts.values.flatMap { bucket -> synchronized(bucket) { bucket.toList() } }
+                store.save(serverId, snapshot)
+            }
+        }
     }
 
     /**
@@ -232,7 +247,7 @@ class PersistentCookieJar(
         cache.remove(scope)
         loadedScopes.remove(scope)
         loadLatches.remove(scope)
-        storeScope.launch { store.clear(scope) }
+        storeScope.launch { writeMutex.withLock { store.clear(scope) } }
     }
 
     /** Clear every server scope (logout / full reset). */
@@ -240,7 +255,7 @@ class PersistentCookieJar(
         cache.clear()
         loadedScopes.clear()
         loadLatches.clear()
-        storeScope.launch { store.clearAll() }
+        storeScope.launch { writeMutex.withLock { store.clearAll() } }
     }
 
     companion object {

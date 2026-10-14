@@ -154,4 +154,36 @@ class DashboardSessionTokenRefresherTest {
         assertNull(token)
         verify(exactly = 0) { AuthManager.setToken(any()) }
     }
+
+    @Test
+    fun fetchFindsTokenBeyondTheFirstBufferedSegment() =
+        runBlocking {
+            // The token sits after ~20 KiB of markup: well past one 8 KiB Okio segment,
+            // still inside the 64 KiB cap.
+            val padding = "<!-- " + "x".repeat(20 * 1024) + " -->"
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody("""<html>$padding<script>window.__HERMES_SESSION_TOKEN__ = "late-token";</script>"""),
+            )
+
+            val token = DashboardSessionTokenRefresher.fetch(server.url("/").toString(), OkHttpClient())
+
+            assertEquals("late-token", token)
+        }
+
+    @Test
+    fun fetchIgnoresTokenBeyondTheReadCap() =
+        runBlocking {
+            val padding = "x".repeat(70 * 1024)
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody("""<html>$padding<script>window.__HERMES_SESSION_TOKEN__ = "too-late";</script>"""),
+            )
+
+            val token = DashboardSessionTokenRefresher.fetch(server.url("/").toString(), OkHttpClient())
+
+            assertNull(token)
+        }
 }

@@ -2,15 +2,23 @@ package io.wutz.apollo.data.remote
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import okhttp3.Cookie
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 /**
  * Unit tests for [PersistentCookieJar] — the issue #470 cookie stack.
@@ -326,4 +334,112 @@ class PersistentCookieJarTest {
             assertEquals(1, loaded.size)
             assertEquals("cold-cookie-xyz", loaded[0].value)
         }
+
+    /** Records the last saved set; the first save is slow so an unordered writer would land it last. */
+    private class SlowFirstSaveStore : CookieStore {
+        private val saves = AtomicInteger(0)
+
+        @Volatile var saved: List<Cookie> = emptyList()
+
+        override suspend fun save(
+            serverId: String,
+            cookies: List<Cookie>,
+        ) {
+            if (saves.incrementAndGet() == 1) delay(200)
+            saved = cookies
+        }
+
+        override suspend fun load(serverId: String): List<Cookie> = emptyList()
+
+        override suspend fun clear(serverId: String) = Unit
+
+        override suspend fun clearAll() = Unit
+    }
+
+    private fun plainCookie(
+        host: String,
+        value: String,
+    ): Cookie =
+        Cookie
+            .Builder()
+            .name("pref")
+            .value(value)
+            .hostOnlyDomain(host)
+            .path("/")
+            .build()
+
+    @Test
+    fun persist_lastWriteCarriesTheLatestCookies() =
+        runBlocking {
+            val store = SlowFirstSaveStore()
+            val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            val jar = PersistentCookieJar(store, storeScope)
+            jar.useStore("server-a")
+            val url = "http://dashboard.local/".toHttpUrl()
+
+            jar.saveFromResponse(url, listOf(plainCookie("dashboard.local", "old")))
+            jar.saveFromResponse(url, listOf(plainCookie("dashboard.local", "new")))
+            withTimeout(5_000) { storeScope.coroutineContext[Job]!!.children.forEach { it.join() } }
+
+            assertEquals(listOf("new"), store.saved.map { it.value })
+        }
+
+    @Test
+    fun persist_concurrentSavesNeverThrowOnTheCallerThread() {
+        val jar =
+            PersistentCookieJar(
+                FakeEncryptedCookieStore(),
+                CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        runBlocking { jar.useStore("server-a") }
+        val url = "http://dashboard.local/".toHttpUrl()
+        val failures = AtomicInteger(0)
+        val start = CountDownLatch(1)
+        val workers =
+            (0 until 8).map { t ->
+                thread {
+                    start.await()
+                    repeat(300) { i ->
+                        runCatching { jar.saveFromResponse(url, listOf(plainCookie("dashboard.local", "$t-$i"))) }
+                            .onFailure { failures.incrementAndGet() }
+                    }
+                }
+            }
+        start.countDown()
+        workers.forEach { it.join() }
+        assertEquals(0, failures.get())
+    }
+
+    @Test
+    fun legacySessionCookie_isHostOnlyForItsServerAndOnlySentThere() =
+        runTest {
+            val server = "https://dashboard.example:9119/".toHttpUrl()
+            val legacy = wrapSessionCookie("legacy-session", server)
+            assertNotNull(legacy)
+            assertEquals("dashboard.example", legacy!!.domain)
+            assertTrue(legacy.hostOnly)
+            assertTrue(legacy.secure)
+
+            val store = FakeEncryptedCookieStore()
+            store.save("server-a", listOf(legacy))
+            val jar =
+                PersistentCookieJar(
+                    store = store,
+                    storeScope = CoroutineScope(Dispatchers.Unconfined),
+                    isServerUrl = { it.host == server.host },
+                )
+            jar.useStore("server-a")
+
+            assertEquals("legacy-session", jar.getSessionCookieValue())
+            assertEquals(
+                listOf("legacy-session"),
+                jar.loadForRequest("https://dashboard.example:9119/api/status".toHttpUrl()).map { it.value },
+            )
+            assertTrue(jar.loadForRequest("https://images.other.example/x.png".toHttpUrl()).isEmpty())
+        }
+
+    @Test
+    fun wrapSessionCookie_rejectsBlankValues() {
+        assertNull(wrapSessionCookie("  ", "http://127.0.0.1:9119/".toHttpUrl()))
+    }
 }

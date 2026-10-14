@@ -172,4 +172,16 @@ class NativeLoginTest {
         val ok = parseNativeTokens("""{"access_token":"at","refresh_token":null}""") as NativeTokenResult.Success
         assertEquals("", ok.tokens.refreshToken)
     }
+
+    @Test
+    fun `token parsing treats non-primitive fields as malformed instead of throwing`() {
+        assertEquals(NativeTokenResult.Malformed, parseNativeTokens("""{"access_token":{"value":"at"}}"""))
+        assertEquals(NativeTokenResult.Malformed, parseNativeTokens("""{"access_token":["at"]}"""))
+        val ok =
+            parseNativeTokens(
+                """{"access_token":"at","refresh_token":{},"provider":[1]}""",
+            ) as NativeTokenResult.Success
+        assertEquals("", ok.tokens.refreshToken)
+        assertEquals("", ok.tokens.provider)
+    }
 }

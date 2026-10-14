@@ -2,12 +2,21 @@ package io.wutz.apollo.data.remote
 
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class NetworkResultTest {
     @Test
@@ -196,4 +205,146 @@ class NetworkResultTest {
             assertTrue(unknownError.message.contains("Unexpected error"))
             assertEquals(1, callCount) // Should not retry for unknown exceptions
         }
+
+    private fun errorFor(
+        method: String,
+        code: Int,
+    ): Response<String> {
+        val body = if (method == "GET") null else "{}".toRequestBody()
+        val raw =
+            okhttp3.Response
+                .Builder()
+                .request(
+                    Request
+                        .Builder()
+                        .url("http://localhost/")
+                        .method(method, body)
+                        .build(),
+                ).protocol(Protocol.HTTP_1_1)
+                .code(code)
+                .message("error")
+                .build()
+        return Response.error("error".toResponseBody("text/plain".toMediaTypeOrNull()), raw)
+    }
+
+    @Test
+    fun testSafeApiCall_5xxForNonIdempotentPost_isNotRetried() =
+        runBlocking {
+            var callCount = 0
+            val result =
+                safeApiCall<String>(retries = 2) {
+                    callCount++
+                    errorFor("POST", 503)
+                }
+            assertEquals(503, ((result as NetworkResult.Failure).error as NetworkError.Http).code)
+            assertEquals(1, callCount)
+        }
+
+    @Test
+    fun testSafeApiCall_429ForPatch_isNotRetried() =
+        runBlocking {
+            var callCount = 0
+            safeApiCall<String>(retries = 2) {
+                callCount++
+                errorFor("PATCH", 429)
+            }
+            assertEquals(1, callCount)
+        }
+
+    @Test
+    fun testSafeApiCall_markedIoFailure_isNotRetried() =
+        runBlocking {
+            var callCount = 0
+            val result =
+                safeApiCall<String>(retries = 2) {
+                    callCount++
+                    throw java.net.SocketTimeoutException("timeout").apply {
+                        addSuppressed(NonReplayableRequestMarker("POST"))
+                    }
+                }
+            assertTrue((result as NetworkResult.Failure).error is NetworkError.Connection)
+            assertEquals(1, callCount)
+        }
+
+    @Test
+    fun testIsNonReplayableFailure_followsTheCauseChain() {
+        val marked = IOException("read timed out").apply { addSuppressed(NonReplayableRequestMarker("POST")) }
+        assertTrue(isNonReplayableFailure(marked))
+        assertTrue(isNonReplayableFailure(IOException("copy", marked)))
+        assertFalse(isNonReplayableFailure(IOException("plain")))
+    }
+
+    @Test
+    fun testInterceptor_marksTimedOutPostButNotGet() {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val client =
+                OkHttpClient
+                    .Builder()
+                    .addInterceptor(NonReplayableFailureInterceptor)
+                    .readTimeout(200, TimeUnit.MILLISECONDS)
+                    .retryOnConnectionFailure(false)
+                    .build()
+
+            fun failureOf(request: Request): IOException {
+                server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+                return try {
+                    client.newCall(request).execute().close()
+                    throw AssertionError("expected a timeout")
+                } catch (e: IOException) {
+                    e
+                }
+            }
+
+            val post =
+                failureOf(
+                    Request
+                        .Builder()
+                        .url(server.url("/api/tasks"))
+                        .post("{}".toRequestBody())
+                        .build(),
+                )
+            val get = failureOf(Request.Builder().url(server.url("/api/tasks")).build())
+
+            assertTrue(isNonReplayableFailure(post))
+            assertFalse(isNonReplayableFailure(get))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun testInterceptor_leavesConnectFailuresRetryableForPost() {
+        val server = MockWebServer()
+        server.start()
+        val url = server.url("/api/tasks")
+        server.shutdown()
+        val client = OkHttpClient.Builder().addInterceptor(NonReplayableFailureInterceptor).build()
+
+        val failure =
+            try {
+                client
+                    .newCall(
+                        Request
+                            .Builder()
+                            .url(url)
+                            .post("{}".toRequestBody())
+                            .build(),
+                    ).execute()
+                    .close()
+                throw AssertionError("expected a connect failure")
+            } catch (e: IOException) {
+                e
+            }
+
+        assertTrue(failure is java.net.ConnectException)
+        assertFalse(isNonReplayableFailure(failure))
+    }
+
+    @Test
+    fun testIsReplayableMethod_onlySafeMethods() {
+        listOf("GET", "head", "OPTIONS").forEach { assertTrue(it, isReplayableMethod(it)) }
+        listOf("POST", "PUT", "PATCH", "DELETE").forEach { assertFalse(it, isReplayableMethod(it)) }
+    }
 }

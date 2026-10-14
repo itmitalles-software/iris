@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -26,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger
 internal class RpcChannel(
     private val scope: CoroutineScope,
     private val json: Json,
-    private val sendRequest: (method: String, params: Map<String, Any>, onSent: ((String) -> Unit)?) -> String,
+    private val sendRequest: (request: JsonRpcRequest, onSent: ((String) -> Unit)?) -> String,
     private val sendFrame: (String) -> Boolean,
     private val removeQueuedMessage: (String) -> Unit,
     private val onIdleCheck: () -> Unit,
@@ -102,6 +103,11 @@ internal class RpcChannel(
 
     /**
      * Send a JSON-RPC request that expects a result and returns a [CompletableDeferred] for it.
+     *
+     * The pending call and its timeout are registered before the frame goes out, so a fast
+     * response can never miss it. A frame the transport neither sends nor queues (socket
+     * disconnected with queueing off, or an oversized frame) fails the call at once instead
+     * of leaving it to hang without a timeout.
      */
     fun request(
         method: String,
@@ -110,25 +116,28 @@ internal class RpcChannel(
         suppressErrorEvent: Boolean = false,
     ): CompletableDeferred<Any?> {
         val deferred = CompletableDeferred<Any?>()
-        val id =
-            sendRequest(method, params) { reqId ->
-                pendingCalls[reqId] = PendingCall(method, deferred, suppressErrorEvent = suppressErrorEvent)
-            }
+        val request = createRequest(method, params)
+        val id = request.id
+        val call = PendingCall(method, deferred, suppressErrorEvent = suppressErrorEvent)
+        pendingCalls[id] = call
         deferred.invokeOnCompletion { cause ->
             if (cause is CancellationException) {
-                pendingCalls.remove(id)?.let { call ->
-                    call.timeoutJob?.cancel()
+                pendingCalls.remove(id)?.let { cancelled ->
+                    cancelled.timeoutJob?.cancel()
                     removeQueuedMessage(id)
                     onIdleCheck()
                 }
             }
         }
         // Arm the per-request timeout (fires if the server never answers).
-        pendingCalls[id]?.timeoutJob =
+        call.timeoutJob =
             scope.launch {
                 delay(timeoutMs)
                 resolvePending(id, null, JsonRpcError(-1, "Request timed out: $method"))
             }
+        var accepted = false
+        sendRequest(request) { accepted = true }
+        if (!accepted) resolvePending(id, null, JsonRpcError(-1, "Request not sent: $method"))
         return deferred
     }
 
@@ -275,8 +284,10 @@ internal class RpcChannel(
                 // rpc.result, BEFORE EventParser.parse() converts it via toAny().
                 // This preserves integer/float type fidelity needed by callers
                 // that re-deserialize the result into typed data classes.
+                // A frame with an id and no method is a response. `"result": null` decodes to a
+                // null result, which is still a successful answer (e.g. a void method).
                 val rpcId = rpc.id
-                if (rpcId != null && rpc.error == null && rpc.result != null) {
+                if (rpcId != null && rpc.method == null && rpc.error == null) {
                     onResult(rpcId)
                     removeQueuedMessage(rpcId)
                     resolvePending(rpcId, rpc.result, null)
@@ -284,16 +295,16 @@ internal class RpcChannel(
 
                 // Resume/replay responses carry still-open server requests
                 // separately from the event ring. Re-deliver them through the
-                // same generic path before exposing the RPC result.
-                @Suppress("UNCHECKED_CAST")
-                val openRequests =
-                    (rpc.result?.toAny() as? Map<*, *>)?.get("open_requests") as? List<Map<*, *>>
-                openRequests?.forEach { openRequest ->
-                    val openId = openRequest["id"] as? String ?: return@forEach
-                    val method = openRequest["method"] as? String ?: return@forEach
+                // same generic path before exposing the RPC result. Read them
+                // straight from the JSON tree: only their params need toAny().
+                val openRequests = (rpc.result as? JsonObject)?.get("open_requests") as? JsonArray
+                openRequests?.forEach { element ->
+                    val openRequest = element as? JsonObject ?: return@forEach
+                    val openId = openRequest["id"].eventStringOrNull() ?: return@forEach
+                    val method = openRequest["method"].eventStringOrNull() ?: return@forEach
 
                     @Suppress("UNCHECKED_CAST")
-                    val params = openRequest["params"] as? Map<String, Any?> ?: emptyMap()
+                    val params = (openRequest["params"] as? JsonObject)?.toAny() as? Map<String, Any?> ?: emptyMap()
                     emitEvent(WsEvent.ServerRequest(openId, method, params, replayed = true))
                 }
 

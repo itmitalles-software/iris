@@ -55,12 +55,15 @@ fun CookieHolder.toCookie(): Cookie? =
 
 /**
  * Wrap a raw `hermes_session_at` value (the pre-#470 single-string session
- * cookie) as a permissive session cookie. Host/path are left empty so it
- * matches any request the jar sends — matching the previous behaviour where
- * the value was injected as a bare `Cookie: hermes_session_at=<value>` header
- * on every REST call.
+ * cookie) as a host-only session cookie for [serverUrl], the server it was
+ * issued by. OkHttp requires a domain, so a host-less cookie cannot be built;
+ * the jar buckets this one under the server's host and only sends it there.
+ * HTTPS servers get a Secure cookie, as a fresh login would.
  */
-fun wrapSessionCookie(rawValue: String): Cookie? {
+fun wrapSessionCookie(
+    rawValue: String,
+    serverUrl: HttpUrl,
+): Cookie? {
     val value = rawValue.trim()
     if (value.isEmpty()) return null
     return runCatching {
@@ -71,8 +74,10 @@ fun wrapSessionCookie(rawValue: String): Cookie? {
             // Far-future expiry (10 years) — session lifetime is owned by the
             // dashboard, not by client-side cookie expiry.
             .expiresAt(System.currentTimeMillis() + 10L * 365 * 24 * 60 * 60 * 1000)
+            .hostOnlyDomain(serverUrl.host)
             .path("/")
             .httpOnly()
+            .apply { if (serverUrl.isHttps) secure() }
             .build()
     }.getOrNull()
 }

@@ -29,7 +29,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WsTransportTest {
@@ -60,7 +59,6 @@ class WsTransportTest {
         var rpcIdleChecks = 0
 
         var transportRef: WsTransport? = null
-        private val rpcIdCounter = AtomicInteger(1)
 
         val connectionHealth =
             ConnectionHealth(
@@ -83,12 +81,8 @@ class WsTransportTest {
             RpcChannel(
                 scope = scope,
                 json = json,
-                sendRequest = { method, params, onSent ->
-                    val id = "rpc-${rpcIdCounter.getAndIncrement()}"
-                    val req =
-                        rpcChannelRef?.createRequest(method, params)?.copy(id = id)
-                            ?: JsonRpcRequest(id = id, method = method)
-                    transportRef?.send(req, onSent) ?: id
+                sendRequest = { request, onSent ->
+                    transportRef?.send(request, onSent) ?: request.id
                 },
                 sendFrame = { frame ->
                     rpcSentFrames.add(frame)
@@ -105,7 +99,7 @@ class WsTransportTest {
                 outboundLock = outboundLock,
                 onResult = { id -> transportRef?.onRpcResult(id) },
                 onError = { id -> transportRef?.onRpcError(id) },
-            ).also { rpcChannelRef = it }
+            )
 
         val transport =
             WsTransport(
@@ -117,10 +111,6 @@ class WsTransportTest {
                 rpcChannel = rpcChannel,
                 onRawMessage = { rawMessages.add(it) },
             ).also { transportRef = it }
-
-        companion object {
-            private var rpcChannelRef: RpcChannel? = null
-        }
     }
 
     @Before
@@ -485,5 +475,61 @@ class WsTransportTest {
             val disconnectedResult = fixture.transport.sendDirectFrame("{\"jsonrpc\":\"2.0\",\"method\":\"direct\"}")
             assertFalse(disconnectedResult)
             assertTrue(fixture.transport.messageQueueForTest.isEmpty())
+        }
+
+    @Test
+    fun requestAfterDisconnectWithClearedQueueFailsInsteadOfHanging() =
+        runTest {
+            val fixture = Fixture(this, testJson)
+            fixture.transport.disconnect(clearPendingMessages = true)
+            assertFalse(fixture.transport.acceptQueuedMessagesForTest.get())
+
+            val deferred = fixture.rpcChannel.request("session.list", emptyMap())
+
+            assertTrue(deferred.isCompleted)
+            assertFalse(fixture.rpcChannel.hasPendingCalls())
+            try {
+                deferred.await()
+                fail("Expected HermesRpcException for an unsent request")
+            } catch (e: HermesWsClient.HermesRpcException) {
+                assertEquals("Request not sent: session.list", e.message)
+            }
+        }
+
+    @Test
+    fun handshakeFailureWithAuthDigitsInTheMessageIsNotTreatedAsAuthExpiry() =
+        runTest {
+            every { AuthManager.isAutoReconnect() } returns true
+            val fixture = Fixture(this, testJson)
+            val socket = mockk<WebSocket>(relaxed = true)
+            fixture.transport.connectedForTest.set(true)
+            fixture.transport.intentionalCloseForTest.set(false)
+            fixture.transport.connectionGenerationForTest.set(1)
+            fixture.transport.webSocketForTest = socket
+
+            val listener = fixture.transport.createListenerForTest(1)
+            listener.onFailure(socket, java.net.ConnectException("Failed to connect to /192.168.1.5:14401"), null)
+
+            assertEquals(ConnectionStatus.RECONNECTING, fixture.transport.connectionStatus.value)
+            fixture.transport.reconnectJobForTest?.cancel()
+        }
+
+    @Test
+    fun handshakeRejectedWithHttp401IsAuthExpiry() =
+        runTest {
+            val fixture = Fixture(this, testJson)
+            val socket = mockk<WebSocket>(relaxed = true)
+            fixture.transport.connectedForTest.set(true)
+            fixture.transport.intentionalCloseForTest.set(false)
+            fixture.transport.connectionGenerationForTest.set(1)
+            fixture.transport.webSocketForTest = socket
+            val response = mockk<Response>(relaxed = true)
+            every { response.code } returns 401
+
+            val listener = fixture.transport.createListenerForTest(1)
+            listener.onFailure(socket, java.net.ProtocolException("Expected HTTP 101 response"), response)
+
+            assertEquals(ConnectionStatus.AUTH_EXPIRED, fixture.transport.connectionStatus.value)
+            assertNull(fixture.transport.reconnectJobForTest)
         }
 }

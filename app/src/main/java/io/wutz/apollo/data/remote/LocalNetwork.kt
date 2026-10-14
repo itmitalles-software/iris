@@ -1,5 +1,8 @@
 package io.wutz.apollo.data.remote
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.InetAddress
 import java.net.URI
 
@@ -11,6 +14,9 @@ import java.net.URI
  *
  * Connections to loopback (the default `127.0.0.1:9119` gateway on-device) and
  * to public/remote hosts do NOT require the permission — only true LAN hosts do.
+ *
+ * Blocking: a hostname (e.g. `nas.local`, a MagicDNS name) is resolved through DNS, which
+ * throws `NetworkOnMainThreadException` on the main thread. Call it off the main thread.
  *
  * @return true when [host] resolves to an address Android 17 gates behind local-network permission.
  */
@@ -58,10 +64,12 @@ fun needsLocalNetworkPermission(baseUrl: String): Boolean {
 /**
  * Gate decision for the connect flow: on Android 17+ (API 37) a LAN gateway host
  * requires the `ACCESS_LOCAL_NETWORK` runtime permission; earlier APIs and
- * loopback/public hosts do not. Pure so it can be unit-tested without mocking
- * [android.os.Build.VERSION.SDK_INT].
+ * loopback/public hosts do not. Takes the SDK level as a parameter so it can be
+ * unit-tested without mocking [android.os.Build.VERSION.SDK_INT]. The host lookup
+ * runs on [ioDispatcher], so the connect button can call it from the main thread.
  */
-fun requiresLocalNetworkPermission(
+suspend fun requiresLocalNetworkPermission(
     sdkInt: Int,
     baseUrl: String,
-): Boolean = sdkInt >= 37 && needsLocalNetworkPermission(baseUrl)
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+): Boolean = sdkInt >= 37 && withContext(ioDispatcher) { needsLocalNetworkPermission(baseUrl) }

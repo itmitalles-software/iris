@@ -30,8 +30,9 @@ object EventParser {
             return WsEvent.ServerRequest(id, response.method, requestParams)
         }
 
-        // A response has no method and carries a result or error member.
-        if (response.method == null && id != null && (response.result != null || response.error != null)) {
+        // A response has an id and no method. `"result": null` (a void method) decodes to a
+        // null result and is still a successful response, not a notification.
+        if (response.method == null && id != null) {
             return if (response.error != null) {
                 WsEvent.RpcError(id, response.error)
             } else {
