@@ -57,6 +57,8 @@ class NotificationReplyReceiverTest {
     private lateinit var mockDao: ChatMessageDao
     private lateinit var receiver: NotificationReplyReceiver
     private lateinit var mockNotification: Notification
+    private lateinit var failedNotification: Notification
+    private val failedReplies = mutableListOf<Pair<String?, String?>>()
 
     // Call counters for suspend function tracking
     private var upsertCallCount = 0
@@ -64,6 +66,7 @@ class NotificationReplyReceiverTest {
     @Before
     fun setUp() {
         upsertCallCount = 0
+        failedReplies.clear()
         ActiveSessionHolder.clear()
         ReplyNotificationTracker.resetForTest()
 
@@ -101,6 +104,7 @@ class NotificationReplyReceiverTest {
 
         // Mock Notification
         mockNotification = mockk(relaxed = true)
+        failedNotification = mockk(relaxed = true)
 
         // Mock HermesWsClient singleton
         mockkObject(HermesWsClient)
@@ -125,6 +129,15 @@ class NotificationReplyReceiverTest {
                 override fun goAsyncCompat(): BroadcastReceiver.PendingResult = mockPendingResult
 
                 override fun buildReplyNotification(context: Context): Notification = mockNotification
+
+                override fun buildReplyFailedNotification(
+                    context: Context,
+                    replyText: String?,
+                    sessionId: String?,
+                ): Notification {
+                    failedReplies += replyText to sessionId
+                    return failedNotification
+                }
             }
     }
 
@@ -383,8 +396,71 @@ class NotificationReplyReceiverTest {
         Thread.sleep(500)
 
         assertEquals(0, upsertCallCount)
-        verify(inverse = true) { mockNotificationManager.notify(any(), any()) }
+        verify(inverse = true) { mockNotificationManager.notify(any(), mockNotification) }
         verify { mockPendingResult.finish() }
+    }
+
+    // ── Failure feedback: the inline-reply spinner must always be replaced ──
+
+    @Test
+    fun `failed send replaces the spinner with a not-sent notification keeping the text`() {
+        every { HermesWsClient.request(WsMethods.PROMPT_SUBMIT, any(), any()) } returns
+            CompletableDeferred<Any?>().apply { completeExceptionally(IllegalStateException("offline")) }
+        givenValidReply("session-abc", "Hello")
+
+        receiver.onReceive(mockContext, mockIntent)
+
+        verify(timeout = 3_000) {
+            mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, failedNotification)
+        }
+        assertEquals(listOf<Pair<String?, String?>>("Hello" to "session-abc"), failedReplies)
+    }
+
+    @Test
+    fun `blank reply replaces the spinner with a not-sent notification`() {
+        givenValidReply("session-abc", "   ")
+
+        receiver.onReceive(mockContext, mockIntent)
+
+        verify { mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, failedNotification) }
+        assertEquals(listOf<Pair<String?, String?>>("   " to "session-abc"), failedReplies)
+    }
+
+    @Test
+    fun `reply without session replaces the spinner with a not-sent notification`() {
+        givenValidReply(null, "Hello")
+
+        receiver.onReceive(mockContext, mockIntent)
+
+        verify { mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, failedNotification) }
+        assertEquals(listOf<Pair<String?, String?>>("Hello" to null), failedReplies)
+    }
+
+    @Test
+    fun `reply to unknown session shows not-sent without a retry target`() {
+        coEvery { mockDao.sessionExists("gone") } returns false
+        givenValidReply("gone", "Hello")
+
+        receiver.onReceive(mockContext, mockIntent)
+
+        verify(timeout = 3_000) {
+            mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, failedNotification)
+        }
+        assertEquals(listOf<Pair<String?, String?>>("Hello" to null), failedReplies)
+    }
+
+    @Test
+    fun `local failure after a successful send still confirms the reply`() {
+        coEvery { mockDao.upsert(any<ChatMessageEntity>()) } throws RuntimeException("DB full")
+        givenValidReply("session-abc", "Hello")
+
+        receiver.onReceive(mockContext, mockIntent)
+
+        verify(timeout = 3_000) {
+            mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, mockNotification)
+        }
+        verify(timeout = 3_000) { mockPendingResult.finish() }
+        assertTrue("a sent reply must not be reported as not sent", failedReplies.isEmpty())
     }
 
     @Test

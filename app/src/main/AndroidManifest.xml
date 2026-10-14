@@ -22,6 +22,7 @@
     <application
         android:name=".HermesControlApp"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -39,6 +40,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Notification "open chat" entry. Not exported, so only Apollo's own
+             PendingIntents can deliver a session id to MainActivity (issue #832). -->
+        <activity-alias
+            android:name=".NotificationEntryAlias"
+            android:exported="false"
+            android:targetActivity=".MainActivity" />
 
         <!-- Apollo: share-sheet trampoline, forwards into MainActivity's task. -->
         <activity

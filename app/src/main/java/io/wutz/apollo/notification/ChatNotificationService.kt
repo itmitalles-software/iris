@@ -220,6 +220,67 @@ class ChatNotificationService : Service() {
         fun updateForegroundNotification(state: BackgroundNotificationState) {
             activeServiceInstance?.updateNotification(state)
         }
+
+        /**
+         * Opens [sessionId]'s chat. Targets MainActivity's non-exported alias so
+         * MainActivity can tell this intent from a forged one (issue #832).
+         */
+        internal fun buildContentIntent(
+            context: Context,
+            sessionId: String?,
+        ): PendingIntent {
+            val intent =
+                Intent(MainActivity.ACTION_OPEN_CHAT_FROM_NOTIFICATION).apply {
+                    component = android.content.ComponentName(context, MainActivity.NOTIFICATION_ENTRY_ALIAS)
+                    setPackage(context.packageName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    if (!sessionId.isNullOrBlank()) {
+                        putExtra(NotificationReplyReceiver.EXTRA_SESSION_ID, sessionId)
+                    }
+                }
+            return PendingIntent.getActivity(
+                context,
+                sessionId?.hashCode() ?: 0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_ONE_SHOT,
+            )
+        }
+
+        /** Inline "Reply" action that delivers the typed text to [NotificationReplyReceiver]. */
+        internal fun buildInlineReplyAction(
+            context: Context,
+            sessionId: String,
+        ): NotificationCompat.Action {
+            val remoteInput =
+                RemoteInput
+                    .Builder(NotificationReplyReceiver.KEY_TEXT_REPLY)
+                    .setLabel(context.getString(R.string.notif_reply_placeholder))
+                    .build()
+
+            val replyIntent =
+                Intent(context, NotificationReplyReceiver::class.java).apply {
+                    action = "${context.packageName}.ACTION_NOTIFICATION_REPLY"
+                    component = android.content.ComponentName(context, NotificationReplyReceiver::class.java)
+                    setPackage(context.packageName)
+                    putExtra(NotificationReplyReceiver.EXTRA_SESSION_ID, sessionId)
+                }
+
+            val replyPendingIntent =
+                PendingIntent.getBroadcast(
+                    context,
+                    sessionId.hashCode(),
+                    replyIntent,
+                    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_ONE_SHOT,
+                )
+
+            return NotificationCompat.Action
+                .Builder(
+                    R.drawable.ic_notification,
+                    context.getString(R.string.action_reply),
+                    replyPendingIntent,
+                ).addRemoteInput(remoteInput)
+                .build()
+        }
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -447,7 +508,7 @@ class ChatNotificationService : Service() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setAutoCancel(true)
-                .setContentIntent(buildContentIntent(sessionId))
+                .setContentIntent(buildContentIntent(this, sessionId))
 
         var replyGeneration: Long? = null
         if (isReplyMessage && !sessionId.isNullOrBlank() && !completionId.isNullOrBlank()) {
@@ -483,43 +544,7 @@ class ChatNotificationService : Service() {
         }
 
         if (allowInlineReply && !sessionId.isNullOrBlank()) {
-            val replyLabel = getString(R.string.notif_reply_placeholder)
-            val remoteInput =
-                RemoteInput
-                    .Builder(NotificationReplyReceiver.KEY_TEXT_REPLY)
-                    .setLabel(replyLabel)
-                    .build()
-
-            val replyIntent =
-                Intent(this, NotificationReplyReceiver::class.java).apply {
-                    action = "$packageName.ACTION_NOTIFICATION_REPLY"
-                    component =
-                        android.content.ComponentName(
-                            this@ChatNotificationService,
-                            NotificationReplyReceiver::class.java,
-                        )
-                    setPackage(packageName)
-                    putExtra(NotificationReplyReceiver.EXTRA_SESSION_ID, sessionId)
-                }
-
-            val replyPendingIntent =
-                PendingIntent.getBroadcast(
-                    this,
-                    sessionId.hashCode(),
-                    replyIntent,
-                    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_ONE_SHOT,
-                )
-
-            val action =
-                NotificationCompat.Action
-                    .Builder(
-                        R.drawable.ic_notification,
-                        getString(R.string.action_reply),
-                        replyPendingIntent,
-                    ).addRemoteInput(remoteInput)
-                    .build()
-
-            builder.addAction(action)
+            builder.addAction(buildInlineReplyAction(this, sessionId))
         }
 
         val notification = builder.build()
@@ -560,29 +585,10 @@ class ChatNotificationService : Service() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setAutoCancel(true)
-                .setContentIntent(buildContentIntent(ref.storedId))
+                .setContentIntent(buildContentIntent(this, ref.storedId))
                 .build()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         manager.notify(ref.storedId, SESSION_COMPLETE_NOTIFICATION_ID, notification)
-    }
-
-    private fun buildContentIntent(sessionId: String?): PendingIntent {
-        val intent =
-            Intent(this, MainActivity::class.java).apply {
-                action = MainActivity.ACTION_OPEN_CHAT_FROM_NOTIFICATION
-                component = android.content.ComponentName(this@ChatNotificationService, MainActivity::class.java)
-                setPackage(packageName)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                if (!sessionId.isNullOrBlank()) {
-                    putExtra(NotificationReplyReceiver.EXTRA_SESSION_ID, sessionId)
-                }
-            }
-        return PendingIntent.getActivity(
-            this,
-            sessionId?.hashCode() ?: 0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_ONE_SHOT,
-        )
     }
 
     private fun buildForegroundNotification(text: String): Notification {

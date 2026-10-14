@@ -1925,6 +1925,8 @@
     <string name="settings_about_unofficial">Apollo ist ein unabhängiger Open-Source-Android-Client für Hermes Agent, entwickelt von wutz.io. Nicht mit Nous Research verbunden und nicht von Nous Research unterstützt.</string>
     <!-- Apollo i18n: UI strings moved out of Kotlin literals -->
     <string name="notif_replied">Geantwortet</string>
+    <string name="notif_reply_failed">Antwort nicht gesendet</string>
+    <string name="notif_reply_failed_with_text">Antwort nicht gesendet: %1$s</string>
     <string name="system_notice_session_created">Sitzung erstellt</string>
     <string name="system_notice_session_branched">Sitzung abgezweigt</string>
     <string name="system_notice_session_interrupted">Sitzung unterbrochen</string>

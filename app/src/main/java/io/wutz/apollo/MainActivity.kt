@@ -48,6 +48,28 @@ class MainActivity : ComponentActivity() {
          */
         const val ACTION_OPEN_CHAT_FROM_NOTIFICATION =
             "io.wutz.apollo.ACTION_OPEN_CHAT_FROM_NOTIFICATION"
+
+        /**
+         * Non-exported `<activity-alias>` of this activity. Only Apollo's own
+         * notification PendingIntents can target it: a foreign app that names
+         * it gets a SecurityException, and one that names MainActivity directly
+         * keeps MainActivity as the component. The action alone is forgeable.
+         */
+        const val NOTIFICATION_ENTRY_ALIAS = "io.wutz.apollo.NotificationEntryAlias"
+
+        /** True only for an open-chat intent that came through [NOTIFICATION_ENTRY_ALIAS]. */
+        internal fun isTrustedNotificationIntent(
+            action: String?,
+            componentClassName: String?,
+        ): Boolean = action == ACTION_OPEN_CHAT_FROM_NOTIFICATION && componentClassName == NOTIFICATION_ENTRY_ALIAS
+
+        /**
+         * A relaunch from Recents (after the activity finished, or after a reboot)
+         * replays the task's base intent with this flag. Its share or notification
+         * payload was already handled when it first arrived.
+         */
+        internal fun isReplayedFromHistory(flags: Int): Boolean =
+            flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
     }
 
     private var baseContextLanguageCode: String = LocaleContextWrapper.SYSTEM_LANGUAGE
@@ -68,10 +90,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        consumeNotificationIntent(intent)
-        // A recreated activity (rotation, language switch) still holds the
-        // original share intent; only the first creation consumes it.
-        if (savedInstanceState == null) consumeShareIntent(intent)
+        // A recreated activity (rotation, language switch, process restore) still
+        // holds the original launch intent; only the first creation consumes it.
+        // A Recents relaunch replays the task's base intent: never consume it again.
+        if (savedInstanceState == null && !isReplayedFromHistory(intent.flags)) {
+            consumeNotificationIntent(intent)
+            consumeShareIntent(intent)
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -207,8 +232,8 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeNotificationIntent(intent: Intent?) {
         // Issue #832: MainActivity is exported (launcher requirement) — only
-        // honor intents stamped with our own notification action.
-        if (intent?.action != ACTION_OPEN_CHAT_FROM_NOTIFICATION) return
+        // honor open-chat intents delivered through the non-exported alias.
+        if (intent == null || !isTrustedNotificationIntent(intent.action, intent.component?.className)) return
         val sessionId = intent.getStringExtra(NotificationReplyReceiver.EXTRA_SESSION_ID)
         intent.removeExtra(NotificationReplyReceiver.EXTRA_SESSION_ID)
         sessionId?.takeIf { it.isNotBlank() }?.let(NavigationController::openChatSessionFromNotification)

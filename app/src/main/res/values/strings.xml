@@ -1924,6 +1924,8 @@
     <string name="trust_user_cas_restart_required">Restart the app process to apply this change.</string>
     <!-- Apollo i18n: UI strings moved out of Kotlin literals -->
     <string name="notif_replied">Replied</string>
+    <string name="notif_reply_failed">Reply not sent</string>
+    <string name="notif_reply_failed_with_text">Reply not sent: %1$s</string>
     <string name="system_notice_session_created">Session created</string>
     <string name="system_notice_session_branched">Session branched</string>
     <string name="system_notice_session_interrupted">Session interrupted</string>
