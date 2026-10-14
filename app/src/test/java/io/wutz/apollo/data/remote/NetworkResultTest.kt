@@ -51,6 +51,14 @@ class NetworkResultTest {
     }
 
     @Test
+    fun testMapHttpError_keepsServerDetailSeparately() {
+        val error = mapHttpError(400, """{"detail":"name is required"}""") as NetworkError.Http
+        assertEquals("name is required", error.message)
+        assertEquals("name is required", error.detail)
+        assertEquals(null, (mapHttpError(400) as NetworkError.Http).detail)
+    }
+
+    @Test
     fun testMapHttpError_unknownCode() {
         val error = mapHttpError(418)
         assertTrue(error is NetworkError.Http)

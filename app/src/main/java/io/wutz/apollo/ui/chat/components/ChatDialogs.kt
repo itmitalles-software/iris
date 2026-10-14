@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -27,6 +28,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.theme.LocalHermesStatusColors
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.resolve
 
 /**
  * Secure password dialog for a pending `sudo.request` (issue #524).
@@ -137,7 +140,7 @@ fun SecretPromptDialog(
 @Composable
 fun ReloginDialog(
     onDismiss: () -> Unit,
-    onRelogin: (String, String, (Boolean, String?) -> Unit) -> Unit,
+    onRelogin: (String, String, (Boolean, UiText?) -> Unit) -> Unit,
 ) {
     val emptyCredentialsError = stringResource(R.string.chat_relogin_error_empty)
     val statusColors = LocalHermesStatusColors.current
@@ -146,6 +149,7 @@ fun ReloginDialog(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val unknownError = stringResource(R.string.error_unknown)
+    val resources = LocalResources.current
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
@@ -204,7 +208,7 @@ fun ReloginDialog(
                         if (success) {
                             onDismiss()
                         } else {
-                            errorMessage = error ?: unknownError
+                            errorMessage = error?.resolve(resources) ?: unknownError
                         }
                     }
                 },

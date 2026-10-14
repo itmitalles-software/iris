@@ -33,6 +33,7 @@ import io.wutz.apollo.ui.common.ActionProgressController
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.resolve
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -368,7 +369,7 @@ class SystemViewModel(
 
                 is NetworkResult.Failure -> {
                     migrationProgress.fail(
-                        text(UiText.res(R.string.system_msg_migration_start_failed, result.error.message)),
+                        text(UiText.res(R.string.system_msg_migration_start_failed, result.error.toUiText())),
                     )
                 }
             }
@@ -447,7 +448,7 @@ class SystemViewModel(
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = UiText.res(failureRes, result.error.message)) }
+                    _uiState.update { it.copy(toastMessage = UiText.failure(failureRes, result.error.toUiText())) }
                 }
             }
         }
@@ -471,7 +472,11 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             checkingUpdate = false,
-                            toastMessage = UiText.res(R.string.system_msg_update_check_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_update_check_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -503,7 +508,9 @@ class SystemViewModel(
                 }
 
                 is NetworkResult.Failure -> {
-                    actionProgress.fail(text(UiText.res(R.string.system_msg_update_start_failed, result.error.message)))
+                    actionProgress.fail(
+                        text(UiText.res(R.string.system_msg_update_start_failed, result.error.toUiText())),
+                    )
                 }
             }
         }
@@ -537,7 +544,11 @@ class SystemViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.system_msg_curator_toggle_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_curator_toggle_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -603,7 +614,11 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             addingCred = false,
-                            toastMessage = UiText.res(R.string.system_msg_credential_add_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_credential_add_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                     loadCredentials()
@@ -637,9 +652,9 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.system_msg_credential_remove_failed,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -711,7 +726,11 @@ class SystemViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.system_msg_backup_trigger_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_backup_trigger_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -769,9 +788,9 @@ class SystemViewModel(
                                     _uiState.update {
                                         it.copy(
                                             toastMessage =
-                                                UiText.res(
+                                                UiText.failure(
                                                     R.string.system_msg_backup_download_failed,
-                                                    result.error.message,
+                                                    result.error.toUiText(),
                                                 ),
                                         )
                                     }
@@ -828,7 +847,7 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             isImporting = false,
-                            toastMessage = UiText.res(R.string.system_msg_import_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.system_msg_import_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -869,7 +888,11 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             sharing = false,
-                            toastMessage = UiText.res(R.string.system_msg_debug_share_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_debug_share_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -951,7 +974,11 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             creatingHook = false,
-                            toastMessage = UiText.res(R.string.system_msg_hook_create_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_hook_create_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -977,7 +1004,11 @@ class SystemViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.system_msg_hook_delete_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.system_msg_hook_delete_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -1018,7 +1049,10 @@ class SystemViewModel(
                                 _uiState.update {
                                     it.copy(
                                         toastMessage =
-                                            UiText.res(R.string.system_msg_action_status_lost, result.error.message),
+                                            UiText.failure(
+                                                R.string.system_msg_action_status_lost,
+                                                result.error.toUiText(),
+                                            ),
                                     )
                                 }
                                 break
@@ -1056,7 +1090,11 @@ class SystemViewModel(
                     _uiState.update {
                         it.copy(
                             toastMessage =
-                                UiText.res(R.string.system_action_failed, UiText.res(labelRes), result.error.message),
+                                UiText.failure(
+                                    R.string.system_action_failed,
+                                    UiText.res(labelRes),
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }

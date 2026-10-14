@@ -117,7 +117,10 @@ class KanbanBoardTransferTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { mockRepository.deleteImportArchive("kanban-imports/board.tar.gz") }
-            assertEquals(UiText.res(R.string.kanban_import_failed, "bad archive"), vm.uiState.value.toastMessage)
+            assertEquals(
+                UiText.failure(R.string.kanban_import_failed, UiText.raw("bad archive")),
+                vm.uiState.value.toastMessage,
+            )
         }
 
     @Test
@@ -132,7 +135,10 @@ class KanbanBoardTransferTest {
 
             coVerify(exactly = 0) { mockRepository.importBoard(any()) }
             coVerify(exactly = 0) { mockRepository.deleteImportArchive(any()) }
-            assertEquals(UiText.res(R.string.kanban_import_upload_failed, "too large"), vm.uiState.value.toastMessage)
+            assertEquals(
+                UiText.failure(R.string.kanban_import_upload_failed, UiText.raw("too large")),
+                vm.uiState.value.toastMessage,
+            )
         }
 
     @Test
@@ -210,7 +216,10 @@ class KanbanBoardTransferTest {
             val prepared = vm.prepareBoardExport(KanbanBoard(id = "ops", name = "Ops"), tempDir)
 
             assertNull(prepared)
-            assertEquals(UiText.res(R.string.kanban_export_failed, "export broke"), vm.uiState.value.toastMessage)
+            assertEquals(
+                UiText.failure(R.string.kanban_export_failed, UiText.raw("export broke")),
+                vm.uiState.value.toastMessage,
+            )
         }
 
     @Test

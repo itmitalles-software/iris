@@ -11,7 +11,7 @@ class ChatStreamingControllerTest {
     @Test
     fun flushPendingTransition_flushesThrottledReasoning() =
         runTest {
-            // isTestEnvironment = false so the ~33ms throttle is live. The FIRST delta
+            // throttle = true so the ~33ms throttle is live. The FIRST delta
             // always flushes (lastFlushMs == 0), but a SECOND delta within 33ms is held
             // in the buffer and only pushed out by flushPendingTransition() (called at
             // streaming transitions) — that is the exact drop we guard against.
@@ -27,7 +27,7 @@ class ChatStreamingControllerTest {
                             ),
                     ),
                 )
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             controller.handleReasoningDelta(WsEvent.ReasoningDelta("A", "session"))
             // First delta flushes immediately.
@@ -61,7 +61,7 @@ class ChatStreamingControllerTest {
                             ),
                     ),
                 )
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             controller.handleMessageToken(WsEvent.MessageToken("tool's loaded! 🔍 now searchin'", "session"))
             // First delta flushes immediately.
@@ -86,7 +86,7 @@ class ChatStreamingControllerTest {
         runTest {
             val uiState = MutableStateFlow(ChatUiState())
             val streamingState = MutableStateFlow(StreamingState())
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             // Buffer some reasoning, then reset (e.g. on MessageStart of a new turn).
             controller.handleReasoningDelta(WsEvent.ReasoningDelta("Stale reasoning", "session"))
@@ -113,7 +113,7 @@ class ChatStreamingControllerTest {
                         reasoningText = "Stale reasoning",
                     ),
                 )
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             controller.resetStreaming()
 
@@ -142,7 +142,7 @@ class ChatStreamingControllerTest {
                         reasoningText = "real reasoning trace",
                     ),
                 )
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             controller.resetStreaming()
 
@@ -154,7 +154,7 @@ class ChatStreamingControllerTest {
         runTest {
             val uiState = MutableStateFlow(ChatUiState())
             val streamingState = MutableStateFlow(StreamingState())
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             controller.handleMessageToken(WsEvent.MessageToken("First", "session"))
             assertEquals("First", streamingState.value.streamingMessage?.content)
@@ -173,7 +173,7 @@ class ChatStreamingControllerTest {
         runTest {
             val uiState = MutableStateFlow(ChatUiState())
             val streamingState = MutableStateFlow(StreamingState())
-            val controller = controller(this, uiState, streamingState, isTestEnvironment = { false })
+            val controller = controller(this, uiState, streamingState, throttle = true)
 
             controller.handleThinkingDelta(WsEvent.ThinkingDelta("Think", "session"))
             controller.handleThinkingDelta(WsEvent.ThinkingDelta(" more", "session"))
@@ -190,12 +190,12 @@ class ChatStreamingControllerTest {
         scope: CoroutineScope,
         uiState: MutableStateFlow<ChatUiState>,
         streamingState: MutableStateFlow<StreamingState>,
-        isTestEnvironment: () -> Boolean,
+        throttle: Boolean,
     ) = ChatStreamingController(
         scope = scope,
         uiState = uiState,
         streamingState = streamingState,
         isCurrentSession = { true },
-        isTestEnvironment = isTestEnvironment,
+        throttle = throttle,
     )
 }

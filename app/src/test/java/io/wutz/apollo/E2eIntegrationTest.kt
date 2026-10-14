@@ -57,6 +57,7 @@ import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.ModelOptionsRepository
 import io.wutz.apollo.ui.channels.ChannelsViewModel
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import io.wutz.apollo.ui.cron.CronJobsViewModel
 import io.wutz.apollo.ui.kanban.KanbanTaskAction
 import io.wutz.apollo.ui.kanban.KanbanViewModel
@@ -146,7 +147,7 @@ class E2eIntegrationTest {
         val resource = actual as UiText.Resource
         assertEquals(expectedId, resource.id)
         assertEquals(1, resource.args.size)
-        assertTrue((resource.args[0] as String).contains(rawFragment))
+        assertTrue(resource.args[0].toString().contains(rawFragment))
     }
 
     private fun <T> createErrorResponse(code: Int): Response<T> {
@@ -268,7 +269,7 @@ class E2eIntegrationTest {
             )
             assertNotNull(viewModel.uiState.value.toastMessage)
             assertEquals(
-                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).message),
+                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -285,7 +286,7 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isLoading)
             assertNotNull(viewModel.uiState.value.errorMessage)
             assertEquals(
-                UiText.res(R.string.skills_msg_load_failed, mapHttpError(500).message),
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -378,7 +379,7 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isHubSearching)
             assertNotNull(viewModel.uiState.value.hubSearchError)
             assertEquals(
-                UiText.res(R.string.skills_msg_search_failed, mapHttpError(500).message),
+                UiText.res(R.string.skills_msg_search_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.hubSearchError,
             )
         }
@@ -439,7 +440,7 @@ class E2eIntegrationTest {
             assertNull(viewModel.uiState.value.installingSkillName)
             assertNotNull(viewModel.uiState.value.toastMessage)
             assertEquals(
-                UiText.res(R.string.skills_msg_install_failed, "failing-skill", mapHttpError(500).message),
+                UiText.failure(R.string.skills_msg_install_failed, "failing-skill", mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -481,7 +482,7 @@ class E2eIntegrationTest {
             assertNull(viewModel.uiState.value.uninstallingSkillName)
             assertNotNull(viewModel.uiState.value.toastMessage)
             assertEquals(
-                UiText.res(R.string.skills_msg_uninstall_failed, "failing-skill", mapHttpError(500).message),
+                UiText.failure(R.string.skills_msg_uninstall_failed, "failing-skill", mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -635,7 +636,7 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isLoading)
             assertNotNull(viewModel.uiState.value.errorMessage)
             assertEquals(
-                UiText.res(R.string.cron_msg_load_failed, mapHttpError(500).message),
+                UiText.res(R.string.cron_msg_load_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -691,7 +692,7 @@ class E2eIntegrationTest {
             assertFalse(viewModel.uiState.value.isLoading)
             assertNotNull(viewModel.uiState.value.errorMessage)
             assertEquals(
-                UiText.res(R.string.sessions_msg_load_failed, mapHttpError(500).message),
+                UiText.res(R.string.sessions_msg_load_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -761,7 +762,7 @@ class E2eIntegrationTest {
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
-                UiText.res(R.string.skills_msg_load_failed, mapHttpError(400).message),
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(400).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -774,7 +775,7 @@ class E2eIntegrationTest {
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
-                UiText.res(R.string.skills_msg_load_failed, mapHttpError(404).message),
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(404).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -787,7 +788,7 @@ class E2eIntegrationTest {
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
-                UiText.res(R.string.skills_msg_load_failed, mapHttpError(500).message),
+                UiText.res(R.string.skills_msg_load_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -836,7 +837,7 @@ class E2eIntegrationTest {
                     .enabled,
             )
             assertEquals(
-                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).message),
+                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -850,7 +851,7 @@ class E2eIntegrationTest {
             viewModel.loadCronJobs()
             advanceUntilIdle()
             assertEquals(
-                UiText.res(R.string.cron_msg_load_failed, mapHttpError(500).message),
+                UiText.res(R.string.cron_msg_load_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.errorMessage,
             )
         }
@@ -875,7 +876,7 @@ class E2eIntegrationTest {
                     .state,
             )
             assertEquals(
-                UiText.res(R.string.cron_msg_pause_failed, mapHttpError(500).message),
+                UiText.failure(R.string.cron_msg_pause_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -890,7 +891,7 @@ class E2eIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(
-                UiText.res(R.string.cron_msg_trigger_failed, mapHttpError(500).message),
+                UiText.failure(R.string.cron_msg_trigger_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -911,7 +912,7 @@ class E2eIntegrationTest {
 
             assertEquals(1, viewModel.uiState.value.jobs.size)
             assertEquals(
-                UiText.res(R.string.cron_msg_delete_failed, mapHttpError(500).message),
+                UiText.failure(R.string.cron_msg_delete_failed, mapHttpError(500).toUiText()),
                 viewModel.uiState.value.toastMessage,
             )
         }
@@ -1015,7 +1016,7 @@ class E2eIntegrationTest {
                     .enabled,
             )
             assertEquals(
-                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).message),
+                UiText.res(R.string.skills_msg_toggle_failed, mapHttpError(500).toUiText()),
                 skillsViewModel.uiState.value.toastMessage,
             )
 

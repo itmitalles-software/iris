@@ -13,11 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.ui.chat.ChatMessage
 import io.wutz.apollo.ui.chat.MessageRole
+import io.wutz.apollo.ui.chat.MoaProgressUi
 import io.wutz.apollo.ui.chat.StreamingState
 import io.wutz.apollo.ui.chat.ToolSchemaRegistry
 import io.wutz.apollo.ui.chat.components.TypingIndicator
@@ -32,6 +34,11 @@ internal sealed interface AgentStatus {
 
     data class Tool(
         val name: String?,
+    ) : AgentStatus
+
+    /** Mixture of agents: reference models answering, then the aggregator combining them. */
+    data class Moa(
+        val progress: MoaProgressUi,
     ) : AgentStatus
 }
 
@@ -68,6 +75,7 @@ internal fun deriveAgentStatus(
     return when {
         activeTool != null -> AgentStatus.Tool(activeTool.toolName)
         hasVisibleStreamingContent -> null
+        streamingState.moaProgress != null -> AgentStatus.Moa(streamingState.moaProgress)
         streamingState.isThinking || streamingState.isReasoning -> AgentStatus.Thinking
         isAgentTyping -> AgentStatus.Typing
         else -> null
@@ -126,6 +134,25 @@ internal fun AgentStatusIndicator(
                 text = stringResource(R.string.chat_agent_status_thinking),
                 icon = null,
                 modifier = modifier.testTag("agent_status_thinking"),
+            )
+        }
+
+        is AgentStatus.Moa -> {
+            val progress = status.progress
+            StatusText(
+                text =
+                    if (progress.aggregating) {
+                        stringResource(R.string.chat_agent_status_moa_aggregating)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.chat_agent_status_moa_references,
+                            progress.refsTotal,
+                            progress.refsDone,
+                            progress.refsTotal,
+                        )
+                    },
+                icon = null,
+                modifier = modifier.testTag("agent_status_moa"),
             )
         }
 

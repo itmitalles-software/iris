@@ -148,7 +148,7 @@ fun SearchBarRow(
         IconButton(
             onClick = onNavigateUp,
             enabled = searchMatchCount > 0,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Icon(
                 Icons.Filled.KeyboardArrowUp,
@@ -159,7 +159,7 @@ fun SearchBarRow(
         IconButton(
             onClick = onNavigateDown,
             enabled = searchMatchCount > 0,
-            modifier = Modifier.size(36.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Icon(
                 Icons.Filled.KeyboardArrowDown,
@@ -167,7 +167,7 @@ fun SearchBarRow(
                 modifier = Modifier.size(20.dp),
             )
         }
-        IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
             Icon(
                 Icons.Filled.Close,
                 contentDescription = stringResource(R.string.chat_close_search_desc),

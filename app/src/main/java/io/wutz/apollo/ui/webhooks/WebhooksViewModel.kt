@@ -16,6 +16,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,7 +104,7 @@ class WebhooksViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.webhooks_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.webhooks_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -138,7 +139,11 @@ class WebhooksViewModel(
                     _uiState.update {
                         it.copy(
                             enabled = originalEnabled,
-                            toastMessage = UiText.res(R.string.webhooks_msg_toggle_global_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.webhooks_msg_toggle_global_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -233,7 +238,7 @@ class WebhooksViewModel(
                     _uiState.update {
                         it.copy(
                             isActionRunning = false,
-                            createFormError = UiText.raw(result.error.message),
+                            createFormError = result.error.toUiText(),
                         )
                     }
                 }
@@ -278,7 +283,12 @@ class WebhooksViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.webhooks_msg_toggle_failed, name, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.webhooks_msg_toggle_failed,
+                                    name,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -318,10 +328,10 @@ class WebhooksViewModel(
                     _uiState.update {
                         it.copy(
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.webhooks_msg_delete_failed,
                                     target.name,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }

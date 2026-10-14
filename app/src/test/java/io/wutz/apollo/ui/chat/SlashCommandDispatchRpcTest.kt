@@ -46,6 +46,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import retrofit2.Response
 
@@ -62,129 +63,32 @@ import retrofit2.Response
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlashCommandDispatchRpcTest {
-    private val testDispatcher = StandardTestDispatcher()
-    private val mockEventsFlow = MutableSharedFlow<WsEvent>(extraBufferCapacity = 64)
-    private val mockConnectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
-    private lateinit var app: Application
-    private lateinit var fakeRepo: FakeChatPersistenceRepository
-    private var reqCount = 0
+    @get:Rule
+    val harness = ChatViewModelHarness()
+    private val testDispatcher get() = harness.testDispatcher
+    private val mockEventsFlow get() = harness.mockEventsFlow
+    private val mockConnectionStatus get() = harness.mockConnectionStatus
+    private val app get() = harness.app
+    private val fakeRepo get() = harness.fakeRepo
     private var sessionCreateRequestId: String? = null
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-        reqCount = 0
-        sessionCreateRequestId = null
-
-        mockkStatic(android.util.Log::class)
-        every { android.util.Log.d(any(), any()) } returns 0
-        every { android.util.Log.i(any(), any()) } returns 0
-        every { android.util.Log.w(any(), any<String>()) } returns 0
-        every { android.util.Log.e(any(), any(), any()) } returns 0
-
-        // NOTE: no mockkStatic(Dispatchers) here — a static Dispatchers mock
-        // bleeds JVM-wide and breaks later classes (the same poison removed
-        // from ProfileSwitchCoordinatorTest / ProfilesViewModelTest; CI
-        // 2026-08-06: this class's own static IO mock cross-wired
-        // COMMAND_DISPATCH captures in suite order). setMain alone is safe —
-        // the slash-dispatch send path is synchronous (no IO hop).
-        mockkObject(AuthManager)
-        // ChatModelSwitchDelegate.preloadModelOptions() reads pinned models
-        // when the catalog load succeeds; without this stub the spy falls
-        // through to the real AuthManager and throws "not initialized".
-        every { AuthManager.getPinnedModels() } returns emptyList()
-        // The delegate and the shared catalog store both collect this flow;
-        // park them on a never-emitting state so a later real-AuthManager
-        // emission cannot resume a stale Main-dispatched collector.
-        every { AuthManager.dataScopeFlow } returns MutableStateFlow<DataScope?>(null)
-        mockkObject(HermesWsClient)
-        mockkObject(ApiClient)
-        mockkObject(HermesDatabase)
-
-        // Fix #1437 CI: GatewayReady preloads the catalog; isolate both transports
-        // so background model discovery cannot outlive the AuthManager fixture.
-        val api = mockk<HermesApiService>()
-        every { ApiClient.hermesApi } returns api
-        coEvery { api.getModelOptions(any(), any()) } returns Response.success(ModelOptionsResponse(emptyList()))
-        coEvery { HermesWsClient.call(RpcMethods.MODEL_OPTIONS, any(), any(), any()) } returns
-            buildJsonObject { putJsonArray("providers") {} }
-
-        // ChatViewModel's init subscribes to ProfileSwitchCoordinator.switched
-        // on viewModelScope. Without mocking the singleton, every VM created
-        // here parks a collector on the REAL flow — when a later test class
-        // emits on it, the stale-Main resumption crashes (DispatchException,
-        // CI flakes). Stub it with a never-emitting mock flow (ChatViewModelTest
-        // pattern) so the collectors park harmlessly.
-        mockkObject(ProfileSwitchCoordinator)
-        every { ProfileSwitchCoordinator.switched } returns MutableSharedFlow<String>()
-        every { ProfileSwitchCoordinator.connectionSwitched } returns MutableSharedFlow<String>()
-
-        app = mockk(relaxed = true)
-        EnglishTestResources.install(app)
-        fakeRepo = FakeChatPersistenceRepository()
-
-        mockConnectionStatus.value = ConnectionStatus.DISCONNECTED
-
-        every { AuthManager.getToken() } returns "test-token"
-        every { AuthManager.getPinnedModels() } returns emptyList()
-        every { AuthManager.getBaseUrl() } returns "http://test.local/"
-        every { AuthManager.getSelectedProfileId() } returns null
-        every { AuthManager.getBusySendMode() } returns io.wutz.apollo.data.model.BusySendMode.CORRECT
-        every { AuthManager.isTypingEffectEnabled() } returns true
-        every { AuthManager.getTypingEffectDelayMs() } returns 30
-        every { AuthManager.isMessageStatsEnabled() } returns false
-        every { AuthManager.isUserMessageTokensEnabled() } returns true
-        every { AuthManager.isAssistantMessageTokensEnabled() } returns true
-        every { AuthManager.isTokensPerSecondEnabled() } returns true
-        every { AuthManager.isModelProviderShown() } returns false
-        every { AuthManager.isAutoReconnect() } returns false
-        every { AuthManager.isRestoreLastSession() } returns false
-        every { AuthManager.getLastOpenedSessionId() } returns null
-        every { AuthManager.setLastOpenedSessionId(any()) } returns Unit
-        every { AuthManager.clearLastOpenedSessionId() } returns Unit
-        every { HermesWsClient.events } returns mockEventsFlow
-        every { HermesWsClient.connectionStatus } returns mockConnectionStatus
-        every { HermesWsClient.connect() } answers {
-            mockConnectionStatus.value = ConnectionStatus.CONNECTING
-        }
-        every { HermesWsClient.disconnect() } returns Unit
-
+        // session.create may not be the third request here; remember its id for createViewModelWithSession.
         every { HermesWsClient.send(any(), any(), any()) } answers {
-            reqCount++
-            val id = "req-id-$reqCount"
+            harness.reqCount++
+            val id = "req-id-${harness.reqCount}"
             if (arg<String>(0) == WsMethods.SESSION_CREATE) {
                 sessionCreateRequestId = id
             }
             arg<((String) -> Unit)?>(2)?.invoke(id)
             id
         }
-        every { HermesWsClient.sendMessage(any(), any(), any(), any()) } answers {
-            reqCount++
-            val id = "req-msg-$reqCount"
-            arg<((String) -> Unit)?>(2)?.invoke(id)
-            id
-        }
-        // Catch-all for tests that don't stub request() explicitly: the real
-        // implementation leaks a 120s timeout job on the singleton's real-IO
-        // wsScope that fires after unmockkAll and crashes a later test with
-        // MockK's "can't find stub". Mirror the real send() delegation (so
-        // send-based verifications still see the call) but skip the timer.
-        // Must COMPLETE (Unit): a never-completing deferred freezes the VM's
-        // event collector at the SESSION_CREATE-triggered session.usage await,
-        // and that completion then races the per-test capture stubs — the slot
-        // can end up holding session.usage instead of command.dispatch (CI run
-        // 31137581335 on 4645a2b: slash-focus flake).
-        // Specific per-test request() stubs registered later take precedence.
-        every { HermesWsClient.request(any(), any(), any(), any()) } answers {
-            HermesWsClient.send(arg(0), arg(1)) {}
-            CompletableDeferred<Any?>(Unit)
-        }
-    }
-
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
-        unmockkAll()
+        // Fix #1437 CI: GatewayReady preloads the catalog; keep background model discovery empty.
+        coEvery { harness.mockApi.getModelOptions(any(), any()) } returns
+            Response.success(ModelOptionsResponse(emptyList()))
+        coEvery { HermesWsClient.call(RpcMethods.MODEL_OPTIONS, any(), any(), any()) } returns
+            buildJsonObject { putJsonArray("providers") {} }
     }
 
     private suspend fun TestScope.createViewModelWithSession(): Pair<ChatViewModel, String> {
@@ -196,6 +100,7 @@ class SlashCommandDispatchRpcTest {
                 FakeSlashUsageStore(),
                 ioDispatcher = testDispatcher,
                 sendStore = ChatSendStore(),
+                timing = ChatTimingConfig.TEST,
             )
         advanceUntilIdle()
         mockConnectionStatus.value = ConnectionStatus.CONNECTED

@@ -14,6 +14,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,7 +75,7 @@ class McpServersViewModelTest {
         val state = loaded().uiState.value
 
         assertFalse(state.isLoading)
-        assertEquals(UiText.res(R.string.mcp_msg_load_failed, mapHttpError(403).message), state.errorMessage)
+        assertEquals(UiText.res(R.string.mcp_msg_load_failed, mapHttpError(403).toUiText()), state.errorMessage)
     }
 
     @Test
@@ -113,7 +114,7 @@ class McpServersViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.mcp_msg_delete_failed, mapHttpError(500).message),
+            UiText.failure(R.string.mcp_msg_delete_failed, mapHttpError(500).toUiText()),
             vm.uiState.value.toastMessage,
         )
         assertEquals(listOf(server), vm.uiState.value.servers)

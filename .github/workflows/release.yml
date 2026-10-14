@@ -1,5 +1,15 @@
 name: Release
 
+# Three jobs so the signing key never shares a job with a write token:
+#   verify  — checks the tag (SemVer, on main, green CI Summary) and extracts the
+#             CHANGELOG section that becomes the release notes. No secrets.
+#   build   — the only job with the signing secrets (GitHub environment
+#             "release"); builds, checks the signer and the version, deletes
+#             the keystore, uploads the APK. Read-only token.
+#   publish — no secrets; checksums, build provenance and the GitHub release.
+# A manual run must be dispatched on the tag itself so the environment's tag
+# rule applies: gh workflow run release.yml --ref v1.2.3 -f tag=v1.2.3
+
 on:
   push:
     tags:
@@ -7,25 +17,138 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v1.0.0)"
+        description: "Existing release tag on main (e.g. v1.0.0); dispatch the run on that tag"
         required: true
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  packages: write
+permissions: {}
 
 jobs:
-  # ── Build release APK ─────────────────────────────────────────────────
-  build-release:
-    name: Build Release APK
+  verify:
+    name: Verify tag
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      code: ${{ steps.version.outputs.code }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      sha: ${{ steps.guard.outputs.sha }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate tag and derive version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG="$INPUT_TAG"
+            if [[ "$GITHUB_REF" != "refs/tags/$TAG" ]]; then
+              echo "::error::Dispatch the run on the tag itself: gh workflow run release.yml --ref $TAG -f tag=$TAG"
+              exit 1
+            fi
+          else
+            TAG="$GITHUB_REF_NAME"
+          fi
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not vMAJOR.MINOR.PATCH[-prerelease]"
+            exit 1
+          fi
+          MAJOR=$((10#${BASH_REMATCH[1]}))
+          MINOR=$((10#${BASH_REMATCH[2]}))
+          PATCH=$((10#${BASH_REMATCH[3]}))
+          # versionCode = MAJOR * 10000 + MINOR * 100 + PATCH only stays monotonic below 100.
+          if (( MINOR > 99 || PATCH > 99 )); then
+            echo "::error::MINOR and PATCH must be below 100 for the versionCode scheme (BUILD.md)"
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          PRERELEASE=false
+          [[ "$VERSION" == *-* ]] && PRERELEASE=true
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "code=$CODE"
+            echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
+          echo "Release: tag=$TAG version=$VERSION code=$CODE prerelease=$PRERELEASE"
+
+      - name: Checkout tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ steps.version.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Only commits that are on main and passed CI are released. CI may still be
+      # running when the tag is pushed right after a merge, so wait for it.
+      - name: Require the tag commit on main with a green CI Summary
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          SHA="$(git rev-parse "refs/tags/$TAG^{commit}")"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::$TAG ($SHA) is not on main"
+            exit 1
+          fi
+          for _ in $(seq 1 45); do
+            RUNS="$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs?check_name=CI%20Summary&per_page=100" \
+              --jq '[.check_runs[] | {status, conclusion}]')"
+            if jq -e 'any(.[]; .conclusion == "success")' <<< "$RUNS" > /dev/null; then
+              echo "CI Summary passed for $SHA"
+              exit 0
+            fi
+            if jq -e 'length > 0 and all(.[]; .status == "completed")' <<< "$RUNS" > /dev/null; then
+              echo "::error::CI Summary did not pass for $SHA ($RUNS). Re-run CI on main or tag a green commit."
+              exit 1
+            fi
+            echo "Waiting for CI Summary on $SHA: $RUNS"
+            sleep 60
+          done
+          echo "::error::No finished CI Summary for $SHA after 45 minutes"
+          exit 1
+
+      - name: Extract release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: scripts/release-notes.sh "$VERSION" > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  build:
+    name: Build signed APK
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.verify.outputs.tag }}
+      VERSION_NAME: ${{ needs.verify.outputs.version }}
+      VERSION_CODE: ${{ needs.verify.outputs.code }}
+    steps:
+      - name: Checkout verified commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
 
       - name: Set up JDK 21
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -37,34 +160,6 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-
-      - name: Determine version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAG="${{ github.event.inputs.tag }}"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          # Strip leading 'v' for versionName
-          VERSION="${TAG#v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          # versionCode: SemVer MAJOR * 10000 + MINOR * 100 + PATCH (e.g. 2.0.0 -> 20000, > 1.31.0's 1310)
-          BASE_VERSION="${VERSION%%-*}"
-          IFS='.' read -r MAJOR MINOR PATCH _ <<< "$BASE_VERSION"
-          MAJOR="${MAJOR:-0}"
-          MINOR="${MINOR:-0}"
-          PATCH="${PATCH:-0}"
-          CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
-          echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          if [[ "$VERSION" == *"-"* ]]; then
-            PRERELEASE="true"
-          else
-            PRERELEASE="false"
-          fi
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
-          echo "Release: tag=$TAG version=$VERSION code=$CODE prerelease=$PRERELEASE"
 
       - name: Require release signing secrets
         env:
@@ -80,54 +175,118 @@ jobs:
             fi
           done
 
+      # Outside the workspace, so no later step can upload or cache it.
       - name: Decode release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > apollo-release.keystore.jks
-          ls -lh apollo-release.keystore.jks
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/apollo-release.keystore.jks"
+          ls -lh "$RUNNER_TEMP/apollo-release.keystore.jks"
 
-      - name: Build Release APK
+      # One retry after 60 s rides out transient dependency download failures.
+      - name: Build release APK
         env:
-          VERSION_NAME: ${{ steps.version.outputs.version }}
-          VERSION_CODE: ${{ steps.version.outputs.code }}
-          KEYSTORE_PATH: ${{ github.workspace }}/apollo-release.keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease \
-            -PversionName="$VERSION_NAME" \
-            -PversionCode="$VERSION_CODE"
+          export KEYSTORE_PATH="$RUNNER_TEMP/apollo-release.keystore.jks"
+          for attempt in 1 2; do
+            if ./gradlew assembleRelease -PversionName="$VERSION_NAME" -PversionCode="$VERSION_CODE"; then
+              exit 0
+            fi
+            if [[ "$attempt" == 1 ]]; then
+              echo "::warning::Gradle build failed, retrying once in 60 s"
+              sleep 60
+            fi
+          done
+          exit 1
 
-      - name: Rename APK and generate version file
+      - name: Delete release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/apollo-release.keystore.jks"
+
+      - name: Verify signer and version
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          EXPECTED="$(grep -v '^#' .github/release-cert.sha256 | tr -d '[:space:]')"
+          SIGNERS="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" \
+            | awk '/Signer.*certificate SHA-256 digest:/ { print $NF }' | sort -u)"
+          if [[ "$SIGNERS" != "$EXPECTED" ]]; then
+            echo "::error::APK signer '$SIGNERS' does not match .github/release-cert.sha256 ($EXPECTED)"
+            exit 1
+          fi
+          BADGING="$("$BUILD_TOOLS/aapt2" dump badging "$APK" | sed -n 1p)"
+          echo "$BADGING"
+          if [[ "$BADGING" != *"name='io.wutz.apollo' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'"* ]]; then
+            echo "::error::APK badging does not show io.wutz.apollo $VERSION_NAME ($VERSION_CODE)"
+            exit 1
+          fi
+
+      - name: Rename APK
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/release/app-release.apk \
-            release/apollo-${{ steps.version.outputs.tag }}.apk
-          # Write version.txt for F-Droid to extract version info
-          cat > release/version.txt <<EOF
-          versionName=${{ steps.version.outputs.version }}
-          versionCode=${{ steps.version.outputs.code }}
-          EOF
+          cp app/build/outputs/apk/release/app-release.apk "release/apollo-$TAG.apk"
           ls -lh release/
 
-      - name: Upload Release Artifacts
+      - name: Upload release APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apollo-release
-          path: release/*.apk
+          path: release/apollo-${{ needs.verify.outputs.tag }}.apk
+          if-no-files-found: error
           retention-days: 90
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+  publish:
+    name: Publish GitHub release
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ needs.verify.outputs.tag }}
+      PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+    steps:
+      - name: Download release APK
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Apollo ${{ steps.version.outputs.tag }} — by wutz.io
-          generate_release_notes: true
-          files: |
-            release/apollo-${{ steps.version.outputs.tag }}.apk
-            release/version.txt
-          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+          name: apollo-release
+          path: release
+
+      - name: Download release notes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-notes
+          path: notes
+
+      - name: Write SHA256SUMS
+        working-directory: release
+        run: |
+          sha256sum "apollo-$TAG.apk" > SHA256SUMS
+          cat SHA256SUMS
+
+      # Lets users run: gh attestation verify apollo-<tag>.apk -R wutz-io/apollo-hermes-android
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/apollo-${{ needs.verify.outputs.tag }}.apk
+
+      # The release body is the CHANGELOG section; the in-app updater shows it.
+      - name: Create or update the GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          FILES=("release/apollo-$TAG.apk" release/SHA256SUMS)
+          TITLE="Apollo $TAG — by wutz.io"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file notes/release-notes.md --prerelease="$PRERELEASE"
+          else
+            gh release create "$TAG" "${FILES[@]}" --verify-tag --title "$TITLE" \
+              --notes-file notes/release-notes.md --prerelease="$PRERELEASE"
+          fi

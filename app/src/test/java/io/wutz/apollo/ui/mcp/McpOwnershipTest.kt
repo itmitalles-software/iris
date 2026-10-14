@@ -165,25 +165,25 @@ class McpOwnershipTest {
                 .single()
                 .enabled,
         )
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
         coEvery { api.deleteMcpServer(any()) } returns conflictResponse()
         vm.deleteServer(config.name)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
         coEvery { api.replaceMcpServers(any()) } coAnswers { conflictResponse() }
         vm.updateEnvKey("KEY")
         vm.addEnvVar(config.name)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
         vm.clearToast()
         vm.removeEnvVar(config.name, "KEY")
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
         coEvery { api.authMcpServer(any()) } returns conflictResponse()
         vm.clearToast()
         vm.startMcpOAuthFlow(config) { error("Must not open browser") }
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -195,7 +195,7 @@ class McpOwnershipTest {
         vm.addEnvVar(config.name)
         dispatcher.scheduler.advanceUntilIdle()
         coVerify(exactly = 0) { api.replaceMcpServers(any()) }
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
     }
 
     @Test
@@ -207,9 +207,9 @@ class McpOwnershipTest {
         dispatcher.scheduler.advanceUntilIdle()
         coVerify(exactly = 0) { api.replaceMcpServers(any()) }
         assertEquals(
-            UiText.res(
+            UiText.failure(
                 R.string.mcp_msg_env_remove_failed,
-                "An unexpected error occurred: Server is not editable in the saved configuration",
+                UiText.res(R.string.network_error_unexpected, "Server is not editable in the saved configuration"),
             ),
             vm.uiState.value.toastMessage,
         )
@@ -274,7 +274,7 @@ class McpOwnershipTest {
         vm.updateAddServerUrl("https://example.com/mcp")
         vm.submitAddServer()
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(UiText.raw(conflict), vm.uiState.value.toastMessage)
+        assertEquals(UiText.Failure(UiText.raw(conflict)), vm.uiState.value.toastMessage)
         assertFalse(vm.uiState.value.addingServer)
         assertTrue(vm.uiState.value.showAddForm)
         assertEquals(owned.name, vm.uiState.value.addServerName)

@@ -40,8 +40,22 @@ sealed interface UiText {
         val args: List<Any> = listOf(count),
     ) : UiText
 
+    /**
+     * A message that reports a failure. It reads like [text]; [ToastEffect] shows it longer, in the
+     * error colors and with a copy action.
+     */
+    data class Failure(
+        val text: UiText,
+    ) : UiText
+
     companion object {
         fun raw(text: String): UiText = Raw(text)
+
+        /** A failure message from a string resource; see [Failure]. */
+        fun failure(
+            @StringRes id: Int,
+            vararg args: Any,
+        ): UiText = Failure(Resource(id, args.toList()))
 
         fun res(
             @StringRes id: Int,
@@ -74,6 +88,10 @@ fun UiText.resolve(resources: Resources): String =
 
         is UiText.Plural -> {
             resources.getQuantityString(id, count, *resolveArgs(args, resources))
+        }
+
+        is UiText.Failure -> {
+            text.resolve(resources)
         }
     }
 

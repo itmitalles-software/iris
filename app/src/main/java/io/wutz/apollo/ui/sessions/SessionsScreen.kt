@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PushPin
@@ -74,12 +75,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -104,6 +108,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.ChatScreen
 import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
+import io.wutz.apollo.data.model.ProjectInfo
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionTreeItem
 import io.wutz.apollo.data.model.UNTITLED_SESSION_TITLE
@@ -121,6 +126,7 @@ import io.wutz.apollo.ui.common.StatCard
 import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
+import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.common.listItemSpacing
 import io.wutz.apollo.ui.sessions.components.BranchRow
@@ -133,6 +139,8 @@ import io.wutz.apollo.ui.sessions.components.SessionsDialogs
 import io.wutz.apollo.ui.sessions.components.SessionsStatsRow
 import io.wutz.apollo.ui.sessions.components.automationGroups
 import io.wutz.apollo.ui.sessions.components.localizedSourceLabel
+import io.wutz.apollo.ui.sessions.transfer.SessionTransferActions
+import io.wutz.apollo.ui.sessions.transfer.rememberSessionTransfer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
@@ -142,45 +150,6 @@ import kotlinx.coroutines.flow.first
  */
 private const val AUTO_LOAD_THRESHOLD = 6
 private const val AGE_TICK_MS = 60_000L
-
-/**
- * Builds an annotated string with search term highlighting.
- */
-private fun highlightText(
-    text: String,
-    query: String,
-    highlightBackground: Color,
-    highlightForeground: Color,
-): AnnotatedString =
-    buildAnnotatedString {
-        if (query.isBlank()) {
-            append(text)
-            return@buildAnnotatedString
-        }
-        val lowerText = text.lowercase()
-        val lowerQuery = query.lowercase()
-        var currentIndex = 0
-        while (currentIndex < text.length) {
-            val matchIndex = lowerText.indexOf(lowerQuery, currentIndex)
-            if (matchIndex == -1) {
-                append(text.substring(currentIndex))
-                break
-            }
-            if (matchIndex > currentIndex) {
-                append(text.substring(currentIndex, matchIndex))
-            }
-            withStyle(
-                SpanStyle(
-                    background = highlightBackground,
-                    color = highlightForeground,
-                    fontWeight = FontWeight.Bold,
-                ),
-            ) {
-                append(text.substring(matchIndex, matchIndex + query.length))
-            }
-            currentIndex = matchIndex + query.length
-        }
-    }
 
 internal fun displayedSessions(state: SessionsUiState): List<SessionTreeItem> =
     if (state.isSearchMode) {
@@ -204,7 +173,105 @@ internal fun displayedSessions(state: SessionsUiState): List<SessionTreeItem> =
         flattenSessionsWithBranches(state.displaySessions)
     }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * Every user action of the History screen. [SessionsScreen] wires them to [SessionsViewModel] and
+ * [NavigationController]; the no-op defaults let UI tests pass only the callbacks they check.
+ */
+@Immutable
+internal class SessionsScreenActions(
+    val onRefresh: () -> Unit = {},
+    val onRetryLoad: () -> Unit = {},
+    val onNewChat: () -> Unit = {},
+    val onNewChatInProject: (ProjectInfo) -> Unit = {},
+    val onStartChat: () -> Unit = {},
+    val onOpenSession: (sessionId: String) -> Unit = {},
+    val onToggleShowArchived: () -> Unit = {},
+    val onToggleShowHidden: () -> Unit = {},
+    val onSelectSection: (HistorySection) -> Unit = {},
+    val onSelectSourceFilter: (source: String) -> Unit = {},
+    val onToggleGroupByProject: () -> Unit = {},
+    val onSelectProjectFilter: (key: String) -> Unit = {},
+    val onSearchQueryChange: (String) -> Unit = {},
+    val onLoadMore: () -> Unit = {},
+    val onLoadMoreSearch: () -> Unit = {},
+    val onTogglePinnedExpanded: () -> Unit = {},
+    val onToggleProjectGroup: (key: String) -> Unit = {},
+    val onToggleSessionSelection: (sessionId: String) -> Unit = {},
+    val onStartSelection: (sessionId: String) -> Unit = {},
+    val onSelectAll: (sessionIds: Set<String>) -> Unit = {},
+    val onClearSelection: () -> Unit = {},
+    val onTogglePin: (sessionId: String) -> Unit = {},
+    val onToggleArchive: (sessionId: String) -> Unit = {},
+    val onOpenRename: (sessionId: String, currentTitle: String) -> Unit = { _, _ -> },
+    val onRenameDraftChange: (String) -> Unit = {},
+    val onRename: (sessionId: String, title: String) -> Unit = { _, _ -> },
+    val onDismissRename: () -> Unit = {},
+    val onRequestDelete: (sessionId: String) -> Unit = {},
+    val onConfirmDelete: () -> Unit = {},
+    val onDismissDelete: () -> Unit = {},
+    val onRequestBulkDelete: () -> Unit = {},
+    val onConfirmBulkDelete: () -> Unit = {},
+    val onDismissBulkDelete: () -> Unit = {},
+    val onRequestEmptyCleanup: () -> Unit = {},
+    val onConfirmEmptyCleanup: () -> Unit = {},
+    val onDismissEmptyCleanup: () -> Unit = {},
+    val onShowPruneDialog: () -> Unit = {},
+    val onPrune: (days: Int) -> Unit = {},
+    val onDismissPrune: () -> Unit = {},
+    val onImportConversation: () -> Unit = {},
+    val onShareSession: (sessionId: String) -> Unit = {},
+    val onExportSession: (sessionId: String, title: String?) -> Unit = { _, _ -> },
+)
+
+private fun SessionsViewModel.screenActions(transfer: State<SessionTransferActions>): SessionsScreenActions =
+    SessionsScreenActions(
+        onRefresh = { loadSessions(forceRefresh = true) },
+        onRetryLoad = { loadSessions() },
+        onNewChat = { NavigationController.openNewChat() },
+        onNewChatInProject = { project -> NavigationController.openNewChat(project) },
+        onStartChat = { NavigationController.navigateTo(ChatScreen) },
+        onOpenSession = { sessionId -> NavigationController.openChatSession(sessionId) },
+        onToggleShowArchived = ::toggleShowArchived,
+        onToggleShowHidden = ::toggleShowHidden,
+        onSelectSection = ::selectSection,
+        onSelectSourceFilter = { source -> selectSourceFilter(source) },
+        onToggleGroupByProject = ::toggleGroupByProject,
+        onSelectProjectFilter = { key -> selectProjectFilter(key) },
+        onSearchQueryChange = ::setSearchQuery,
+        onLoadMore = ::loadMore,
+        onLoadMoreSearch = ::loadMoreSearch,
+        onTogglePinnedExpanded = ::togglePinnedExpanded,
+        onToggleProjectGroup = ::toggleProjectGroup,
+        onToggleSessionSelection = ::toggleSessionSelection,
+        onStartSelection = { sessionId ->
+            toggleSelecting()
+            toggleSessionSelection(sessionId)
+        },
+        onSelectAll = { sessionIds -> selectAll(sessionIds) },
+        onClearSelection = ::clearSelection,
+        onTogglePin = ::togglePin,
+        onToggleArchive = ::toggleArchive,
+        onOpenRename = ::openRenameDialog,
+        onRenameDraftChange = ::updateRenameDraft,
+        onRename = ::renameSession,
+        onDismissRename = ::closeRenameDialog,
+        onRequestDelete = ::requestDeleteSession,
+        onConfirmDelete = ::confirmDeleteSession,
+        onDismissDelete = ::cancelDeleteSession,
+        onRequestBulkDelete = ::requestBulkDelete,
+        onConfirmBulkDelete = ::confirmBulkDelete,
+        onDismissBulkDelete = ::cancelBulkDelete,
+        onRequestEmptyCleanup = ::requestEmptyCleanup,
+        onConfirmEmptyCleanup = ::confirmEmptyCleanup,
+        onDismissEmptyCleanup = ::hideEmptyCleanupDialog,
+        onShowPruneDialog = ::showPruneDialog,
+        onPrune = ::pruneSessions,
+        onDismissPrune = ::hidePruneDialog,
+        onImportConversation = { transfer.value.importFile() },
+        onShareSession = { sessionId -> transfer.value.share(sessionId) },
+        onExportSession = { sessionId, title -> transfer.value.export(sessionId, title) },
+    )
+
 @Composable
 fun SessionsScreen(
     modifier: Modifier = Modifier,
@@ -212,11 +279,47 @@ fun SessionsScreen(
     viewModel: SessionsViewModel = viewModel { SessionsViewModel() },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val spacing = LocalSpacing.current
-    val resources = LocalResources.current
+    val sessionTransfer = rememberSessionTransfer(onImported = { viewModel.loadSessions(forceRefresh = true) })
+    val currentTransfer = rememberUpdatedState(sessionTransfer)
+    val actions = remember(viewModel) { viewModel.screenActions(currentTransfer) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadSessions()
+    }
+
+    DisposableEffect(Unit) {
+        viewModel.startLiveStatusTracking()
+        onDispose {
+            viewModel.stopLiveStatusTracking()
+        }
+    }
+
+    // Toast effect
+    ToastEffect(
+        toastMessage = state.toastMessage,
+        onClearToast = { viewModel.clearToast() },
+        onUndo = state.toastUndo?.let { undo -> { viewModel.undo(undo) } },
+    )
+
+    SessionsScreenContent(
+        state = state,
+        actions = actions,
+        modifier = modifier,
+        onOpenDrawer = onOpenDrawer,
+        importBusy = sessionTransfer.isBusy,
+    )
+}
+
+/** Stateless History screen: renders [state] and reports every interaction through [actions]. */
+@Composable
+internal fun SessionsScreenContent(
+    state: SessionsUiState,
+    actions: SessionsScreenActions,
+    modifier: Modifier = Modifier,
+    onOpenDrawer: (() -> Unit)? = null,
+    importBusy: Boolean = false,
+) {
     val statusColors = LocalHermesStatusColors.current
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
 
     var pruneDays by remember { mutableStateOf("7") }
     var expandedAutomationGroups by remember { mutableStateOf(emptySet<String>()) }
@@ -235,29 +338,7 @@ fun SessionsScreen(
             displayedSessions(state)
         }
 
-    val pinnedItems =
-        remember(
-            state.isSearchMode,
-            state.pinnedSessions,
-            state.showHidden,
-        ) {
-            if (state.isSearchMode) {
-                emptyList()
-            } else {
-                flattenSessionsWithBranches(state.pinnedSessions, preserveOrder = true)
-            }
-        }
-
-    val projectGroups =
-        remember(sessionsToDisplay, state.projects, state.groupByProject) {
-            if (state.groupByProject) groupSessionsByProject(sessionsToDisplay, state.projects) else emptyList()
-        }
-
-    val noProjectLabel = stringResource(R.string.sessions_project_none)
     val hasSelection = state.selectedIds.isNotEmpty()
-    val loadedMessageCount = state.sessions.sumOf { it.message_count ?: 0 }
-    val automationSessionGroups = remember(sessionsToDisplay) { automationGroups(sessionsToDisplay.map { it.session }) }
-    val sessionItemsById = remember(sessionsToDisplay) { sessionsToDisplay.associateBy { it.session.id } }
     val visibleSessionIds =
         remember(sessionsToDisplay) {
             sessionsToDisplay.mapTo(linkedSetOf()) { it.session.id }
@@ -272,254 +353,37 @@ fun SessionsScreen(
             bottom = if (hasSelection) 72.dp else 8.dp,
         )
 
-    LaunchedEffect(Unit) {
-        viewModel.loadSessions()
-    }
-
-    DisposableEffect(Unit) {
-        viewModel.startLiveStatusTracking()
-        onDispose {
-            viewModel.stopLiveStatusTracking()
-        }
-    }
-
-    // Toast effect
-    ToastEffect(
-        toastMessage = state.toastMessage,
-        onClearToast = { viewModel.clearToast() },
+    SessionsDialogs(
+        state = state,
+        pruneDays = pruneDays,
+        onPruneDaysChange = { pruneDays = it },
+        statusColors = statusColors,
+        onConfirmEmptyCleanup = actions.onConfirmEmptyCleanup,
+        onDismissEmptyCleanup = actions.onDismissEmptyCleanup,
+        onConfirmPrune = actions.onPrune,
+        onDismissPrune = actions.onDismissPrune,
+        onConfirmDeleteSession = actions.onConfirmDelete,
+        onDismissDeleteSession = actions.onDismissDelete,
+        onConfirmBulkDelete = actions.onConfirmBulkDelete,
+        onDismissBulkDelete = actions.onDismissBulkDelete,
+        onRenameSession = actions.onRename,
+        onRenameDraftChange = actions.onRenameDraftChange,
+        onDismissRename = actions.onDismissRename,
     )
-
-    // Empty-session cleanup dialog (issue #787)
-    if (state.showEmptyCleanupDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.hideEmptyCleanupDialog() },
-            title = { Text(stringResource(R.string.sessions_empty_cleanup_title)) },
-            text = {
-                Text(
-                    pluralStringResource(
-                        R.plurals.sessions_empty_cleanup_message,
-                        state.emptyCount,
-                        state.emptyCount,
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.confirmEmptyCleanup() }) {
-                    if (state.isCleaningEmpty) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(R.string.sessions_empty_cleanup_confirm))
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.hideEmptyCleanupDialog() }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    // Prune dialog
-    if (state.showPruneDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.hidePruneDialog() },
-            title = { Text(stringResource(R.string.sessions_prune_title)) },
-            text = {
-                Column {
-                    Text(stringResource(R.string.sessions_prune_desc))
-                    Spacer(modifier = Modifier.height(spacing.md))
-                    OutlinedTextField(
-                        value = pruneDays,
-                        onValueChange = { pruneDays = it.filter { c -> c.isDigit() } },
-                        label = { Text(stringResource(R.string.sessions_prune_days_label)) },
-                        placeholder = { Text("7") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions =
-                            KeyboardActions(
-                                onDone = {
-                                    val days = pruneDays.toIntOrNull()
-                                    if (days != null && days > 0) viewModel.pruneSessions(days)
-                                },
-                            ),
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val days = pruneDays.toIntOrNull()
-                        if (days != null && days > 0) viewModel.pruneSessions(days)
-                    },
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = statusColors.error,
-                        ),
-                ) {
-                    Text(stringResource(R.string.sessions_prune_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.hidePruneDialog() }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    // Single-session delete confirmation dialog
-    if (state.sessionToDeleteConfirm != null) {
-        val sessionToDelete = state.sessionToDeleteConfirm
-        val sessionTitle =
-            state.sessions
-                .find { it.id == sessionToDelete }
-                ?.title
-                ?.takeIf { it.isNotBlank() }
-                ?: state.searchResults
-                    .find { it.session_id == sessionToDelete }
-                    ?.snippet
-                    ?.let(::cleanSearchSnippet)
-                    ?.take(80)
-                ?: stringResource(R.string.history_untitled)
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelDeleteSession() },
-            title = { Text(stringResource(R.string.sessions_delete_title)) },
-            text = {
-                Text(stringResource(R.string.sessions_delete_message, sessionTitle))
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmDeleteSession() },
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = statusColors.error,
-                        ),
-                ) {
-                    Text(stringResource(R.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelDeleteSession() }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    // Bulk delete confirmation dialog
-    if (state.showBulkDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelBulkDelete() },
-            title = { Text(stringResource(R.string.sessions_bulk_delete_title)) },
-            text = {
-                Text(
-                    pluralStringResource(
-                        R.plurals.sessions_bulk_delete_message,
-                        state.selectedIds.size,
-                        state.selectedIds.size,
-                    ),
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmBulkDelete() },
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = statusColors.error,
-                        ),
-                ) {
-                    Text(stringResource(R.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.cancelBulkDelete() }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
-    // Single-session rename dialog (issue #785) — opened from the card's
-    // hold menu; PATCH /api/sessions/{id} with {title}.
-    state.renamingSessionId?.let { sessionId ->
-        AlertDialog(
-            onDismissRequest = { viewModel.closeRenameDialog() },
-            title = { Text(stringResource(R.string.sessions_rename_title)) },
-            text = {
-                OutlinedTextField(
-                    value = state.renameDraft,
-                    onValueChange = { viewModel.updateRenameDraft(it) },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.sessions_rename_hint)) },
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.renameSession(sessionId, state.renameDraft) },
-                    enabled = state.renameDraft.isNotBlank(),
-                ) {
-                    Text(stringResource(R.string.sessions_action_rename))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.closeRenameDialog() }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
 
     HermesScaffold(
         title = { Text(stringResource(R.string.screen_history)) },
         navigationIcon = onOpenDrawer?.let { NavIcon.Menu(it) },
         isRefreshing = state.isLoading,
-        onRefresh = { viewModel.loadSessions(forceRefresh = true) },
+        onRefresh = actions.onRefresh,
         actions = {
-            IconButton(
-                onClick = { NavigationController.openNewChat() },
-                modifier = Modifier.testTag("sessions_action_new_chat"),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.content_desc_new_chat),
-                )
-            }
-            IconButton(
-                onClick = { viewModel.toggleShowArchived() },
-                modifier = Modifier.testTag("sessions_action_toggle_archived"),
-            ) {
-                Icon(
-                    imageVector = if (state.showArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-                    contentDescription =
-                        if (state.showArchived) {
-                            stringResource(R.string.sessions_hide_archived)
-                        } else {
-                            stringResource(R.string.sessions_show_archived)
-                        },
-                )
-            }
-            if (state.hasHiddenSessions) {
-                IconButton(
-                    onClick = { viewModel.toggleShowHidden() },
-                    modifier = Modifier.testTag("sessions_action_toggle_hidden"),
-                ) {
-                    Icon(
-                        imageVector =
-                            if (state.showHidden) {
-                                Icons.Filled.VisibilityOff
-                            } else {
-                                Icons.Filled.Visibility
-                            },
-                        contentDescription =
-                            if (state.showHidden) {
-                                stringResource(R.string.sessions_hide_hidden)
-                            } else {
-                                stringResource(R.string.sessions_show_hidden)
-                            },
-                    )
-                }
-            }
+            SessionsTopBarActions(
+                showArchived = state.showArchived,
+                hasHiddenSessions = state.hasHiddenSessions,
+                showHidden = state.showHidden,
+                importBusy = importBusy,
+                actions = actions,
+            )
         },
         modifier = modifier,
     ) {
@@ -529,594 +393,34 @@ fun SessionsScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Prune can take a while on large histories — show it's working.
             if (state.isPruning) {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = spacing.md, vertical = spacing.sm)
-                            .testTag("sessions_pruning_indicator"),
-                    verticalArrangement = Arrangement.spacedBy(spacing.xs),
-                ) {
-                    Text(
-                        text = stringResource(R.string.sessions_pruning),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
+                SessionsPruningIndicator()
             }
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.md, vertical = spacing.sm),
-                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-            ) {
-                FilterChip(
-                    selected = state.section == HistorySection.CONVERSATIONS,
-                    onClick = { viewModel.selectSection(HistorySection.CONVERSATIONS) },
-                    label = { Text(stringResource(R.string.sessions_tab_conversations)) },
-                    modifier = Modifier.testTag("history_tab_conversations"),
-                )
-                FilterChip(
-                    selected = state.section == HistorySection.AUTOMATIONS,
-                    onClick = { viewModel.selectSection(HistorySection.AUTOMATIONS) },
-                    label = { Text(stringResource(R.string.sessions_tab_automations)) },
-                    modifier = Modifier.testTag("history_tab_automations"),
-                )
-            }
-
-            // Source chips: hidden until a loaded row actually carries that source.
-            val sources = state.availableSources
-            if (sources.size > 1) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().testTag("history_source_chips"),
-                    contentPadding = PaddingValues(horizontal = spacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    items(sources, key = { it }) { source ->
-                        FilterChip(
-                            selected = state.activeSourceFilter == source,
-                            onClick = { viewModel.selectSourceFilter(source) },
-                            label = { Text(localizedSourceLabel(source)) },
-                            modifier = Modifier.testTag("history_source_chip_$source"),
-                        )
-                    }
-                }
-            }
-
-            // Project chips (issue #1526): only for projects present in the rows currently shown.
-            val projectChoices = state.availableProjects
-            if (state.section == HistorySection.CONVERSATIONS && projectChoices.size > 1) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().testTag("history_project_chips"),
-                    contentPadding = PaddingValues(horizontal = spacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    item(key = "group_toggle") {
-                        FilterChip(
-                            selected = state.groupByProject,
-                            onClick = { viewModel.toggleGroupByProject() },
-                            label = { Text(stringResource(R.string.sessions_group_by_project)) },
-                            modifier = Modifier.testTag("history_group_by_project"),
-                        )
-                    }
-                    items(projectChoices, key = { "project_${it.key}" }) { choice ->
-                        FilterChip(
-                            selected = state.activeProjectFilter == choice.key,
-                            onClick = { viewModel.selectProjectFilter(choice.key) },
-                            label = {
-                                Text(
-                                    if (choice.key == NO_PROJECT_KEY) {
-                                        stringResource(R.string.sessions_project_none)
-                                    } else {
-                                        choice.key
-                                    },
-                                )
-                            },
-                            modifier = Modifier.testTag("history_project_chip_${choice.key}"),
-                        )
-                    }
-                }
-            }
-
-            // ── Search + bulk toggle (always visible) ─────────────
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.md, vertical = spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SearchBar(
-                    query = state.searchQuery,
-                    onQueryChange = { viewModel.setSearchQuery(it) },
-                    placeholder = stringResource(R.string.sessions_search_placeholder),
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(modifier = Modifier.width(spacing.sm))
-                // This API operates on all history, so do not present it as scoped
-                // to the Automations tab.
-                if (state.section == HistorySection.CONVERSATIONS) {
-                    BadgedBox(
-                        badge = {
-                            if (state.emptyCount > 0) {
-                                Badge { Text("${state.emptyCount}") }
-                            }
-                        },
-                    ) {
-                        FilledTonalButton(
-                            onClick = { viewModel.requestEmptyCleanup() },
-                            enabled = state.emptyCount > 0,
-                            contentPadding = PaddingValues(horizontal = spacing.md, vertical = 8.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.DeleteSweep,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(spacing.xs))
-                            Text(stringResource(R.string.sessions_empty_cleanup_desc))
-                        }
-                    }
-                }
-            }
+            SessionsFilterChips(state = state, actions = actions)
+            SessionsSearchRow(
+                searchQuery = state.searchQuery,
+                section = state.section,
+                emptyCount = state.emptyCount,
+                onSearchQueryChange = actions.onSearchQueryChange,
+                onRequestEmptyCleanup = actions.onRequestEmptyCleanup,
+            )
 
             // List/state area takes all remaining height below the search bar.
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                when {
-                    state.isSearchMode -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            when {
-                                state.isSearching && state.searchResults.isEmpty() -> {
-                                    SkeletonListState()
-                                }
-
-                                state.searchError != null -> {
-                                    ErrorState(
-                                        message =
-                                            state.searchError?.asString()
-                                                ?: stringResource(R.string.error_unknown),
-                                        onRetry = { viewModel.setSearchQuery(state.searchQuery) },
-                                    )
-                                }
-
-                                state.searchResults.isEmpty() -> {
-                                    EmptyState(
-                                        title = stringResource(R.string.sessions_search_empty_title),
-                                        subtitle =
-                                            stringResource(
-                                                R.string.sessions_search_empty_desc,
-                                                state.searchQuery,
-                                            ),
-                                        icon = Icons.Filled.Search,
-                                    )
-                                }
-
-                                else -> {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        Text(
-                                            text =
-                                                pluralStringResource(
-                                                    R.plurals.sessions_search_results_header,
-                                                    state.searchResults.size,
-                                                    state.searchResults.size,
-                                                    state.searchQuery,
-                                                ),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(
-                                                        horizontal = spacing.md,
-                                                        vertical = spacing.sm,
-                                                    ),
-                                        )
-                                        LazyColumn(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentPadding = listPadding,
-                                            verticalArrangement = listItemSpacing,
-                                        ) {
-                                            items(sessionsToDisplay, key = { it.session.id }) { item ->
-                                                val session = item.session
-                                                SearchResultCard(
-                                                    session = session,
-                                                    query = state.searchQuery,
-                                                    isSelecting = state.isSelecting,
-                                                    isSelected = session.id in state.selectedIds,
-                                                    isDeleting = session.id in state.deletingSessionIds,
-                                                    liveStatus = state.liveStatuses[session.id],
-                                                    highlightBackground = primaryContainer,
-                                                    highlightForeground = onPrimaryContainer,
-                                                    onCardClick = {
-                                                        if (state.isSelecting) {
-                                                            viewModel.toggleSessionSelection(session.id)
-                                                        } else {
-                                                            NavigationController.openChatSession(session.id)
-                                                        }
-                                                    },
-                                                    onToggleSelection = {
-                                                        viewModel.toggleSessionSelection(
-                                                            session.id,
-                                                        )
-                                                    },
-                                                    onSelect = {
-                                                        viewModel.toggleSelecting()
-                                                        viewModel.toggleSessionSelection(session.id)
-                                                    },
-                                                    onRename = {
-                                                        viewModel.openRenameDialog(
-                                                            session.id,
-                                                            session.title.orEmpty(),
-                                                        )
-                                                    },
-                                                    onDelete = { viewModel.requestDeleteSession(session.id) },
-                                                )
-                                            }
-                                            if (state.searchHasMore) {
-                                                item(key = "search_paging_footer") {
-                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                        state.searchLoadMoreError?.let { error ->
-                                                            Text(
-                                                                error.asString(),
-                                                                color = MaterialTheme.colorScheme.error,
-                                                            )
-                                                        }
-                                                        TextButton(
-                                                            onClick = viewModel::loadMoreSearch,
-                                                            enabled = !state.isLoadingMoreSearch,
-                                                            modifier =
-                                                                Modifier.fillMaxWidth().testTag(
-                                                                    "search_load_more",
-                                                                ),
-                                                        ) {
-                                                            if (state.isLoadingMoreSearch) {
-                                                                CircularProgressIndicator(Modifier.size(20.dp))
-                                                            } else {
-                                                                Text(
-                                                                    stringResource(
-                                                                        if (state.searchLoadMoreError != null) {
-                                                                            R.string.action_retry
-                                                                        } else {
-                                                                            R.string.history_load_more
-                                                                        },
-                                                                    ),
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                SessionsListArea(
+                    state = state,
+                    sessionsToDisplay = sessionsToDisplay,
+                    listPadding = listPadding,
+                    expandedAutomationGroups = expandedAutomationGroups,
+                    onToggleAutomationGroup = { groupKey ->
+                        expandedAutomationGroups =
+                            if (groupKey in expandedAutomationGroups) {
+                                expandedAutomationGroups - groupKey
+                            } else {
+                                expandedAutomationGroups + groupKey
                             }
-                        }
-                    }
-
-                    state.isLoading && state.sessions.isEmpty() -> {
-                        SkeletonListState()
-                    }
-
-                    state.errorMessage != null -> {
-                        val errorMsg = state.errorMessage
-                        ErrorState(
-                            message = errorMsg?.asString() ?: stringResource(R.string.error_unknown),
-                            onRetry = { viewModel.loadSessions() },
-                        )
-                    }
-
-                    state.sessions.isEmpty() && state.corruptStorageProfiles.isNotEmpty() -> {
-                        ErrorState(
-                            message =
-                                stringResource(
-                                    R.string.sessions_storage_corrupt,
-                                    state.corruptStorageProfiles.sorted().joinToString(", "),
-                                ),
-                            onRetry = { viewModel.loadSessions(forceRefresh = true) },
-                        )
-                    }
-
-                    state.sessions.isEmpty() && state.showArchived -> {
-                        EmptyState(
-                            title = stringResource(R.string.sessions_archived_empty_title),
-                            subtitle = stringResource(R.string.sessions_archived_empty_desc),
-                            icon = Icons.Filled.Archive,
-                        )
-                    }
-
-                    state.sessions.isEmpty() -> {
-                        EmptyState(
-                            title =
-                                stringResource(
-                                    if (state.section == HistorySection.AUTOMATIONS) {
-                                        R.string.sessions_automations_empty_title
-                                    } else {
-                                        R.string.history_empty_title
-                                    },
-                                ),
-                            subtitle =
-                                stringResource(
-                                    if (state.section == HistorySection.AUTOMATIONS) {
-                                        R.string.sessions_automations_empty_desc
-                                    } else {
-                                        R.string.history_empty_desc
-                                    },
-                                ),
-                            icon = Icons.Filled.History,
-                            actionLabel =
-                                if (state.section == HistorySection.CONVERSATIONS) {
-                                    stringResource(R.string.empty_action_start_chat)
-                                } else {
-                                    null
-                                },
-                            onAction = { NavigationController.navigateTo(ChatScreen) },
-                        )
-                    }
-
-                    state.displaySessions.isEmpty() -> {
-                        EmptyState(
-                            title = stringResource(R.string.history_empty_title),
-                            subtitle = stringResource(R.string.sessions_all_hidden_desc),
-                            icon = Icons.Filled.VisibilityOff,
-                            actionLabel = stringResource(R.string.sessions_show_hidden),
-                            onAction = { viewModel.toggleShowHidden() },
-                        )
-                    }
-
-                    else -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            if (state.corruptStorageProfiles.isNotEmpty()) {
-                                Text(
-                                    text =
-                                        stringResource(
-                                            R.string.sessions_storage_corrupt,
-                                            state.corruptStorageProfiles.sorted().joinToString(", "),
-                                        ),
-                                    color = statusColors.warning,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(spacing.md),
-                                )
-                            }
-                            // ── Stats row ───────────────────────────────────────
-                            SessionsStatsRow(
-                                total = state.total,
-                                loadedMessageCount = loadedMessageCount,
-                                section = state.section,
-                                spacing = spacing,
-                                statusColors = statusColors,
-                                onPruneClick = { viewModel.showPruneDialog() },
-                            )
-
-                            // ── Session list ────────────────────────────────────
-                            val listState = rememberLazyListState()
-                            // Opening (or switching section) always starts at the top. Keyed items otherwise
-                            // keep the old anchor row when fresher sessions land above it after the refresh.
-                            var userScrolled by remember(state.section) { mutableStateOf(false) }
-                            LaunchedEffect(state.section) {
-                                snapshotFlow { listState.isScrollInProgress }.first { it }
-                                userScrolled = true
-                            }
-                            val firstSessionId = sessionsToDisplay.firstOrNull()?.session?.id
-                            LaunchedEffect(state.section, firstSessionId, userScrolled) {
-                                if (!userScrolled && firstSessionId != null) listState.scrollToItem(0)
-                            }
-                            // Fluid infinite scroll: once the user reaches within
-                            // AUTO_LOAD_THRESHOLD items of the end, pull the next
-                            // page automatically. Driven by real scroll position
-                            // (layoutInfo is snapshot state), so it recomputes on
-                            // every scroll — not a frozen first-composition read.
-                            val nearListEnd by remember {
-                                derivedStateOf {
-                                    val info = listState.layoutInfo
-                                    val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                                    if (lastVisible < 0 || info.totalItemsCount == 0) {
-                                        false
-                                    } else if (info.totalItemsCount <= AUTO_LOAD_THRESHOLD) {
-                                        lastVisible >= info.totalItemsCount - 1
-                                    } else {
-                                        lastVisible >= info.totalItemsCount - AUTO_LOAD_THRESHOLD
-                                    }
-                                }
-                            }
-                            LaunchedEffect(
-                                nearListEnd,
-                                state.isLoadingMore,
-                                state.hasMore,
-                                state.isSearchMode,
-                            ) {
-                                if (
-                                    state.section == HistorySection.CONVERSATIONS &&
-                                    nearListEnd &&
-                                    !state.isLoadingMore &&
-                                    state.hasMore &&
-                                    !state.isSearchMode
-                                ) {
-                                    viewModel.loadMore()
-                                }
-                            }
-                            // One clock for every row's "15m" age, re-read on each minute boundary.
-                            val nowMillis by produceState(System.currentTimeMillis()) {
-                                while (true) {
-                                    delay(AGE_TICK_MS - value % AGE_TICK_MS)
-                                    value = System.currentTimeMillis()
-                                }
-                            }
-                            val sessionCard: @Composable (SessionTreeItem) -> Unit = { item ->
-                                val session = item.session
-                                val project =
-                                    remember(session.cwd, session.git_repo_root, state.projects) {
-                                        resolveSessionProject(session, state.projects)
-                                    }
-                                BranchRow(item = item) {
-                                    SessionCard(
-                                        session = session,
-                                        displayTitle = item.displayTitle,
-                                        branchStem = null,
-                                        branchNumber = item.branchNumber,
-                                        isFork = item.isFork,
-                                        forkDepth = item.forkDepth,
-                                        query = state.searchQuery,
-                                        isSelecting = state.isSelecting,
-                                        isSelected = session.id in state.selectedIds,
-                                        isDeleting = session.id in state.deletingSessionIds,
-                                        isPinned = session.pinned == true,
-                                        isArchived = session.archived == true,
-                                        liveStatus = state.liveStatuses[session.id],
-                                        project = project,
-                                        nowMillis = nowMillis,
-                                        highlightBackground = primaryContainer,
-                                        highlightForeground = onPrimaryContainer,
-                                        onCardClick = {
-                                            if (state.isSelecting) {
-                                                viewModel.toggleSessionSelection(session.id)
-                                            } else {
-                                                NavigationController.openChatSession(session.id)
-                                            }
-                                        },
-                                        onToggleSelection = { viewModel.toggleSessionSelection(session.id) },
-                                        onSelect = {
-                                            viewModel.toggleSelecting()
-                                            viewModel.toggleSessionSelection(session.id)
-                                        },
-                                        onRename = {
-                                            viewModel.openRenameDialog(
-                                                session.id,
-                                                item.branchNumber?.let { n ->
-                                                    resources.getString(R.string.sessions_branch_title, n)
-                                                } ?: item.displayTitle,
-                                            )
-                                        },
-                                        onTogglePin = { viewModel.togglePin(session.id) },
-                                        onToggleArchive = { viewModel.toggleArchive(session.id) },
-                                        onDelete = { viewModel.requestDeleteSession(session.id) },
-                                    )
-                                }
-                            }
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = listPadding,
-                                verticalArrangement = listItemSpacing,
-                            ) {
-                                if (state.section == HistorySection.AUTOMATIONS) {
-                                    automationGroups(
-                                        groups = automationSessionGroups,
-                                        expandedGroups = expandedAutomationGroups,
-                                        sessionItemsById = sessionItemsById,
-                                        spacing = spacing,
-                                        onToggleGroup = { groupKey ->
-                                            expandedAutomationGroups =
-                                                if (groupKey in expandedAutomationGroups) {
-                                                    expandedAutomationGroups - groupKey
-                                                } else {
-                                                    expandedAutomationGroups + groupKey
-                                                }
-                                        },
-                                        renderSessionCard = sessionCard,
-                                    )
-                                } else {
-                                    if (pinnedItems.isNotEmpty() && !state.isSearchMode) {
-                                        item(key = "pinned_header") {
-                                            PinnedSectionHeader(
-                                                count = pinnedItems.size,
-                                                expanded = state.pinnedExpanded,
-                                                onToggle = { viewModel.togglePinnedExpanded() },
-                                            )
-                                        }
-                                        if (state.pinnedExpanded) {
-                                            items(pinnedItems, key = { "pin_${it.session.id}" }) { item ->
-                                                sessionCard(item)
-                                            }
-                                        }
-                                        item(key = "history_header") {
-                                            Text(
-                                                text = stringResource(R.string.screen_history),
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(vertical = spacing.xs),
-                                            )
-                                        }
-                                    }
-                                    if (state.groupByProject && !state.isSearchMode) {
-                                        projectGroups.forEach { group ->
-                                            val expanded = group.key !in state.collapsedProjectGroups
-                                            item(key = "project_header_${group.key}") {
-                                                ProjectGroupHeader(
-                                                    label =
-                                                        if (group.key ==
-                                                            NO_PROJECT_KEY
-                                                        ) {
-                                                            noProjectLabel
-                                                        } else {
-                                                            group.key
-                                                        },
-                                                    color = group.color,
-                                                    count = group.items.size,
-                                                    expanded = expanded,
-                                                    onToggle = { viewModel.toggleProjectGroup(group.key) },
-                                                    onNewChat =
-                                                        state.projects
-                                                            .startable()
-                                                            .firstOrNull { it.id == group.projectId }
-                                                            ?.let { project ->
-                                                                { NavigationController.openNewChat(project) }
-                                                            },
-                                                )
-                                            }
-                                            if (expanded) {
-                                                items(
-                                                    group.items,
-                                                    key = { "project_${group.key}_${it.session.id}" },
-                                                ) { item ->
-                                                    sessionCard(item)
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        items(sessionsToDisplay, key = { it.session.id }) { item ->
-                                            sessionCard(item)
-                                        }
-                                    }
-                                }
-
-                                // Load more
-                                if (state.hasMore || state.isLoadingMore) {
-                                    item {
-                                        Box(
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = spacing.sm),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            if (state.isLoadingMore) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(24.dp),
-                                                    strokeWidth = 2.dp,
-                                                )
-                                            } else {
-                                                Text(
-                                                    text = stringResource(R.string.history_load_more),
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    modifier =
-                                                        Modifier
-                                                            .testTag("load_more_sessions")
-                                                            .clickable(role = Role.Button) {
-                                                                viewModel.loadMore()
-                                                            },
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                    },
+                    actions = actions,
+                )
             }
         }
 
@@ -1126,16 +430,755 @@ fun SessionsScreen(
             allVisibleSessionsSelected = allVisibleSessionsSelected,
             selectedCount = state.selectedIds.size,
             isDeletingBulk = state.isDeletingBulk,
-            spacing = spacing,
+            spacing = LocalSpacing.current,
             statusColors = statusColors,
             onSelectAllToggle = {
                 if (allVisibleSessionsSelected) {
-                    viewModel.clearSelection()
+                    actions.onClearSelection()
                 } else {
-                    viewModel.selectAll(visibleSessionIds)
+                    actions.onSelectAll(visibleSessionIds)
                 }
             },
-            onDeleteSelected = { viewModel.requestBulkDelete() },
+            onDeleteSelected = actions.onRequestBulkDelete,
         )
+    }
+}
+
+/** New chat, archived toggle and (when hidden sessions exist) the hidden toggle. */
+@Composable
+private fun SessionsTopBarActions(
+    showArchived: Boolean,
+    hasHiddenSessions: Boolean,
+    showHidden: Boolean,
+    importBusy: Boolean,
+    actions: SessionsScreenActions,
+) {
+    IconButton(
+        onClick = actions.onNewChat,
+        modifier = Modifier.testTag("sessions_action_new_chat"),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Add,
+            contentDescription = stringResource(R.string.content_desc_new_chat),
+        )
+    }
+    IconButton(
+        onClick = actions.onImportConversation,
+        enabled = !importBusy,
+        modifier = Modifier.testTag("sessions_action_import"),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.FileOpen,
+            contentDescription = stringResource(R.string.session_transfer_action_import),
+        )
+    }
+    IconButton(
+        onClick = actions.onToggleShowArchived,
+        modifier = Modifier.testTag("sessions_action_toggle_archived"),
+    ) {
+        Icon(
+            imageVector = if (showArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+            contentDescription =
+                if (showArchived) {
+                    stringResource(R.string.sessions_hide_archived)
+                } else {
+                    stringResource(R.string.sessions_show_archived)
+                },
+        )
+    }
+    if (hasHiddenSessions) {
+        IconButton(
+            onClick = actions.onToggleShowHidden,
+            modifier = Modifier.testTag("sessions_action_toggle_hidden"),
+        ) {
+            Icon(
+                imageVector =
+                    if (showHidden) {
+                        Icons.Filled.VisibilityOff
+                    } else {
+                        Icons.Filled.Visibility
+                    },
+                contentDescription =
+                    if (showHidden) {
+                        stringResource(R.string.sessions_hide_hidden)
+                    } else {
+                        stringResource(R.string.sessions_show_hidden)
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SessionsPruningIndicator() {
+    val spacing = LocalSpacing.current
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.md, vertical = spacing.sm)
+                .testTag("sessions_pruning_indicator"),
+        verticalArrangement = Arrangement.spacedBy(spacing.xs),
+    ) {
+        Text(
+            text = stringResource(R.string.sessions_pruning),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** Section tabs, then source chips and project chips when there is more than one choice. */
+@Composable
+private fun SessionsFilterChips(
+    state: SessionsUiState,
+    actions: SessionsScreenActions,
+) {
+    val spacing = LocalSpacing.current
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.md, vertical = spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        FilterChip(
+            selected = state.section == HistorySection.CONVERSATIONS,
+            onClick = { actions.onSelectSection(HistorySection.CONVERSATIONS) },
+            label = { Text(stringResource(R.string.sessions_tab_conversations)) },
+            modifier = Modifier.testTag("history_tab_conversations"),
+        )
+        FilterChip(
+            selected = state.section == HistorySection.AUTOMATIONS,
+            onClick = { actions.onSelectSection(HistorySection.AUTOMATIONS) },
+            label = { Text(stringResource(R.string.sessions_tab_automations)) },
+            modifier = Modifier.testTag("history_tab_automations"),
+        )
+    }
+
+    // Source chips: hidden until a loaded row actually carries that source.
+    val sources = state.availableSources
+    if (sources.size > 1) {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().testTag("history_source_chips"),
+            contentPadding = PaddingValues(horizontal = spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            items(sources, key = { it }) { source ->
+                FilterChip(
+                    selected = state.activeSourceFilter == source,
+                    onClick = { actions.onSelectSourceFilter(source) },
+                    label = { Text(localizedSourceLabel(source)) },
+                    modifier = Modifier.testTag("history_source_chip_$source"),
+                )
+            }
+        }
+    }
+
+    // Project chips (issue #1526): only for projects present in the rows currently shown.
+    val projectChoices = state.availableProjects
+    if (state.section == HistorySection.CONVERSATIONS && projectChoices.size > 1) {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().testTag("history_project_chips"),
+            contentPadding = PaddingValues(horizontal = spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            item(key = "group_toggle") {
+                FilterChip(
+                    selected = state.groupByProject,
+                    onClick = actions.onToggleGroupByProject,
+                    label = { Text(stringResource(R.string.sessions_group_by_project)) },
+                    modifier = Modifier.testTag("history_group_by_project"),
+                )
+            }
+            items(projectChoices, key = { "project_${it.key}" }) { choice ->
+                FilterChip(
+                    selected = state.activeProjectFilter == choice.key,
+                    onClick = { actions.onSelectProjectFilter(choice.key) },
+                    label = {
+                        Text(
+                            if (choice.key == NO_PROJECT_KEY) {
+                                stringResource(R.string.sessions_project_none)
+                            } else {
+                                choice.key
+                            },
+                        )
+                    },
+                    modifier = Modifier.testTag("history_project_chip_${choice.key}"),
+                )
+            }
+        }
+    }
+}
+
+/** Search field plus the empty-session cleanup button (Conversations only). */
+@Composable
+private fun SessionsSearchRow(
+    searchQuery: String,
+    section: HistorySection,
+    emptyCount: Int,
+    onSearchQueryChange: (String) -> Unit,
+    onRequestEmptyCleanup: () -> Unit,
+) {
+    val spacing = LocalSpacing.current
+    // ── Search + bulk toggle (always visible) ─────────────
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.md, vertical = spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SearchBar(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            placeholder = stringResource(R.string.sessions_search_placeholder),
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(modifier = Modifier.width(spacing.sm))
+        // This API operates on all history, so do not present it as scoped
+        // to the Automations tab.
+        if (section == HistorySection.CONVERSATIONS) {
+            BadgedBox(
+                badge = {
+                    if (emptyCount > 0) {
+                        Badge { Text("$emptyCount") }
+                    }
+                },
+            ) {
+                FilledTonalButton(
+                    onClick = onRequestEmptyCleanup,
+                    enabled = emptyCount > 0,
+                    contentPadding = PaddingValues(horizontal = spacing.md, vertical = 8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DeleteSweep,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(spacing.xs))
+                    Text(stringResource(R.string.sessions_empty_cleanup_desc))
+                }
+            }
+        }
+    }
+}
+
+/** Search results, loading/error/empty states, or the session list. */
+@Composable
+private fun SessionsListArea(
+    state: SessionsUiState,
+    sessionsToDisplay: List<SessionTreeItem>,
+    listPadding: PaddingValues,
+    expandedAutomationGroups: Set<String>,
+    onToggleAutomationGroup: (String) -> Unit,
+    actions: SessionsScreenActions,
+) {
+    when {
+        state.isSearchMode -> {
+            SessionsSearchResults(
+                state = state,
+                sessionsToDisplay = sessionsToDisplay,
+                listPadding = listPadding,
+                actions = actions,
+            )
+        }
+
+        state.isLoading && state.sessions.isEmpty() -> {
+            SkeletonListState()
+        }
+
+        state.errorMessage != null -> {
+            ErrorState(
+                message = state.errorMessage.asString(),
+                onRetry = actions.onRetryLoad,
+            )
+        }
+
+        state.sessions.isEmpty() && state.corruptStorageProfiles.isNotEmpty() -> {
+            ErrorState(
+                message =
+                    stringResource(
+                        R.string.sessions_storage_corrupt,
+                        state.corruptStorageProfiles.sorted().joinToString(", "),
+                    ),
+                onRetry = actions.onRefresh,
+            )
+        }
+
+        state.sessions.isEmpty() && state.showArchived -> {
+            EmptyState(
+                title = stringResource(R.string.sessions_archived_empty_title),
+                subtitle = stringResource(R.string.sessions_archived_empty_desc),
+                icon = Icons.Filled.Archive,
+            )
+        }
+
+        state.sessions.isEmpty() -> {
+            EmptyState(
+                title =
+                    stringResource(
+                        if (state.section == HistorySection.AUTOMATIONS) {
+                            R.string.sessions_automations_empty_title
+                        } else {
+                            R.string.history_empty_title
+                        },
+                    ),
+                subtitle =
+                    stringResource(
+                        if (state.section == HistorySection.AUTOMATIONS) {
+                            R.string.sessions_automations_empty_desc
+                        } else {
+                            R.string.history_empty_desc
+                        },
+                    ),
+                icon = Icons.Filled.History,
+                actionLabel =
+                    if (state.section == HistorySection.CONVERSATIONS) {
+                        stringResource(R.string.empty_action_start_chat)
+                    } else {
+                        null
+                    },
+                onAction = actions.onStartChat,
+            )
+        }
+
+        state.displaySessions.isEmpty() -> {
+            EmptyState(
+                title = stringResource(R.string.history_empty_title),
+                subtitle = stringResource(R.string.sessions_all_hidden_desc),
+                icon = Icons.Filled.VisibilityOff,
+                actionLabel = stringResource(R.string.sessions_show_hidden),
+                onAction = actions.onToggleShowHidden,
+            )
+        }
+
+        else -> {
+            SessionsList(
+                state = state,
+                sessionsToDisplay = sessionsToDisplay,
+                listPadding = listPadding,
+                expandedAutomationGroups = expandedAutomationGroups,
+                onToggleAutomationGroup = onToggleAutomationGroup,
+                actions = actions,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SessionsSearchResults(
+    state: SessionsUiState,
+    sessionsToDisplay: List<SessionTreeItem>,
+    listPadding: PaddingValues,
+    actions: SessionsScreenActions,
+) {
+    val spacing = LocalSpacing.current
+    Column(modifier = Modifier.fillMaxSize()) {
+        when {
+            state.isSearching && state.searchResults.isEmpty() -> {
+                SkeletonListState()
+            }
+
+            state.searchError != null -> {
+                ErrorState(
+                    message = state.searchError.asString(),
+                    onRetry = { actions.onSearchQueryChange(state.searchQuery) },
+                )
+            }
+
+            state.searchResults.isEmpty() -> {
+                EmptyState(
+                    title = stringResource(R.string.sessions_search_empty_title),
+                    subtitle =
+                        stringResource(
+                            R.string.sessions_search_empty_desc,
+                            state.searchQuery,
+                        ),
+                    icon = Icons.Filled.Search,
+                )
+            }
+
+            else -> {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text =
+                            pluralStringResource(
+                                R.plurals.sessions_search_results_header,
+                                state.searchResults.size,
+                                state.searchResults.size,
+                                state.searchQuery,
+                            ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = spacing.md,
+                                    vertical = spacing.sm,
+                                ),
+                    )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = listPadding,
+                        verticalArrangement = listItemSpacing,
+                    ) {
+                        items(sessionsToDisplay, key = { it.session.id }) { item ->
+                            val session = item.session
+                            SearchResultCard(
+                                session = session,
+                                query = state.searchQuery,
+                                isSelecting = state.isSelecting,
+                                isSelected = session.id in state.selectedIds,
+                                isDeleting = session.id in state.deletingSessionIds,
+                                liveStatus = state.liveStatuses[session.id],
+                                highlightBackground = MaterialTheme.colorScheme.primaryContainer,
+                                highlightForeground = MaterialTheme.colorScheme.onPrimaryContainer,
+                                onCardClick = {
+                                    if (state.isSelecting) {
+                                        actions.onToggleSessionSelection(session.id)
+                                    } else {
+                                        actions.onOpenSession(session.id)
+                                    }
+                                },
+                                onToggleSelection = { actions.onToggleSessionSelection(session.id) },
+                                onSelect = { actions.onStartSelection(session.id) },
+                                onRename = { actions.onOpenRename(session.id, session.title.orEmpty()) },
+                                onDelete = { actions.onRequestDelete(session.id) },
+                                onShare = { actions.onShareSession(session.id) },
+                                onExport = { actions.onExportSession(session.id, session.title) },
+                            )
+                        }
+                        if (state.searchHasMore) {
+                            item(key = "search_paging_footer") {
+                                SearchPagingFooter(
+                                    loadMoreError = state.searchLoadMoreError,
+                                    isLoadingMore = state.isLoadingMoreSearch,
+                                    onLoadMore = actions.onLoadMoreSearch,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchPagingFooter(
+    loadMoreError: UiText?,
+    isLoadingMore: Boolean,
+    onLoadMore: () -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        loadMoreError?.let { error ->
+            Text(
+                error.asString(),
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        TextButton(
+            onClick = onLoadMore,
+            enabled = !isLoadingMore,
+            modifier =
+                Modifier.fillMaxWidth().testTag(
+                    "search_load_more",
+                ),
+        ) {
+            if (isLoadingMore) {
+                CircularProgressIndicator(Modifier.size(20.dp))
+            } else {
+                Text(
+                    stringResource(
+                        if (loadMoreError != null) {
+                            R.string.action_retry
+                        } else {
+                            R.string.history_load_more
+                        },
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/** Stats row and the paged session list (pinned, project groups or automation groups). */
+@Composable
+private fun SessionsList(
+    state: SessionsUiState,
+    sessionsToDisplay: List<SessionTreeItem>,
+    listPadding: PaddingValues,
+    expandedAutomationGroups: Set<String>,
+    onToggleAutomationGroup: (String) -> Unit,
+    actions: SessionsScreenActions,
+) {
+    val spacing = LocalSpacing.current
+    val resources = LocalResources.current
+    val statusColors = LocalHermesStatusColors.current
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
+
+    val pinnedItems =
+        remember(
+            state.isSearchMode,
+            state.pinnedSessions,
+            state.showHidden,
+        ) {
+            if (state.isSearchMode) {
+                emptyList()
+            } else {
+                flattenSessionsWithBranches(state.pinnedSessions, preserveOrder = true)
+            }
+        }
+    val projectGroups =
+        remember(sessionsToDisplay, state.projects, state.groupByProject) {
+            if (state.groupByProject) groupSessionsByProject(sessionsToDisplay, state.projects) else emptyList()
+        }
+    val noProjectLabel = stringResource(R.string.sessions_project_none)
+    val loadedMessageCount = state.sessions.sumOf { it.message_count ?: 0 }
+    val automationSessionGroups = remember(sessionsToDisplay) { automationGroups(sessionsToDisplay.map { it.session }) }
+    val sessionItemsById = remember(sessionsToDisplay) { sessionsToDisplay.associateBy { it.session.id } }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (state.corruptStorageProfiles.isNotEmpty()) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.sessions_storage_corrupt,
+                        state.corruptStorageProfiles.sorted().joinToString(", "),
+                    ),
+                color = statusColors.warning,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(spacing.md),
+            )
+        }
+        // ── Stats row ───────────────────────────────────────
+        SessionsStatsRow(
+            total = state.total,
+            loadedMessageCount = loadedMessageCount,
+            section = state.section,
+            spacing = spacing,
+            statusColors = statusColors,
+            onPruneClick = actions.onShowPruneDialog,
+        )
+
+        // ── Session list ────────────────────────────────────
+        val listState = rememberLazyListState()
+        // Opening (or switching section) always starts at the top. Keyed items otherwise
+        // keep the old anchor row when fresher sessions land above it after the refresh.
+        var userScrolled by remember(state.section) { mutableStateOf(false) }
+        LaunchedEffect(state.section) {
+            snapshotFlow { listState.isScrollInProgress }.first { it }
+            userScrolled = true
+        }
+        val firstSessionId = sessionsToDisplay.firstOrNull()?.session?.id
+        LaunchedEffect(state.section, firstSessionId, userScrolled) {
+            if (!userScrolled && firstSessionId != null) listState.scrollToItem(0)
+        }
+        // Fluid infinite scroll: once the user reaches within
+        // AUTO_LOAD_THRESHOLD items of the end, pull the next
+        // page automatically. Driven by real scroll position
+        // (layoutInfo is snapshot state), so it recomputes on
+        // every scroll — not a frozen first-composition read.
+        val nearListEnd by remember {
+            derivedStateOf {
+                val info = listState.layoutInfo
+                val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                if (lastVisible < 0 || info.totalItemsCount == 0) {
+                    false
+                } else if (info.totalItemsCount <= AUTO_LOAD_THRESHOLD) {
+                    lastVisible >= info.totalItemsCount - 1
+                } else {
+                    lastVisible >= info.totalItemsCount - AUTO_LOAD_THRESHOLD
+                }
+            }
+        }
+        LaunchedEffect(
+            nearListEnd,
+            state.isLoadingMore,
+            state.hasMore,
+            state.isSearchMode,
+        ) {
+            if (
+                state.section == HistorySection.CONVERSATIONS &&
+                nearListEnd &&
+                !state.isLoadingMore &&
+                state.hasMore &&
+                !state.isSearchMode
+            ) {
+                actions.onLoadMore()
+            }
+        }
+        // One clock for every row's "15m" age, re-read on each minute boundary.
+        val nowMillis by produceState(System.currentTimeMillis()) {
+            while (true) {
+                delay(AGE_TICK_MS - value % AGE_TICK_MS)
+                value = System.currentTimeMillis()
+            }
+        }
+        val sessionCard: @Composable (SessionTreeItem) -> Unit = { item ->
+            val session = item.session
+            val project =
+                remember(session.cwd, session.git_repo_root, state.projects) {
+                    resolveSessionProject(session, state.projects)
+                }
+            BranchRow(item = item) {
+                SessionCard(
+                    session = session,
+                    displayTitle = item.displayTitle,
+                    branchStem = null,
+                    branchNumber = item.branchNumber,
+                    isFork = item.isFork,
+                    forkDepth = item.forkDepth,
+                    query = state.searchQuery,
+                    isSelecting = state.isSelecting,
+                    isSelected = session.id in state.selectedIds,
+                    isDeleting = session.id in state.deletingSessionIds,
+                    isPinned = session.pinned == true,
+                    isArchived = session.archived == true,
+                    liveStatus = state.liveStatuses[session.id],
+                    project = project,
+                    nowMillis = nowMillis,
+                    highlightBackground = primaryContainer,
+                    highlightForeground = onPrimaryContainer,
+                    onCardClick = {
+                        if (state.isSelecting) {
+                            actions.onToggleSessionSelection(session.id)
+                        } else {
+                            actions.onOpenSession(session.id)
+                        }
+                    },
+                    onToggleSelection = { actions.onToggleSessionSelection(session.id) },
+                    onSelect = { actions.onStartSelection(session.id) },
+                    onRename = {
+                        actions.onOpenRename(
+                            session.id,
+                            item.branchNumber?.let { n ->
+                                resources.getString(R.string.sessions_branch_title, n)
+                            } ?: item.displayTitle,
+                        )
+                    },
+                    onTogglePin = { actions.onTogglePin(session.id) },
+                    onToggleArchive = { actions.onToggleArchive(session.id) },
+                    onDelete = { actions.onRequestDelete(session.id) },
+                    onShare = { actions.onShareSession(session.id) },
+                    onExport = { actions.onExportSession(session.id, item.displayTitle) },
+                )
+            }
+        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = listPadding,
+            verticalArrangement = listItemSpacing,
+        ) {
+            if (state.section == HistorySection.AUTOMATIONS) {
+                automationGroups(
+                    groups = automationSessionGroups,
+                    expandedGroups = expandedAutomationGroups,
+                    sessionItemsById = sessionItemsById,
+                    spacing = spacing,
+                    onToggleGroup = onToggleAutomationGroup,
+                    renderSessionCard = sessionCard,
+                )
+            } else {
+                if (pinnedItems.isNotEmpty() && !state.isSearchMode) {
+                    item(key = "pinned_header") {
+                        PinnedSectionHeader(
+                            count = pinnedItems.size,
+                            expanded = state.pinnedExpanded,
+                            onToggle = actions.onTogglePinnedExpanded,
+                        )
+                    }
+                    if (state.pinnedExpanded) {
+                        items(pinnedItems, key = { "pin_${it.session.id}" }) { item ->
+                            sessionCard(item)
+                        }
+                    }
+                    item(key = "history_header") {
+                        Text(
+                            text = stringResource(R.string.screen_history),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = spacing.xs),
+                        )
+                    }
+                }
+                if (state.groupByProject && !state.isSearchMode) {
+                    projectGroups.forEach { group ->
+                        val expanded = group.key !in state.collapsedProjectGroups
+                        item(key = "project_header_${group.key}") {
+                            ProjectGroupHeader(
+                                label =
+                                    if (group.key ==
+                                        NO_PROJECT_KEY
+                                    ) {
+                                        noProjectLabel
+                                    } else {
+                                        group.key
+                                    },
+                                color = group.color,
+                                count = group.items.size,
+                                expanded = expanded,
+                                onToggle = { actions.onToggleProjectGroup(group.key) },
+                                onNewChat =
+                                    state.projects
+                                        .startable()
+                                        .firstOrNull { it.id == group.projectId }
+                                        ?.let { project ->
+                                            { actions.onNewChatInProject(project) }
+                                        },
+                            )
+                        }
+                        if (expanded) {
+                            items(
+                                group.items,
+                                key = { "project_${group.key}_${it.session.id}" },
+                            ) { item ->
+                                sessionCard(item)
+                            }
+                        }
+                    }
+                } else {
+                    items(sessionsToDisplay, key = { it.session.id }) { item ->
+                        sessionCard(item)
+                    }
+                }
+            }
+
+            // Load more
+            if (state.hasMore || state.isLoadingMore) {
+                item {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = spacing.sm),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (state.isLoadingMore) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.history_load_more),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier =
+                                    Modifier
+                                        .testTag("load_more_sessions")
+                                        .clickable(role = Role.Button, onClick = actions.onLoadMore),
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

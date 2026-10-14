@@ -545,6 +545,13 @@ object RpcMethods {
             JsonElement.serializer(),
         )
 
+    val MESSAGE_REACT: RpcMethod<MessageReactParams, MessageReactResult> =
+        RpcMethod(
+            WsMethods.MESSAGE_REACT,
+            MessageReactParams.serializer(),
+            MessageReactResult.serializer(),
+        )
+
     /** Every typed method. GatewayContractTest iterates this; future migrations append here. */
     val all: List<RpcMethod<*, *>> =
         listOf(
@@ -616,5 +623,6 @@ object RpcMethods {
             SLASH_EXEC,
             FILE_ATTACH,
             IMAGE_ATTACH_BYTES,
+            MESSAGE_REACT,
         )
 }

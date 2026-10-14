@@ -8,6 +8,8 @@ import io.wutz.apollo.data.remote.CookieManager
 import io.wutz.apollo.data.remote.DashboardSessionTokenRefresher
 import io.wutz.apollo.data.remote.NetworkMonitor
 import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.data.remote.PasswordLoginClient
+import io.wutz.apollo.data.remote.WsTicketResult
 import io.wutz.apollo.data.remote.await
 import io.wutz.apollo.data.session.ActiveSessionHolder
 import io.wutz.apollo.data.ws.contract.PromptSubmitParams
@@ -27,7 +29,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -72,6 +73,7 @@ internal class WsTransport(
     private val externalActivityConnectionLease = AtomicBoolean(false)
     private val backgroundConnectionLease = AtomicBoolean(false)
     private val messageQueue = ConcurrentLinkedQueue<String>()
+    private val passwordLoginClient = PasswordLoginClient()
     private val queuedMessagesById = ConcurrentHashMap<String, String>()
 
     @Volatile
@@ -314,40 +316,31 @@ internal class WsTransport(
 
     private suspend fun requestWsTicket(): TicketRequestResult {
         try {
-            val client = OkHttpProvider.probe
-            val request =
-                Request
-                    .Builder()
-                    .url(AuthManager.endpointForBuild().resolve("api/auth/ws-ticket").toString())
-                    .post("{}".toRequestBody())
-                    .build()
-
-            val (code, body) =
+            val endpoint = AuthManager.endpointForBuild()
+            if (CookieManager.isInitialized()) {
                 withContext(Dispatchers.IO) {
-                    if (CookieManager.isInitialized()) {
-                        CookieManager.useStore(CookieManager.cookieJar.currentServer())
-                    }
-                    client.newCall(request).await().use { resp ->
-                        resp.code to resp.body.string()
-                    }
+                    CookieManager.useStore(CookieManager.cookieJar.currentServer())
+                }
+            }
+            return when (val result = passwordLoginClient.mintTicket(endpoint)) {
+                is WsTicketResult.Success -> {
+                    TicketRequestResult(result.ticket, null)
                 }
 
-            if (code in 200..299) {
-                // Real JSON decode — the ticket is base64url and may contain
-                // characters a naive [^"]+ regex cannot extract (see
-                // testGatedMode_parsesEscapedTicketFromRealJsonShape).
-                val parsed =
-                    runCatching {
-                        OkHttpProvider.json.decodeFromString<WsTicketResponse>(body)
-                    }.getOrNull()
-                val ticket = parsed?.ticket
-                if (!ticket.isNullOrBlank()) {
-                    return TicketRequestResult(ticket, null)
+                is WsTicketResult.HttpError -> {
+                    Log.w(TAG, "WS ticket mint failed: HTTP ${result.code}")
+                    TicketRequestResult(null, result.code)
                 }
-                Log.w(TAG, "WS ticket mint failed: unparseable ticket response")
-            } else {
-                Log.w(TAG, "WS ticket mint failed: HTTP $code")
-                return TicketRequestResult(null, code)
+
+                WsTicketResult.InvalidTicket -> {
+                    Log.w(TAG, "WS ticket mint failed: unparseable ticket response")
+                    TicketRequestResult(null, null)
+                }
+
+                is WsTicketResult.ConnectionFailed -> {
+                    Log.w(TAG, "WS ticket mint failed: ${result.cause.javaClass.simpleName}", result.cause)
+                    TicketRequestResult(null, null, exception = true)
+                }
             }
         } catch (e: Exception) {
             // Include the stack: the exception class alone (e.g.
@@ -357,7 +350,6 @@ internal class WsTransport(
             Log.w(TAG, "WS ticket mint failed: ${e.javaClass.simpleName}", e)
             return TicketRequestResult(null, null, exception = true)
         }
-        return TicketRequestResult(null, null)
     }
 
     private fun handleWsTicketRefreshFailure(

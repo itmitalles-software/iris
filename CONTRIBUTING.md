@@ -41,27 +41,9 @@ Every change must go through a pull request (PR) targeting `main`.
 
 ### Fixing a blocked PR description
 
-If the template bot reports missing information, edit the PR description or title.
-The metadata-only recovery workflow validates the live PR and requests a rerun of
-its failed **PR Template** job and dependent Android jobs, only for the latest run
-on the current head. If the original run is still finishing, its completion event
-checks again. Green runs and unrelated build/test failures are not restarted.
-The bot announces a restart only after GitHub accepts the request; it does not
-mean CI has passed. Fork workflow-approval requirements still apply.
-
-Recovery runs trusted scripts from `main`, never contributor code or artifacts.
-Its `workflow_run` completion trigger only runs from the repository's default
-branch (`main`). Repeated events for the same run
-and validated metadata are deduplicated using a bot receipt reserved before the
-restart request, then updated after GitHub accepts it. This prevents retry loops
-even if the final comment update fails. If a receipt stays unconfirmed, inspect
-**PR Template Recovery** and the original Android run in Actions. A maintainer
-can rerun Android CI directly if needed; repeating recovery will not reuse that
-reservation. Older fork runs without the PR-number run name cannot be associated
-safely; a fresh push/reopen is needed to use the newer workflow.
-
-Run the offline automation tests with:
-`python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v`.
+If the template bot reports missing information, edit the PR description or
+title, then re-run the failed **PR Template** job of the Android CI run (it reads
+the live description). A new push re-runs it as well.
 
 ---
 
@@ -92,7 +74,7 @@ session on GatewayReady instead of creating a blank one.
 
 If you use AI coding tools (including agents) to contribute:
 
-- **Never** add the AI tool as author, co-author, or `Co-Authored-By` in commit metadata.
+- Keep your own git identity as the commit author. A `Co-Authored-By` trailer naming the AI tool is allowed and shows which changes were made with AI help.
 - Direct AI agents to [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`DESIGN.md`](DESIGN.md). `AGENTS.md` holds the rules for contributors and agents, `docs/ARCHITECTURE.md` the architecture and testing conventions, and `DESIGN.md` the visual, interaction, and accessibility requirements with links to the token sources. Theme implementation is documented in [`THEMES.md`](app/src/main/java/io/wutz/apollo/theme/THEMES.md).
 
 ---

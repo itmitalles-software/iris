@@ -25,10 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.BuildConfig
+import io.wutz.apollo.NavigationController
+import io.wutz.apollo.OpenSourceLicensesScreen
 import io.wutz.apollo.R
 import io.wutz.apollo.data.update.AppUpdateState
 import io.wutz.apollo.data.update.UpdateNoticeManager
@@ -113,6 +116,16 @@ internal fun AboutSection(
                 value = BuildConfig.GIT_SHA,
             )
         }
+
+        InfoRow(
+            label = stringResource(R.string.licenses_title),
+            value = stringResource(R.string.licenses_about_value),
+            modifier =
+                Modifier
+                    .linkTarget(stringResource(R.string.licenses_open)) {
+                        NavigationController.navigateTo(OpenSourceLicensesScreen)
+                    }.testTag("about_open_source_licenses"),
+        )
 
         // The 48dp link targets supply the vertical spacing the fixed spacers used to provide.
         Text(

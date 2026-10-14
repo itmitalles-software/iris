@@ -57,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -65,6 +66,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +81,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -108,6 +111,7 @@ import io.wutz.apollo.ui.chat.components.ChatInputBar
 import io.wutz.apollo.ui.chat.components.ChatLifecycleEffects
 import io.wutz.apollo.ui.chat.components.ChatLoadingOverlay
 import io.wutz.apollo.ui.chat.components.ChatResumeErrorOverlay
+import io.wutz.apollo.ui.chat.components.ChatScrollController
 import io.wutz.apollo.ui.chat.components.ChatScrollToBottomFab
 import io.wutz.apollo.ui.chat.components.ChatSuccessSnackbarVisuals
 import io.wutz.apollo.ui.chat.components.ChatTimelineNoPrefetchStrategy
@@ -115,6 +119,7 @@ import io.wutz.apollo.ui.chat.components.ChatTimelineSheet
 import io.wutz.apollo.ui.chat.components.ConnectionSetupSheet
 import io.wutz.apollo.ui.chat.components.ContextDetailSheet
 import io.wutz.apollo.ui.chat.components.ContextUsageChip
+import io.wutz.apollo.ui.chat.components.GatewayNoticeLine
 import io.wutz.apollo.ui.chat.components.MediaViewerDialog
 import io.wutz.apollo.ui.chat.components.PendingSendRecovery
 import io.wutz.apollo.ui.chat.components.ProjectBadge
@@ -129,16 +134,19 @@ import io.wutz.apollo.ui.chat.components.SpeechRequest
 import io.wutz.apollo.ui.chat.components.SpeechText
 import io.wutz.apollo.ui.chat.components.SubagentInspectionSheet
 import io.wutz.apollo.ui.chat.components.TaskProgressChip
+import io.wutz.apollo.ui.chat.components.TurnCompletionAnnouncer
 import io.wutz.apollo.ui.chat.components.rememberChatImagePaste
 import io.wutz.apollo.ui.chat.components.rememberChatMediaLaunchers
 import io.wutz.apollo.ui.chat.components.rememberChatScrollController
 import io.wutz.apollo.ui.chat.components.rememberChatSpeech
+import io.wutz.apollo.ui.chat.components.rememberComposerDrafts
 import io.wutz.apollo.ui.chat.components.replaceComposerDraft
 import io.wutz.apollo.ui.chat.components.restoreRejectedComposerDraft
 import io.wutz.apollo.ui.chat.components.shouldShowProgressChip
 import io.wutz.apollo.ui.chat.components.tailContentKey
 import io.wutz.apollo.ui.chat.fullbleed.FullBleedChatList
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptActions
+import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
 import io.wutz.apollo.ui.chat.voice.VoiceConversationButton
 import io.wutz.apollo.ui.chat.voice.VoiceConversationLifecycle
 import io.wutz.apollo.ui.chat.voice.VoiceConversationPanel
@@ -153,6 +161,9 @@ import io.wutz.apollo.ui.model.components.ModelPickerDialog
 import io.wutz.apollo.ui.settings.SettingsViewModel
 import io.wutz.apollo.util.ConnectorUrlValidator
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private const val SESSION_SYNC_INTERVAL_MS = 30_000L
@@ -190,20 +201,29 @@ fun ChatScreen(
     viewModel: ChatViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val streamingState by viewModel.streamingState.collectAsStateWithLifecycle()
     val timelineState by viewModel.timelineState.collectAsStateWithLifecycle()
-    val transcriptState by viewModel.transcriptState.collectAsStateWithLifecycle()
+    // Streaming flushes (~30 per second) only change the transcript. Its State is read inside
+    // ObservedTranscript and TranscriptTailFollower, so a flush recomposes the list and the tail
+    // follower instead of this whole screen; the message list itself is derived below.
+    val transcriptStateHolder = viewModel.transcriptState.collectAsStateWithLifecycle()
+    // Only whether a reply is streaming, so flushes do not recompose the screen body.
+    val isStreamingReply by remember(viewModel) {
+        viewModel.streamingState.map { it.streamingMessage != null }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = false)
     val credentialWarning by HermesWsClient.credentialWarning.collectAsStateWithLifecycle()
     val connectorsViewModel: ChatConnectorsViewModel = viewModel()
     val connectorsState by connectorsViewModel.uiState.collectAsStateWithLifecycle()
     val actionProgressState by viewModel.actionProgress.state.collectAsStateWithLifecycle()
     val connectionOperationState by viewModel.connectionOperationState.collectAsStateWithLifecycle()
+    val gatewayNotice by viewModel.gatewayNotice.collectAsStateWithLifecycle()
     val settingsViewModel: SettingsViewModel = viewModel()
     val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     // Snapshot-backed search state — read directly so only the scopes that
     // read its fields recompose on search changes (bar, matched bubbles).
     val searchState = viewModel.searchState
-    val displayedMessages = transcriptState.messages
+    val displayedMessages by remember(transcriptStateHolder) {
+        derivedStateOf(structuralEqualityPolicy()) { transcriptStateHolder.value.messages }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
@@ -327,31 +347,15 @@ fun ChatScreen(
     // messages, streaming, thinking, subagent cards, and clarify prompts
     // (issue #682). Replaces the old item-count heuristic that ignored the
     // streaming tail.
-    LaunchedEffect(
-        timelineState.isHistorical,
-        displayedMessages,
-        streamingState.streamingMessage,
-        streamingState.isThinking,
-        state.subagentIndicators,
-        state.todos,
-        state.clarifyRequest,
-    ) {
-        if (timelineState.isHistorical) {
-            scrollController.pauseFollowing()
-            return@LaunchedEffect
-        }
-        scrollController.onTailChanged(
-            tailKey =
-                tailContentKey(
-                    messages = displayedMessages,
-                    streamingMessage = streamingState.streamingMessage,
-                    isThinking = streamingState.isThinking,
-                    subagentIndicators = state.subagentIndicators,
-                    clarifyRequest = state.clarifyRequest,
-                ),
-            messageCount = displayedMessages.size,
-        )
-    }
+    TranscriptTailFollower(
+        streamingStateFlow = viewModel.streamingState,
+        scrollController = scrollController,
+        isHistorical = timelineState.isHistorical,
+        displayedMessages = displayedMessages,
+        subagentIndicators = state.subagentIndicators,
+        todos = state.todos,
+        clarifyRequest = state.clarifyRequest,
+    )
     LaunchedEffect(timelineState.historyAnchorRowId) {
         if (timelineState.isHistorical && displayedMessages.isNotEmpty()) {
             scrollController.jumpToHistoryStart()
@@ -363,11 +367,24 @@ fun ChatScreen(
         }
     }
     val inputState = rememberTextFieldState()
+    val composerDrafts =
+        rememberComposerDrafts(
+            inputState = inputState,
+            chatGeneration = state.chatGeneration,
+            sessionId = state.currentSessionId,
+            scopeKey = dataScope?.persistentKey("composer-draft"),
+        )
 
     LaunchedEffect(state.pendingPrefillText) {
         val prefill = state.pendingPrefillText
         if (prefill != null) {
-            inputState.replaceComposerDraft(prefill)
+            val current = inputState.text.toString()
+            // Shared content joins a draft that is already there instead of replacing it.
+            if (state.pendingPrefillAppends && current.isNotBlank() && !current.endsWith(prefill)) {
+                inputState.replaceComposerDraft("$current\n\n$prefill")
+            } else {
+                inputState.replaceComposerDraft(prefill)
+            }
             viewModel.consumePendingPrefill()
         }
     }
@@ -421,6 +438,16 @@ fun ChatScreen(
             onPermissionDenied = { scrollScope.launch { snackbarHostState.showSnackbar(voicePermissionDeniedMsg) } },
             launchExternalActivity = launchExternalActivity,
         )
+    // Voice launcher shortcut: start the conversation once its new chat exists and the socket is up.
+    val pendingVoiceStart = NavigationController.pendingVoiceStart
+    val pendingNewChat = NavigationController.pendingNewChatNavigation
+    LaunchedEffect(pendingVoiceStart, pendingNewChat, state.connectionStatus) {
+        val connected = state.connectionStatus == ConnectionStatus.CONNECTED
+        if (pendingVoiceStart != null && pendingNewChat == null && connected) {
+            NavigationController.consumePendingVoiceStart()
+            startVoiceConversation()
+        }
+    }
 
     val invalidResponseError = stringResource(R.string.session_integrations_err_invalid_response)
     val browserLaunchError = stringResource(R.string.session_integrations_err_browser_launch)
@@ -517,6 +544,8 @@ fun ChatScreen(
     HermesScaffold(
         modifier = modifier,
         pinTopBar = true,
+        // The chat centers and caps its own column below.
+        maxContentWidth = Dp.Unspecified,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AutoScrollingTitleText(
@@ -703,6 +732,19 @@ fun ChatScreen(
                 },
             )
 
+            GatewayNoticeLine(
+                notice = gatewayNotice,
+                onDismiss = viewModel::dismissGatewayNotice,
+            )
+            val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+            TurnCompletionAnnouncer(
+                busy = state.isAgentTyping || isStreamingReply,
+                tail = state.messages.lastOrNull(),
+                replyFailed = state.replyFailure != null,
+                enabled = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && !timelineState.isHistorical,
+                chatGeneration = state.chatGeneration,
+            )
+
             credentialWarning?.let { warning ->
                 CredentialWarningBanner(
                     warning = warning,
@@ -791,76 +833,84 @@ fun ChatScreen(
 
                 // Full-bleed chat renderer (issue #866) — the single chat
                 // surface since the bubble renderer was removed.
-                FullBleedChatList(
-                    transcript =
-                        transcriptState.copy(
-                            savingAttachmentPath = pendingSavePath ?: transcriptState.savingAttachmentPath,
-                            speakingMessageId = speakingMessageId,
-                        ),
-                    actions =
-                        TranscriptActions(
-                            onLoadOlder = viewModel::loadOlderMessages,
-                            onOpenAttachment = viewModel::openAttachment,
-                            onSaveAttachment = onSaveAttachment,
-                            onImageClick = { viewingImage = it },
-                            onRespondApproval = { messageId, action -> viewModel.respondToApproval(action, messageId) },
-                            onRespondClarify = viewModel::respondToClarify,
-                            onRespondClarifyBatch = viewModel::respondToClarifyBatch,
-                            onDismissClarify = viewModel::dismissClarify,
-                            onRespondVaultUnlock = viewModel::respondToVaultUnlock,
-                            onDismissVaultUnlock = viewModel::dismissVaultUnlock,
-                            onRespondVaultSaveLogin = viewModel::respondToVaultSaveLogin,
-                            onDismissVaultSaveLogin = viewModel::dismissVaultSaveLogin,
-                            onRespondVaultCode = viewModel::respondToVaultCode,
-                            onDismissVaultCode = viewModel::dismissVaultCode,
-                            onToggleSpeak = { message ->
-                                val scopeKey = "${dataScope?.inMemoryKey(localKey = activeSessionId ?: "none")}"
-                                speechController.toggle(
-                                    SpeechRequest(
-                                        scopeKey = scopeKey,
-                                        messageId = message.id,
-                                        text = SpeechText.stripMarkdownForSpeech(message.content),
-                                    ),
-                                )
+                ObservedTranscript(transcriptStateHolder) { transcriptState ->
+                    FullBleedChatList(
+                        transcript =
+                            transcriptState.copy(
+                                savingAttachmentPath = pendingSavePath ?: transcriptState.savingAttachmentPath,
+                                speakingMessageId = speakingMessageId,
+                            ),
+                        actions =
+                            TranscriptActions(
+                                onLoadOlder = viewModel::loadOlderMessages,
+                                onOpenAttachment = viewModel::openAttachment,
+                                onSaveAttachment = onSaveAttachment,
+                                onImageClick = { viewingImage = it },
+                                onRespondApproval = {
+                                    messageId,
+                                    action,
+                                    ->
+                                    viewModel.respondToApproval(action, messageId)
+                                },
+                                onRespondClarify = viewModel::respondToClarify,
+                                onRespondClarifyBatch = viewModel::respondToClarifyBatch,
+                                onDismissClarify = viewModel::dismissClarify,
+                                onRespondVaultUnlock = viewModel::respondToVaultUnlock,
+                                onDismissVaultUnlock = viewModel::dismissVaultUnlock,
+                                onRespondVaultSaveLogin = viewModel::respondToVaultSaveLogin,
+                                onDismissVaultSaveLogin = viewModel::dismissVaultSaveLogin,
+                                onRespondVaultCode = viewModel::respondToVaultCode,
+                                onDismissVaultCode = viewModel::dismissVaultCode,
+                                onReactToMessage = viewModel::reactToMessage,
+                                onToggleSpeak = { message ->
+                                    val scopeKey = "${dataScope?.inMemoryKey(localKey = activeSessionId ?: "none")}"
+                                    speechController.toggle(
+                                        SpeechRequest(
+                                            scopeKey = scopeKey,
+                                            messageId = message.id,
+                                            text = SpeechText.stripMarkdownForSpeech(message.content),
+                                        ),
+                                    )
+                                },
+                            ),
+                        searchState = searchState,
+                        listState = listState,
+                        scrollController = scrollController,
+                        replyErrorContent =
+                            state.replyFailure?.takeUnless { timelineState.isHistorical }?.let { failure ->
+                                {
+                                    val clipboard = LocalClipboardManager.current
+                                    val copiedMessage = stringResource(R.string.chat_reply_failed_copied)
+                                    val shareTitle = stringResource(R.string.chat_reply_failed_share)
+                                    val shareUnavailable = stringResource(R.string.chat_reply_failed_share_unavailable)
+                                    ReplyErrorCard(
+                                        failure = failure,
+                                        onDismiss = { viewModel.dismissReplyFailure(failure.id) },
+                                        onOpenLogs = { NavigationController.navigateTo(LogsScreen) },
+                                        onCopy = { details ->
+                                            clipboard.setText(AnnotatedString(details))
+                                            scrollScope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+                                        },
+                                        onShare = { details ->
+                                            val report = "Apollo ${BuildConfig.VERSION_NAME}\n\n$details"
+                                            val intent =
+                                                Intent(Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(Intent.EXTRA_TEXT, report)
+                                                }
+                                            try {
+                                                launchExternalActivity {
+                                                    context.startActivity(Intent.createChooser(intent, shareTitle))
+                                                }
+                                            } catch (_: ActivityNotFoundException) {
+                                                scrollScope.launch { snackbarHostState.showSnackbar(shareUnavailable) }
+                                            }
+                                        },
+                                    )
+                                }
                             },
-                        ),
-                    searchState = searchState,
-                    listState = listState,
-                    scrollController = scrollController,
-                    replyErrorContent =
-                        state.replyFailure?.takeUnless { timelineState.isHistorical }?.let { failure ->
-                            {
-                                val clipboard = LocalClipboardManager.current
-                                val copiedMessage = stringResource(R.string.chat_reply_failed_copied)
-                                val shareTitle = stringResource(R.string.chat_reply_failed_share)
-                                val shareUnavailable = stringResource(R.string.chat_reply_failed_share_unavailable)
-                                ReplyErrorCard(
-                                    failure = failure,
-                                    onDismiss = { viewModel.dismissReplyFailure(failure.id) },
-                                    onOpenLogs = { NavigationController.navigateTo(LogsScreen) },
-                                    onCopy = { details ->
-                                        clipboard.setText(AnnotatedString(details))
-                                        scrollScope.launch { snackbarHostState.showSnackbar(copiedMessage) }
-                                    },
-                                    onShare = { details ->
-                                        val report = "Apollo ${BuildConfig.VERSION_NAME}\n\n$details"
-                                        val intent =
-                                            Intent(Intent.ACTION_SEND).apply {
-                                                type = "text/plain"
-                                                putExtra(Intent.EXTRA_TEXT, report)
-                                            }
-                                        try {
-                                            launchExternalActivity {
-                                                context.startActivity(Intent.createChooser(intent, shareTitle))
-                                            }
-                                        } catch (_: ActivityNotFoundException) {
-                                            scrollScope.launch { snackbarHostState.showSnackbar(shareUnavailable) }
-                                        }
-                                    },
-                                )
-                            }
-                        },
-                )
+                    )
+                }
 
                 // Loading overlay
                 ChatLoadingOverlay(
@@ -952,6 +1002,7 @@ fun ChatScreen(
                     onSend = {
                         if (!imagePaste.isReceiving && viewModel.sendMessage(inputState.text.toString())) {
                             inputState.clearText()
+                            scrollScope.launch { composerDrafts.onSendAccepted() }
                             // Jump only after an accepted send. A readiness race keeps the draft intact.
                             scrollController.jumpToBottom(animated = true)
                         }
@@ -978,6 +1029,7 @@ fun ChatScreen(
                     onImageTap = mediaLaunchers.onImageTap,
                     onFileTap = mediaLaunchers.onFileTap,
                     onRemoveAttachment = viewModel::removeAttachment,
+                    onSetAttachmentSendOriginal = viewModel::setAttachmentSendOriginal,
                     onPreviewAttachment = { attachment ->
                         if (attachment.isImage) {
                             viewingImage =
@@ -1190,4 +1242,55 @@ internal fun ChatBackgroundConnectionMenuItem(
                 toggleableState = ToggleableState(checked)
             },
     )
+}
+
+/** Reads [transcript] in its own recompose scope, so streaming updates do not recompose the caller. */
+@Composable
+private fun ObservedTranscript(
+    transcript: State<TranscriptUiState>,
+    content: @Composable (TranscriptUiState) -> Unit,
+) {
+    content(transcript.value)
+}
+
+/**
+ * Keeps the transcript following its tail (issue #682). Collects the streaming state itself so the
+ * ~30 flushes per second restart only this effect, not the whole chat screen.
+ */
+@Composable
+private fun TranscriptTailFollower(
+    streamingStateFlow: StateFlow<StreamingState>,
+    scrollController: ChatScrollController,
+    isHistorical: Boolean,
+    displayedMessages: List<ChatMessage>,
+    subagentIndicators: List<SubagentIndicator>,
+    todos: List<TodoItem>,
+    clarifyRequest: ClarifyUi?,
+) {
+    val streamingState by streamingStateFlow.collectAsStateWithLifecycle()
+    LaunchedEffect(
+        isHistorical,
+        displayedMessages,
+        streamingState.streamingMessage,
+        streamingState.isThinking,
+        subagentIndicators,
+        todos,
+        clarifyRequest,
+    ) {
+        if (isHistorical) {
+            scrollController.pauseFollowing()
+            return@LaunchedEffect
+        }
+        scrollController.onTailChanged(
+            tailKey =
+                tailContentKey(
+                    messages = displayedMessages,
+                    streamingMessage = streamingState.streamingMessage,
+                    isThinking = streamingState.isThinking,
+                    subagentIndicators = subagentIndicators,
+                    clarifyRequest = clarifyRequest,
+                ),
+            messageCount = displayedMessages.size,
+        )
+    }
 }

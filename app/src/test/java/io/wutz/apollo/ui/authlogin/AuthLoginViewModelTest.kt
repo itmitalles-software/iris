@@ -416,4 +416,52 @@ class AuthLoginViewModelTest {
         assertEquals(UiText.res(R.string.auth_login_error_token_required), state.errorMessage)
         assertFalse(state.connectionSuccess)
     }
+
+    // ── Password login through the shared PasswordLoginClient ──
+
+    private fun stubCall(
+        path: String,
+        code: Int,
+        body: String = "",
+    ) {
+        val call = mockk<okhttp3.Call>()
+        every { mockProbeClient.newCall(match { it.url.encodedPath == path }) } returns call
+        val response = mockk<Response>(relaxed = true)
+        every { response.isSuccessful } returns (code in 200..299)
+        every { response.code } returns code
+        every { response.body.string() } returns body
+        coEvery { call.await() } returns response
+    }
+
+    @Test
+    fun `password login with wrong credentials shows the localized credentials error`() {
+        probeIntoAllMode()
+        stubCall("/auth/password-login", 401)
+
+        viewModel.onUsernameChange("alice")
+        viewModel.onPasswordChange("wrong")
+        viewModel.connect()
+        val state = runBlocking { withTimeout(5_000) { viewModel.uiState.first { !it.isLoading } } }
+
+        assertEquals(UiText.res(R.string.auth_error_invalid_credentials), state.errorMessage)
+        assertFalse(state.connectionSuccess)
+        verify(exactly = 0) { mockProbeClient.newCall(match { it.url.encodedPath == "/api/auth/ws-ticket" }) }
+    }
+
+    @Test
+    fun `password login stores the JSON-decoded ws ticket`() {
+        probeIntoAllMode()
+        stubSuccessfulTokenLogin("unused")
+        stubCall("/auth/password-login", 200)
+        stubCall("/api/auth/ws-ticket", 200, """{"ticket":"a\"b","ttl_seconds":30}""")
+
+        viewModel.onUsernameChange("alice")
+        viewModel.onPasswordChange("s3cret")
+        viewModel.connect()
+        val state = runBlocking { withTimeout(5_000) { viewModel.uiState.first { it.connectionSuccess } } }
+
+        assertNull(state.errorMessage)
+        verify { AuthManager.setToken("a\"b") }
+        verify { AuthManager.setWsAuthParam("ticket") }
+    }
 }

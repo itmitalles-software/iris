@@ -85,6 +85,7 @@ import io.wutz.apollo.data.model.KanbanProfile
 import io.wutz.apollo.data.model.KanbanTaskFull
 import io.wutz.apollo.data.model.ModelProvider
 import io.wutz.apollo.data.model.PinnedModel
+import io.wutz.apollo.data.model.TaskDiagnostic
 import io.wutz.apollo.data.model.TaskEstimate
 import io.wutz.apollo.data.model.TaskLinks
 import io.wutz.apollo.data.remote.NetworkResult
@@ -98,6 +99,7 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.toUiText
 import io.wutz.apollo.ui.kanban.components.KanbanModelOverrideEditor
 import io.wutz.apollo.util.StreamingUriRequestBody
 import kotlinx.coroutines.CancellationException
@@ -399,254 +401,32 @@ private fun TaskOverviewTab(
     onAddParent: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isEditingDescription by remember { mutableStateOf(false) }
-    var descriptionDraft by remember(task.body) { mutableStateOf(task.body ?: "") }
-    var assigneeMenuExpanded by remember { mutableStateOf(false) }
-    var parentDraft by remember { mutableStateOf("") }
-    val statusColors = LocalHermesStatusColors.current
-
-    val currentModelOverride =
-        remember(task.modelOverride, task.providerOverride, task.reasoningEffort) {
-            KanbanModelOverride.fromTask(task.modelOverride, task.providerOverride, task.reasoningEffort)
-        }
-
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // One item on purpose: the sections stack without the list's 12 dp item spacing.
         item {
             // Diagnostics alerts
             if (task.diagnostics.isNotEmpty()) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    task.diagnostics.forEach { diag ->
-                        Card(
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = statusColors.error.copy(alpha = 0.15f),
-                                ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Warning,
-                                        contentDescription = null,
-                                        tint = statusColors.error,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = diag.title,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = statusColors.error,
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = diag.detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                                if (diag.actions.any { it.kind == "reclaim" }) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Button(
-                                        onClick = onReclaim,
-                                        shape = RoundedCornerShape(6.dp),
-                                    ) {
-                                        Text(stringResource(R.string.kanban_reclaim_task))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                TaskDiagnosticsSection(diagnostics = task.diagnostics, onReclaim = onReclaim)
             }
 
-            // Metadata / Attributes card
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = stringResource(R.string.kanban_attributes),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    MetaRow(label = stringResource(R.string.kanban_meta_status), value = task.status.uppercase())
+            TaskAttributesCard(
+                task = task,
+                profiles = profiles,
+                modelProviders = modelProviders,
+                pinnedModels = pinnedModels,
+                onReassign = onReassign,
+                onUpdateModel = onUpdateModel,
+            )
 
-                    // Editable Assignee
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.kanban_assignee),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Box {
-                            TextButton(
-                                onClick = { assigneeMenuExpanded = true },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.heightIn(min = 32.dp),
-                            ) {
-                                Text(
-                                    text = task.assignee ?: stringResource(R.string.kanban_unassigned_group),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = assigneeMenuExpanded,
-                                onDismissRequest = { assigneeMenuExpanded = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.kanban_assignee_unassigned)) },
-                                    onClick = {
-                                        onReassign(null)
-                                        assigneeMenuExpanded = false
-                                    },
-                                )
-                                profiles.forEach { p ->
-                                    DropdownMenuItem(
-                                        text = { Text(p.name) },
-                                        onClick = {
-                                            onReassign(p.name)
-                                            assigneeMenuExpanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    task.priority?.let {
-                        MetaRow(
-                            label = stringResource(R.string.kanban_priority),
-                            value = it.toString(),
-                        )
-                    }
-                    task.tenant?.let { MetaRow(label = stringResource(R.string.kanban_tenant), value = it) }
-                    task.workspaceKind?.let {
-                        MetaRow(
-                            label = stringResource(R.string.kanban_meta_workspace),
-                            value = "$it ${task.workspacePath ?: ""}",
-                        )
-                    }
-                    task.workerPid?.let {
-                        MetaRow(
-                            label = stringResource(R.string.kanban_meta_worker_pid),
-                            value = it.toString(),
-                        )
-                    }
-                    task.workflowTemplateId?.let {
-                        MetaRow(
-                            label = stringResource(R.string.kanban_meta_workflow),
-                            value = it,
-                        )
-                    }
-                    task.currentStepKey?.let { MetaRow(label = stringResource(R.string.kanban_meta_step), value = it) }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Editable Model & Reasoning Override
-                    KanbanModelOverrideEditor(
-                        override = currentModelOverride,
-                        onOverrideChange = onUpdateModel,
-                        modelProviders = modelProviders,
-                        pinnedModels = pinnedModels,
-                    )
-                }
-            }
-
-            // Dependencies Section
-            run {
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = stringResource(R.string.kanban_dependencies),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = parentDraft,
-                                onValueChange = { parentDraft = it },
-                                label = { Text(stringResource(R.string.kanban_parent_id)) },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                            )
-                            TextButton(
-                                onClick = {
-                                    onAddParent(parentDraft)
-                                    parentDraft = ""
-                                },
-                                enabled = parentDraft.isNotBlank() && !isLinking,
-                            ) { Text(stringResource(R.string.kanban_add_parent)) }
-                        }
-                        if (links.parents.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = stringResource(R.string.kanban_blocked_by),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            ) {
-                                links.parents.forEach { parentId ->
-                                    SuggestionChip(
-                                        onClick = { onNavigateToTask(parentId) },
-                                        label = { Text("#${parentId.removePrefix("t_").take(6)}") },
-                                    )
-                                }
-                            }
-                        }
-                        if (links.children.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = stringResource(R.string.kanban_blocks),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            ) {
-                                links.children.forEach { childId ->
-                                    SuggestionChip(
-                                        onClick = { onNavigateToTask(childId) },
-                                        label = { Text("#${childId.removePrefix("t_").take(6)}") },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            TaskDependenciesCard(
+                links = links,
+                isLinking = isLinking,
+                onAddParent = onAddParent,
+                onNavigateToTask = onNavigateToTask,
+            )
 
             // Effort Estimation Section
             if (task.status == "triage") {
@@ -656,162 +436,447 @@ private fun TaskOverviewTab(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 ) { Text(stringResource(R.string.kanban_specify_task)) }
             }
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.kanban_estimate),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        if (isEstimating) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        }
-                    }
-                    val currentEst = estimate
-                    if (currentEst != null) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        currentEst.tokens?.let { tokensCount ->
-                            Text(
-                                text = stringResource(R.string.kanban_estimated_tokens, tokensCount),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                        if (!currentEst.complexity.isNullOrBlank()) {
-                            Text(
-                                text = stringResource(R.string.kanban_complexity, currentEst.complexity),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        if (!currentEst.rationale.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = currentEst.rationale,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = onEstimate,
-                            enabled = !isEstimating,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.kanban_reestimate_action))
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Button(
-                            onClick = onEstimate,
-                            enabled = !isEstimating,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(stringResource(R.string.kanban_estimate_action))
-                        }
-                    }
-                }
-            }
+            TaskEstimateCard(estimate = estimate, isEstimating = isEstimating, onEstimate = onEstimate)
 
-            // Description Section
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.kanban_description),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        if (!isEditingDescription) {
-                            IconButton(onClick = { isEditingDescription = true }) {
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    contentDescription = stringResource(R.string.kanban_edit_description),
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        }
-                    }
-
-                    if (isEditingDescription) {
-                        OutlinedTextField(
-                            value = descriptionDraft,
-                            onValueChange = { descriptionDraft = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.kanban_description)) },
-                            minLines = 4,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                            OutlinedButton(onClick = { isEditingDescription = false }) {
-                                Text(stringResource(R.string.action_cancel))
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(onClick = {
-                                onSaveDescription(descriptionDraft)
-                                isEditingDescription = false
-                            }) {
-                                Text(stringResource(R.string.action_save))
-                            }
-                        }
-                    } else {
-                        SelectionContainer {
-                            MarkdownText(
-                                text = task.body?.ifBlank { null } ?: stringResource(R.string.kanban_no_description),
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-            }
+            TaskDescriptionCard(body = task.body, onSaveDescription = onSaveDescription)
 
             // Result/Summary Section if completed
             val summary = task.result ?: task.latestSummary
             if (!summary.isNullOrBlank()) {
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = stringResource(R.string.kanban_latest_outcome),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                TaskOutcomeCard(summary = summary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskDiagnosticsSection(
+    diagnostics: List<TaskDiagnostic>,
+    onReclaim: () -> Unit,
+) {
+    val statusColors = LocalHermesStatusColors.current
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        diagnostics.forEach { diag ->
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = statusColors.error.copy(alpha = 0.15f),
+                    ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = statusColors.error,
+                            modifier = Modifier.size(16.dp),
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        MarkdownText(
-                            text = summary,
-                            textColor = MaterialTheme.colorScheme.onSurface,
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = diag.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = statusColors.error,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = diag.detail,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (diag.actions.any { it.kind == "reclaim" }) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = onReclaim,
+                            shape = RoundedCornerShape(6.dp),
+                        ) {
+                            Text(stringResource(R.string.kanban_reclaim_task))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Status, editable assignee, the optional metadata rows and the model override editor. */
+@Composable
+private fun TaskAttributesCard(
+    task: KanbanTaskFull,
+    profiles: List<KanbanProfile>,
+    modelProviders: List<ModelProvider>,
+    pinnedModels: List<PinnedModel>,
+    onReassign: (String?) -> Unit,
+    onUpdateModel: (KanbanModelOverride) -> Unit,
+) {
+    var assigneeMenuExpanded by remember { mutableStateOf(false) }
+    val currentModelOverride =
+        remember(task.modelOverride, task.providerOverride, task.reasoningEffort) {
+            KanbanModelOverride.fromTask(task.modelOverride, task.providerOverride, task.reasoningEffort)
+        }
+
+    // Metadata / Attributes card
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = stringResource(R.string.kanban_attributes),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            MetaRow(label = stringResource(R.string.kanban_meta_status), value = task.status.uppercase())
+
+            // Editable Assignee
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.kanban_assignee),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Box {
+                    TextButton(
+                        onClick = { assigneeMenuExpanded = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.heightIn(min = 32.dp),
+                    ) {
+                        Text(
+                            text = task.assignee ?: stringResource(R.string.kanban_unassigned_group),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = assigneeMenuExpanded,
+                        onDismissRequest = { assigneeMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.kanban_assignee_unassigned)) },
+                            onClick = {
+                                onReassign(null)
+                                assigneeMenuExpanded = false
+                            },
+                        )
+                        profiles.forEach { p ->
+                            DropdownMenuItem(
+                                text = { Text(p.name) },
+                                onClick = {
+                                    onReassign(p.name)
+                                    assigneeMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            task.priority?.let {
+                MetaRow(
+                    label = stringResource(R.string.kanban_priority),
+                    value = it.toString(),
+                )
+            }
+            task.tenant?.let { MetaRow(label = stringResource(R.string.kanban_tenant), value = it) }
+            task.workspaceKind?.let {
+                MetaRow(
+                    label = stringResource(R.string.kanban_meta_workspace),
+                    value = "$it ${task.workspacePath ?: ""}",
+                )
+            }
+            task.workerPid?.let {
+                MetaRow(
+                    label = stringResource(R.string.kanban_meta_worker_pid),
+                    value = it.toString(),
+                )
+            }
+            task.workflowTemplateId?.let {
+                MetaRow(
+                    label = stringResource(R.string.kanban_meta_workflow),
+                    value = it,
+                )
+            }
+            task.currentStepKey?.let { MetaRow(label = stringResource(R.string.kanban_meta_step), value = it) }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Editable Model & Reasoning Override
+            KanbanModelOverrideEditor(
+                override = currentModelOverride,
+                onOverrideChange = onUpdateModel,
+                modelProviders = modelProviders,
+                pinnedModels = pinnedModels,
+            )
+        }
+    }
+}
+
+/** Parent input plus the "blocked by" and "blocks" chips. */
+@Composable
+private fun TaskDependenciesCard(
+    links: TaskLinks,
+    isLinking: Boolean,
+    onAddParent: (String) -> Unit,
+    onNavigateToTask: (String) -> Unit,
+) {
+    var parentDraft by remember { mutableStateOf("") }
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = stringResource(R.string.kanban_dependencies),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = parentDraft,
+                    onValueChange = { parentDraft = it },
+                    label = { Text(stringResource(R.string.kanban_parent_id)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                TextButton(
+                    onClick = {
+                        onAddParent(parentDraft)
+                        parentDraft = ""
+                    },
+                    enabled = parentDraft.isNotBlank() && !isLinking,
+                ) { Text(stringResource(R.string.kanban_add_parent)) }
+            }
+            if (links.parents.isNotEmpty()) {
+                TaskLinkChips(
+                    label = stringResource(R.string.kanban_blocked_by),
+                    taskIds = links.parents,
+                    onNavigateToTask = onNavigateToTask,
+                )
+            }
+            if (links.children.isNotEmpty()) {
+                TaskLinkChips(
+                    label = stringResource(R.string.kanban_blocks),
+                    taskIds = links.children,
+                    onNavigateToTask = onNavigateToTask,
+                )
+            }
+        }
+    }
+}
+
+/** A labelled, horizontally scrolling row of short task-id chips (emits into the caller's column). */
+@Composable
+private fun TaskLinkChips(
+    label: String,
+    taskIds: List<String>,
+    onNavigateToTask: (String) -> Unit,
+) {
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+    ) {
+        taskIds.forEach { linkedId ->
+            SuggestionChip(
+                onClick = { onNavigateToTask(linkedId) },
+                label = { Text("#${linkedId.removePrefix("t_").take(6)}") },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskEstimateCard(
+    estimate: TaskEstimate?,
+    isEstimating: Boolean,
+    onEstimate: () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.kanban_estimate),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                if (isEstimating) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                }
+            }
+            if (estimate != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                estimate.tokens?.let { tokensCount ->
+                    Text(
+                        text = stringResource(R.string.kanban_estimated_tokens, tokensCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (!estimate.complexity.isNullOrBlank()) {
+                    Text(
+                        text = stringResource(R.string.kanban_complexity, estimate.complexity),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (!estimate.rationale.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = estimate.rationale,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onEstimate,
+                    enabled = !isEstimating,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.kanban_reestimate_action))
+                }
+            } else {
+                Spacer(modifier = Modifier.height(6.dp))
+                Button(
+                    onClick = onEstimate,
+                    enabled = !isEstimating,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.kanban_estimate_action))
+                }
+            }
+        }
+    }
+}
+
+/** Markdown description with an inline editor. */
+@Composable
+private fun TaskDescriptionCard(
+    body: String?,
+    onSaveDescription: (String) -> Unit,
+) {
+    var isEditingDescription by remember { mutableStateOf(false) }
+    var descriptionDraft by remember(body) { mutableStateOf(body ?: "") }
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.kanban_description),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                if (!isEditingDescription) {
+                    IconButton(onClick = { isEditingDescription = true }) {
+                        Icon(
+                            Icons.Filled.Edit,
+                            contentDescription = stringResource(R.string.kanban_edit_description),
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                 }
             }
+
+            if (isEditingDescription) {
+                OutlinedTextField(
+                    value = descriptionDraft,
+                    onValueChange = { descriptionDraft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.kanban_description)) },
+                    minLines = 4,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { isEditingDescription = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        onSaveDescription(descriptionDraft)
+                        isEditingDescription = false
+                    }) {
+                        Text(stringResource(R.string.action_save))
+                    }
+                }
+            } else {
+                SelectionContainer {
+                    MarkdownText(
+                        text = body?.ifBlank { null } ?: stringResource(R.string.kanban_no_description),
+                        textColor = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskOutcomeCard(summary: String) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = stringResource(R.string.kanban_latest_outcome),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            MarkdownText(
+                text = summary,
+                textColor = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }
@@ -1316,7 +1381,7 @@ private fun TaskFilesTab(
                         }
 
                         is NetworkResult.Failure -> {
-                            viewModel.showToast(UiText.raw(result.error.message))
+                            viewModel.showToast(UiText.Failure(result.error.toUiText()))
                         }
                     }
                 }

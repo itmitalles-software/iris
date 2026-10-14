@@ -13,6 +13,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -119,7 +120,7 @@ class MemoryProviderDetailViewModel :
                             isLoading = false,
                             providerName = name,
                             status = status ?: it.status,
-                            errorMessage = UiText.raw(configResult.error.message),
+                            errorMessage = configResult.error.toUiText(),
                         )
                     }
                 }
@@ -185,7 +186,11 @@ class MemoryProviderDetailViewModel :
                     updateIfCurrent(generation) {
                         it.copy(
                             saving = false,
-                            toastMessage = UiText.res(R.string.plugins_msg_settings_save_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.plugins_msg_settings_save_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -228,7 +233,7 @@ class MemoryProviderDetailViewModel :
                     updateIfCurrent(generation) {
                         it.copy(
                             runningSetup = false,
-                            toastMessage = UiText.res(R.string.plugins_msg_setup_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.plugins_msg_setup_failed, result.error.toUiText()),
                         )
                     }
                 }

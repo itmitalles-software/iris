@@ -38,6 +38,7 @@ class AuthManagerTest {
     private lateinit var testContext: Context
 
     @Before
+    @Suppress("DEPRECATION") // Mocks the deprecated security-crypto API.
     fun setUp() {
         mockPrefs = mockk(relaxed = true)
         every { mockPrefs.getString("server_custom_headers", null) } returns null
@@ -108,6 +109,7 @@ class AuthManagerTest {
     }
 
     @Test
+    @Suppress("DEPRECATION") // Mocks the deprecated security-crypto API.
     fun delayedKeystoreDoesNotBlockCallerOrExpireAfterTwoSeconds() =
         kotlinx.coroutines.runBlocking {
             AuthManager.resetAndAwaitForTest()
@@ -134,6 +136,7 @@ class AuthManagerTest {
         }
 
     @Test
+    @Suppress("DEPRECATION") // Mocks the deprecated security-crypto API.
     fun failedKeystoreCanRetryWithoutClearingCredentials() =
         kotlinx.coroutines.runBlocking {
             AuthManager.resetAndAwaitForTest()

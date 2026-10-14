@@ -44,6 +44,7 @@ class Issue647ProfileUrlTest {
     private lateinit var testContext: Context
 
     @Before
+    @Suppress("DEPRECATION") // Mocks the deprecated security-crypto API.
     fun setUp() {
         mockPrefs = mockk(relaxed = true)
         every { mockPrefs.getString("server_custom_headers", null) } returns null

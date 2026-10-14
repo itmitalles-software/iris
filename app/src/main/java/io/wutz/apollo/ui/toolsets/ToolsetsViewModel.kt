@@ -15,6 +15,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +61,7 @@ class ToolsetsViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.toolsets_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.toolsets_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -98,7 +99,7 @@ class ToolsetsViewModel(
                 revertToggle(
                     toolset.name,
                     originalEnabled,
-                    UiText.res(R.string.toolsets_msg_toggle_failed, result.error.message),
+                    UiText.res(R.string.toolsets_msg_toggle_failed, result.error.toUiText()),
                 )
                 val reverted = _uiState.value.toolsets
                 if (requestScope != null) {

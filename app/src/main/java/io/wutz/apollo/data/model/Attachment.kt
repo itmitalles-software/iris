@@ -20,6 +20,8 @@ import kotlinx.serialization.Serializable
  * @param contentOffset For agent `MEDIA:` attachments, the char offset in the message's
  *   stripped text where the directive appeared, so the renderer can place it in-flow.
  *   Null means "append after the text".
+ * @param sendOriginal For a locally picked image: upload the file unchanged instead of the
+ *   downscaled copy (see `ImageUploadPreparer`).
  */
 @Serializable
 data class Attachment(
@@ -30,6 +32,7 @@ data class Attachment(
     val gatewayUrl: String? = null,
     val source: AttachmentSource = AttachmentSource.LOCAL,
     val contentOffset: Int? = null,
+    val sendOriginal: Boolean = false,
 ) {
     val mediaKind: MediaKind
         get() = classifyMedia(mimeType = mimeType, name = name, uri = gatewayUrl ?: uri)

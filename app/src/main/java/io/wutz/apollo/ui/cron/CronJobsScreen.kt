@@ -56,6 +56,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.CronBlueprint
@@ -321,7 +322,10 @@ fun CronJobsScreen(
             onDismissRequest = { selectedJob = null },
             title = { Text(job.name, style = MaterialTheme.typography.titleLarge) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
                     RunDetailRow(
                         stringResource(R.string.cron_detail_status),
                         when (job.lastRunStatus) {
@@ -375,6 +379,13 @@ fun CronJobsScreen(
                             )
                         }
                     }
+                    CronJobRunsSection(
+                        jobId = job.id,
+                        onOpenSession = { sessionId ->
+                            selectedJob = null
+                            NavigationController.openChatSession(sessionId)
+                        },
+                    )
                 }
             },
             confirmButton = {

@@ -22,6 +22,7 @@ import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -153,7 +154,7 @@ class CronJobsViewModel :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UiText.res(R.string.cron_msg_load_failed, errorMsg),
+                            errorMessage = UiText.res(R.string.cron_msg_load_failed, errorMsg.toUiText()),
                         )
                     }
                 },
@@ -183,7 +184,7 @@ class CronJobsViewModel :
                     jobsCache.put(requestScope.scopedKey("default"), _uiState.value.jobs)
                 }
             } else if (result is NetworkResult.Failure) {
-                revertJobs(originalJobs, UiText.res(R.string.cron_msg_pause_failed, result.error.message))
+                revertJobs(originalJobs, UiText.failure(R.string.cron_msg_pause_failed, result.error.toUiText()))
                 if (requestScope != null) {
                     jobsCache.put(requestScope.scopedKey("default"), _uiState.value.jobs)
                 }
@@ -214,7 +215,7 @@ class CronJobsViewModel :
                     jobsCache.put(requestScope.scopedKey("default"), _uiState.value.jobs)
                 }
             } else if (result is NetworkResult.Failure) {
-                revertJobs(originalJobs, UiText.res(R.string.cron_msg_resume_failed, result.error.message))
+                revertJobs(originalJobs, UiText.failure(R.string.cron_msg_resume_failed, result.error.toUiText()))
                 if (requestScope != null) {
                     jobsCache.put(requestScope.scopedKey("default"), _uiState.value.jobs)
                 }
@@ -236,7 +237,7 @@ class CronJobsViewModel :
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.cron_msg_trigger_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.cron_msg_trigger_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -262,7 +263,7 @@ class CronJobsViewModel :
                     jobsCache.put(requestScope.scopedKey("default"), _uiState.value.jobs)
                 }
             } else if (result is NetworkResult.Failure) {
-                revertJobs(originalJobs, UiText.res(R.string.cron_msg_delete_failed, result.error.message))
+                revertJobs(originalJobs, UiText.failure(R.string.cron_msg_delete_failed, result.error.toUiText()))
                 if (requestScope != null) {
                     jobsCache.put(requestScope.scopedKey("default"), _uiState.value.jobs)
                 }
@@ -321,9 +322,9 @@ class CronJobsViewModel :
                             editorState =
                                 it.editorState.copy(
                                     toastMessage =
-                                        UiText.res(
+                                        UiText.failure(
                                             R.string.cron_msg_load_blueprints_failed,
-                                            result.error.message,
+                                            result.error.toUiText(),
                                         ),
                                 ),
                         )
@@ -413,7 +414,11 @@ class CronJobsViewModel :
                         is NetworkResult.Failure -> {
                             it.copy(
                                 editorState = CronJobEditorState(),
-                                toastMessage = UiText.res(R.string.cron_msg_load_job_failed, result.error.message),
+                                toastMessage =
+                                    UiText.failure(
+                                        R.string.cron_msg_load_job_failed,
+                                        result.error.toUiText(),
+                                    ),
                             )
                         }
                     }
@@ -541,7 +546,11 @@ class CronJobsViewModel :
                             editorState =
                                 it.editorState.copy(
                                     isSaving = false,
-                                    toastMessage = UiText.res(R.string.cron_msg_save_failed, result.error.message),
+                                    toastMessage =
+                                        UiText.failure(
+                                            R.string.cron_msg_save_failed,
+                                            result.error.toUiText(),
+                                        ),
                                 ),
                         )
                     }

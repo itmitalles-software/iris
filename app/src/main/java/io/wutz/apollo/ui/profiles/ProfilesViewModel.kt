@@ -24,6 +24,7 @@ import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -252,7 +253,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             activeProfileName = originalActive,
-                            toastMessage = UiText.res(R.string.profiles_msg_switch_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.profiles_msg_switch_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -289,7 +290,7 @@ class ProfilesViewModel(
                                 isLoadingSoul = false,
                                 selectedSoulContent = null,
                                 toastMessage =
-                                    UiText.res(R.string.profiles_msg_load_soul_failed, result.error.message),
+                                    UiText.failure(R.string.profiles_msg_load_soul_failed, result.error.toUiText()),
                             )
                         }
                     }
@@ -326,7 +327,11 @@ class ProfilesViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.profiles_msg_soul_save_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.profiles_msg_soul_save_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -359,9 +364,9 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.profiles_msg_model_settings_failed,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -376,7 +381,7 @@ class ProfilesViewModel(
 
     /** Server error of one half of a combined load, or "Success" when that half loaded. */
     private fun partialLoadStatus(result: NetworkResult<*>): UiText =
-        (result as? NetworkResult.Failure)?.error?.message?.let { UiText.raw(it) }
+        (result as? NetworkResult.Failure)?.error?.toUiText()
             ?: UiText.res(R.string.profiles_msg_status_success)
 
     fun closeSoulDialog() {
@@ -417,7 +422,11 @@ class ProfilesViewModel(
                         it.copy(
                             isLoading = false,
                             toastMessage =
-                                UiText.res(R.string.profiles_msg_clone_failed, sourceProfileName, result.error.message),
+                                UiText.failure(
+                                    R.string.profiles_msg_clone_failed,
+                                    sourceProfileName,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -455,7 +464,11 @@ class ProfilesViewModel(
                         it.copy(
                             isLoading = false,
                             toastMessage =
-                                UiText.res(R.string.profiles_msg_description_failed, profileName, result.error.message),
+                                UiText.failure(
+                                    R.string.profiles_msg_description_failed,
+                                    profileName,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -494,10 +507,10 @@ class ProfilesViewModel(
                         it.copy(
                             isLoading = false,
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.profiles_msg_rename_failed,
                                     oldName,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -527,7 +540,12 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = UiText.res(R.string.profiles_msg_delete_failed, name, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.profiles_msg_delete_failed,
+                                    name,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -581,7 +599,11 @@ class ProfilesViewModel(
                         it.copy(
                             isAutoDescribing = false,
                             toastMessage =
-                                UiText.res(R.string.profiles_msg_auto_describe_error, name, result.error.message),
+                                UiText.failure(
+                                    R.string.profiles_msg_auto_describe_error,
+                                    name,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -610,7 +632,11 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingSetupCommand = false,
-                            toastMessage = UiText.res(R.string.profiles_msg_setup_command_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.profiles_msg_setup_command_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -642,7 +668,11 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingBuilderData = false,
-                            toastMessage = UiText.res(R.string.profiles_msg_load_models_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.profiles_msg_load_models_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -729,7 +759,11 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isSearchingHub = false,
-                            toastMessage = UiText.res(R.string.profiles_msg_skills_search_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.profiles_msg_skills_search_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -762,7 +796,7 @@ class ProfilesViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            toastMessage = UiText.res(R.string.profiles_msg_create_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.profiles_msg_create_failed, result.error.toUiText()),
                         )
                     }
                 }

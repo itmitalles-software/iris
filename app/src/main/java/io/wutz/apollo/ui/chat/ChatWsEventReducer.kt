@@ -140,6 +140,7 @@ object ChatWsEventReducer {
                 is WsEvent.VaultCodeRequest -> event.sessionId
                 is WsEvent.VaultCodeExpire -> event.sessionId
                 is WsEvent.StatusUpdate -> event.sessionId
+                is WsEvent.MoaProgress -> event.sessionId
                 else -> null
             }
         if (eventSessionId != null && (currentSessionId == null || eventSessionId != currentSessionId)) {
@@ -191,7 +192,8 @@ object ChatWsEventReducer {
 
             is WsEvent.MessageDone -> onMessageDone(state, streamingState)
 
-            is WsEvent.ToolStart -> onToolStart(state, streamingState, event)
+            // A tool call ends the model call the MoA progress belonged to.
+            is WsEvent.ToolStart -> onToolStart(state, streamingState.copy(moaProgress = null), event)
 
             is WsEvent.ToolComplete -> onToolComplete(state, streamingState, event)
 
@@ -279,7 +281,34 @@ object ChatWsEventReducer {
 
             // TranscriptResyncRequired is handled by ChatViewModel directly (refetch history on replay gap)
             is WsEvent.TranscriptResyncRequired -> ReducerResult(state = state, streamingState = streamingState)
+
+            // Out-of-band notices are held by ChatGatewayNoticesDelegate, outside the transcript state.
+            is WsEvent.NotificationShow,
+            is WsEvent.NotificationClear,
+            -> ReducerResult(state = state, streamingState = streamingState)
+
+            is WsEvent.MoaProgress -> onMoaProgress(state, streamingState, event)
         }
+
+    private fun onMoaProgress(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MoaProgress,
+    ): ReducerResult {
+        // Progress outside a running turn (late replay) must not resurrect an indicator.
+        if (!state.isAgentTyping) return ReducerResult(state = state, streamingState = streamingState)
+        val previous = streamingState.moaProgress
+        val total = event.refsTotal ?: previous?.refsTotal ?: 0
+        val done = event.refsDone ?: previous?.refsDone ?: if (event.aggregating) total else 0
+        if (total <= 0 && !event.aggregating) return ReducerResult(state = state, streamingState = streamingState)
+        val progress =
+            MoaProgressUi(
+                refsDone = done.coerceIn(0, maxOf(total, done)),
+                refsTotal = total,
+                aggregating = event.aggregating || previous?.aggregating == true,
+            )
+        return ReducerResult(state = state, streamingState = streamingState.copy(moaProgress = progress))
+    }
 
     // ── GatewayReady ──────────────────────────────────────────────────
 

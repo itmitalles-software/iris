@@ -79,7 +79,7 @@ class ViewModelExtTest {
             cache.put(scopedKey, "cached-val")
 
             var cacheHit: String? = null
-            var errorReceived: String? = null
+            var errorReceived: NetworkError? = null
 
             vm.safeLaunchSwrLoad(
                 cache = cache,
@@ -97,7 +97,7 @@ class ViewModelExtTest {
             assertEquals(null, cacheHit)
 
             testDispatcher.scheduler.advanceUntilIdle()
-            assertEquals("Server Error", errorReceived)
+            assertEquals(NetworkError.Http(500, "Server Error"), errorReceived)
         }
 
     @Test
@@ -110,7 +110,7 @@ class ViewModelExtTest {
             cache.put(scopedKey, "cached-val")
 
             var cacheHit: String? = null
-            var errorReceived: String? = null
+            var errorReceived: NetworkError? = null
 
             vm.safeLaunchSwrLoad(
                 cache = cache,

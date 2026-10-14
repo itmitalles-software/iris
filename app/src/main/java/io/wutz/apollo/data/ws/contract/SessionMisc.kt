@@ -39,3 +39,27 @@ data class PromptBtwParams(
 data class PromptBtwResult(
     @SerialName("task_id") val taskId: String? = null,
 )
+
+/**
+ * `message.react`: set or clear the user's tapback on the stored row [rowId] (`messages.id`). Tapback
+ * semantics on the gateway: one reaction per author, the same emoji again retracts, null clears.
+ */
+@Serializable
+data class MessageReactParams(
+    @SerialName("session_id") val sessionId: String,
+    @SerialName("row_id") val rowId: Long,
+    @SerialName("emoji") val emoji: String?,
+    @SerialName("author") val author: String,
+)
+
+@Serializable
+data class MessageReactResult(
+    @SerialName("row_id") val rowId: Long,
+    @SerialName("reactions") val reactions: List<MessageReactionWire> = emptyList(),
+)
+
+@Serializable
+data class MessageReactionWire(
+    @SerialName("emoji") val emoji: String,
+    @SerialName("author") val author: String = "",
+)

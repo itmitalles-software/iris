@@ -86,7 +86,11 @@ fun ProjectsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var addFolderTarget by remember { mutableStateOf<ProjectInfo?>(null) }
 
-    ToastEffect(toastMessage = state.toastMessage, onClearToast = viewModel::clearToast)
+    ToastEffect(
+        toastMessage = state.toastMessage,
+        onClearToast = viewModel::clearToast,
+        onUndo = state.toastUndo?.let { undo -> { viewModel.undoArchive(undo) } },
+    )
 
     HermesScaffold(
         modifier = modifier,

@@ -22,6 +22,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -71,12 +72,12 @@ data class SkillsUiState(
     val hubScanIdentifier: String? = null,
     val hubScanResult: SkillScanResponse? = null,
     val isHubScanning: Boolean = false,
-    val hubScanError: String? = null,
+    val hubScanError: UiText? = null,
     // Hub detail preview (full description/content via preview endpoint)
     val hubPreviewIdentifier: String? = null,
     val hubPreviewContent: String? = null,
     val isHubPreviewing: Boolean = false,
-    val hubPreviewError: String? = null,
+    val hubPreviewError: UiText? = null,
     // Hub install
     val isInstalling: Boolean = false,
     val installingSkillName: String? = null,
@@ -143,7 +144,7 @@ class SkillsViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UiText.res(R.string.skills_msg_load_failed, errorMsg),
+                            errorMessage = UiText.res(R.string.skills_msg_load_failed, errorMsg.toUiText()),
                         )
                     }
                 },
@@ -191,7 +192,7 @@ class SkillsViewModel(
                     _uiState.update {
                         it.copy(
                             isHubSearching = false,
-                            hubSearchError = UiText.res(R.string.skills_msg_search_failed, errorMsg),
+                            hubSearchError = UiText.res(R.string.skills_msg_search_failed, errorMsg.toUiText()),
                         )
                     }
                 },
@@ -235,7 +236,7 @@ class SkillsViewModel(
                 _uiState.update {
                     it.copy(
                         isHubSourcesLoading = false,
-                        hubSourcesError = UiText.res(R.string.skills_msg_hub_sources_failed, errorMsg),
+                        hubSourcesError = UiText.res(R.string.skills_msg_hub_sources_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -277,7 +278,7 @@ class SkillsViewModel(
                     _uiState.update {
                         it.copy(
                             isHubScanning = false,
-                            hubScanError = result.error.message,
+                            hubScanError = result.error.toUiText(),
                         )
                     }
                 }
@@ -332,7 +333,7 @@ class SkillsViewModel(
                     _uiState.update {
                         it.copy(
                             isHubPreviewing = false,
-                            hubPreviewError = result.error.message,
+                            hubPreviewError = result.error.toUiText(),
                         )
                     }
                 }
@@ -373,10 +374,10 @@ class SkillsViewModel(
                             isInstalling = false,
                             installingSkillName = null,
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.skills_msg_install_failed,
                                     identifier,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -414,7 +415,12 @@ class SkillsViewModel(
                         it.copy(
                             isUninstalling = false,
                             uninstallingSkillName = null,
-                            toastMessage = UiText.res(R.string.skills_msg_uninstall_failed, name, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.skills_msg_uninstall_failed,
+                                    name,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -465,7 +471,7 @@ class SkillsViewModel(
                 revertSkillToggle(
                     skill.name,
                     originalEnabled,
-                    UiText.res(R.string.skills_msg_toggle_failed, result.error.message),
+                    UiText.res(R.string.skills_msg_toggle_failed, result.error.toUiText()),
                 )
                 val reverted = _uiState.value.skills
                 if (requestScope != null) {
@@ -526,7 +532,7 @@ class SkillsViewModel(
                                 isLoadingContent = false,
                                 editingSkillName = null,
                                 toastMessage =
-                                    UiText.res(R.string.skills_msg_content_load_failed, result.error.message),
+                                    UiText.failure(R.string.skills_msg_content_load_failed, result.error.toUiText()),
                             )
                         }
                     }
@@ -570,7 +576,7 @@ class SkillsViewModel(
                     _uiState.update {
                         it.copy(
                             isSavingContent = false,
-                            toastMessage = UiText.res(R.string.skills_msg_save_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.skills_msg_save_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -594,7 +600,11 @@ class SkillsViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.skills_msg_hub_update_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.skills_msg_hub_update_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }

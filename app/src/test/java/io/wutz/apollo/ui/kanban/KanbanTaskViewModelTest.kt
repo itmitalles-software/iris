@@ -495,7 +495,7 @@ class KanbanTaskViewModelTest {
             vm.terminateRun("dev", "t_1", 7L)
             testDispatcher.scheduler.runCurrent()
 
-            assertEquals(UiText.raw("run 7 already ended"), vm.uiState.value.toastMessage)
+            assertEquals(UiText.Failure(UiText.raw("run 7 already ended")), vm.uiState.value.toastMessage)
             assertTrue(!vm.uiState.value.isTerminatingRun)
             coVerify(exactly = 0) { mockRepository.getRun(7L, "dev") }
         }

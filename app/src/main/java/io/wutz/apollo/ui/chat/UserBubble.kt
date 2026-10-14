@@ -225,10 +225,8 @@ fun UserBubble(
                             )
                             if (!message.isStreaming) {
                                 FlowRow(
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.End)
-                                            .padding(top = 4.dp),
+                                    // No top padding: the 48dp copy target already spaces the footer.
+                                    modifier = Modifier.align(Alignment.End),
                                     itemVerticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     IconButton(
@@ -240,7 +238,8 @@ fun UserBubble(
                                             }
                                             copied = true
                                         },
-                                        modifier = Modifier.size(20.dp),
+                                        // 48dp touch target; the drawn icon stays 12dp.
+                                        modifier = Modifier.size(48.dp),
                                     ) {
                                         Icon(
                                             imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,

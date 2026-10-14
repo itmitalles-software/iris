@@ -547,7 +547,7 @@ class BotsViewModelTest {
 
                 assertFalse(viewModel.selectBot(ProfileInfo(name = "scout")))
                 assertEquals(
-                    UiText.res(R.string.profiles_msg_switch_failed, "gateway down"),
+                    UiText.failure(R.string.profiles_msg_switch_failed, UiText.raw("gateway down")),
                     viewModel.uiState.value.toastMessage,
                 )
             } finally {

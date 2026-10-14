@@ -8,12 +8,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 android {
     namespace = "io.wutz.apollo"
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/src/test/resources/tls")
+    sourceSets.getByName("androidTest").assets.directories +=
+        listOf("$projectDir/schemas", "$projectDir/src/test/resources/tls")
 
     lint {
         disable += "MissingTranslation"
@@ -35,6 +36,11 @@ android {
         versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("versionName") as? String) ?: "1.0-dev"
         // GIT_SHA is added lazily per variant in androidComponents below.
+        ndk {
+            // 32-bit x86 phones are effectively gone and emulators run x86_64;
+            // dropping lib/x86 saves about 2.3 MB of uncompressed native code.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
 
     // All four variables are needed to sign release builds (see BUILD.md).
@@ -273,7 +279,6 @@ dependencies {
     // Encrypted storage
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.datastore)
-    implementation("androidx.startup:startup-runtime:1.1.1")
 
     // Local database (Room 3) — message persistence
     implementation(libs.androidx.room.runtime)
@@ -500,6 +505,33 @@ tasks.register("gate") {
         "compileReleaseKotlin",
         "checkPlayPermissions",
     )
+}
+
+// Coverage report for visibility only (no threshold): CI runs koverXmlReportDebug and
+// koverHtmlReportDebug after the unit tests and uploads the HTML report.
+kover {
+    currentProject {
+        instrumentation {
+            // The coverage agent slows every test JVM; attach it only when a
+            // Kover report is requested, so local `gate` runs stay as fast as before.
+            disabledForAll =
+                gradle.startParameter.taskNames.none { it.contains("kover", ignoreCase = true) }
+        }
+    }
+    reports {
+        filters {
+            excludes {
+                // Generated code says nothing about test coverage.
+                classes(
+                    "*.BuildConfig",
+                    "*ComposableSingletons*",
+                    "*_Impl",
+                    "*_Impl$*",
+                )
+                annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+            }
+        }
+    }
 }
 
 val includeBenchmarks = providers.gradleProperty("includeBenchmarks").isPresent

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -31,6 +32,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
@@ -40,10 +42,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import io.wutz.apollo.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+/**
+ * Default cap for the content column of [HermesScaffold] screens. Matches the chat's readable line
+ * length so cards and lists do not stretch across tablet and unfolded foldable windows.
+ */
+val HermesScaffoldMaxContentWidth = 840.dp
 
 /** Sealed interface for navigation icon types — eliminates boolean-flag anti-pattern. */
 sealed interface NavIcon {
@@ -156,7 +166,17 @@ fun HermesScaffold(
     onRefresh: (() -> Unit)? = null,
     isRefreshing: Boolean = false,
     pinTopBar: Boolean = false,
-    snackbarHost: @Composable () -> Unit = {},
+    /**
+     * Maximum width of the content column, centered in wider windows. Pass [Dp.Unspecified] for
+     * screens that need the full window width (multi-column boards, screens with their own cap).
+     * Narrower windows are unaffected.
+     */
+    maxContentWidth: Dp = HermesScaffoldMaxContentWidth,
+    /**
+     * A screen-specific snackbar host. Null (the default) uses the shared host that shows the
+     * messages of [ToastEffect]; a screen that passes its own host shows its messages itself.
+     */
+    snackbarHost: (@Composable () -> Unit)? = null,
     actions: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -175,7 +195,9 @@ fun HermesScaffold(
         // targetSdk 35+ enforces edge-to-edge, so adjustResize no longer shrinks the window for the
         // keyboard. Pad the content by the IME as well so bottom fields and Save buttons stay visible.
         contentWindowInsets = WindowInsets.navigationBars.union(WindowInsets.ime),
-        snackbarHost = { snackbarHost() },
+        snackbarHost = {
+            if (snackbarHost != null) snackbarHost() else HermesScreenSnackbarHost()
+        },
         topBar = {
             TopAppBar(
                 // One merged heading node so TalkBack heading navigation lands on the screen title.
@@ -249,8 +271,17 @@ fun HermesScaffold(
                             end = paddingValues.calculateEndPadding(layoutDirection),
                             bottom = paddingValues.calculateBottomPadding(),
                         ).dynamicTopBarPadding(scrollBehavior, paddingValues.calculateTopPadding()),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                content(paddingValues)
+                Box(
+                    modifier =
+                        Modifier
+                            .then(
+                                if (maxContentWidth.isSpecified) Modifier.widthIn(max = maxContentWidth) else Modifier,
+                            ).fillMaxSize(),
+                ) {
+                    content(paddingValues)
+                }
             }
         }
 

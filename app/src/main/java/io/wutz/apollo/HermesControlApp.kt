@@ -11,6 +11,7 @@ import coil3.gif.GifDecoder
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.local.ComposerDraftStore
 import io.wutz.apollo.data.local.SessionListCacheStore
 import io.wutz.apollo.data.remote.CertificateImageInterceptor
 import io.wutz.apollo.data.remote.ClientCertificates
@@ -18,12 +19,14 @@ import io.wutz.apollo.data.remote.NetworkMonitor
 import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.ServerTrust
 import io.wutz.apollo.notification.TurnCorrelationTracker
+import io.wutz.apollo.shortcuts.SessionShortcuts
 import io.wutz.apollo.ui.analytics.AnalyticsPreloader
 import io.wutz.apollo.ui.chat.cleanStaleCameraPhotos
 import io.wutz.apollo.ui.chat.cleanStalePastedImages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -46,11 +49,21 @@ class HermesControlApp :
         AuthManager.init(this)
         NetworkMonitor.init(this)
         SessionListCacheStore.init(this)
+        ComposerDraftStore.init(this)
         // Reply-notification turn boundaries survive process death (armed before
         // each mobile prompt, consumed by the matching completion).
         TurnCorrelationTracker.attach(this)
         appScope.launch {
             AuthManager.initializationState.first { it == AuthManager.InitializationState.Ready }
+            // Session shortcuts of a previous connection, profile or login disappear when the scope changes.
+            // The token comes from contextFlow, so a logout is seen together with its scope change.
+            SessionShortcuts.attach(
+                context = this@HermesControlApp,
+                signedInScopes =
+                    combine(AuthManager.dataScopeFlow, AuthManager.contextFlow) { scope, context ->
+                        scope.takeIf { AuthManager.isGatedMode() || !context?.token.isNullOrBlank() }
+                    },
+            )
             // Issue #537 follow-up (A): preload analytics in the background after launch
             // so the tab renders instantly when opened (the usage endpoint is slow on a
             // cold backend). Fire-and-forget; never blocks UI startup.

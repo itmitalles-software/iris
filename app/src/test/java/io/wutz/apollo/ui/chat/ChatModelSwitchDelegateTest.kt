@@ -271,7 +271,10 @@ class ChatModelSwitchDelegateTest {
             delegate.openModelPicker()
             advanceUntilIdle()
             assertFalse(uiState.value.modelPickerLoading)
-            assertEquals(UiText.res(R.string.chat_msg_load_models_failed, "Unavailable"), uiState.value.errorMessage)
+            assertEquals(
+                UiText.res(R.string.chat_msg_load_models_failed, UiText.raw("Unavailable")),
+                uiState.value.errorMessage,
+            )
         }
 
     @Test

@@ -489,6 +489,41 @@ sealed class WsEvent {
         val sessionId: String?,
     ) : WsEvent()
 
+    // ── Out-of-band notices and MoA progress ──────────────────────────────
+
+    /**
+     * `notification.show`: a keyed out-of-band notice ("Still starting the agent …", "Could not switch
+     * model …"). A notice with the same [key] replaces the previous one; `kind == "ttl"` with [ttlMs]
+     * expires on its own, other kinds stay until `notification.clear`. [level] is info, warn, error or
+     * success.
+     */
+    data class NotificationShow(
+        val text: String,
+        val level: String,
+        val kind: String,
+        val ttlMs: Long?,
+        val key: String?,
+        val sessionId: String?,
+    ) : WsEvent()
+
+    /** `notification.clear`: withdraw the notice shown under [key]. */
+    data class NotificationClear(
+        val key: String,
+        val sessionId: String?,
+    ) : WsEvent()
+
+    /**
+     * Mixture-of-agents progress (`moa.progress`, `moa.phase`, `moa.aggregating`): reference models
+     * answered [refsDone] of [refsTotal], or the [aggregator] started combining them ([aggregating]).
+     */
+    data class MoaProgress(
+        val refsDone: Int?,
+        val refsTotal: Int?,
+        val aggregating: Boolean,
+        val aggregator: String?,
+        val sessionId: String?,
+    ) : WsEvent()
+
     // ── Replay resync (internal) ──────────────────────────────────────────
 
     /** Internal: replay could not cover the reconnect gap (truncated or epoch change) — UI must refetch history. */

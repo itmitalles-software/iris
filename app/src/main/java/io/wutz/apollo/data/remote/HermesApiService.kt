@@ -24,6 +24,7 @@ import io.wutz.apollo.data.model.CredentialPoolAddRequest
 import io.wutz.apollo.data.model.CredentialPoolResponse
 import io.wutz.apollo.data.model.CronBlueprintListResponse
 import io.wutz.apollo.data.model.CronJob
+import io.wutz.apollo.data.model.CronJobRunsResponse
 import io.wutz.apollo.data.model.CuratorResponse
 import io.wutz.apollo.data.model.DebugShareRequest
 import io.wutz.apollo.data.model.DebugShareResponse
@@ -46,6 +47,10 @@ import io.wutz.apollo.data.model.HookResponse
 import io.wutz.apollo.data.model.InstantiateBlueprintRequest
 import io.wutz.apollo.data.model.LatestDescendantResponse
 import io.wutz.apollo.data.model.LearningGraphResponse
+import io.wutz.apollo.data.model.LearningNodeDetail
+import io.wutz.apollo.data.model.LearningNodeEdit
+import io.wutz.apollo.data.model.LearningNodeMutationResponse
+import io.wutz.apollo.data.model.LearningNodeRef
 import io.wutz.apollo.data.model.LogResponse
 import io.wutz.apollo.data.model.ManagedDirectoryCreate
 import io.wutz.apollo.data.model.ManagedFileActionResponse
@@ -102,6 +107,7 @@ import io.wutz.apollo.data.model.RecentUnlock
 import io.wutz.apollo.data.model.RenameProfileRequest
 import io.wutz.apollo.data.model.SaveSkillContentRequest
 import io.wutz.apollo.data.model.SessionDetailResponse
+import io.wutz.apollo.data.model.SessionImportResponse
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionListResponse
 import io.wutz.apollo.data.model.SessionMessagesAroundResponse
@@ -275,6 +281,20 @@ interface HermesApiService : KanbanApiService {
         @Path("id", encoded = true) sessionId: String,
     ): Response<Unit>
 
+    // Lossless single-session export (metadata + every message row), streamed as JSON.
+    @Streaming
+    @GET("api/sessions/{id}/export")
+    suspend fun exportSession(
+        @Path("id", encoded = true) sessionId: String,
+    ): Response<ResponseBody>
+
+    // Session import: the body is {"sessions": [...], "profile": ...}. The server reads the
+    // profile from the BODY only, so callers must set it on a multi-profile backend.
+    @POST("api/sessions/import")
+    suspend fun importSessions(
+        @Body body: okhttp3.RequestBody,
+    ): Response<SessionImportResponse>
+
     @POST("api/sessions/prune")
     suspend fun pruneSessions(
         @Body body: PruneRequest,
@@ -410,6 +430,13 @@ interface HermesApiService : KanbanApiService {
     suspend fun instantiateBlueprint(
         @Body body: InstantiateBlueprintRequest,
     ): Response<CronJob>
+
+    // Run history: agent sessions plus script-only fires, newest first.
+    @GET("api/cron/jobs/{id}/runs")
+    suspend fun getCronJobRuns(
+        @Path("id") id: String,
+        @Query("limit") limit: Int = 20,
+    ): Response<CronJobRunsResponse>
 
     @GET("api/cron/delivery-targets")
     suspend fun getCronDeliveryTargets(): Response<DeliveryTargetsResponse>
@@ -852,6 +879,23 @@ interface HermesApiService : KanbanApiService {
     suspend fun getLearningGraph(
         @Query("profile") profile: String? = null,
     ): Response<LearningGraphResponse>
+
+    // Node detail/edit/delete (hermes_cli/web_routers/status.py). Profile-scoped through
+    // ProfileScopeInterceptor; the server honours `?profile=` for the DELETE/PUT bodies too.
+    @GET("api/learning/node")
+    suspend fun getLearningNode(
+        @Query("id") id: String,
+    ): Response<LearningNodeDetail>
+
+    @PUT("api/learning/node")
+    suspend fun updateLearningNode(
+        @Body body: LearningNodeEdit,
+    ): Response<LearningNodeMutationResponse>
+
+    @HTTP(method = "DELETE", path = "api/learning/node", hasBody = true)
+    suspend fun deleteLearningNode(
+        @Body body: LearningNodeRef,
+    ): Response<LearningNodeMutationResponse>
 
     @GET("api/curator")
     suspend fun getCurator(): Response<CuratorResponse>

@@ -129,6 +129,20 @@ class ProfileScopeInterceptorTest {
     }
 
     @Test
+    fun learningEndpoints_areScoped() {
+        // Node edit/delete must reach the active profile's skills and memories, not the launch profile's.
+        val client = clientFor("yasmin")
+        for (path in listOf("api/learning/graph", "api/learning/node")) {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            val req = Request.Builder().url(server.url(path)).build()
+            client.newCall(req).execute().close()
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("yasmin", url.queryParameter("profile"))
+            assertEquals("/$path", url.encodedPath)
+        }
+    }
+
+    @Test
     fun skillsEndpoint_isScoped() {
         val client = clientFor("alpha")
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))

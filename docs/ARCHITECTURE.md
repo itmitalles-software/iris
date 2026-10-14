@@ -55,14 +55,15 @@ there is no Gradle plugin fallback.
 | `changes`            | path filter; changes outside `app/`, the Gradle files and `android.yml` skip the Gradle jobs                                     |
 | `ktlint`             | ktlint 1.8.0 style check + `checkColorLiterals` (hardcoded Color guard, issue #622)                                                |
 | `android-lint`       | Android Lint                                                                                                                       |
-| `unit-tests`         | JUnit                                                                                                                              |
+| `unit-tests`         | JUnit, plus a Kover line-coverage report (debug variant, HTML artifact `coverage-report`, no threshold)                            |
 | `build`              | assembleDebug, uploaded as an artifact (runs in parallel with the jobs above, not after them)                                      |
 | `release-compile`    | compileReleaseKotlin — catches release-variant compilation issues (e.g. debugImplementation-scoped deps referenced in main source); checkPlayPermissions — the Play manifest has no REQUEST_INSTALL_PACKAGES |
 | `instrumented-tests` | Compose UI tests on Android emulator (API 34 ATD)                                                                                  |
-| `ci-summary`         | Aggregator (`if: always()`): the one result to check. `main` has no branch protection, so nothing enforces it; merge only when it is green |
+| `ci-summary`         | Pure aggregator (`if: always()`, read-only token): the one result to check; merge only when it is green. The release workflow requires it on the tagged commit |
 
-Also: `merge-conflict-detector.yml` auto-labels PRs with `has-conflicts`,
-`codeql.yml` runs CodeQL, and `website.yml` (manual only) publishes `website/`.
+Also: `pr-template.yml` labels PRs by path and comments on incomplete PR
+descriptions (not for the owner), `codeql.yml` runs CodeQL, and `website.yml`
+(manual only) publishes `website/`.
 
 Every Gradle job validates `gradle-wrapper.jar` and uses the GitHub Actions
 Gradle cache of `gradle/actions/setup-gradle` (no remote build cache). A new
@@ -70,8 +71,13 @@ push to a PR branch cancels the PR's running CI (`concurrency.cancel-in-progress
 
 ### Releasing (`.github/workflows/release.yml`)
 
-Triggers on `git push tag v*`. Release APK uses R8 minification + resource shrinking.
-Requires `permissions: contents: write` on the `build-release` job.
+Triggers on `git push tag v*` (see [BUILD.md](../BUILD.md#releases)). Three jobs:
+`verify` (SemVer tag, tag commit on `main` with a green CI Summary, CHANGELOG section
+as release notes), `build` (the only job with the signing secrets, environment
+`release`, read-only token; checks the signer against `.github/release-cert.sha256`
+and the version with `aapt2`) and `publish` (no secrets; `SHA256SUMS`, build
+provenance attestation, `gh release create`). The release APK uses R8 minification +
+resource shrinking.
 
 ## Code Style
 
@@ -167,6 +173,18 @@ typed descriptor: `HermesWsClient.call(RpcMethods.X, params)` (suspending), `req
   explicit `false`/`""` is still sent. Do not add a `profile` field unless callers pass an explicit override;
   `WsProfileParams.decorate` injects it for profile-scoped methods.
 - `RawRpcParamsRatchetTest.BASELINE` must stay empty.
+
+### ChatViewModel delegates
+
+`ChatViewModel` coordinates session state, history and the send pipeline; cohesive
+features live in delegates in `ui/chat/` that get `uiState`, the scope, dispatchers
+and narrow lambdas: request tracking (`ChatRequestTracker`), timeline and history
+windows (`ChatTimelineDelegate`), the context meter (`ChatContextUsageDelegate`),
+`/compress` (`ChatCompressionDelegate`) with the ordered local transcript writes
+(`ChatLocalTranscriptWriter`), slash commands (`ChatSlashCommandsDelegate`), plus
+approvals, clarify, credential prompts, model switch, streaming, search, media,
+subagents and processes. Keep the VM's public API as thin forwarders and add new
+features as delegates rather than growing the VM.
 
 ### Voice conversation
 
@@ -283,7 +301,7 @@ gh pr create --base main --title "fix(#N): description" --body "Closes #N"
 
 ### Commit Conventions — STRICT
 
-**⚠ Agent-authored commits:** Do NOT override git authorship (`--author`) with the agent's identity. Use the default git config. No `Co-Authored-By` or `Generated with` trailers.
+**⚠ Agent-authored commits:** Do NOT override git authorship (`--author`) with the agent's identity. Use the default git config. A `Co-Authored-By` trailer for the agent is allowed.
 
 - **Short commits:** subject line + max 2 lines of body. Split into atomic commits rather than writing long bodies.
 - **Conventional Commits** types: `feat`, `fix`, `refactor`, `docs`, `test`, `ci`, `chore`.
@@ -342,10 +360,17 @@ JVM-global singletons (`AuthManager`, `HermesWsClient`, `ApiClient`,
 `ActiveSessionHolder`, `SwrCache`). Leaks between test classes turn into
 load-dependent flakes, so:
 
-- **Virtual time, no sleeps.** Use `runTest` with a `StandardTestDispatcher`,
-  `Dispatchers.setMain(...)` in setup and `Dispatchers.resetMain()` in teardown, and
-  advance with `advanceUntilIdle()`/`advanceTimeBy()`. Replace `Thread.sleep` with
-  virtual time or a latch.
+- **Virtual time, no sleeps.** Use `runTest` with a `StandardTestDispatcher`
+  installed as Main (`test:testutil/MainDispatcherRule.kt`, or `Dispatchers.setMain`/
+  `resetMain` by hand), and advance with `advanceUntilIdle()`/`advanceTimeBy()`.
+  Replace `Thread.sleep` with virtual time or a latch.
+- **ChatViewModel tests use `ChatViewModelHarness`** (`test:ui/chat/`), a JUnit rule
+  that stubs the singletons and creates view models on the test scheduler. The
+  per-feature classes (`ChatViewModelSendTest`, `...HistoryTest`, `...SlashTest`, ...)
+  extend `ChatViewModelTestBase`. Production timers come from an injected
+  `ChatTimingConfig`: tests get `ChatTimingConfig.TEST` (no timers, unthrottled
+  streaming) and enable single timers to test them (`ChatViewModelTimingTest`); there
+  is no hidden test mode in production code.
 - **Never mock `Dispatchers` statically** (`mockkStatic(Dispatchers::class)`). The mock
   bleeds JVM-wide into later test classes, and singleton scopes created while it is
   active stay bound to a dispatcher nobody advances. Inject an `ioDispatcher`
@@ -366,6 +391,11 @@ load-dependent flakes, so:
 - **User-visible ViewModel messages are `UiText`** (`ui/common/UiText.kt`). Assert the
   resource id and arguments (`assertEquals(UiText.res(R.string.x, "a"), state.toastMessage)`),
   not English text.
+- **Request failures go through `NetworkError.toUiText()`** (`ui/common/NetworkErrorText.kt`):
+  localized status texts, server details verbatim. The `safeLaunch*` `onError` callbacks get
+  the typed `NetworkError`. Screen messages that report a failure are `UiText.failure(...)`;
+  `ToastEffect` shows them as an error snackbar with "Copy", and offers "Undo" when the
+  screen passes `onUndo` (sessions archive/pin, projects archive).
 - **No real device storage.** Use `TemporaryFolder` or Room's in-memory builder.
 - After changing a signature used by `app/src/androidTest`, the gate's
   `compileDebugAndroidTestKotlin` must pass.
@@ -413,4 +443,3 @@ io.wutz.apollo/
 - [Gateway contract test](../CONTRIBUTING.md#gateway-contract-snapshot) — backend drift check; refresh with `scripts/sync-gateway-contract.sh`
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — contributor workflow, PR checklist, code style
 - [.github/workflows/android.yml](../.github/workflows/android.yml) — CI pipeline source of truth
-- [.github/workflows/merge-conflict-detector.yml](../.github/workflows/merge-conflict-detector.yml) — auto-labels conflicting PRs

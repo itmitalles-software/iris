@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.local.SwrCache
+import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.ws.ChangeEventHub
 import kotlinx.coroutines.Job
@@ -16,12 +17,15 @@ interface ToastHost {
     fun clearToast()
 }
 
+// The onError callbacks below get the typed NetworkError: show it with toUiText() (localized, with
+// the server's detail verbatim) and branch on it where a status needs its own handling (e.g. 409).
+
 inline fun <T> ViewModel.safeLaunchLoad(
     currentJob: Job? = null,
     crossinline apiCall: suspend () -> NetworkResult<T>,
     crossinline onStart: () -> Unit,
     crossinline onSuccess: (T) -> Unit,
-    crossinline onError: (String) -> Unit,
+    crossinline onError: (NetworkError) -> Unit,
 ): Job {
     if (currentJob?.isActive == true) return currentJob
     onStart()
@@ -33,7 +37,7 @@ inline fun <T> ViewModel.safeLaunchLoad(
         val result = apiCall()
         when (result) {
             is NetworkResult.Success -> onSuccess(result.data)
-            is NetworkResult.Failure -> onError(result.error.message)
+            is NetworkResult.Failure -> onError(result.error)
         }
     }
 }
@@ -62,7 +66,7 @@ inline fun <T : Any> ViewModel.safeLaunchSwrLoad(
     crossinline apiCall: suspend () -> NetworkResult<T>,
     crossinline onStart: () -> Unit,
     crossinline onSuccess: (T) -> Unit,
-    crossinline onError: (String) -> Unit,
+    crossinline onError: (NetworkError) -> Unit,
 ): Job {
     if (currentJob?.isActive == true) {
         if (!forceRefresh) return currentJob
@@ -94,7 +98,7 @@ inline fun <T : Any> ViewModel.safeLaunchSwrLoad(
 
             is NetworkResult.Failure -> {
                 if (cached == null || forceRefresh) {
-                    onError(result.error.message)
+                    onError(result.error)
                 }
             }
         }
@@ -110,7 +114,7 @@ inline fun <T> ViewModel.safeLaunchAction(
     crossinline onStart: () -> Unit = {},
     crossinline apiCall: suspend () -> NetworkResult<T>,
     crossinline onSuccess: (T) -> Unit = {},
-    crossinline onError: (String) -> Unit = {},
+    crossinline onError: (NetworkError) -> Unit = {},
     crossinline onComplete: () -> Unit = {},
 ): Job {
     if (currentJob?.isActive == true) return currentJob
@@ -120,7 +124,7 @@ inline fun <T> ViewModel.safeLaunchAction(
             val result = apiCall()
             when (result) {
                 is NetworkResult.Success -> onSuccess(result.data)
-                is NetworkResult.Failure -> onError(result.error.message)
+                is NetworkResult.Failure -> onError(result.error)
             }
         } finally {
             onComplete()

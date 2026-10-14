@@ -7,6 +7,7 @@ import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.DiscoveredRepo
 import io.wutz.apollo.data.model.ProjectInfo
+import io.wutz.apollo.data.ws.ChangeEvents
 import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.data.ws.ProjectsRepository
 import io.wutz.apollo.data.ws.ProjectsResult
@@ -35,6 +36,12 @@ data class ProjectDraft(
     val folder: String = "",
 )
 
+/** The inverse of an archive or restore: set [projectId]'s archived flag to [archived]. */
+data class ProjectArchiveUndo(
+    val projectId: String,
+    val archived: Boolean,
+)
+
 data class ProjectsUiState(
     val isLoading: Boolean = true,
     val errorMessage: UiText? = null,
@@ -50,6 +57,8 @@ data class ProjectsUiState(
     val editorError: UiText? = null,
     val deleteTarget: ProjectInfo? = null,
     val toastMessage: UiText? = null,
+    /** Offered as "Undo" next to [toastMessage]: sets the project's archived flag back. */
+    val toastUndo: ProjectArchiveUndo? = null,
 ) {
     val visibleProjects: List<ProjectInfo>
         get() {
@@ -85,8 +94,24 @@ class ProjectsViewModel(
             }
         }
         viewModelScope.launch {
-            events.collect { if (it is WsEvent.GatewayReady) load() }
+            events.collect {
+                when {
+                    it is WsEvent.GatewayReady -> load()
+                    it is WsEvent.ChangeEvent && it.type == ChangeEvents.PROJECTS -> refreshSilently()
+                }
+            }
         }
+    }
+
+    /** Another client changed projects.db: refetch without a spinner; a failure keeps the current list. */
+    private fun refreshSilently() {
+        if (loadJob?.isActive == true) return
+        loadJob =
+            viewModelScope.launch {
+                val repos = async { repository.discoveredRepos() }
+                val result = repository.list()
+                if (result is ProjectsResult.Ok) applyProjects(result.value, repos.await())
+            }
     }
 
     fun load() {
@@ -181,7 +206,20 @@ class ProjectsViewModel(
     fun setArchived(
         project: ProjectInfo,
         archived: Boolean,
-    ) = mutate(project.id) { repository.setArchived(project.id, archived) }
+    ) = mutate(
+        id = project.id,
+        success = archivedMessage(archived),
+        undo = ProjectArchiveUndo(project.id, archived = !archived),
+    ) { repository.setArchived(project.id, archived) }
+
+    /** Runs the inverse of the archive change reported by the last message ("Undo" in the snackbar). */
+    fun undoArchive(undo: ProjectArchiveUndo) =
+        mutate(id = undo.projectId, success = archivedMessage(undo.archived)) {
+            repository.setArchived(undo.projectId, undo.archived)
+        }
+
+    private fun archivedMessage(archived: Boolean): UiText =
+        UiText.res(if (archived) R.string.projects_msg_archived else R.string.projects_msg_restored)
 
     fun requestDelete(project: ProjectInfo) = _uiState.update { it.copy(deleteTarget = project) }
 
@@ -212,9 +250,14 @@ class ProjectsViewModel(
         path: String,
     ) = mutate(project.id) { repository.setPrimaryFolder(project.id, path) }
 
-    /** Runs one project RPC, then reloads so the list shows what the gateway actually stored. */
+    /**
+     * Runs one project RPC, then reloads so the list shows what the gateway actually stored.
+     * On success it shows [success] (if any) with [undo] offered next to it.
+     */
     private fun mutate(
         id: String,
+        success: UiText? = null,
+        undo: ProjectArchiveUndo? = null,
         call: suspend () -> ProjectsResult<Unit>,
     ) {
         if (_uiState.value.busyId != null) return
@@ -222,14 +265,23 @@ class ProjectsViewModel(
         viewModelScope.launch {
             val result = call()
             _uiState.update {
-                it.copy(
-                    busyId = null,
-                    toastMessage = (result as? ProjectsResult.Failed)?.message?.let(UiText::raw),
-                )
+                when (result) {
+                    is ProjectsResult.Failed -> {
+                        it.copy(
+                            busyId = null,
+                            toastMessage = UiText.Failure(UiText.raw(result.message)),
+                            toastUndo = null,
+                        )
+                    }
+
+                    is ProjectsResult.Ok -> {
+                        it.copy(busyId = null, toastMessage = success, toastUndo = undo.takeIf { success != null })
+                    }
+                }
             }
             load()
         }
     }
 
-    override fun clearToast() = _uiState.update { it.copy(toastMessage = null) }
+    override fun clearToast() = _uiState.update { it.copy(toastMessage = null, toastUndo = null) }
 }

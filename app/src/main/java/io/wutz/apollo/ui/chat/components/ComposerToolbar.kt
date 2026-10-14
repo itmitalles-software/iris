@@ -13,6 +13,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
@@ -38,16 +41,18 @@ import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -237,14 +242,15 @@ fun ComposerToolbar(
                 .padding(top = 6.dp)
                 .testTag("composer_toolbar"),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Controls take 48dp touch boxes around 36dp circles; the boxes' own margin spaces them.
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         // Attach button
-        FilledIconButton(
+        ComposerCircleButton(
             onClick = onAttachTap,
             enabled = isConnected,
             colors = flatIconButtonColors(palette),
-            modifier = Modifier.size(ControlSize).testTag("attachment_button"),
+            modifier = Modifier.testTag("attachment_button"),
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
@@ -549,13 +555,10 @@ fun ComposerToolbar(
             exit = fadeOut() + scaleOut(targetScale = 0.8f),
         ) {
             if (canInterrupt) {
-                FilledIconButton(
+                ComposerCircleButton(
                     onClick = onStopGeneration,
                     colors = flatIconButtonColors(palette),
-                    modifier =
-                        Modifier
-                            .size(ControlSize)
-                            .testTag("stop_button"),
+                    modifier = Modifier.testTag("stop_button"),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Stop,
@@ -569,24 +572,29 @@ fun ComposerToolbar(
                 // supplies its own clickable (review, PR #1280). Same
                 // arrangement as the action button below.
                 val micColors = if (isListening) listeningIconButtonColors() else flatIconButtonColors(palette)
+                val micInteraction = remember { MutableInteractionSource() }
                 Box(
                     modifier =
                         Modifier
-                            .size(ControlSize)
-                            .clip(CircleShape)
-                            .background(
-                                if (isConnected) micColors.containerColor else micColors.disabledContainerColor,
-                            ).semantics {
+                            .size(TouchTargetSize)
+                            .semantics {
                                 customActions =
                                     voiceNoteActions(
                                         isConnected && showSend && !canInterrupt && !isVoiceNoteLocked,
                                     )
                             }.combinedClickable(
+                                interactionSource = micInteraction,
+                                indication = null,
                                 enabled = isConnected,
                                 role = Role.Button,
                                 onClick = onMicTap,
                             ).testTag(if (isListening) "mic_stop_button" else "mic_button")
-                            .then(flatMicGesture),
+                            .then(flatMicGesture)
+                            .padding(TouchInset)
+                            .clip(CircleShape)
+                            .background(
+                                if (isConnected) micColors.containerColor else micColors.disabledContainerColor,
+                            ).indication(micInteraction, ripple()),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -616,23 +624,20 @@ fun ComposerToolbar(
             } else {
                 isConnected
             }
+        val actionInteraction = remember { MutableInteractionSource() }
         Box(
             modifier =
                 Modifier
-                    .size(if (showSend) 48.dp else ControlSize)
-                    .clip(CircleShape)
-                    .background(
-                        if (!showSend && isListening) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            palette.action
-                        },
-                    ).semantics {
+                    // Always a 48dp touch box; the drawn circle is 48dp for send, 36dp otherwise.
+                    .size(TouchTargetSize)
+                    .semantics {
                         customActions =
                             voiceNoteActions(
                                 isConnected && !showSend && !canInterrupt && !isVoiceNoteLocked,
                             )
                     }.combinedClickable(
+                        interactionSource = actionInteraction,
+                        indication = null,
                         enabled = actionEnabled,
                         role = Role.Button,
                         onClick = {
@@ -657,7 +662,16 @@ fun ComposerToolbar(
                             isListening -> "mic_stop_button"
                             else -> "mic_button"
                         },
-                    ).then(if (showSend || canInterrupt) Modifier else actionMicGesture),
+                    ).then(if (showSend || canInterrupt) Modifier else actionMicGesture)
+                    .padding(if (showSend) 0.dp else TouchInset)
+                    .clip(CircleShape)
+                    .background(
+                        if (!showSend && isListening) {
+                            MaterialTheme.colorScheme.errorContainer
+                        } else {
+                            palette.action
+                        },
+                    ).indication(actionInteraction, ripple()),
             contentAlignment = Alignment.Center,
         ) {
             Crossfade(
@@ -717,6 +731,49 @@ fun ComposerToolbar(
 }
 
 private val ControlSize = 36.dp
+
+/** Minimum touch target (DESIGN.md); the drawn controls stay [ControlSize]. */
+private val TouchTargetSize = 48.dp
+
+/** Transparent margin between a 48dp touch box and its drawn 36dp control. */
+private val TouchInset = (TouchTargetSize - ControlSize) / 2
+
+/**
+ * A flat composer control: a 48dp touch box around a drawn [ControlSize] circle. The ripple
+ * stays inside the circle, so the control looks exactly like the former 36dp button.
+ */
+@Composable
+private fun ComposerCircleButton(
+    onClick: () -> Unit,
+    colors: IconButtonColors,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier =
+            modifier
+                .size(TouchTargetSize)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = onClick,
+                ).padding(TouchInset)
+                .clip(CircleShape)
+                .background(if (enabled) colors.containerColor else colors.disabledContainerColor)
+                .indication(interactionSource, ripple()),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(
+            LocalContentColor provides if (enabled) colors.contentColor else colors.disabledContentColor,
+        ) {
+            content()
+        }
+    }
+}
 
 private enum class ActionGlyph { SEND, STOP, VOICE }
 

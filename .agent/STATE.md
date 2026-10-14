@@ -43,7 +43,7 @@ Owner decisions are in `DECISIONS.md`; open work is in GitHub Issues
   (API 34 ATD). CodeQL default setup is disabled so `codeql.yml` runs.
 - Known load-sensitive tests (pass alone, failed once under heavy load):
   `HermesWsClientTest.testOpenRequestsReplayUsesTheLiveServerRequestDispatcher`
-  and the `ChatViewModelTest` case `sendMessage while session create is in
+  and the `ChatViewModelSendTest` case `sendMessage while session create is in
   flight…`.
 
 ## Verified against a live Hermes

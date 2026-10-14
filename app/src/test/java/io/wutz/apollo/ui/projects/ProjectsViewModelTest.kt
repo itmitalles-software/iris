@@ -8,12 +8,14 @@ import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.DiscoveredRepo
 import io.wutz.apollo.data.model.ProjectFolder
 import io.wutz.apollo.data.model.ProjectInfo
+import io.wutz.apollo.data.ws.ChangeEvents
 import io.wutz.apollo.data.ws.ProjectsRepository
 import io.wutz.apollo.data.ws.ProjectsResult
 import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -23,6 +25,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -146,8 +149,29 @@ class ProjectsViewModelTest {
             advanceUntilIdle()
             vm.setArchived(app, true)
             advanceUntilIdle()
-            assertEquals(UiText.raw("no such project"), vm.uiState.value.toastMessage)
+            assertEquals(UiText.Failure(UiText.raw("no such project")), vm.uiState.value.toastMessage)
+            assertNull(vm.uiState.value.toastUndo)
             assertNull(vm.uiState.value.busyId)
+        }
+
+    @Test
+    fun archiveOffersUndoThatRestoresTheProject() =
+        runTest(dispatcher) {
+            coEvery { repo.setArchived("p_1", any()) } returns ProjectsResult.Ok(Unit)
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.setArchived(app, true)
+            advanceUntilIdle()
+            assertEquals(UiText.res(R.string.projects_msg_archived), vm.uiState.value.toastMessage)
+            val undo = vm.uiState.value.toastUndo
+            assertEquals(ProjectArchiveUndo("p_1", archived = false), undo)
+
+            vm.clearToast()
+            vm.undoArchive(undo!!)
+            advanceUntilIdle()
+            coVerify { repo.setArchived("p_1", false) }
+            assertEquals(UiText.res(R.string.projects_msg_restored), vm.uiState.value.toastMessage)
+            assertNull(vm.uiState.value.toastUndo)
         }
 
     @Test
@@ -165,5 +189,56 @@ class ProjectsViewModelTest {
                 vm.uiState.value.suggestions
                     .map { it.root },
             )
+        }
+
+    @Test
+    fun projectsChangedEventRefetchesWithoutSpinner() =
+        runTest(dispatcher) {
+            val events = MutableSharedFlow<WsEvent>()
+            val vm =
+                ProjectsViewModel(
+                    repository = repo,
+                    scopes = MutableStateFlow<DataScope?>(null),
+                    events = events,
+                )
+            advanceUntilIdle()
+            val renamed = app.copy(name = "Renamed")
+            coEvery { repo.list() } returns ProjectsResult.Ok(listOf(renamed, old))
+
+            events.emit(WsEvent.ChangeEvent(ChangeEvents.PROJECTS))
+            assertFalse(vm.uiState.value.isLoading)
+            advanceUntilIdle()
+
+            assertEquals(
+                "Renamed",
+                vm.uiState.value.projects
+                    .first { it.id == "p_1" }
+                    .name,
+            )
+            coVerify(exactly = 2) { repo.list() }
+        }
+
+    @Test
+    fun failedProjectsChangedRefetchKeepsTheList() =
+        runTest(dispatcher) {
+            val events = MutableSharedFlow<WsEvent>()
+            val vm =
+                ProjectsViewModel(
+                    repository = repo,
+                    scopes = MutableStateFlow<DataScope?>(null),
+                    events = events,
+                )
+            advanceUntilIdle()
+            coEvery { repo.list() } returns ProjectsResult.Failed("boom")
+
+            events.emit(WsEvent.ChangeEvent(ChangeEvents.PROJECTS))
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p_1", "p_2"),
+                vm.uiState.value.projects
+                    .map { it.id },
+            )
+            assertNull(vm.uiState.value.errorMessage)
         }
 }

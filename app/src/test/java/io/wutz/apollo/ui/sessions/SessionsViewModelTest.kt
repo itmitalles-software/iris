@@ -838,12 +838,78 @@ class SessionsViewModelTest {
                 .pinned ?: false,
         )
         assertEquals(
-            UiText.res(
+            UiText.failure(
                 R.string.sessions_msg_pin_failed,
-                "Server Error (HTTP 500): The server encountered an error.",
+                UiText.res(R.string.network_error_http_server, 500),
             ),
             vm.uiState.value.toastMessage,
         )
+        assertNull(vm.uiState.value.toastUndo)
+    }
+
+    @Test
+    fun `togglePin offers an undo that unpins without offering another undo`() {
+        val vm = createViewModel()
+        coEvery { mockApi.getSessions(any(), any(), any(), null, "cron") } returns
+            Response.success(SessionListResponse(sessions = listOf(SessionInfo("s-1")), total = 1))
+        vm.loadSessions()
+        testDispatcher.scheduler.advanceUntilIdle()
+        coEvery { mockApi.setSessionPinned(any(), any()) } returns Response.success(Unit)
+
+        vm.togglePin("s-1")
+        testDispatcher.scheduler.advanceUntilIdle()
+        val undo = vm.uiState.value.toastUndo
+        assertEquals(SessionUndo.Pin("s-1", pinned = false), undo)
+
+        vm.clearToast()
+        assertNull(vm.uiState.value.toastUndo)
+        vm.undo(undo!!)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { mockApi.setSessionPinned("s-1", SessionRenameRequest(pinned = false)) }
+        assertEquals(
+            false,
+            vm.uiState.value.sessions
+                .single()
+                .pinned,
+        )
+        assertEquals(UiText.res(R.string.sessions_msg_unpinned), vm.uiState.value.toastMessage)
+        assertNull(vm.uiState.value.toastUndo)
+    }
+
+    @Test
+    fun `undo of an archive restores the session and reloads the list`() {
+        val vm = createViewModel()
+        coEvery { mockApi.getSessions(any(), any(), any(), null, "cron", any()) } returns
+            Response.success(
+                SessionListResponse(sessions = listOf(SessionInfo("s-1"), SessionInfo("s-2")), total = 2),
+            )
+        vm.loadSessions()
+        testDispatcher.scheduler.advanceUntilIdle()
+        coEvery { mockApi.setSessionArchived(any(), any()) } returns Response.success(Unit)
+
+        vm.toggleArchive("s-1")
+        testDispatcher.scheduler.advanceUntilIdle()
+        val undo = vm.uiState.value.toastUndo
+        assertEquals(SessionUndo.Archive("s-1", archived = false), undo)
+        assertEquals(
+            listOf("s-2"),
+            vm.uiState.value.sessions
+                .map { it.id },
+        )
+
+        vm.undo(undo!!)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { mockApi.setSessionArchived("s-1", SessionRenameRequest(archived = false)) }
+        coVerify(exactly = 2) { mockApi.getSessions(any(), any(), any(), null, "cron", any()) }
+        assertEquals(
+            listOf("s-1", "s-2"),
+            vm.uiState.value.sessions
+                .map { it.id },
+        )
+        assertEquals(UiText.res(R.string.sessions_msg_unarchived), vm.uiState.value.toastMessage)
+        assertNull(vm.uiState.value.toastUndo)
     }
 
     @Test

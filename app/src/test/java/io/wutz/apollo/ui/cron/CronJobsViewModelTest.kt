@@ -201,7 +201,7 @@ class CronJobsViewModelTest {
         settle()
 
         assertEquals(
-            UiText.res(R.string.cron_msg_save_failed, "invalid time '25:00' - use HH:MM (24h)"),
+            UiText.failure(R.string.cron_msg_save_failed, UiText.raw("invalid time '25:00' - use HH:MM (24h)")),
             vm.uiState.value.editorState.toastMessage,
         )
         assertFalse(vm.uiState.value.editorState.isSaving)
@@ -393,7 +393,10 @@ class CronJobsViewModelTest {
         coVerify { mockApi.deleteCronJob("j5") }
         assertTrue(vm.uiState.value.editorState.isOpen)
         assertEquals(
-            UiText.res(R.string.cron_msg_save_failed, "monitor_script and monitor_url are mutually exclusive"),
+            UiText.failure(
+                R.string.cron_msg_save_failed,
+                UiText.raw("monitor_script and monitor_url are mutually exclusive"),
+            ),
             vm.uiState.value.editorState.toastMessage,
         )
     }

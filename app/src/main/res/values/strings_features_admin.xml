@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Memory: edit or forget a learned skill or memory -->
+    <string name="memory_node_open">Open details</string>
+    <plurals name="memory_nodes_show_all">
+        <item quantity="one">Show all (%d)</item>
+        <item quantity="other">Show all (%d)</item>
+    </plurals>
+    <string name="memory_nodes_show_recent">Show recent only</string>
+    <string name="memory_node_kind_skill">Skill</string>
+    <string name="memory_node_kind_memory">Memory</string>
+    <string name="memory_node_skill_hint">The skill\'s SKILL.md on the server. Saving replaces it.</string>
+    <string name="memory_node_memory_hint">One entry of the agent\'s memory. Saving replaces this entry.</string>
+    <string name="memory_node_content_label">Content</string>
+    <string name="memory_node_forget">Forget</string>
+    <string name="memory_node_forget_title">Forget this entry?</string>
+    <string name="memory_node_forget_skill_message">The skill “%1$s” is archived. It can be restored on the server with: hermes curator restore %1$s</string>
+    <string name="memory_node_forget_memory_message">This entry is removed from the agent\'s memory. This cannot be undone.</string>
+    <string name="memory_node_load_failed">Could not load this entry: %1$s</string>
+    <string name="memory_node_empty_content">The content cannot be empty. Use Forget to remove the entry.</string>
+    <string name="memory_node_saved">Saved “%1$s”</string>
+    <string name="memory_node_save_failed">Could not save: %1$s</string>
+    <string name="memory_node_forgot_skill">Archived the skill “%1$s”</string>
+    <string name="memory_node_forgot_memory">Memory entry forgotten</string>
+    <string name="memory_node_forget_failed">Could not forget the entry: %1$s</string>
+
+    <!-- Cron job detail: run history -->
+    <string name="cron_runs_title">Runs</string>
+    <string name="cron_runs_empty">No runs yet.</string>
+    <string name="cron_runs_load_failed">Could not load the runs: %1$s</string>
+    <string name="cron_runs_running">Running</string>
+    <string name="cron_runs_agent_run">Agent run</string>
+    <string name="cron_runs_script_run">Script run</string>
+    <string name="cron_runs_kind_agent">Agent</string>
+    <string name="cron_runs_kind_script">Script</string>
+    <plurals name="cron_runs_tokens">
+        <item quantity="one">%1$d token</item>
+        <item quantity="other">%1$d tokens</item>
+    </plurals>
+    <string name="cron_runs_open_session">Open conversation</string>
+    <string name="cron_runs_toggle_output">Show or hide output</string>
+
+    <!-- History: share, export and import conversations -->
+    <string name="session_transfer_action_share">Share as text</string>
+    <string name="session_transfer_action_export">Export (JSON)</string>
+    <string name="session_transfer_action_import">Import conversation</string>
+    <string name="session_transfer_share_chooser">Share conversation</string>
+    <string name="session_transfer_role_user">You</string>
+    <string name="session_transfer_role_assistant">Assistant</string>
+    <string name="session_transfer_image">image</string>
+    <string name="session_transfer_truncated">Shortened. Export the conversation as JSON for the full text.</string>
+    <string name="session_transfer_share_failed">Could not prepare the conversation: %1$s</string>
+    <string name="session_transfer_export_done">Conversation exported</string>
+    <string name="session_transfer_export_failed">Could not export the conversation: %1$s</string>
+    <string name="session_transfer_import_failed">Could not import: %1$s</string>
+    <string name="session_transfer_import_too_large">The file is too large to import (max. 25 MB).</string>
+    <string name="session_transfer_import_not_json">The file is not a Hermes conversation export (JSON).</string>
+    <string name="session_transfer_import_no_sessions">The file contains no conversations.</string>
+    <plurals name="session_transfer_imported">
+        <item quantity="one">Imported %d conversation</item>
+        <item quantity="other">Imported %d conversations</item>
+    </plurals>
+    <plurals name="session_transfer_imported_with_skipped">
+        <item quantity="one">Imported %1$d conversation, %2$d already present</item>
+        <item quantity="other">Imported %1$d conversations, %2$d already present</item>
+    </plurals>
+    <plurals name="session_transfer_import_all_present">
+        <item quantity="one">The conversation is already present</item>
+        <item quantity="other">All %d conversations are already present</item>
+    </plurals>
+
+    <!-- Launcher shortcuts and Quick Settings tile -->
+    <string name="shortcut_new_chat_short">New chat</string>
+    <string name="shortcut_new_chat_long">Start a new chat</string>
+    <string name="shortcut_voice_short">Voice</string>
+    <string name="shortcut_voice_long">Start a voice conversation</string>
+    <string name="shortcut_history_short">History</string>
+    <string name="shortcut_history_long">Open the conversation history</string>
+    <string name="shortcut_session_other_scope">This conversation belongs to another connection or profile.</string>
+
+    <!-- Settings → About: open-source licenses -->
+    <string name="licenses_title">Open-source licenses</string>
+    <string name="licenses_about_value">Apollo, Cinzel font, libraries</string>
+    <string name="licenses_open">Open licenses</string>
+    <string name="licenses_expand">Show license text</string>
+    <string name="licenses_collapse">Hide license text</string>
+    <string name="licenses_apollo_title">Apollo</string>
+    <string name="licenses_apollo_summary">Apache License 2.0</string>
+    <string name="licenses_notice_title">Notice</string>
+    <string name="licenses_notice_summary">Origin, attribution and bundled works</string>
+    <string name="licenses_cinzel_title">Cinzel typeface</string>
+    <string name="licenses_cinzel_summary">SIL Open Font License 1.1</string>
+    <string name="licenses_libraries_title">Third-party libraries</string>
+    <string name="licenses_libraries_summary">AndroidX, Kotlin, OkHttp, Coil, SQLCipher and others</string>
+</resources>

@@ -340,10 +340,7 @@ class KanbanViewModelTest {
                 .status,
         )
         assertEquals(
-            UiText.res(
-                R.string.kanban_msg_move_failed,
-                "Conflict (HTTP 409): The request conflicts with current server state.",
-            ),
+            UiText.failure(R.string.kanban_msg_move_failed, UiText.res(R.string.network_error_http_409)),
             vm.uiState.value.toastMessage,
         )
     }
@@ -368,11 +365,13 @@ class KanbanViewModelTest {
                 .status,
         )
         assertEquals(
-            UiText.res(
+            UiText.failure(
                 R.string.kanban_msg_move_blocked_by_parents,
                 "t_parent",
                 "running",
-                "Cannot move to 'ready': blocked by parent(s) not done — 'Build' (t_parent, status=running)",
+                UiText.raw(
+                    "Cannot move to 'ready': blocked by parent(s) not done — 'Build' (t_parent, status=running)",
+                ),
             ),
             vm.uiState.value.toastMessage,
         )

@@ -82,7 +82,8 @@ class SystemViewModelActionPollingTest {
 
         vm.runSecurityAudit()
         driveUntil {
-            (vm.uiState.value.toastMessage as? UiText.Resource)?.id == R.string.system_msg_action_status_lost
+            ((vm.uiState.value.toastMessage as? UiText.Failure)?.text as? UiText.Resource)?.id ==
+                R.string.system_msg_action_status_lost
         }
         settle()
 

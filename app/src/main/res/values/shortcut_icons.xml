@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher shortcut icons (outside Compose): the Apollo ink disc with an antique-gold glyph,
+         matching the launcher icon. See docs/BRANDING.md. -->
+    <color name="shortcut_icon_background">@color/apollo_ink</color>
+    <color name="shortcut_icon_glyph">#FFD4AF72</color>
+</resources>

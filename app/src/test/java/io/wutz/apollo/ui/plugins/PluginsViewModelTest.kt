@@ -21,6 +21,7 @@ import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.data.ws.PluginRemovalRepository
 import io.wutz.apollo.data.ws.PluginRemovalResult
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -174,7 +175,7 @@ class PluginsViewModelTest {
         viewModel.updatePlugin("snyk")
         testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(
-            UiText.res(R.string.plugins_msg_update_failed, mapHttpError(503).message),
+            UiText.failure(R.string.plugins_msg_update_failed, mapHttpError(503).toUiText()),
             viewModel.uiState.value.toastMessage,
         )
         assertNull(viewModel.uiState.value.rowBusy)
@@ -228,7 +229,7 @@ class PluginsViewModelTest {
                 .isEmpty(),
         )
         assertEquals(
-            UiText.res(R.string.plugins_msg_catalog_load_failed, mapHttpError(500).message),
+            UiText.res(R.string.plugins_msg_catalog_load_failed, mapHttpError(500).toUiText()),
             viewModel.uiState.value.catalogErrorMessage,
         )
     }
@@ -301,7 +302,7 @@ class PluginsViewModelTest {
 
         assertNull(viewModel.uiState.value.catalogInstallingName)
         assertEquals(
-            UiText.res(R.string.plugins_msg_catalog_install_failed, "snyk", mapHttpError(400).message),
+            UiText.failure(R.string.plugins_msg_catalog_install_failed, "snyk", mapHttpError(400).toUiText()),
             viewModel.uiState.value.toastMessage,
         )
     }
@@ -449,7 +450,7 @@ class PluginsViewModelTest {
 
         assertEquals(1, viewModel.uiState.value.plugins.size)
         assertEquals(
-            UiText.res(R.string.plugins_msg_uninstall_verify_failed, mapHttpError(503).message),
+            UiText.failure(R.string.plugins_msg_uninstall_verify_failed, mapHttpError(503).toUiText()),
             viewModel.uiState.value.toastMessage,
         )
     }

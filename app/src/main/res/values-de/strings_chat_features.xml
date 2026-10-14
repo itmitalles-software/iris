@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mixture-of-agents progress in the chat status line -->
+    <string name="chat_agent_status_moa_aggregating">Führt Modellantworten zusammen…</string>
+    <plurals name="chat_agent_status_moa_references">
+        <item quantity="one">Fragt %2$d Modell (%1$d geantwortet)…</item>
+        <item quantity="other">Fragt %2$d Modelle (%1$d geantwortet)…</item>
+    </plurals>
+
+    <!-- Message reactions -->
+    <string name="chat_reaction_add">Reagieren</string>
+    <string name="chat_reaction_failed">Reaktion konnte nicht gespeichert werden.</string>
+
+    <!-- Gateway notices (notification.show) -->
+    <string name="chat_notice_dismiss">Hinweis schließen</string>
+    <string name="chat_notice_level_info">Info</string>
+    <string name="chat_notice_level_warning">Warnung</string>
+    <string name="chat_notice_level_error">Fehler</string>
+    <string name="chat_notice_level_success">Erfolg</string>
+
+    <!-- Screen reader announcement when a turn ends -->
+    <string name="chat_a11y_reply_finished">Antwort ist fertig</string>
+    <string name="chat_a11y_reply_failed">Antwort fehlgeschlagen</string>
+
+    <!-- Photo upload -->
+    <string name="chat_attach_send_original">In Originalqualität senden</string>
+
+    <!-- Approval notification actions -->
+    <string name="notif_action_approve_once">Einmal freigeben</string>
+    <string name="notif_action_deny">Ablehnen</string>
+    <string name="notif_approval_unlock_first">Entsperre dein Telefon, um diese Freigabe zu beantworten.</string>
+    <string name="notif_approval_expired">Diese Freigabe ist nicht mehr offen.</string>
+    <string name="notif_approval_open_app">Deine Antwort konnte nicht gesendet werden. Öffne Apollo, um die Freigabe zu beantworten.</string>
+</resources>

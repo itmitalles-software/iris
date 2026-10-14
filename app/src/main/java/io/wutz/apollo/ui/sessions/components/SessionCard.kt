@@ -201,6 +201,8 @@ fun SessionCard(
     onTogglePin: () -> Unit,
     onToggleArchive: () -> Unit,
     onDelete: () -> Unit,
+    onShare: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
 ) {
     val spacing = LocalSpacing.current
     val statusColors = LocalHermesStatusColors.current
@@ -224,6 +226,8 @@ fun SessionCard(
             onSelect = onSelect,
             onRename = onRename,
             onDelete = onDelete,
+            onShare = onShare,
+            onExport = onExport,
         )
     Card(
         modifier =
@@ -342,6 +346,20 @@ fun SessionCard(
                     menuExpanded = false
                     onDelete()
                 },
+                onShare =
+                    onShare?.let { share ->
+                        {
+                            menuExpanded = false
+                            share()
+                        }
+                    },
+                onExport =
+                    onExport?.let { export ->
+                        {
+                            menuExpanded = false
+                            export()
+                        }
+                    },
             )
         }
     }

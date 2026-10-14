@@ -39,7 +39,7 @@ data class ActionProgressState(
     val actionName: String? = null,
     val lines: List<String> = emptyList(),
     val exitCode: Int? = null,
-    val error: String? = null,
+    val error: UiText? = null,
     /**
      * Host-appended lines shown after the log tail once the action finishes
      * (e.g. a structured update receipt). Empty unless the host pushes them.
@@ -138,7 +138,7 @@ class ActionProgressController(
                                 _state.update {
                                     it.copy(
                                         phase = ActionProgressPhase.FAILED,
-                                        error = result.error.message,
+                                        error = result.error.toUiText(),
                                     )
                                 }
                                 break
@@ -150,7 +150,10 @@ class ActionProgressController(
     }
 
     /** Trigger was rejected — surface the error in the dialog. */
-    fun fail(error: String) {
+    fun fail(error: String) = fail(UiText.raw(error))
+
+    /** Trigger was rejected — surface the localized error in the dialog. */
+    fun fail(error: UiText) {
         pollJob?.cancel()
         _state.update { it.copy(phase = ActionProgressPhase.FAILED, error = error) }
     }

@@ -17,6 +17,7 @@ import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,7 +85,7 @@ class PairingViewModel :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UiText.res(R.string.pairing_msg_load_failed, errorMsg),
+                            errorMessage = UiText.res(R.string.pairing_msg_load_failed, errorMsg.toUiText()),
                         )
                     }
                 },
@@ -155,7 +156,7 @@ class PairingViewModel :
                     _uiState.update {
                         it.copy(
                             actionKey = null,
-                            toastMessage = UiText.res(R.string.pairing_msg_action_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.pairing_msg_action_failed, result.error.toUiText()),
                         )
                     }
                 }

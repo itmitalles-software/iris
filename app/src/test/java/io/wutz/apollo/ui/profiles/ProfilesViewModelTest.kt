@@ -123,10 +123,10 @@ class ProfilesViewModelTest {
     private fun <T> errorResponse(code: Int): Response<T> = Response.error(code, "{}".toResponseBody(null))
 
     private companion object {
-        // Fallback messages of mapHttpError for an empty "{}" error body.
-        const val BAD_REQUEST = "Bad Request (HTTP 400): The server could not understand the request."
-        const val NOT_FOUND = "Not Found (HTTP 404): The requested resource could not be found."
-        const val SERVER_ERROR = "Server Error (HTTP 500): The server encountered an error."
+        // Localized status texts for an empty "{}" error body (no server detail).
+        val BAD_REQUEST = UiText.res(R.string.network_error_http_400)
+        val NOT_FOUND = UiText.res(R.string.network_error_http_404)
+        val SERVER_ERROR = UiText.res(R.string.network_error_http_server, 500)
     }
 
     @After
@@ -180,7 +180,7 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.profiles_msg_rename_failed, "work", NOT_FOUND),
+            UiText.failure(R.string.profiles_msg_rename_failed, "work", NOT_FOUND),
             vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isLoading)
@@ -211,7 +211,7 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.profiles_msg_delete_failed, "work", NOT_FOUND),
+            UiText.failure(R.string.profiles_msg_delete_failed, "work", NOT_FOUND),
             vm.uiState.value.toastMessage,
         )
     }
@@ -278,7 +278,7 @@ class ProfilesViewModelTest {
 
         assertNull(vm.uiState.value.setupCommand)
         assertEquals(
-            UiText.res(R.string.profiles_msg_setup_command_failed, NOT_FOUND),
+            UiText.failure(R.string.profiles_msg_setup_command_failed, NOT_FOUND),
             vm.uiState.value.toastMessage,
         )
     }
@@ -322,7 +322,7 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.profiles_msg_load_models_failed, SERVER_ERROR),
+            UiText.failure(R.string.profiles_msg_load_models_failed, SERVER_ERROR),
             vm.uiState.value.toastMessage,
         )
         assertNull(vm.uiState.value.errorMessage)
@@ -373,7 +373,7 @@ class ProfilesViewModelTest {
 
         assertNull(vm.uiState.value.activeProfileName)
         assertEquals(
-            UiText.res(R.string.profiles_msg_switch_failed, "boom"),
+            UiText.failure(R.string.profiles_msg_switch_failed, UiText.raw("boom")),
             vm.uiState.value.toastMessage,
         )
     }
@@ -458,7 +458,7 @@ class ProfilesViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.profiles_msg_clone_failed, "default", BAD_REQUEST),
+            UiText.failure(R.string.profiles_msg_clone_failed, "default", BAD_REQUEST),
             vm.uiState.value.toastMessage,
         )
         assertFalse(vm.uiState.value.isLoading)
@@ -521,7 +521,7 @@ class ProfilesViewModelTest {
         assertNull(vm.uiState.value.selectedSoulContent)
         assertFalse(vm.uiState.value.isLoadingSoul)
         assertEquals(
-            UiText.res(R.string.profiles_msg_load_soul_failed, SERVER_ERROR),
+            UiText.failure(R.string.profiles_msg_load_soul_failed, SERVER_ERROR),
             vm.uiState.value.toastMessage,
         )
 

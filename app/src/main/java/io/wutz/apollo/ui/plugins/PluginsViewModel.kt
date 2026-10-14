@@ -28,6 +28,7 @@ import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchAction
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -198,7 +199,7 @@ class PluginsViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.plugins_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.plugins_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -253,7 +254,7 @@ class PluginsViewModel(
                     _uiState.update {
                         it.copy(
                             installBusy = false,
-                            toastMessage = UiText.res(R.string.plugins_msg_install_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.plugins_msg_install_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -299,7 +300,11 @@ class PluginsViewModel(
                     _uiState.update {
                         it.copy(
                             providerBusy = false,
-                            toastMessage = UiText.res(R.string.plugins_msg_providers_save_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.plugins_msg_providers_save_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -329,7 +334,7 @@ class PluginsViewModel(
                     _uiState.update {
                         it.copy(
                             rescanBusy = false,
-                            toastMessage = UiText.res(R.string.plugins_msg_rescan_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.plugins_msg_rescan_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -376,7 +381,7 @@ class PluginsViewModel(
                 revertPluginToggle(
                     plugin.name,
                     originalEnabled,
-                    UiText.res(R.string.plugins_msg_toggle_failed, result.error.message),
+                    UiText.res(R.string.plugins_msg_toggle_failed, result.error.toUiText()),
                 )
                 val reverted = _uiState.value.plugins
                 if (requestScope != null) {
@@ -396,7 +401,11 @@ class PluginsViewModel(
                 loadPlugins(forceRefresh = true)
             },
             onError = { error ->
-                _uiState.update { it.copy(toastMessage = UiText.res(R.string.plugins_msg_enable_failed, error)) }
+                _uiState.update {
+                    it.copy(
+                        toastMessage = UiText.failure(R.string.plugins_msg_enable_failed, error.toUiText()),
+                    )
+                }
             },
             onComplete = { clearRowBusy(plugin.name) },
         )
@@ -482,9 +491,9 @@ class PluginsViewModel(
                         _uiState.update {
                             it.copy(
                                 toastMessage =
-                                    UiText.res(
+                                    UiText.failure(
                                         R.string.plugins_msg_uninstall_verify_failed,
-                                        refreshed.error.message,
+                                        refreshed.error.toUiText(),
                                     ),
                             )
                         }
@@ -586,7 +595,13 @@ class PluginsViewModel(
 
                     is NetworkResult.Failure -> {
                         _uiState.update {
-                            it.copy(toastMessage = UiText.res(R.string.plugins_msg_update_failed, result.error.message))
+                            it.copy(
+                                toastMessage =
+                                    UiText.failure(
+                                        R.string.plugins_msg_update_failed,
+                                        result.error.toUiText(),
+                                    ),
+                            )
                         }
                     }
                 }
@@ -619,7 +634,11 @@ class PluginsViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.plugins_msg_visibility_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.plugins_msg_visibility_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                     clearRowBusy(plugin.name)
@@ -687,7 +706,7 @@ class PluginsViewModel(
                 _uiState.update {
                     it.copy(
                         isCatalogLoading = false,
-                        catalogErrorMessage = UiText.res(R.string.plugins_msg_catalog_load_failed, errorMsg),
+                        catalogErrorMessage = UiText.res(R.string.plugins_msg_catalog_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -734,10 +753,10 @@ class PluginsViewModel(
                 _uiState.update {
                     it.copy(
                         toastMessage =
-                            UiText.res(
+                            UiText.failure(
                                 R.string.plugins_msg_catalog_install_failed,
                                 entry.displayName,
-                                errorMsg,
+                                errorMsg.toUiText(),
                             ),
                     )
                 }
@@ -841,7 +860,7 @@ class PluginsViewModel(
                                         UiText.res(
                                             R.string.plugins_msg_secret_update_failed,
                                             envVar,
-                                            envResult.error.message,
+                                            envResult.error.toUiText(),
                                         ),
                                     )
                                 }

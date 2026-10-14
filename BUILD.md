@@ -67,7 +67,8 @@ Apollo uses Semantic Versioning with Git tags `vMAJOR.MINOR.PATCH`
 (pre-releases: `v0.2.0-rc.1`). The release workflow derives
 
 - `versionName` = tag without the leading `v`
-- `versionCode` = `MAJOR * 10000 + MINOR * 100 + PATCH`
+- `versionCode` = `MAJOR * 10000 + MINOR * 100 + PATCH` (so `MINOR` and `PATCH`
+  stay below 100; the release workflow enforces it)
 
 Local builds without `-PversionName/-PversionCode` report `1.0-dev`.
 
@@ -85,9 +86,32 @@ product flavor, so every existing task name and output path stays the same.
 It sets `BuildConfig.SELF_UPDATE_ENABLED = false` and its manifest
 (`app/src/play/AndroidManifest.xml`) removes `REQUEST_INSTALL_PACKAGES`.
 
-Pushing a tag `v*` runs `.github/workflows/release.yml`. It builds a minified,
-signed release APK, attaches `apollo-<tag>.apk` to a GitHub release, and the
-in-app update checker offers it to installed release builds.
+### Cutting a release
+
+1. Add a `## <version>` section (for example `## 0.2.0 — 2026-10-20`) to
+   `CHANGELOG.md` and merge it. That section becomes the GitHub release text,
+   which the in-app update dialog shows. Check it locally with
+   `scripts/release-notes.sh 0.2.0`. A pre-release (`0.2.0-rc.1`) uses its own
+   section if there is one, otherwise the `0.2.0` section.
+2. Wait until **CI Summary** is green on that `main` commit, then tag it:
+   `git tag -a v0.2.0 -m "Apollo 0.2.0" && git push origin v0.2.0`.
+
+The tag runs `.github/workflows/release.yml`:
+
+- `verify` rejects tags that are not `vMAJOR.MINOR.PATCH[-pre]`, are not on
+  `main`, or whose commit has no green CI Summary (it waits up to 45 minutes
+  for a running CI), and fails when the CHANGELOG section is missing.
+- `build` is the only job that sees the signing secrets (GitHub environment
+  `release`). It builds the minified APK (one retry after 60 s), deletes the
+  keystore, and fails unless the signing certificate matches
+  `.github/release-cert.sha256` and `aapt2` shows the expected
+  `versionName`/`versionCode`.
+- `publish` has no secrets. It attaches `apollo-<tag>.apk` and `SHA256SUMS`
+  to the GitHub release and records a build provenance attestation.
+
+The in-app update checker then offers the APK to installed release builds.
+To re-run a release by hand, dispatch the workflow on the tag itself:
+`gh workflow run release.yml --ref v0.2.0 -f tag=v0.2.0`.
 
 ### Release signing (one-time setup)
 
@@ -98,11 +122,16 @@ backup somewhere safe; losing it means users must uninstall to update.
 keytool -genkeypair -v -keystore apollo-release.jks -alias apollo \
   -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Apollo,O=wutz.io,C=DE"
 
-gh secret set KEYSTORE_BASE64   -R wutz-io/apollo-hermes-android < <(base64 -w0 apollo-release.jks)
-gh secret set KEYSTORE_PASSWORD -R wutz-io/apollo-hermes-android
-gh secret set KEY_ALIAS         -R wutz-io/apollo-hermes-android --body apollo
-gh secret set KEY_PASSWORD      -R wutz-io/apollo-hermes-android
+gh secret set KEYSTORE_BASE64   -R wutz-io/apollo-hermes-android --env release < <(base64 -w0 apollo-release.jks)
+gh secret set KEYSTORE_PASSWORD -R wutz-io/apollo-hermes-android --env release
+gh secret set KEY_ALIAS         -R wutz-io/apollo-hermes-android --env release --body apollo
+gh secret set KEY_PASSWORD      -R wutz-io/apollo-hermes-android --env release
 ```
+
+The secrets belong to the `release` environment, which only `v*` tags may
+deploy to, so no branch workflow can read them. A new key also needs its
+certificate digest in `.github/release-cert.sha256`
+(`apksigner verify --print-certs` prints it).
 
 Without these secrets the release workflow stops with a clear error; use the
 debug APK from the CI artifacts (or a local `assembleDebug`) in the meantime.
