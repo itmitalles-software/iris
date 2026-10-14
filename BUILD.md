@@ -48,6 +48,18 @@ Local builds without `-PversionName/-PversionCode` report `1.0-dev`.
 
 ## Releases
 
+Apollo has two distributions, both with the application ID `io.wutz.apollo`:
+
+| Build | Task | Output | Self-updater |
+| --- | --- | --- | --- |
+| GitHub (default) | `assembleRelease` | `app/build/outputs/apk/release/app-release.apk` | yes |
+| Google Play | `bundlePlay` | `app/build/outputs/bundle/play/app-play.aab` | no |
+
+The Play build is a separate build type (`play`, a copy of `release`), not a
+product flavor, so every existing task name and output path stays the same.
+It sets `BuildConfig.SELF_UPDATE_ENABLED = false` and its manifest
+(`app/src/play/AndroidManifest.xml`) removes `REQUEST_INSTALL_PACKAGES`.
+
 Pushing a tag `v*` runs `.github/workflows/release.yml`. It builds a minified,
 signed release APK, attaches `apollo-<tag>.apk` to a GitHub release, and the
 in-app update checker offers it to installed release builds.
@@ -79,10 +91,39 @@ KEYSTORE_PATH=$PWD/apollo-release.jks KEYSTORE_PASSWORD=… KEY_ALIAS=apollo KEY
 
 ### Google Play
 
-The app is prepared for a later Play release: unique application ID, R8
+The app is prepared for a Play release: unique application ID, R8
 minification, no proprietary SDKs or trackers, and Fastlane metadata in
-`fastlane/metadata/android/` (English and German). For Play, build an App
-Bundle with `./gradlew bundleRelease` and enroll in Play App Signing; the
-release key above then serves as the upload key. Review the
-`REQUEST_INSTALL_PACKAGES` permission (used only by the GitHub self-updater)
-before a Play submission — Play builds should drop the self-updater.
+`fastlane/metadata/android/` (English and German). There is no Play publishing
+automation; uploads are manual in the Play Console.
+
+Build the App Bundle with the Play build type (issue #7):
+
+```bash
+KEYSTORE_PATH=$PWD/apollo-release.jks KEYSTORE_PASSWORD=… KEY_ALIAS=apollo KEY_PASSWORD=… \
+  ./gradlew bundlePlay -PversionName=0.2.0 -PversionCode=200
+```
+
+Without the signing variables `bundlePlay` produces an unsigned bundle, which
+is enough for local checks but cannot be uploaded. The Play build has no
+GitHub self-updater: no update checks or downloads, no update rows in About,
+no update banner or dialog, and no `REQUEST_INSTALL_PACKAGES` permission.
+`./gradlew checkPlayPermissions` (also run by CI and before every
+`bundlePlay`/`assemblePlay`) fails if that permission comes back into the
+merged manifest. Use the same `versionCode` scheme as GitHub releases; Play
+rejects a `versionCode` it has already seen.
+
+**Play App Signing.** Play signs the APKs it delivers with the *app signing
+key*; you sign uploads with an *upload key*. Never commit either key or put
+the app signing key into CI.
+
+- Option A (default): let Google generate the app signing key and use the
+  existing Apollo release key as the upload key. Play installs and GitHub
+  APKs then have different signatures, so users must uninstall to switch
+  between them (losing local data).
+- Option B: upload the existing Apollo release key as the app signing key
+  (the Play Console's PEPK tool encrypts it) and create a new upload key. Play
+  installs and GitHub APKs then share a signature and update each other.
+  Keep the offline backup of the release key either way.
+
+If the upload key is lost or leaked, the account owner can request an upload
+key reset in the Play Console.

@@ -288,7 +288,8 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────
-  # Job 5: Release Compile — verifies release variant compiles.
+  # Job 5: Release Compile — verifies release variant compiles and the Play
+  # build's merged manifest has no REQUEST_INSTALL_PACKAGES.
   # Catches issues like debugImplementation-scoped dependencies that
   # main source code depends on (e.g. okhttp3.logging.HttpLoggingInterceptor).
   # debug-only CI jobs (ktlint, lint, tests) won't catch these.
@@ -318,8 +319,10 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      - name: Compile release Kotlin
-        run: ./gradlew compileReleaseKotlin
+      # checkPlayPermissions merges the Play build's manifest (cheap, no
+      # compile) and fails if REQUEST_INSTALL_PACKAGES is back (issue #7).
+      - name: Compile release Kotlin + check Play manifest
+        run: ./gradlew compileReleaseKotlin checkPlayPermissions
 
   # ─────────────────────────────────────────────────────────────────────
   # Job 6: Instrumented tests — runs on Android emulator.

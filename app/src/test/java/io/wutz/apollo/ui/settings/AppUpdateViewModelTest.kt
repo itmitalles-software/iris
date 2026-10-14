@@ -14,6 +14,7 @@ import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.BuildConfig
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.update.AppUpdateCache
@@ -113,6 +114,7 @@ class AppUpdateViewModelTest {
     fun tearDown() {
         UpdateNoticeManager.resetForTests()
         UpdateNoticeManager.enabled = false
+        UpdateNoticeManager.selfUpdateAvailable = BuildConfig.SELF_UPDATE_ENABLED
         unmockkAll()
         Dispatchers.resetMain()
     }
@@ -610,6 +612,28 @@ class AppUpdateViewModelTest {
             vm.resumeInstallAfterPermission()
             advanceUntilIdle()
 
+            coVerify(exactly = 0) { checker.downloadApk(any(), any(), any()) }
+            verify(exactly = 0) { app.startActivity(any()) }
+        }
+
+    // ── Play build without the self-updater (issue #7) ──────────────────
+
+    @Test
+    fun selfUpdateUnavailable_neitherChecksNorDownloads() =
+        runTest {
+            UpdateNoticeManager.selfUpdateAvailable = false
+
+            val vm = createViewModel()
+            advanceUntilIdle()
+            vm.checkForUpdate()
+            advanceUntilIdle()
+            // Even a stale offer in the shared cache must not start a download.
+            AppUpdateCache.update(AppUpdateState.UpdateAvailable("v1.22.0", "https://example.com/apk", 1L))
+            advanceUntilIdle()
+            vm.startUpdate()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { checker.fetchLatestRelease(any()) }
             coVerify(exactly = 0) { checker.downloadApk(any(), any(), any()) }
             verify(exactly = 0) { app.startActivity(any()) }
         }

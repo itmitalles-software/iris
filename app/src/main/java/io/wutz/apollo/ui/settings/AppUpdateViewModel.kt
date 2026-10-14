@@ -144,6 +144,7 @@ class AppUpdateViewModel(
 
     /** Download the release APK and launch the system installer. */
     fun startUpdate() {
+        if (!UpdateNoticeManager.selfUpdateAvailable) return
         if (_state.value is AppUpdateState.Downloading || _state.value is AppUpdateState.Installing) return
         val available = updateAvailableForInstall() ?: return
         lastAvailable = available

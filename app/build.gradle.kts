@@ -1,3 +1,4 @@
+import com.android.build.api.artifact.SingleArtifact
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -36,6 +37,11 @@ android {
         buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
     }
 
+    // All four variables are needed to sign release builds (see BUILD.md).
+    val releaseSigningEnvPresent =
+        listOf("KEYSTORE_PATH", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+            .all { System.getenv(it) != null }
+
     signingConfigs {
         getByName("debug") {
             // Stable debug keystore committed to the repo so debug APKs keep
@@ -50,7 +56,9 @@ android {
         create("release") {
             val isReleaseBuild =
                 gradle.startParameter.taskNames.any { name ->
-                    name.contains("Release", ignoreCase = true) || name == "build"
+                    name.contains("Release", ignoreCase = true) ||
+                        name.contains("Play") ||
+                        name == "build"
                 }
 
             if (isReleaseBuild) {
@@ -90,6 +98,7 @@ android {
             versionNameSuffix = "-dev"
 
             buildConfigField("boolean", "ALLOW_CLEARTEXT", "true")
+            buildConfigField("boolean", "SELF_UPDATE_ENABLED", "true")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
 
@@ -102,7 +111,25 @@ android {
             )
             signingConfig = signingConfigs["release"]
             buildConfigField("boolean", "ALLOW_CLEARTEXT", "true")
+            // GitHub distribution: the in-app updater checks GitHub releases
+            // and installs the APK (needs REQUEST_INSTALL_PACKAGES).
+            buildConfigField("boolean", "SELF_UPDATE_ENABLED", "true")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
+        }
+
+        // Google Play distribution (issue #7): the release build without the
+        // GitHub self-updater. src/play/AndroidManifest.xml removes
+        // REQUEST_INSTALL_PACKAGES; checkPlayPermissions guards that.
+        // `./gradlew bundlePlay` → app/build/outputs/bundle/play/app-play.aab
+        // A build type (not a product flavor) keeps every existing task name
+        // and output path (assembleDebug, assembleRelease, …) unchanged.
+        create("play") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+            buildConfigField("boolean", "SELF_UPDATE_ENABLED", "false")
+            // Signed with the release key (the Play upload key) when the
+            // signing variables are set; otherwise an unsigned bundle.
+            signingConfig = if (releaseSigningEnvPresent) signingConfigs["release"] else null
         }
     }
 
@@ -142,6 +169,30 @@ android {
 tasks.matching { it.name.endsWith("VersionControlInfo") }.configureEach {
     doLast {
         outputs.files.filter { it.exists() }.forEach { it.writeText("") }
+    }
+}
+
+// Fails the Play build if the merged manifest still requests the permission
+// the GitHub self-updater needs (issue #7). bundlePlay/assemblePlay depend on it.
+androidComponents {
+    onVariants(selector().withBuildType("play")) { variant ->
+        val mergedManifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
+        val check =
+            tasks.register("checkPlayPermissions") {
+                group = "verification"
+                description = "Fails if the Play build's merged manifest requests REQUEST_INSTALL_PACKAGES."
+                inputs.file(mergedManifest)
+                doLast {
+                    val manifest = mergedManifest.get().asFile
+                    if (manifest.readText().contains("android.permission.REQUEST_INSTALL_PACKAGES")) {
+                        throw GradleException("Play manifest must not request REQUEST_INSTALL_PACKAGES: $manifest")
+                    }
+                    logger.lifecycle("checkPlayPermissions: REQUEST_INSTALL_PACKAGES absent.")
+                }
+            }
+        tasks.matching { it.name == "bundlePlay" || it.name == "assemblePlay" }.configureEach {
+            dependsOn(check)
+        }
     }
 }
 

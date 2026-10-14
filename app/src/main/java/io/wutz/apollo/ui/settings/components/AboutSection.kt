@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import io.wutz.apollo.BuildConfig
 import io.wutz.apollo.R
 import io.wutz.apollo.data.update.AppUpdateState
+import io.wutz.apollo.data.update.UpdateNoticeManager
 import io.wutz.apollo.ui.common.ApolloArt
 import io.wutz.apollo.ui.common.ApolloBrandLockup
 import io.wutz.apollo.ui.common.ApolloIllustration
@@ -42,6 +43,7 @@ internal fun AboutSection(
     onStartUpdate: () -> Unit = {},
     onCheckReleaseCandidateUpdatesChange: (Boolean) -> Unit = {},
     onOpenInstallSettings: () -> Unit = {},
+    selfUpdateAvailable: Boolean = UpdateNoticeManager.selfUpdateAvailable,
 ) {
     SectionCard {
         if (apolloArtEnabled()) {
@@ -69,21 +71,24 @@ internal fun AboutSection(
             label = stringResource(R.string.settings_about_version),
             value = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
         )
-        UpdateRow(
-            state = updateState,
-            onCheckUpdate = onCheckUpdate,
-            onStartUpdate = onStartUpdate,
-            onOpenInstallSettings = onOpenInstallSettings,
-        )
-        ReleaseCandidateRow(
-            checked = checkReleaseCandidateUpdates,
-            // Mid-download / mid-install the channel must not flip under the
-            // in-flight APK.
-            enabled =
-                updateState !is AppUpdateState.Downloading &&
-                    updateState !is AppUpdateState.Installing,
-            onCheckedChange = onCheckReleaseCandidateUpdatesChange,
-        )
+        // The Play build has no self-updater (issue #7): Play delivers updates.
+        if (selfUpdateAvailable) {
+            UpdateRow(
+                state = updateState,
+                onCheckUpdate = onCheckUpdate,
+                onStartUpdate = onStartUpdate,
+                onOpenInstallSettings = onOpenInstallSettings,
+            )
+            ReleaseCandidateRow(
+                checked = checkReleaseCandidateUpdates,
+                // Mid-download / mid-install the channel must not flip under the
+                // in-flight APK.
+                enabled =
+                    updateState !is AppUpdateState.Downloading &&
+                        updateState !is AppUpdateState.Installing,
+                onCheckedChange = onCheckReleaseCandidateUpdatesChange,
+            )
+        }
         InfoRow(
             label = stringResource(R.string.settings_about_build),
             value =
