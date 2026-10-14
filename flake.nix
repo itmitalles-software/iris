@@ -1,5 +1,5 @@
 {
-  description = "HermesControl - Android app for Hermes agent";
+  description = "Apollo - Android client for Hermes Agent";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -67,8 +67,7 @@
             # Android SDK (platforms, build-tools, platform-tools, emulator, system-images)
             androidSdk
 
-            # Linting
-            ktlint
+            # ktlint 1.8.0 is resolved by Gradle (./gradlew ktlintCheck).
           ];
 
           # Point everything at the Nix-managed SDK
@@ -81,10 +80,9 @@
           # own cache and daemon pool, and idle daemons piled up in RAM.
 
           shellHook = ''
-            echo " HermesControl Android dev shell"
+            echo " Apollo Android dev shell"
             echo "   Java:         $(java -version 2>&1 | head -1)"
             echo "   Gradle:       $(gradle --version 2>/dev/null | grep -m1 Gradle || echo "gradle $(gradle --version 2>&1 | head -1)")"
-            echo "   ktlint:       $(ktlint --version 2>/dev/null || echo "not found")"
             echo "   ANDROID_HOME: $ANDROID_HOME"
             echo ""
 
@@ -111,7 +109,7 @@
 
             alias avd-reset='adb shell wm size reset && adb shell wm density reset'
 
-            # HermesControl app logcat (filtered to the app process only)
+            # Apollo app logcat (filtered to the app process only)
             alias logcat-app='adb logcat --pid=$(adb shell pidof io.wutz.apollo)'
 
             echo "Display Presets Loaded:"
@@ -120,7 +118,7 @@
             echo "  avd-tablet       -> 1600x2560 (320 DPI) [Portrait Tablet]"
             echo "  avd-tablet-land  -> 2560x1600 (320 DPI) [Landscape Tablet]"
             echo "  avd-reset        -> Reset size & density back to AVD defaults"
-            echo "  logcat-app       -> Logcat for the HermesControl app process only"
+            echo "  logcat-app       -> Logcat for the Apollo app process only"
             echo ""
           '';
         };

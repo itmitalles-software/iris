@@ -1,0 +1,117 @@
+name: Gateway Contract Drift
+
+# Weekly check of the vendored Hermes gateway contract
+# (app/src/test/resources/gateway-contract) against hermes-agent main.
+# Refreshes the snapshot in the runner only, runs the contract tests against it
+# and opens or updates one issue when upstream changed or the tests fail.
+# Never commits: refresh the snapshot with scripts/sync-gateway-contract.sh.
+
+on:
+  schedule:
+    - cron: '17 4 * * 1' # Mondays 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-drift
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    name: Contract Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+
+      - name: Refresh contract snapshot from hermes-agent main
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          OLD_SHA="$(sed -n 's/^sha: //p' app/src/test/resources/gateway-contract/SOURCE)"
+          scripts/sync-gateway-contract.sh main
+          NEW_SHA="$(sed -n 's/^sha: //p' app/src/test/resources/gateway-contract/SOURCE)"
+          echo "old_sha=$OLD_SHA" >> "$GITHUB_OUTPUT"
+          echo "new_sha=$NEW_SHA" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- app/src/test/resources/gateway-contract/openrpc.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- app/src/test/resources/gateway-contract/openrpc.json
+          fi
+
+      - name: Run contract tests against the refreshed snapshot
+        id: tests
+        continue-on-error: true
+        run: >-
+          ./gradlew testDebugUnitTest
+          --tests '*GatewayContract*'
+          --tests '*ParamsDescriptorCheckTest'
+          --tests '*RawRpcParamsRatchetTest'
+
+      - name: Open or update the drift issue
+        if: steps.sync.outputs.changed == 'true' || steps.tests.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OLD_SHA: ${{ steps.sync.outputs.old_sha }}
+          NEW_SHA: ${{ steps.sync.outputs.new_sha }}
+          CHANGED: ${{ steps.sync.outputs.changed }}
+          TESTS: ${{ steps.tests.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="Gateway contract drift against hermes-agent main"
+          UPSTREAM="https://github.com/NousResearch/hermes-agent"
+          BODY="$RUNNER_TEMP/body.md"
+          {
+            echo "The weekly contract check found drift between the vendored snapshot and hermes-agent main."
+            echo
+            echo "- Vendored: [\`${OLD_SHA:0:8}\`]($UPSTREAM/commit/$OLD_SHA)"
+            echo "- Upstream main: [\`${NEW_SHA:0:8}\`]($UPSTREAM/commit/$NEW_SHA)"
+            echo "- [Upstream changes]($UPSTREAM/compare/$OLD_SHA...$NEW_SHA)"
+            echo "- Contract file changed: $CHANGED"
+            echo "- Contract tests against upstream main: $TESTS"
+            echo "- Run: $RUN_URL"
+            echo
+            echo '```'
+            git diff --stat -- app/src/test/resources/gateway-contract/openrpc.json
+            echo '```'
+            echo
+            echo "Refresh with \`scripts/sync-gateway-contract.sh\`, run"
+            echo "\`./gradlew testDebugUnitTest --tests '*GatewayContract*'\` and adapt the client where needed."
+          } > "$BODY"
+          ISSUE="$(gh issue list --state open --search "\"$TITLE\" in:title" --json number,title \
+            --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")"
+          if [[ -n "$ISSUE" ]]; then
+            gh issue comment "$ISSUE" --body-file "$BODY"
+            echo "::notice::Updated issue #$ISSUE"
+          else
+            gh issue create --title "$TITLE" --body-file "$BODY"
+          fi
+
+      - name: Fail when the contract tests fail
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "::error::Contract tests fail against hermes-agent main (issue opened or updated)."
+          exit 1
