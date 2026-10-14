@@ -79,6 +79,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -517,6 +518,8 @@ fun ChatScreen(
     HermesScaffold(
         modifier = modifier,
         pinTopBar = true,
+        // The chat centers and caps its own column below.
+        maxContentWidth = Dp.Unspecified,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AutoScrollingTitleText(

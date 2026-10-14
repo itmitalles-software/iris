@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -151,6 +152,8 @@ fun LogsScreen(
         navigationIcon = onOpenDrawer?.let { NavIcon.Menu(it) },
         isRefreshing = state.isLoading,
         onRefresh = { viewModel.loadLogs(forceRefresh = true) },
+        // Log lines are wide machine output; the full window width means less wrapping.
+        maxContentWidth = Dp.Unspecified,
         actions = {
             // Pause / Resume toggle
             IconButton(onClick = { pauseScroll = !pauseScroll }) {
