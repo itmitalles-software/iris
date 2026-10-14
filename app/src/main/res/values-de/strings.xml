@@ -307,6 +307,7 @@
     <string name="account_connectors_not_connected">Nicht verbunden</string>
     <string name="account_connectors_no_accounts">Keine autorisierten Konnektor-Konten.</string>
     <string name="account_connectors_remove">Entfernen</string>
+    <string name="account_connectors_account_replaced">Durch eine neuere Verbindung ersetzt</string>
     <string name="account_connectors_remove_confirm_title">Konnektor-Konto entfernen?</string>
     <string name="account_connectors_remove_confirm_message">%1$s entfernen? Möglicherweise musst du es erneut autorisieren.</string>
     <string name="settings_field_token">Auth-Token</string>
@@ -1814,6 +1815,10 @@
     <string name="connection_setup_required">%1$s ist erforderlich</string>
     <string name="connection_setup_request_failed">Die Einrichtungsantwort konnte nicht gesendet werden. Versuche es erneut.</string>
     <string name="connection_setup_pending">Warten auf Hermes…</string>
+    <string name="connection_display_title">Apps verbinden</string>
+    <string name="connection_display_body">Hermes schlägt vor, diese Apps zu verbinden. Verbinde sie in den Sitzungsintegrationen und tippe dann auf Weiter.</string>
+    <string name="connection_display_body_no_suggestions">Hermes wartet, während du Apps in den Sitzungsintegrationen verbindest. Tippe auf Weiter, wenn du fertig bist.</string>
+    <string name="connection_display_open_integrations">Sitzungsintegrationen öffnen</string>
     <string name="connection_catalog_title">%1$s installieren</string>
     <string name="connection_catalog_kind_plugin">Plugin</string>
     <string name="connection_catalog_kind_skill">Skill</string>
@@ -2947,6 +2952,9 @@
     <string name="chat_msg_session_reclaimed">Die Live-Sitzung wurde vom Server übernommen. Versuche es erneut, um dich neu zu verbinden.</string>
     <string name="chat_msg_subagent_course_correction">Kurskorrektur: „%1$s“</string>
     <string name="chat_msg_subagent_stopped">Sub-Agent gestoppt</string>
+    <string name="chat_msg_subagent_already_finished">Sub-Agent war bereits fertig</string>
+    <string name="chat_msg_subagent_steer_rejected">Kurskorrektur nicht zugestellt: Der Sub-Agent läuft nicht mehr</string>
+    <string name="chat_msg_subagent_control_failed">Sub-Agent nicht erreichbar: %1$s</string>
     <string name="chat_msg_subagent_transcript_failed">Transkript konnte nicht geladen werden</string>
     <string name="chat_msg_undo_failed">Rückgängig machen fehlgeschlagen.</string>
     <string name="chat_msg_undo_no_session">Keine aktive Sitzung zum Rückgängigmachen.</string>

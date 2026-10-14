@@ -17,6 +17,7 @@ import androidx.test.filters.MediumTest
 import io.wutz.apollo.data.model.CatalogScanStatus
 import io.wutz.apollo.data.model.ConnectionCatalogInfo
 import io.wutz.apollo.data.model.ConnectionCatalogScan
+import io.wutz.apollo.data.model.ConnectionDisplay
 import io.wutz.apollo.data.model.ConnectionEnvField
 import io.wutz.apollo.data.model.ConnectionOperationSnapshot
 import io.wutz.apollo.data.model.ConnectionOperationTarget
@@ -326,6 +327,33 @@ class ConnectionSetupSheetTest {
             detail = detail,
             catalog = pluginCatalog(),
         )
+
+    @Test
+    fun displayCard_listsSuggestions_opensIntegrations_andContinues() {
+        var continued = 0
+        var opened = 0
+        composeTestRule.setContent {
+            ConnectionSetupContent(
+                state =
+                    ConnectionOperationUiState(
+                        operation = operation().copy(display = ConnectionDisplay(listOf("gmail", "notion"))),
+                    ),
+                onRespond = { _, _, _ -> error("a display card has no targets to answer") },
+                onContinue = { continued++ },
+                onOpenBrowser = { _, _ -> },
+                onOpenConnectors = { opened++ },
+            )
+        }
+
+        composeTestRule.onNodeWithTag("connection_display_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("connection_display_suggested").assertTextContains("gmail, notion")
+        composeTestRule.onNodeWithTag("connection_setup_skip").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("connection_display_open_integrations").performClick()
+        composeTestRule.onNodeWithTag("connection_setup_continue").performClick()
+
+        assertEquals(1, opened)
+        assertEquals(1, continued)
+    }
 
     private fun state(target: ConnectionOperationTarget): ConnectionOperationUiState =
         ConnectionOperationUiState(operation = operation(target))

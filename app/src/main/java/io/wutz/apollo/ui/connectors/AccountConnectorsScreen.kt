@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -32,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -226,12 +228,28 @@ fun AccountConnectorsScreen(
                         )
                     }
                     items(state.accounts, key = { "account-${it.connectionId}" }) { account ->
-                        Card(Modifier.fillMaxWidth()) {
+                        // A retired account (replaced by a reconnect) stays listed, dimmed; only removal remains.
+                        Card(
+                            Modifier.fillMaxWidth().testTag("account_connector_${account.connectionId}"),
+                            colors =
+                                if (account.disabled) {
+                                    CardDefaults.cardColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    CardDefaults.cardColors()
+                                },
+                        ) {
                             Column(
                                 Modifier.padding(spacing.md),
                                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
                             ) {
                                 Text(account.label, style = MaterialTheme.typography.titleMedium)
+                                if (account.disabled) {
+                                    Text(
+                                        stringResource(R.string.account_connectors_account_replaced),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.testTag("account_connector_replaced"),
+                                    )
+                                }
                                 Text(
                                     state.catalog.firstOrNull { it.slug == account.connector }?.name
                                         ?: account.connector,

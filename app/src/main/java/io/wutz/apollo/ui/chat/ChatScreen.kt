@@ -1130,7 +1130,9 @@ fun ChatScreen(
             )
         }
 
-        if (connectionOperationState.operation != null) {
+        // A display card (Hermes v0.22.0) steps aside while Session Integrations is open, then returns for Continue.
+        val connectionDisplayCovered = connectionOperationState.operation?.display != null && connectorsState.isVisible
+        if (connectionOperationState.operation != null && !connectionDisplayCovered) {
             ConnectionSetupSheet(
                 state = connectionOperationState,
                 onRespond = viewModel::respondToConnection,
@@ -1153,6 +1155,7 @@ fun ChatScreen(
                     }
                 },
                 onDismiss = viewModel::continueConnectionOperation,
+                onOpenConnectors = connectorsViewModel::show,
             )
         }
 

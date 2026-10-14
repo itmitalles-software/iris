@@ -117,6 +117,7 @@ object ChatWsEventReducer {
                 is WsEvent.MessageToken -> event.sessionId
                 is WsEvent.ThinkingDelta -> event.sessionId
                 is WsEvent.ReasoningDelta -> event.sessionId
+                is WsEvent.MessageInterim -> event.sessionId
                 is WsEvent.MessageComplete -> event.sessionId
                 is WsEvent.MessageDone -> event.sessionId
                 is WsEvent.ToolStart -> event.sessionId
@@ -183,6 +184,8 @@ object ChatWsEventReducer {
             is WsEvent.ReasoningDelta -> onReasoningDelta(state, streamingState, event)
 
             is WsEvent.ReasoningAvailable -> onReasoningAvailable(state, streamingState, event)
+
+            is WsEvent.MessageInterim -> onMessageInterim(state, streamingState, event)
 
             is WsEvent.MessageComplete -> onMessageComplete(state, streamingState, event)
 
@@ -462,6 +465,73 @@ object ChatWsEventReducer {
                 streamingState = streamingState.copy(isReasoning = true),
             )
         }
+    }
+
+    // ── MessageInterim ────────────────────────────────────────────────
+
+    /**
+     * Seals `message.interim` commentary as its own assistant bubble (desktop/TUI parity), like the
+     * orphan sealed at tool.start (#842). The interim text is authoritative for the live bubble when
+     * that bubble is empty, holds the same text, or only a truncated prefix of it; a live bubble that
+     * already carries the text and more is sealed unchanged. Commentary that was never streamed
+     * (Codex, `already_streamed = false`) next to unrelated live text becomes its own bubble before
+     * the live one, which keeps streaming. The sealed id joins [StreamingState.sealedOrphanIds] so
+     * message.complete strips a repeated prefix.
+     */
+    private fun onMessageInterim(
+        state: ChatUiState,
+        streamingState: StreamingState,
+        event: WsEvent.MessageInterim,
+    ): ReducerResult {
+        val text = event.text.trim()
+        val unchanged = ReducerResult(state = state, streamingState = streamingState)
+        // An interrupted partial is already sealed and awaits its own completion.
+        if (text.isEmpty() || streamingState.interruptedMessage != null) return unchanged
+        val streaming = streamingState.streamingMessage
+        val streamed = streaming?.content?.trim().orEmpty()
+        val now = System.currentTimeMillis()
+        val sealed: ChatMessage
+        val nextStreaming: ChatMessage?
+        if (streaming != null && (streamed.isEmpty() || text.startsWith(streamed) || streamed.startsWith(text))) {
+            sealed =
+                streaming.copy(
+                    content = if (streamed.startsWith(text)) streaming.content else text,
+                    isStreaming = false,
+                    reasoningText = streamingState.reasoningText.ifBlank { streaming.reasoningText },
+                    finishTimestamp = now,
+                    tokenCount = null,
+                    tps = null,
+                )
+            nextStreaming = null
+        } else {
+            // A replayed or repeated frame must not add the same commentary twice in one turn.
+            val alreadySealed =
+                streamingState.sealedOrphanIds.any { id ->
+                    state.messages
+                        .firstOrNull { it.id == id }
+                        ?.content
+                        ?.trim() == text
+                }
+            if (alreadySealed) return unchanged
+            sealed =
+                ChatMessage(
+                    role = MessageRole.ASSISTANT,
+                    content = text,
+                    finishTimestamp = now,
+                )
+            nextStreaming = streaming
+        }
+        val effects = mutableListOf<ReducerEffect>()
+        state.currentSessionId?.let { effects.add(ReducerEffect.PersistMessage(sealed, it)) }
+        return ReducerResult(
+            state = state.copy(messages = state.messages.upsertById(sealed), isAgentTyping = true),
+            streamingState =
+                streamingState.copy(
+                    streamingMessage = nextStreaming,
+                    sealedOrphanIds = streamingState.sealedOrphanIds + sealed.id,
+                ),
+            effects = effects,
+        )
     }
 
     // ── MessageComplete ───────────────────────────────────────────────

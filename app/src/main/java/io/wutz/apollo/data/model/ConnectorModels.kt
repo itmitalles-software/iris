@@ -243,6 +243,8 @@ data class ConnectorAccount(
     val active: Boolean,
     val createdAt: String,
     val updatedAt: String,
+    /** Hermes v0.22.0: retired by a reconnect that replaced it; kept for the record, never selectable. */
+    val disabled: Boolean = false,
 )
 
 data class ConnectorCatalogEntry(

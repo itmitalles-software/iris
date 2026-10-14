@@ -306,6 +306,7 @@
     <string name="account_connectors_not_connected">Not connected</string>
     <string name="account_connectors_no_accounts">No authorized connector accounts.</string>
     <string name="account_connectors_remove">Remove</string>
+    <string name="account_connectors_account_replaced">Replaced by a newer connection</string>
     <string name="account_connectors_remove_confirm_title">Remove connector account?</string>
     <string name="account_connectors_remove_confirm_message">Remove %1$s? You may need to authorize it again.</string>
     <string name="settings_field_token">Auth Token</string>
@@ -1823,6 +1824,10 @@
     <string name="connection_setup_required">%1$s is required</string>
     <string name="connection_setup_request_failed">Couldn’t send the setup response. Try again.</string>
     <string name="connection_setup_pending">Waiting for Hermes…</string>
+    <string name="connection_display_title">Connect apps</string>
+    <string name="connection_display_body">Hermes suggests connecting these apps. Connect them in Session Integrations, then tap Continue.</string>
+    <string name="connection_display_body_no_suggestions">Hermes is waiting while you connect apps in Session Integrations. Tap Continue when you are done.</string>
+    <string name="connection_display_open_integrations">Open Session Integrations</string>
     <string name="connection_catalog_title">Install %1$s</string>
     <string name="connection_catalog_kind_plugin">Plugin</string>
     <string name="connection_catalog_kind_skill">Skill</string>
@@ -2946,6 +2951,9 @@
     <string name="chat_msg_session_reclaimed">Live session was reclaimed by the server. Retry to reconnect.</string>
     <string name="chat_msg_subagent_course_correction">Course correction: \"%1$s\"</string>
     <string name="chat_msg_subagent_stopped">Stopped subagent</string>
+    <string name="chat_msg_subagent_already_finished">Subagent had already finished</string>
+    <string name="chat_msg_subagent_steer_rejected">Course correction not delivered: the subagent is no longer running</string>
+    <string name="chat_msg_subagent_control_failed">Could not reach the subagent: %1$s</string>
     <string name="chat_msg_subagent_transcript_failed">Unable to load transcript</string>
     <string name="chat_msg_undo_failed">Failed to undo.</string>
     <string name="chat_msg_undo_no_session">No active session to undo.</string>

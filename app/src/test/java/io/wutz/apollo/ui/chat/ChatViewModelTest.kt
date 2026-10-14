@@ -49,6 +49,10 @@ import io.wutz.apollo.data.ws.contract.ConfigSetParams
 import io.wutz.apollo.data.ws.contract.ProcessStopParams
 import io.wutz.apollo.data.ws.contract.ProcessStopResult
 import io.wutz.apollo.data.ws.contract.RpcMethods
+import io.wutz.apollo.data.ws.contract.SubagentInterruptResult
+import io.wutz.apollo.data.ws.contract.SubagentSteerParams
+import io.wutz.apollo.data.ws.contract.SubagentSteerResult
+import io.wutz.apollo.data.ws.contract.SubagentTailParams
 import io.wutz.apollo.notification.TurnCorrelationTracker
 import io.wutz.apollo.ui.chat.fakes.FakeChatPersistenceRepository
 import io.wutz.apollo.ui.chat.fakes.FakeSlashUsageStore
@@ -10949,27 +10953,30 @@ class ChatViewModelTest {
 
     // ── Subagent steering & cancellation (issue #1030) ───────────────────
 
+    private suspend fun TestScope.startSubagent(
+        sessionId: String,
+        goal: String,
+    ): SubagentIndicator {
+        mockEventsFlow.emit(
+            WsEvent.SubagentEvent(
+                type = "subagent.start",
+                payload = mapOf("subagent_id" to "sub-123", "goal" to goal),
+                sessionId = sessionId,
+            ),
+        )
+        advanceUntilIdle()
+        return SubagentIndicator(type = "subagent.start", subagentId = "sub-123", goal = goal, status = "running")
+    }
+
     @Test
-    fun testSteerSubagent_sendsRedirectAndUpdatesStatus() =
+    fun testSteerSubagent_callsSubagentSteerAndMarksSteeredWhenQueued() =
         runTest {
             val (viewModel, sessionId) = createViewModelWithSession()
-            val indicator =
-                SubagentIndicator(
-                    type = "subagent.start",
-                    subagentId = "sub-123",
-                    goal = "Search database",
-                    status = "running",
-                )
-            mockEventsFlow.emit(
-                WsEvent.SubagentEvent(
-                    type = "subagent.start",
-                    payload = mapOf("subagent_id" to "sub-123", "goal" to "Search database"),
-                    sessionId = sessionId,
-                ),
-            )
-            advanceUntilIdle()
+            coEvery { HermesWsClient.call(RpcMethods.SUBAGENT_STEER, any(), any(), any()) } returns
+                SubagentSteerResult(status = "queued", subagentId = "sub-123")
+            val indicator = startSubagent(sessionId, "Search database")
 
-            viewModel.steerSubagent(indicator, "Use index scan instead")
+            viewModel.steerSubagent(indicator, "  Use index scan instead ")
             advanceUntilIdle()
 
             val updated =
@@ -10977,28 +10984,43 @@ class ChatViewModelTest {
                     .first { it.subagentId == "sub-123" }
             assertEquals("steered", updated.status)
             assertTrue(updated.logs.any { it.text.contains("Use index scan instead") })
-            io.mockk.verify { HermesWsClient.sendRedirect(sessionId, "/steer sub-123 Use index scan instead", any()) }
+            coVerify(exactly = 1) {
+                HermesWsClient.call(
+                    RpcMethods.SUBAGENT_STEER,
+                    SubagentSteerParams(sessionId, "sub-123", "Use index scan instead"),
+                    any(),
+                    any(),
+                )
+            }
+            // The parent turn is never redirected with slash text.
+            io.mockk.verify(exactly = 0) { HermesWsClient.sendRedirect(any(), any(), any()) }
         }
 
     @Test
-    fun testStopSubagent_sendsRedirectAndMarksCancelled() =
+    fun testSteerSubagent_rejectedKeepsStatusAndLogsNotDelivered() =
         runTest {
             val (viewModel, sessionId) = createViewModelWithSession()
-            val indicator =
-                SubagentIndicator(
-                    type = "subagent.start",
-                    subagentId = "sub-123",
-                    goal = "Run deep scan",
-                    status = "running",
-                )
-            mockEventsFlow.emit(
-                WsEvent.SubagentEvent(
-                    type = "subagent.start",
-                    payload = mapOf("subagent_id" to "sub-123", "goal" to "Run deep scan"),
-                    sessionId = sessionId,
-                ),
-            )
+            coEvery { HermesWsClient.call(RpcMethods.SUBAGENT_STEER, any(), any(), any()) } returns
+                SubagentSteerResult(status = "rejected", subagentId = "sub-123")
+            val indicator = startSubagent(sessionId, "Search database")
+
+            viewModel.steerSubagent(indicator, "Use index scan instead")
             advanceUntilIdle()
+
+            val updated =
+                viewModel.uiState.value.subagentIndicators
+                    .first { it.subagentId == "sub-123" }
+            assertTrue(updated.isRunning)
+            assertTrue(updated.logs.any { it.isError && it.text.contains("not delivered") })
+        }
+
+    @Test
+    fun testStopSubagent_callsSubagentInterruptAndMarksCancelled() =
+        runTest {
+            val (viewModel, sessionId) = createViewModelWithSession()
+            coEvery { HermesWsClient.call(RpcMethods.SUBAGENT_INTERRUPT, any(), any(), any()) } returns
+                SubagentInterruptResult(found = true, subagentId = "sub-123")
+            val indicator = startSubagent(sessionId, "Run deep scan")
 
             viewModel.stopSubagent(indicator)
             advanceUntilIdle()
@@ -11008,7 +11030,67 @@ class ChatViewModelTest {
                     .first { it.subagentId == "sub-123" }
             assertEquals("cancelled", updated.status)
             assertTrue(updated.logs.any { it.text.contains("Stopped subagent") })
-            io.mockk.verify { HermesWsClient.sendRedirect(sessionId, "/stop sub-123", any()) }
+            coVerify(exactly = 1) {
+                HermesWsClient.call(
+                    RpcMethods.SUBAGENT_INTERRUPT,
+                    SubagentTailParams(sessionId, "sub-123"),
+                    any(),
+                    any(),
+                )
+            }
+            io.mockk.verify(exactly = 0) { HermesWsClient.sendRedirect(any(), any(), any()) }
+        }
+
+    @Test
+    fun testStopSubagent_notFoundReportsAlreadyFinished() =
+        runTest {
+            val (viewModel, sessionId) = createViewModelWithSession()
+            coEvery { HermesWsClient.call(RpcMethods.SUBAGENT_INTERRUPT, any(), any(), any()) } returns
+                SubagentInterruptResult(found = false, subagentId = "sub-123")
+            val indicator = startSubagent(sessionId, "Run deep scan")
+
+            viewModel.stopSubagent(indicator)
+            advanceUntilIdle()
+
+            val updated =
+                viewModel.uiState.value.subagentIndicators
+                    .first { it.subagentId == "sub-123" }
+            assertFalse(updated.isCancelled)
+            assertTrue(updated.logs.any { it.text.contains("already finished") })
+        }
+
+    @Test
+    fun testStopSubagent_rpcFailureIsLogged() =
+        runTest {
+            val (viewModel, sessionId) = createViewModelWithSession()
+            coEvery { HermesWsClient.call(RpcMethods.SUBAGENT_INTERRUPT, any(), any(), any()) } throws
+                HermesWsClient.HermesRpcException("session not found or not owned by this transport", 4001)
+            val indicator = startSubagent(sessionId, "Run deep scan")
+
+            viewModel.stopSubagent(indicator)
+            advanceUntilIdle()
+
+            val updated =
+                viewModel.uiState.value.subagentIndicators
+                    .first { it.subagentId == "sub-123" }
+            assertTrue(updated.isRunning)
+            assertTrue(updated.logs.any { it.isError && it.text.contains("Could not reach the subagent") })
+        }
+
+    @Test
+    fun testSubagentControls_withoutSubagentIdSendNothing() =
+        runTest {
+            val (viewModel, _) = createViewModelWithSession()
+            val indicator =
+                SubagentIndicator(type = "subagent.start", subagentId = null, goal = "Legacy", status = "running")
+
+            viewModel.steerSubagent(indicator, "Change course")
+            viewModel.stopSubagent(indicator)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { HermesWsClient.call(RpcMethods.SUBAGENT_STEER, any(), any(), any()) }
+            coVerify(exactly = 0) { HermesWsClient.call(RpcMethods.SUBAGENT_INTERRUPT, any(), any(), any()) }
+            io.mockk.verify(exactly = 0) { HermesWsClient.sendRedirect(any(), any(), any()) }
         }
 
     @Test

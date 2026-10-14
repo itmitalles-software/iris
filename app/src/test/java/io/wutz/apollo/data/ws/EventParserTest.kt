@@ -45,6 +45,23 @@ class EventParserTest {
     }
 
     @Test
+    fun testParseMessageInterim_readsTextAlreadyStreamedAndSession() {
+        val event =
+            EventParser.parseParams(
+                mapOf(
+                    "type" to "message.interim",
+                    "session_id" to "s1",
+                    "payload" to mapOf("text" to "Checking logs", "already_streamed" to true),
+                ),
+            )
+        assertEquals(WsEvent.MessageInterim("Checking logs", alreadyStreamed = true, sessionId = "s1"), event)
+
+        val defaulted =
+            EventParser.parseParams(mapOf("type" to "message.interim", "payload" to mapOf("text" to "Codex note")))
+        assertEquals(WsEvent.MessageInterim("Codex note", alreadyStreamed = false, sessionId = null), defaulted)
+    }
+
+    @Test
     fun testParseRpcResult_returnsRpcResultEvent() {
         val response =
             createJsonRpcResponse(

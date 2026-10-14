@@ -108,12 +108,21 @@ class ChatConnectionOperationDelegate(
 
     @Synchronized
     private fun accept(
-        snapshot: ConnectionOperationSnapshot,
+        incoming: ConnectionOperationSnapshot,
         allowReplacement: Boolean,
     ): Boolean {
-        if (!matchesSession(snapshot)) return false
-        if (settled.contains(snapshot.opId)) return false
+        if (!matchesSession(incoming)) return false
+        if (settled.contains(incoming.opId)) return false
         val current = _state.value.operation
+        // A display card's updates repeat neither targets nor the display block: keep the card's.
+        val snapshot =
+            if (incoming.display == null && current?.opId == incoming.opId && current.display != null) {
+                incoming.copy(display = current.display)
+            } else {
+                incoming
+            }
+        // Nothing to draw: an open operation needs targets or a display block.
+        if (!snapshot.settled && snapshot.targets.isEmpty() && snapshot.display == null) return false
         if (current != null && current.opId == snapshot.opId && snapshot.seq <= current.seq) return false
         if (current != null && current.opId != snapshot.opId && !allowReplacement) return false
         val pending = _state.value.pendingAction
