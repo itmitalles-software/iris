@@ -3,6 +3,7 @@ package io.wutz.apollo.data.ws
 import io.wutz.apollo.data.model.CatalogScanStatus
 import io.wutz.apollo.data.model.ConnectionCatalogInfo
 import io.wutz.apollo.data.model.ConnectionCatalogScan
+import io.wutz.apollo.data.model.ConnectionDisplay
 import io.wutz.apollo.data.model.ConnectionEnvField
 import io.wutz.apollo.data.model.ConnectionOperationSnapshot
 import io.wutz.apollo.data.model.ConnectionOperationTarget
@@ -23,7 +24,13 @@ object ConnectionOperationParser {
             (payload["targets"] as? List<*>)
                 ?.mapNotNull { parseTarget(it as? Map<*, *>) }
                 ?: return null
-        if (opId.isBlank() || seq < 0L || !deadlineAt.isFinite() || deadlineAt <= 0.0 || targets.isEmpty()) {
+        val display = parseDisplay(payload["display"])
+        val settled = payload["settled"] as? Boolean ?: false
+        // Only a display card (Hermes v0.22.0) or a settlement may come without targets: a display
+        // operation's later `connection.update` frames carry neither targets nor the display block.
+        if (opId.isBlank() || seq < 0L || !deadlineAt.isFinite() || deadlineAt <= 0.0 ||
+            (targets.isEmpty() && display == null && !settled)
+        ) {
             return null
         }
         return ConnectionOperationSnapshot(
@@ -36,11 +43,17 @@ object ConnectionOperationParser {
                     .toDoubleOrNull()
                     ?.takeIf { it.isFinite() && it > 0.0 },
             toolCallId = payload["tool_call_id"] as? String,
-            settled = payload["settled"] as? Boolean ?: false,
+            settled = settled,
             settledBy = payload["settled_by"] as? String,
             targets = targets,
             accountOwned = (payload["owner"] as? Map<*, *>)?.get("type") == "account",
+            display = display,
         )
+    }
+
+    private fun parseDisplay(raw: Any?): ConnectionDisplay? {
+        val map = raw as? Map<*, *> ?: return null
+        return ConnectionDisplay(suggested = map.strings("suggested").distinct())
     }
 
     /**

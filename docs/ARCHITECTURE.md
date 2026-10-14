@@ -13,9 +13,10 @@ Flag conflicts between requirements and implementation instead of silently diver
 
 ## Project Overview
 
-**Apollo** (fork of Hermes Mobile) is a Jetpack Compose Android app — a mobile control panel for
-[Hermes Agent](https://hermes-agent.nousresearch.com). It talks to the Hermes
-dashboard's REST API and WebSocket TUI Gateway (JSON-RPC 2.0) over a trusted LAN.
+**Apollo** (started as a fork of Hermes Mobile, independent since 2026-10-13) is a Jetpack Compose
+Android app — a mobile control panel for [Hermes Agent](https://hermes-agent.nousresearch.com). It
+talks to the Hermes dashboard's REST API and WebSocket TUI Gateway (JSON-RPC 2.0), normally over
+HTTPS through Tailscale Serve; plain HTTP is for trusted networks only.
 
 - **Package:** `io.wutz.apollo` (Hermes Mobile: `com.m57.hermescontrol`)
 - **Min SDK 26 / Target SDK 37 / Compile SDK 37**
@@ -25,44 +26,47 @@ dashboard's REST API and WebSocket TUI Gateway (JSON-RPC 2.0) over a trusted LAN
 
 ## Build & Test Commands
 
-### ✅ Local Android SDK — if available
-
-If you have a local Android SDK (`ANDROID_HOME` set), these work:
-
-```bash
-./gradlew assembleDebug                     # full APK build
-./gradlew testDebugUnitTest                 # unit tests (MockK)
-./gradlew ktlintCheck                       # style check
-```
-
-**ktlint standalone fallback** (no SDK needed; not the authoritative CI gate):
+Requirements and setup (JDK 21 and Android SDK 37, or `nix develop`; ktlint
+1.8.0 is resolved by Gradle) are in [BUILD.md](../BUILD.md). The local gate is one task:
 
 ```bash
-# Download the matching binary
-curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
-chmod +x ktlint
-./ktlint <file>                             # check one file
-./ktlint --format <file>                    # auto-fix
+./gradlew gate        # run before every commit and PR
 ```
 
-**No SDK? CI handles everything** — push small and watch the checks below.
+It runs `ktlintCheck`, `checkColorLiterals`, `checkGermanStrings`,
+`testDebugUnitTest`, `lintDebug`, `assembleDebug`,
+`compileDebugAndroidTestKotlin`, `compileReleaseKotlin` and
+`checkPlayPermissions`. Single tasks for quicker loops:
+
+```bash
+./gradlew testDebugUnitTest --tests '*SomeTest*'   # targeted unit tests (MockK)
+./gradlew ktlintFormat ktlintCheck                 # fix, then check style
+./gradlew connectedDebugAndroidTest                # Compose UI tests on a device/emulator
+```
+
+`ktlintCheck` runs the `ktlint` binary, so a missing binary fails the gate;
+there is no Gradle plugin fallback.
 
 ### CI pipeline (`.github/workflows/android.yml`)
 
 | Job                  | Purpose                                                                                                                            |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `pr-template`        | PR description check (pull requests only); a failure skips the expensive jobs                                                      |
+| `changes`            | path filter; changes outside `app/`, the Gradle files and `android.yml` skip the Gradle jobs                                     |
 | `ktlint`             | ktlint 1.8.0 style check + `checkColorLiterals` (hardcoded Color guard, issue #622)                                                |
 | `android-lint`       | Android Lint                                                                                                                       |
 | `unit-tests`         | JUnit                                                                                                                              |
-| `build`              | assembleDebug (gated by the 3 above)                                                                                               |
+| `build`              | assembleDebug, uploaded as an artifact (runs in parallel with the jobs above, not after them)                                      |
 | `release-compile`    | compileReleaseKotlin — catches release-variant compilation issues (e.g. debugImplementation-scoped deps referenced in main source); checkPlayPermissions — the Play manifest has no REQUEST_INSTALL_PACKAGES |
 | `instrumented-tests` | Compose UI tests on Android emulator (API 34 ATD)                                                                                  |
-| `ci-summary`         | Aggregator (`if: always()`) — branch protection gates on THIS check                                                                |
+| `ci-summary`         | Aggregator (`if: always()`): the one result to check. `main` has no branch protection, so nothing enforces it; merge only when it is green |
 
-Also: There is a separate workflow `merge-conflict-detector.yml` that auto-labels PRs with `has-conflicts`.
+Also: `merge-conflict-detector.yml` auto-labels PRs with `has-conflicts`,
+`codeql.yml` runs CodeQL, and `website.yml` (manual only) publishes `website/`.
 
-Every Gradle job validates `gradle-wrapper.jar` and uses the remote build cache
-(`GRADLE_ENCRYPTED_KEY` secret). `concurrency.cancel-in-progress: true`.
+Every Gradle job validates `gradle-wrapper.jar` and uses the GitHub Actions
+Gradle cache of `gradle/actions/setup-gradle` (no remote build cache). A new
+push to a PR branch cancels the PR's running CI (`concurrency.cancel-in-progress`).
 
 ### Releasing (`.github/workflows/release.yml`)
 
@@ -243,10 +247,12 @@ for the current inset implementation.
 
 ### Theme
 
-`Theme.kt` uses a preset-based theme system with 7 built-in presets: Default,
-Monochrome, Gruvbox, Catppuccin, AMOLED, Nord, and Garnet. Each preset provides light
-and dark color schemes plus matching semantic status colors (AMOLED is
-dark-only — light mode falls back to the default theme).
+`Theme.kt` uses a preset-based theme system with 8 built-in presets: Apollo (the
+default, see [BRANDING.md](BRANDING.md)), Default, Monochrome, Gruvbox, Catppuccin,
+AMOLED, Nord, and Garnet. Each preset provides light and dark color schemes plus
+matching semantic status colors (AMOLED is dark-only — light mode falls back to the
+Default palette). Only the Apollo preset switches the display styles to Cinzel
+(`ApolloTypography`) and enables the Apollo chat accents.
 Every preset is a `ThemePalette` template fill (`PaletteTemplate.kt`): raw
 `PaletteColors` + `HermesStatusColors` mapped into the Material 3
 `ColorScheme` slots, with the error slots derived from the status set.
@@ -264,15 +270,15 @@ Access status colors via `LocalHermesStatusColors.current.success`, not
 
 ### PR-Always (ENFORCED)
 
-**Every change goes through a PR, targeting `dev`. Never push directly to `dev` (or `main`).**
+**Every change goes through a PR targeting `main`. Never push directly to `main`.**
 
 ```bash
-git checkout dev && git pull origin dev
-git checkout -b fix/issue-N-description    # or feat/...
-# make changes, run ./gradlew ktlintFormat ktlintCheck (requires Android SDK)
+git switch main && git pull origin main
+git switch -c fix/issue-N-description      # or feat/...
+# make changes, run ./gradlew ktlintFormat gate
 git commit -m "fix(#N): description"
 git push -u origin HEAD
-gh pr create --base dev --title "fix(#N): description" --body "Closes #N"
+gh pr create --base main --title "fix(#N): description" --body "Closes #N"
 ```
 
 ### Commit Conventions — STRICT
@@ -285,20 +291,26 @@ gh pr create --base dev --title "fix(#N): description" --body "Closes #N"
 
 ## Security Considerations
 
-- **Cleartext HTTP/WS is intentional** — trusted LAN only. `usesCleartextTraffic="true"`
-  and `http://`/`ws://` URLs are by design. Don't "fix" this unless adding HTTPS support.
-- **`HttpLoggingInterceptor.Level.BODY`** must stay gated on `BuildConfig.DEBUG` — it
-  prints the Authorization header. (B1)
-- **AuthManager token** is ephemeral — it becomes invalid when the Hermes dashboard
-  restarts. Symptom: 401 on every call. Fix: re-extract the token from the running
-  gateway, don't assume the stored one is valid.
+- **HTTPS is the default path** (Tailscale Serve, private CAs, mTLS client certificates;
+  see [connection-reference.md](connection-reference.md)). Server certificate and hostname
+  verification always stay on.
+- **Cleartext HTTP/WS stays allowed on purpose** for trusted networks, emulators and
+  `adb reverse` (`network_security_config.xml`, the `usesCleartextTraffic` manifest
+  placeholder). The login screen warns about it; do not remove it without an owner decision.
+- **HTTP logging** is `HttpLoggingInterceptor.Level.BASIC` in debug builds and `NONE` in
+  release builds (`ApiClient`). Never raise it to `HEADERS` or `BODY`: both print the
+  `Authorization` header and cookies.
+- **Token mode only:** the dashboard session token is ephemeral — it becomes invalid
+  when Hermes restarts. Symptom: 401 on every call. Fix: re-extract the token from the
+  running server, don't assume the stored one is valid.
 - **Release signing** uses a keystore with env-var credentials (`KEYSTORE_PATH`,
   `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`). Don't commit keystore files or
   hardcode passwords.
 
 ## Things to Avoid
 
-- Don't run `./gradlew` tasks without an Android SDK — CI handles compilation, lint, and tests.
+- Don't skip the local gate (`./gradlew gate`). CI runs the same checks plus the emulator
+  tests, but a red CI run costs a full cycle.
 - Don't remove `@OptIn(ExperimentalMaterial3Api::class)` from screens that use
   `SegmentedButton`, `PullToRefreshBox`, or other experimental M3 APIs.
 - Don't access `MaterialTheme.colorScheme.*` inside non-`@Composable` lambdas
@@ -323,6 +335,41 @@ Use `MaterialTheme.colorScheme.<token>`, `LocalHermesStatusColors.current.<seman
 or `Color.Transparent` / `Color.Unspecified` instead. The guard runs in CI as part
 of the `ktlint` job.
 
+## Testing Conventions
+
+The unit-test suite runs about 3,700 JVM tests in two forks that share
+JVM-global singletons (`AuthManager`, `HermesWsClient`, `ApiClient`,
+`ActiveSessionHolder`, `SwrCache`). Leaks between test classes turn into
+load-dependent flakes, so:
+
+- **Virtual time, no sleeps.** Use `runTest` with a `StandardTestDispatcher`,
+  `Dispatchers.setMain(...)` in setup and `Dispatchers.resetMain()` in teardown, and
+  advance with `advanceUntilIdle()`/`advanceTimeBy()`. Replace `Thread.sleep` with
+  virtual time or a latch.
+- **Never mock `Dispatchers` statically** (`mockkStatic(Dispatchers::class)`). The mock
+  bleeds JVM-wide into later test classes, and singleton scopes created while it is
+  active stay bound to a dispatcher nobody advances. Inject an `ioDispatcher`
+  constructor parameter (default `Dispatchers.IO`) instead; `safeLaunchLoad`
+  (`ui/common/ViewModelExt.kt`) deliberately has no IO hop.
+- **Subscribe before you trigger.** `HermesWsClient.events` has no replay. Start
+  collectors with `async(start = CoroutineStart.UNDISPATCHED)` or wait on an
+  `onSubscription` latch before `connect()` or before the server sends.
+- **Close mock WebSockets.** Use `MockResponse().withClosingWebSocketUpgrade(listener)`
+  (`test:data/ws/MockWebSocketCleanup.kt`), not plain `withWebSocketUpgrade`.
+  Otherwise the server never answers the client's close frame and every
+  `MockWebServer.shutdown()` waits about five seconds.
+- **Identify requests by method, not by position or id counter**, for example
+  `sentRequestMethods.last { it.first == WsMethods.SESSION_CREATE }`. A late extra send
+  shifts ids and counters.
+- **Stub the global flows a ViewModel reads** (`AuthManager.activeProfileId`,
+  `dataScopeFlow`) in `setUp`, and undo every `mockkObject`/`mockkStatic` in teardown.
+- **User-visible ViewModel messages are `UiText`** (`ui/common/UiText.kt`). Assert the
+  resource id and arguments (`assertEquals(UiText.res(R.string.x, "a"), state.toastMessage)`),
+  not English text.
+- **No real device storage.** Use `TemporaryFolder` or Room's in-memory builder.
+- After changing a signature used by `app/src/androidTest`, the gate's
+  `compileDebugAndroidTestKotlin` must pass.
+
 ## Project Layout
 
 ```
@@ -332,26 +379,28 @@ io.wutz.apollo/
 │   ├── local/      AuthManager, Room (ChatMessageEntity/Dao, HermesDatabase), AnalyticsCacheStore
 │   ├── model/      40+ data classes for API responses + requests
 │   ├── remote/     ApiClient, Retrofit service, OkHttp provider, cookie management
-│   ├── repository/ KanbanRepository, KanbanSyncCoordinator, VoiceNoteRepository
-│   ├── session/    ActiveSessionHolder
+│   ├── repository/ KanbanRepository, KanbanDispatcherNudger, VoiceNoteRepository
+│   ├── session/    ActiveSessionHolder, ProfileSwitchCoordinator
 │   ├── update/     AppUpdateChecker, AppUpdateCache, AppUpdateState
 │   ├── voice/      speak-stream / transcribe-stream socket protocol and clients
 │   └── ws/         HermesWsClient, JSON-RPC models, WsEvent, BillingRepository
+├── assistant/      digital-assistant role (voice interaction service and session)
 ├── notification/   ChatNotificationService, NotificationReplyReceiver
-├── theme/          Color, Theme, Motion, Spacing, Shapes, Type, HermesStatusColors
-│   └── presets/    Default, Monochrome, Gruvbox, Catppuccin, AMOLED, Nord, Garnet
+├── share/          ShareTargetActivity, ShareInbox (Android share sheet into a chat)
+├── theme/          Color, Theme, Motion, Spacing, Shapes, Type, ApolloType, SystemBars, HermesStatusColors
+│   └── presets/    Apollo, Default, Monochrome, Gruvbox, Catppuccin, AMOLED, Nord, Garnet
 ├── ui/
 │   ├── common/     HermesScaffold, StateViews, SharedComponents, DetailDialog, DetailRows
-│   └── 31 feature packages (achievements, analytics, authlogin, billing, bots,
-│       channels, chat, config, connect, connectors, cron, files, gateway, kanban,
-│       keys, landing, logs, mcp, memory, model, pairing, plugins, process,
-│       profiles, providers, sessions, settings, skills, system, toolsets,
+│   └── 30 feature packages (achievements, analytics, authlogin, billing, bots,
+│       channels, chat, config, connectors, cron, files, gateway, kanban,
+│       keys, landing, logs, mcp, memory, model, pairing, plugins, profiles,
+│       projects, providers, sessions, settings, skills, system, toolsets,
 │       webhooks)
-├── util/           CronExpressionFormatter, LocaleContextWrapper
+├── util/           CronExpressionFormatter, LocaleContextWrapper, FormatUtils, BidiUtils, …
 ├── HermesControlApp.kt     Application class
 ├── Navigation.kt           Drawer + NavDisplay + entry wiring
 ├── NavigationController.kt Central navigation guard (dedup)
-├── NavigationKeys.kt       @Serializable NavKey data objects (30 screens + 4 detail keys + 7 settings sub-pages)
+├── NavigationKeys.kt       @Serializable NavKey data objects (32 screens + 4 detail keys + 7 settings sub-pages)
 ├── ScreenRegistry.kt       entry<T> registrations for all NavKeys
 └── MainActivity.kt
 ```

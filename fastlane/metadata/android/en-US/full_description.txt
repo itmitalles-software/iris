@@ -11,7 +11,10 @@ Features:
 • Manage models, providers, profiles, skills, MCP servers, plugins and toolsets
 • Usage and token statistics
 • Notifications for finished tasks and pending approvals, with inline reply
-• True-black AMOLED dark theme, optional light mode and Material You
+• Hands-free voice conversation: Apollo listens, sends what you say and speaks the reply while it streams; talk over it to interrupt
+• Dictation and read-aloud through your server's speech services
+• Layouts for tablets and foldables; Ctrl+Enter sends from a hardware keyboard
+• The Apollo design: black and antique gold, classical display type and engraving illustrations; optional light mode, Material You and seven further themes
 • English and German, following your system language
 
 Privacy: no ads, no trackers, no telemetry. Apollo connects only to your own Hermes server — ideally over Tailscale with HTTPS — and stores credentials in encrypted storage.

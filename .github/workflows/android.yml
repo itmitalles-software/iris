@@ -3,9 +3,6 @@ name: Android CI/CD
 run-name: >-
   ${{ github.event_name == 'pull_request' && format('Android CI PR #{0}', github.event.pull_request.number) || format('Android CI {0}', github.ref_name) }}
 
-env:
-  GRADLE_CACHE_ENCRYPTED_KEY: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
-
 on:
   push:
     branches: [main]
@@ -16,11 +13,11 @@ on:
 permissions:
   contents: read
 
-# Cancel in-progress runs when a new commit lands on the same PR branch.
-# On main (push events), each commit gets a unique group so rapid merges
-# don't cancel each other's CI runs.
+# One run per ref: a new commit on a PR branch or on main cancels the run in
+# progress there, so rapid merges to main end in one run for the newest commit
+# (it contains all earlier ones).
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -42,7 +39,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Checkout trusted script (base branch)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
@@ -70,9 +67,9 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Paths Filter
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -90,57 +87,38 @@ jobs:
               - 'flake.lock'
 
   # ─────────────────────────────────────────────────────────────────────
-  # Job 1: ktlint (code style) — fastest feedback, runs in parallel.
+  # Job 1: ktlint (code style) + resource guards — fastest feedback, runs in parallel.
   # ─────────────────────────────────────────────────────────────────────
   ktlint:
     name: ktlint — Code Style
     needs: [pr-template, changes]
     if: ${{ !cancelled() && needs.pr-template.result != 'failure' && needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
-
-      - name: Cache ktlint
-        id: cache-ktlint
-        uses: actions/cache@v6
-        with:
-          path: ~/.local/bin/ktlint
-          key: ktlint-1.8.0
-
-      - name: Install ktlint
-        if: steps.cache-ktlint.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/.local/bin
-          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
-          chmod +x ktlint
-          mv ktlint ~/.local/bin/
-
-      - name: Add local bin to PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Run ktlintCheck + checkColorLiterals (hardcoded Color guard, issue #622)
-        run: ./gradlew ktlintCheck checkColorLiterals --continue
+      # ktlint 1.8.0 is resolved by Gradle from Maven Central (no binary download).
+      # checkColorLiterals: hardcoded Color guard (issue #622).
+      # checkGermanStrings: every translatable string also exists in values-de/.
+      - name: Run ktlintCheck + checkColorLiterals + checkGermanStrings
+        run: ./gradlew ktlintCheck checkColorLiterals checkGermanStrings --continue
 
       - name: Upload ktlint reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ktlint-reports
           path: |
@@ -161,29 +139,25 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
-
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
 
       - name: Run lintDebug
         run: ./gradlew lintDebug
 
       - name: Upload lint reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lint-reports
           path: app/build/reports/lint-results-debug.*
@@ -197,28 +171,25 @@ jobs:
     needs: [pr-template, changes]
     if: ${{ !cancelled() && needs.pr-template.result != 'failure' && needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
-
+      # The runner has 4 vCPUs / 16 GB; the local default stays at 2 forks.
       - name: Run test
-        run: ./gradlew test
+        run: ./gradlew test -PtestForks=4
 
       # Telemetry only, never a gate: surfaces the slowest classes so perf work
       # targets real offenders.
@@ -241,7 +212,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-reports
           path: app/build/reports/tests/
@@ -249,6 +220,8 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────────────
   # Job 4: Build Debug APK — runs in parallel; CI Summary gates the result.
+  # Also compiles the androidTest sources, so a broken instrumented test fails
+  # here in minutes instead of inside the emulator job.
   # ─────────────────────────────────────────────────────────────────────
   build:
     name: Build Debug APK
@@ -258,29 +231,25 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
-
-      - name: Build assembleDebug
-        run: ./gradlew assembleDebug
+      - name: Build assembleDebug + compile androidTest sources
+        run: ./gradlew assembleDebug compileDebugAndroidTestKotlin
 
       - name: Upload Debug APK Artifact
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apollo-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
@@ -288,41 +257,37 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────
-  # Job 5: Release Compile — verifies release variant compiles and the Play
-  # build's merged manifest has no REQUEST_INSTALL_PACKAGES.
-  # Catches issues like debugImplementation-scoped dependencies that
-  # main source code depends on (e.g. okhttp3.logging.HttpLoggingInterceptor).
-  # debug-only CI jobs (ktlint, lint, tests) won't catch these.
+  # Job 5: Release Build — runs the real release pipeline (R8, resource
+  # shrinking, lintVital, Compose group mapping) for the Play build type,
+  # which shares every source set with release. Unsigned without the signing
+  # secrets; nothing is uploaded. assemblePlay depends on checkPlayPermissions
+  # (merged manifest has no REQUEST_INSTALL_PACKAGES, issue #7).
+  # Catches debugImplementation-scoped dependencies that main code uses and
+  # R8/lintVital breakage before a tag is pushed.
   # ─────────────────────────────────────────────────────────────────────
   release-compile:
-    name: Release Compile Check
+    name: Release Build Check
     needs: [pr-template, changes]
     if: ${{ !cancelled() && needs.pr-template.result != 'failure' && needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
-
-      # checkPlayPermissions merges the Play build's manifest (cheap, no
-      # compile) and fails if REQUEST_INSTALL_PACKAGES is back (issue #7).
-      - name: Compile release Kotlin + check Play manifest
-        run: ./gradlew compileReleaseKotlin checkPlayPermissions
+      - name: Build minified Play APK (R8, lintVital, Play manifest check)
+        run: ./gradlew assemblePlay
 
   # ─────────────────────────────────────────────────────────────────────
   # Job 6: Instrumented tests — runs on Android emulator.
@@ -337,22 +302,18 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTED_KEY }}
-
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
 
       # Enable KVM hardware acceleration on the Linux runner
       - name: Enable KVM group permissions
@@ -364,7 +325,7 @@ jobs:
       # Cache the AVD to avoid downloading/recreating it from scratch every time
       - name: AVD Cache
         id: avd-cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.android/avd/*
@@ -372,7 +333,7 @@ jobs:
           key: avd-api34-atd-x86_64
 
       - name: Run connectedDebugAndroidTest
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34
           target: aosp_atd
@@ -384,7 +345,7 @@ jobs:
 
       - name: Upload instrumented test reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: androidTest-reports
           path: app/build/reports/androidTests/

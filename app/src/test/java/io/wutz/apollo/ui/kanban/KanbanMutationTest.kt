@@ -631,6 +631,73 @@ class KanbanMutationTest {
         }
 
     @Test
+    fun testBulkRequestFailureReportsEveryTaskAsFailed() =
+        runTest(testDispatcher) {
+            val board = KanbanBoard(id = "dev", name = "Dev")
+            coEvery { mockRepository.getBoard("dev") } returns
+                NetworkResult.Success(KanbanBoardResponse(columns = listOf(KanbanColumn("todo", emptyList()))))
+            coEvery { mockRepository.bulkTasks("dev", any()) } returns
+                NetworkResult.Failure(NetworkError.Http(503, "down"))
+
+            val vm = createViewModel()
+            vm.selectBoard(board)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val cases: List<Triple<Int, String, (KanbanViewModel, (Set<String>) -> Unit) -> Unit>> =
+                listOf(
+                    Triple(R.string.kanban_msg_bulk_move_failed, "bulkMove") { vm, done ->
+                        vm.bulkMove(listOf("t_1", "t_2"), "ready", onComplete = done)
+                    },
+                    Triple(R.string.kanban_msg_bulk_archive_failed, "bulkArchive") { vm, done ->
+                        vm.bulkArchive(listOf("t_1", "t_2"), onComplete = done)
+                    },
+                    Triple(R.string.kanban_msg_bulk_assign_failed, "bulkAssign") { vm, done ->
+                        vm.bulkAssign(listOf("t_1", "t_2"), "coder", onComplete = done)
+                    },
+                )
+            for ((messageRes, name, run) in cases) {
+                var failed: Set<String>? = null
+                run(vm) { failed = it }
+                testDispatcher.scheduler.advanceUntilIdle()
+                assertEquals(name, setOf("t_1", "t_2"), failed)
+                assertEquals(name, UiText.res(messageRes, "down"), vm.uiState.value.toastMessage)
+                assertFalse(name, vm.uiState.value.isLoading)
+            }
+        }
+
+    @Test
+    fun testBulkDeleteReportsAllAndPartialFailures() =
+        runTest(testDispatcher) {
+            val board = KanbanBoard(id = "dev", name = "Dev")
+            coEvery { mockRepository.getBoard("dev") } returns
+                NetworkResult.Success(KanbanBoardResponse(columns = listOf(KanbanColumn("todo", emptyList()))))
+            coEvery { mockRepository.deleteTask("t_1", "dev") } returns NetworkResult.Success(Unit)
+            coEvery { mockRepository.deleteTask("t_2", "dev") } returns
+                NetworkResult.Failure(NetworkError.Http(409, "locked"))
+
+            val vm = createViewModel()
+            vm.selectBoard(board)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            var failed: Set<String>? = null
+            vm.bulkDelete(listOf("t_1", "t_2")) { failed = it }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(setOf("t_2"), failed)
+            assertEquals(
+                UiText.plural(R.plurals.kanban_msg_bulk_deleted_partial, 1, 1, 1, "locked"),
+                vm.uiState.value.toastMessage,
+            )
+
+            vm.bulkDelete(listOf("t_2")) { failed = it }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(setOf("t_2"), failed)
+            assertEquals(
+                UiText.res(R.string.kanban_msg_bulk_delete_failed_all, UiText.raw("locked")),
+                vm.uiState.value.toastMessage,
+            )
+        }
+
+    @Test
     fun testBulkArchiveTasksSuccess() =
         runTest(testDispatcher) {
             val board = KanbanBoard(id = "dev", name = "Dev")

@@ -65,6 +65,8 @@ import io.wutz.apollo.data.ws.contract.SessionInterruptParams
 import io.wutz.apollo.data.ws.contract.SessionListParams
 import io.wutz.apollo.data.ws.contract.SessionResumeParams
 import io.wutz.apollo.data.ws.contract.SlashExecParams
+import io.wutz.apollo.data.ws.contract.SubagentSteerParams
+import io.wutz.apollo.data.ws.contract.SubagentTailParams
 import io.wutz.apollo.data.ws.contract.TypedRpcSender
 import io.wutz.apollo.data.ws.toAny
 import io.wutz.apollo.data.ws.toJsonElement
@@ -1207,6 +1209,7 @@ class ChatViewModel(
         // finalized/orphan message carries the latest reasoning text.
         when (event) {
             is WsEvent.MessageStart,
+            is WsEvent.MessageInterim,
             is WsEvent.MessageComplete,
             is WsEvent.MessageDone,
             is WsEvent.ToolStart,
@@ -1231,6 +1234,16 @@ class ChatViewModel(
         }
         val result = checkNotNull(reduced)
         _streamingState.update { result.streamingState }
+        // message.interim sealed the live bubble: like tool.start, drop the drained token buffers so
+        // later deltas start a fresh bubble instead of re-flushing the sealed text. A live bubble the
+        // reducer kept (never-streamed commentary inserted before it) keeps its buffers.
+        if (event is WsEvent.MessageInterim &&
+            isCurrentSession(event.sessionId) &&
+            streamingSnapshot.streamingMessage != null &&
+            result.streamingState.streamingMessage == null
+        ) {
+            streamingController.clearStreamingBuffers()
+        }
 
         // Process side-effects from the reducer
         dispatchReducerEffects(result.effects)
@@ -5038,7 +5051,8 @@ class ChatViewModel(
     }
 
     /**
-     * Send course-correction guidance to a live subagent child session (issue #1030).
+     * Send course-correction guidance to one live subagent via `subagent.steer` (issue #1030).
+     * Hermes queues the text into the child itself; the parent turn is not disturbed.
      */
     fun steerSubagent(
         indicator: SubagentIndicator,
@@ -5047,85 +5061,104 @@ class ChatViewModel(
         val trimmed = message.trim()
         if (trimmed.isBlank()) return
         val sessionId = runtimeSessionId ?: return
-        val subagentId = indicator.subagentId
-        val steerCommand =
-            if (!subagentId.isNullOrBlank()) {
-                "/steer $subagentId $trimmed"
-            } else {
-                "/steer $trimmed"
-            }
+        val subagentId = indicator.subagentId?.takeIf { it.isNotBlank() } ?: return
         viewModelScope.launch(ioDispatcher) {
-            wsClient.sendRedirect(
-                sessionId,
-                steerCommand,
-                onSent = { id -> trackRequest(id, WsMethods.SESSION_REDIRECT) },
-            )
-        }
-        _uiState.update { current ->
-            val updated =
-                current.subagentIndicators.map { ind ->
-                    if (ind.subagentId == indicator.subagentId &&
-                        (ind.goal == indicator.goal || indicator.subagentId != null)
-                    ) {
-                        val newLogs =
-                            (
-                                ind.logs +
-                                    SubagentLogLine(
-                                        text =
-                                            localized(
-                                                UiText.res(R.string.chat_msg_subagent_course_correction, trimmed),
-                                            ),
-                                        isSummary = true,
-                                    )
-                            ).takeLast(30)
-                        ind.copy(status = "steered", logs = newLogs)
-                    } else {
-                        ind
-                    }
+            try {
+                val result =
+                    wsClient.call(RpcMethods.SUBAGENT_STEER, SubagentSteerParams(sessionId, subagentId, trimmed))
+                if (result.queued) {
+                    appendSubagentLog(
+                        subagentId,
+                        SubagentLogLine(
+                            text = localized(UiText.res(R.string.chat_msg_subagent_course_correction, trimmed)),
+                            isSummary = true,
+                        ),
+                        status = "steered",
+                    )
+                } else {
+                    appendSubagentLog(
+                        subagentId,
+                        SubagentLogLine(
+                            text = localized(UiText.res(R.string.chat_msg_subagent_steer_rejected)),
+                            isError = true,
+                        ),
+                    )
                 }
-            current.copy(subagentIndicators = updated)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                appendSubagentControlFailure(subagentId, e)
+            }
         }
     }
 
     /**
-     * Stop / interrupt a single live subagent early (issue #1030).
+     * Stop one live subagent early via `subagent.interrupt` (issue #1030). Only the child is
+     * interrupted; `found = false` means it had already finished.
      */
     fun stopSubagent(indicator: SubagentIndicator) {
         val sessionId = runtimeSessionId ?: return
-        val subagentId = indicator.subagentId
-        val stopCommand =
-            if (!subagentId.isNullOrBlank()) {
-                "/stop $subagentId"
-            } else {
-                "/stop"
-            }
+        val subagentId = indicator.subagentId?.takeIf { it.isNotBlank() } ?: return
         viewModelScope.launch(ioDispatcher) {
-            wsClient.sendRedirect(
-                sessionId,
-                stopCommand,
-                onSent = { id -> trackRequest(id, WsMethods.SESSION_REDIRECT) },
-            )
-        }
-        _uiState.update { current ->
-            val updated =
-                current.subagentIndicators.map { ind ->
-                    if (ind.subagentId == indicator.subagentId &&
-                        (ind.goal == indicator.goal || indicator.subagentId != null)
-                    ) {
-                        val newLogs =
-                            (
-                                ind.logs +
-                                    SubagentLogLine(
-                                        text = localized(UiText.res(R.string.chat_msg_subagent_stopped)),
-                                        isError = true,
-                                    )
-                            ).takeLast(30)
-                        ind.copy(status = "cancelled", logs = newLogs)
-                    } else {
-                        ind
-                    }
+            try {
+                val result = wsClient.call(RpcMethods.SUBAGENT_INTERRUPT, SubagentTailParams(sessionId, subagentId))
+                if (result.found) {
+                    appendSubagentLog(
+                        subagentId,
+                        SubagentLogLine(
+                            text = localized(UiText.res(R.string.chat_msg_subagent_stopped)),
+                            isError = true,
+                        ),
+                        status = "cancelled",
+                    )
+                } else {
+                    appendSubagentLog(
+                        subagentId,
+                        SubagentLogLine(text = localized(UiText.res(R.string.chat_msg_subagent_already_finished))),
+                    )
                 }
-            current.copy(subagentIndicators = updated)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                appendSubagentControlFailure(subagentId, e)
+            }
+        }
+    }
+
+    private fun appendSubagentControlFailure(
+        subagentId: String,
+        error: Exception,
+    ) {
+        appendSubagentLog(
+            subagentId,
+            SubagentLogLine(
+                text =
+                    localized(
+                        UiText.res(
+                            R.string.chat_msg_subagent_control_failed,
+                            error.message ?: error.javaClass.simpleName,
+                        ),
+                    ),
+                isError = true,
+            ),
+        )
+    }
+
+    /** Appends [line] to the indicator of [subagentId] (and sets [status] when given); no-op if it is gone. */
+    private fun appendSubagentLog(
+        subagentId: String,
+        line: SubagentLogLine,
+        status: String? = null,
+    ) {
+        _uiState.update { current ->
+            current.copy(
+                subagentIndicators =
+                    current.subagentIndicators.map { ind ->
+                        if (ind.subagentId == subagentId) {
+                            ind.copy(status = status ?: ind.status, logs = (ind.logs + line).takeLast(30))
+                        } else {
+                            ind
+                        }
+                    },
+            )
         }
     }
 
@@ -5133,8 +5166,9 @@ class ChatViewModel(
         subagentsDelegate.hydrateSubagents(sessionId ?: runtimeSessionId ?: _uiState.value.currentSessionId)
     }
 
-    fun refreshBackgroundProcesses() {
-        processesDelegate.refresh()
+    /** Adaptive `process.list` polling while the chat is visible; returns only when cancelled. */
+    suspend fun pollBackgroundProcesses() {
+        processesDelegate.pollWhileVisible()
     }
 
     fun killBackgroundProcess(processId: String) {

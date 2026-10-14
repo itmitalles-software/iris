@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -100,6 +102,8 @@ fun ManageableItemCard(
                         Switch(
                             checked = toggle.checked,
                             onCheckedChange = toggle.onCheckedChange,
+                            // The card's own click opens details, so the switch stays separate but needs a name.
+                            modifier = Modifier.semantics { contentDescription = title },
                             enabled = toggle.enabled,
                         )
                     }

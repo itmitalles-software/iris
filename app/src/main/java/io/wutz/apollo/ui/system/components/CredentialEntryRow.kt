@@ -32,6 +32,7 @@ internal fun CredentialEntryRow(
     spacing: io.wutz.apollo.theme.Spacing,
     removeEnabled: Boolean = true,
 ) {
+    val entryLabel = entry.label ?: "(${stringResource(R.string.system_credentials_api_key)} ${entry.index ?: 0})"
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
@@ -39,7 +40,7 @@ internal fun CredentialEntryRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = entry.label ?: "(${stringResource(R.string.system_credentials_api_key)} ${entry.index ?: 0})",
+                text = entryLabel,
                 style = MaterialTheme.typography.bodyMedium,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
@@ -67,7 +68,7 @@ internal fun CredentialEntryRow(
             IconButton(onClick = onRemove, enabled = removeEnabled) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.action_delete),
+                    contentDescription = stringResource(R.string.a11y_delete_named, entryLabel),
                     tint =
                         if (removeEnabled) {
                             MaterialTheme.colorScheme.error

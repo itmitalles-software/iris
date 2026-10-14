@@ -86,6 +86,30 @@ private val URL_PATTERN = Regex("""https?://[^\s)>\[\]"'‘’]+""")
 private fun bidiTextDirection(isRtl: Boolean): TextDirection = if (isRtl) TextDirection.Rtl else TextDirection.Ltr
 
 /**
+ * The last two parses of one [MarkdownText]. While a reply streams with the typing
+ * effect, the blinking caret alternates the text between two values every 400 ms;
+ * keeping both parses avoids re-parsing the whole reply on every blink.
+ */
+internal class RecentMarkdownParses(
+    private val parse: (String) -> List<MdBlock> = { coalesceBulletRuns(parseBlocks(it)) },
+) {
+    private var latestText: String? = null
+    private var latestBlocks: List<MdBlock> = emptyList()
+    private var previousText: String? = null
+    private var previousBlocks: List<MdBlock> = emptyList()
+
+    fun blocksFor(text: String): List<MdBlock> {
+        if (text == latestText) return latestBlocks
+        val blocks = if (text == previousText) previousBlocks else parse(text)
+        previousText = latestText
+        previousBlocks = latestBlocks
+        latestText = text
+        latestBlocks = blocks
+        return blocks
+    }
+}
+
+/**
  * Renders chat assistant text as Markdown, including while it streams. The
  * upstream token buffer coalesces deltas; parsing is memoized for identical text
  * so completion does not swap a plain-text row for a differently sized block tree.
@@ -108,7 +132,8 @@ fun MarkdownText(
     val statusColors = LocalHermesStatusColors.current
     val highlights = searchHighlightColors(statusColors)
     val linkColor = MaterialTheme.colorScheme.primary
-    val blocks = remember(text, isStreaming) { coalesceBulletRuns(parseBlocks(text)) }
+    val parses = remember { RecentMarkdownParses() }
+    val blocks = remember(text, isStreaming) { parses.blocksFor(text) }
     val latexMeasurer = rememberLatexMeasurer()
 
     Column(modifier = modifier.fillMaxWidth()) {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -88,7 +90,12 @@ internal fun AppearanceSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth().toggleable(
+                    value = useDynamicColors,
+                    role = Role.Switch,
+                    onValueChange = onUseDynamicColorsChange,
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -107,7 +114,7 @@ internal fun AppearanceSection(
             }
             Switch(
                 checked = useDynamicColors,
-                onCheckedChange = onUseDynamicColorsChange,
+                onCheckedChange = null,
             )
         }
 
@@ -391,7 +398,14 @@ internal fun ChatSection(
             style = MaterialTheme.typography.titleMedium,
         )
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .toggleable(
+                        value = messageStatsEnabled,
+                        role = Role.Switch,
+                        onValueChange = onMessageStatsEnabledChange,
+                    ).testTag("settings_message_stats"),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -405,8 +419,7 @@ internal fun ChatSection(
             )
             Switch(
                 checked = messageStatsEnabled,
-                onCheckedChange = onMessageStatsEnabledChange,
-                modifier = Modifier.testTag("settings_message_stats"),
+                onCheckedChange = null,
             )
         }
         MessageStatsOption(
@@ -434,7 +447,14 @@ internal fun ChatSection(
         Spacer(modifier = Modifier.height(20.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .toggleable(
+                        value = showModelProvider,
+                        role = Role.Switch,
+                        onValueChange = onShowModelProviderChange,
+                    ).testTag("settings_show_model_provider"),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -453,15 +473,19 @@ internal fun ChatSection(
             }
             Switch(
                 checked = showModelProvider,
-                onCheckedChange = onShowModelProviderChange,
-                modifier = Modifier.testTag("settings_show_model_provider"),
+                onCheckedChange = null,
             )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth().toggleable(
+                    value = typingEffectEnabled,
+                    role = Role.Switch,
+                    onValueChange = onTypingEffectEnabledChange,
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -480,7 +504,7 @@ internal fun ChatSection(
             }
             Switch(
                 checked = typingEffectEnabled,
-                onCheckedChange = onTypingEffectEnabledChange,
+                onCheckedChange = null,
             )
         }
 
@@ -536,7 +560,16 @@ private fun MessageStatsOption(
     testTag: String,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
+                ).padding(start = 12.dp)
+                .testTag(testTag),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -555,8 +588,7 @@ private fun MessageStatsOption(
         Switch(
             checked = checked,
             enabled = enabled,
-            onCheckedChange = onCheckedChange,
-            modifier = Modifier.testTag(testTag),
+            onCheckedChange = null,
         )
     }
 }

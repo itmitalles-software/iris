@@ -244,7 +244,14 @@ fun UserBubble(
                                     ) {
                                         Icon(
                                             imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
-                                            contentDescription = stringResource(R.string.content_desc_copy),
+                                            contentDescription =
+                                                stringResource(
+                                                    if (copied) {
+                                                        R.string.content_desc_copied
+                                                    } else {
+                                                        R.string.content_desc_copy
+                                                    },
+                                                ),
                                             modifier = Modifier.size(12.dp),
                                             tint = userBubbleTextColor.copy(alpha = 0.7f),
                                         )

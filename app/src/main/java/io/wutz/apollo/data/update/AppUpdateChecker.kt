@@ -163,6 +163,8 @@ fun isReleaseCandidateVersion(tag: String): Boolean =
 open class AppUpdateChecker(
     private val client: OkHttpClient = OkHttpProvider.external,
     private val apiBaseUrl: String = "https://api.github.com/repos/wutz-io/apollo-hermes-android",
+    /** Client for release metadata requests; the app passes the cached [OkHttpProvider.githubApi]. */
+    private val apiClient: OkHttpClient = client,
 ) {
     /**
      * Fetch the newest installable release metadata.
@@ -193,7 +195,7 @@ open class AppUpdateChecker(
                 .url(url)
                 .header("Accept", "application/vnd.github+json")
                 .build()
-        client.newCall(request).execute().use { response ->
+        apiClient.newCall(request).execute().use { response ->
             if (response.code == HTTP_NOT_FOUND) return null
             if (!response.isSuccessful) throw IOException("GitHub releases request failed (${response.code})")
             return ReleasePage(response.body.string().orEmpty(), response.nextPageUrl())
@@ -337,13 +339,17 @@ open class AppUpdateChecker(
         runCatching { dest.delete() }
     }
 
-    private companion object {
-        const val DEFAULT_BUFFER_SIZE = 8192
-        const val HTTP_NOT_FOUND = 404
+    companion object {
+        /** The app's checker: release metadata through the conditional-request cache. */
+        fun withReleaseCache(): AppUpdateChecker =
+            AppUpdateChecker(client = OkHttpProvider.external, apiClient = OkHttpProvider.githubApi)
 
-        const val RELEASE_LIST_PAGE_SIZE = 100
-        val NEXT_LINK = Regex("<([^>]+)>;\\s*rel=\"next\"")
-        val REPOSITORIES_RELEASES_PATH = Regex("^/repositories/[0-9]+/releases$")
+        private const val DEFAULT_BUFFER_SIZE = 8192
+        private const val HTTP_NOT_FOUND = 404
+
+        private const val RELEASE_LIST_PAGE_SIZE = 100
+        private val NEXT_LINK = Regex("<([^>]+)>;\\s*rel=\"next\"")
+        private val REPOSITORIES_RELEASES_PATH = Regex("^/repositories/[0-9]+/releases$")
     }
 }
 

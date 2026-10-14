@@ -125,19 +125,19 @@ class ModelViewModel(
         viewModelScope.launch {
             // Phase 1: Launch fast lightweight calls first (profiles, aux, moa)
             val activeProfileDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getActiveProfile() }
                 }
             val profilesDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getProfiles() }
                 }
             val auxDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getAuxiliaryModels() }
                 }
             val moaDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getMoaModels() }
                 }
 
@@ -228,15 +228,15 @@ class ModelViewModel(
         loadModelCapabilities(clearExisting = true)
         viewModelScope.launch {
             val activeProfileDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getActiveProfile() }
                 }
             val profilesDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getProfiles() }
                 }
             val auxDeferred =
-                async(Dispatchers.IO) {
+                async(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.getAuxiliaryModels() }
                 }
 
@@ -337,7 +337,7 @@ class ModelViewModel(
         _uiState.update { it.copy(modelPickerBusy = true) }
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.setModelAssignment(
                             ModelAssignmentRequest(
@@ -400,7 +400,7 @@ class ModelViewModel(
     ) {
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.setModelAssignment(
                             ModelAssignmentRequest(
@@ -476,7 +476,7 @@ class ModelViewModel(
     ) {
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.setModelAssignment(
                             ModelAssignmentRequest(
@@ -516,7 +516,7 @@ class ModelViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(modelPickerBusy = true) }
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.setModelAssignment(
                             ModelAssignmentRequest(
@@ -562,7 +562,7 @@ class ModelViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(modelPickerBusy = true) }
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.saveMoaModels(config)
                     }
@@ -604,7 +604,7 @@ class ModelViewModel(
                     cachedActiveProfileName
                 } else {
                     val activeProfileNameResResult =
-                        withContext(Dispatchers.IO) {
+                        withContext(ioDispatcher) {
                             safeApiCall { ApiClient.hermesApi.getActiveProfile() }
                         }
                     when (activeProfileNameResResult) {
@@ -628,7 +628,7 @@ class ModelViewModel(
                 }
 
             val updateResResult =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.updateProfileModel(
                             activeProfileName,

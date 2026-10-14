@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,13 +77,23 @@ fun SearchResultCard(
     val playedAt = formatPlayedAt(session.last_active ?: session.started_at)?.asString()
     var menuExpanded by remember { mutableStateOf(false) }
 
+    val accessibilityActions =
+        sessionCustomActions(
+            enabled = !isSelecting,
+            isDeleting = isDeleting,
+            onSelect = onSelect,
+            onRename = onRename,
+            onDelete = onDelete,
+        )
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .testTag("session_card_${session.id}")
+                .semantics { customActions = accessibilityActions }
                 .combinedClickable(
                     onClick = onCardClick,
+                    onLongClickLabel = stringResource(R.string.a11y_session_actions),
                     onLongClick = { if (!isSelecting) menuExpanded = true },
                 ),
         colors =

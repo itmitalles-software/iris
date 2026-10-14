@@ -51,11 +51,12 @@ import io.wutz.apollo.data.remote.CleartextPolicy
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.mapHttpError
+import io.wutz.apollo.data.repository.KanbanRepositoryImpl
 import io.wutz.apollo.data.ws.KanbanEventsClient
+import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.ModelOptionsRepository
 import io.wutz.apollo.ui.channels.ChannelsViewModel
 import io.wutz.apollo.ui.common.UiText
-import io.wutz.apollo.ui.connect.ConnectViewModel
 import io.wutz.apollo.ui.cron.CronJobsViewModel
 import io.wutz.apollo.ui.kanban.KanbanTaskAction
 import io.wutz.apollo.ui.kanban.KanbanViewModel
@@ -86,11 +87,9 @@ class E2eIntegrationTest {
 
     @Before
     fun setUp() {
+        // No mockkStatic(Dispatchers): it bleeds into later classes in the same fork. The ViewModels get
+        // testDispatcher injected as their IO dispatcher instead (see onTestIo()).
         Dispatchers.setMain(testDispatcher)
-        mockkStatic(Dispatchers::class)
-        val testMainDispatcher = Dispatchers.Main
-        every { Dispatchers.IO } returns testDispatcher
-        every { Dispatchers.Main } returns testMainDispatcher
 
         mockkObject(AuthManager)
         mockkObject(ApiClient)
@@ -127,24 +126,16 @@ class E2eIntegrationTest {
 
     @After
     fun tearDown() {
-        // Restore the GLOBAL Dispatchers object BEFORE resetMain.
-        //
-        // setUp() stubs `Dispatchers.Main` to return the TestMainDispatcher captured
-        // at that moment. unmockkAll() alone -- and it ran AFTER resetMain -- left
-        // that stub live, so Dispatchers.Main kept handing back a TestMainDispatcher
-        // whose delegate had already been reset, and it THROWS on dispatch. Any
-        // later class in this JVM that resumes a continuation onto Main then died
-        // with DispatchException. That is precisely what broke
-        // ProfileSwitchCoordinatorTest (its _switched.tryEmit resumes collectors on
-        // Main) with 2x DispatchException + 2x "test body did not run to completion".
-        //
-        // Verified by repro: E2eIntegrationTest + ProfileSwitchCoordinatorTest
-        // together = 4 failures; ProfileSwitchCoordinatorTest alone = 5/5 pass.
-        unmockkStatic(Dispatchers::class)
         Dispatchers.resetMain()
         unmockkAll()
         NavigationController.backStack = null
     }
+
+    private fun SkillsViewModel.onTestIo() = also { it.ioDispatcher = testDispatcher }
+
+    private fun CronJobsViewModel.onTestIo() = also { it.ioDispatcher = testDispatcher }
+
+    private fun KeysViewModel.onTestIo() = also { it.ioDispatcher = testDispatcher }
 
     /** Connection failures carry the data layer's raw message as the only format argument. */
     private fun assertConnectionFailure(
@@ -173,7 +164,7 @@ class E2eIntegrationTest {
             val skill2 = Skill("Skill 2", "Description 2", "Category 2", false)
             coEvery { mockApiService.getSkills() } returns Response.success(listOf(skill1, skill2))
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
 
             assertTrue(viewModel.uiState.value.isLoading)
@@ -221,7 +212,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getSkills() } returns Response.success(listOf(skill))
             coEvery { mockApiService.toggleSkill(ToggleSkillRequest("Skill 1", true)) } returns Response.success(Unit)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
 
@@ -253,7 +244,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getSkills() } returns Response.success(listOf(skill))
             coEvery { mockApiService.toggleSkill(ToggleSkillRequest("Skill 1", true)) } returns createErrorResponse(500)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
 
@@ -287,7 +278,7 @@ class E2eIntegrationTest {
         runTest {
             coEvery { mockApiService.getSkills() } returns createErrorResponse(500)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
 
@@ -311,7 +302,7 @@ class E2eIntegrationTest {
                     Response.success(listOf(skillB)),
                 )
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
@@ -338,7 +329,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.searchSkillsHub(any()) } returns
                 Response.success(SkillHubSearchResponse(results = listOf(hubSkill)))
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.searchHub("test")
 
             advanceUntilIdle()
@@ -362,7 +353,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.searchSkillsHub(any()) } returns
                 Response.success(SkillHubSearchResponse(results = emptyList()))
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.searchHub("nonexistent")
 
             advanceUntilIdle()
@@ -380,7 +371,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.searchSkillsHub(any()) } returns
                 createErrorResponse(500)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.searchHub("test")
 
             advanceUntilIdle()
@@ -395,7 +386,7 @@ class E2eIntegrationTest {
     @Test
     fun testSkillsHub_search_emptyQuery() =
         runTest {
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.searchHub("")
 
             // Empty query should clear immediately without API call
@@ -418,7 +409,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getSkills() } returns
                 Response.success(listOf(installed))
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.installSkill("new-skill")
 
             advanceUntilIdle()
@@ -440,7 +431,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.installHubSkill(any()) } returns
                 createErrorResponse(500)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.installSkill("failing-skill")
 
             advanceUntilIdle()
@@ -461,7 +452,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getSkills() } returns
                 Response.success(emptyList())
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.uninstallSkill("hub-skill")
 
             advanceUntilIdle()
@@ -482,7 +473,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.uninstallHubSkill(any()) } returns
                 createErrorResponse(500)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.uninstallSkill("failing-skill")
 
             advanceUntilIdle()
@@ -504,7 +495,7 @@ class E2eIntegrationTest {
             val job = CronJob("id1", "Job 1", JsonPrimitive("*/5 * * * *"), "active", "success", "2026-06-15T15:10:00Z")
             coEvery { mockApiService.getCronJobs() } returns Response.success(listOf(job))
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             assertTrue(viewModel.uiState.value.isLoading)
 
@@ -546,7 +537,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getCronJobs() } returns Response.success(listOf(job))
             coEvery { mockApiService.pauseCronJob("id1") } returns Response.success(Unit)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
 
@@ -573,7 +564,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getCronJobs() } returns Response.success(listOf(job))
             coEvery { mockApiService.resumeCronJob("id1") } returns Response.success(Unit)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
 
@@ -598,7 +589,7 @@ class E2eIntegrationTest {
         runTest {
             coEvery { mockApiService.triggerCronJob("id1") } returns Response.success(Unit)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.triggerCronJob("id1")
             advanceUntilIdle()
 
@@ -612,7 +603,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getCronJobs() } returns Response.success(listOf(job))
             coEvery { mockApiService.deleteCronJob("id1") } returns Response.success(Unit)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
 
@@ -637,7 +628,7 @@ class E2eIntegrationTest {
         runTest {
             coEvery { mockApiService.getCronJobs() } returns createErrorResponse(500)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
 
@@ -716,7 +707,7 @@ class E2eIntegrationTest {
                     Response.success(listOf(jobB)),
                 )
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
             assertEquals(
@@ -766,7 +757,7 @@ class E2eIntegrationTest {
     fun testSkillsLoad_httpError_400() =
         runTest {
             coEvery { mockApiService.getSkills() } returns createErrorResponse(400)
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
@@ -779,7 +770,7 @@ class E2eIntegrationTest {
     fun testSkillsLoad_httpError_404() =
         runTest {
             coEvery { mockApiService.getSkills() } returns createErrorResponse(404)
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
@@ -792,7 +783,7 @@ class E2eIntegrationTest {
     fun testSkillsLoad_httpError_500() =
         runTest {
             coEvery { mockApiService.getSkills() } returns createErrorResponse(500)
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
             assertEquals(
@@ -805,7 +796,7 @@ class E2eIntegrationTest {
     fun testSkillsLoad_networkTimeout() =
         runTest {
             coEvery { mockApiService.getSkills() } throws IOException("Timeout")
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
             assertConnectionFailure(R.string.skills_msg_load_failed, viewModel.uiState.value.errorMessage, "Timeout")
@@ -815,7 +806,7 @@ class E2eIntegrationTest {
     fun testSkillsLoad_emptyResponse() =
         runTest {
             coEvery { mockApiService.getSkills() } returns Response.success(emptyList())
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
             assertFalse(viewModel.uiState.value.isLoading)
@@ -833,7 +824,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getSkills() } returns Response.success(listOf(skill))
             coEvery { mockApiService.toggleSkill(any()) } returns createErrorResponse(500)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
 
@@ -855,7 +846,7 @@ class E2eIntegrationTest {
     fun testCronJobsLoad_httpError_500() =
         runTest {
             coEvery { mockApiService.getCronJobs() } returns createErrorResponse(500)
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
             assertEquals(
@@ -871,7 +862,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getCronJobs() } returns Response.success(listOf(job))
             coEvery { mockApiService.pauseCronJob("id1") } returns createErrorResponse(500)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
 
@@ -894,7 +885,7 @@ class E2eIntegrationTest {
         runTest {
             coEvery { mockApiService.triggerCronJob("id1") } returns createErrorResponse(500)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.triggerCronJob("id1")
             advanceUntilIdle()
 
@@ -911,7 +902,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getCronJobs() } returns Response.success(listOf(job))
             coEvery { mockApiService.deleteCronJob("id1") } returns createErrorResponse(500)
 
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
 
@@ -929,7 +920,7 @@ class E2eIntegrationTest {
     fun testCronJobsLoad_networkTimeout() =
         runTest {
             coEvery { mockApiService.getCronJobs() } throws IOException("Timeout")
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
             assertConnectionFailure(R.string.cron_msg_load_failed, viewModel.uiState.value.errorMessage, "Timeout")
@@ -939,7 +930,7 @@ class E2eIntegrationTest {
     fun testCronJobsLoad_emptyResponse() =
         runTest {
             coEvery { mockApiService.getCronJobs() } returns Response.success(emptyList())
-            val viewModel = CronJobsViewModel()
+            val viewModel = CronJobsViewModel().onTestIo()
             viewModel.loadCronJobs()
             advanceUntilIdle()
             assertFalse(viewModel.uiState.value.isLoading)
@@ -959,7 +950,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getSkills() } returns Response.success(listOf(skill))
             coEvery { mockApiService.toggleSkill(any()) } returns Response.success(Unit)
 
-            val viewModel = SkillsViewModel(mockApp)
+            val viewModel = SkillsViewModel(mockApp).onTestIo()
             viewModel.loadSkills()
             advanceUntilIdle()
 
@@ -984,52 +975,23 @@ class E2eIntegrationTest {
             )
         }
 
-    @Test
-    fun testAuthTokenRevocation() =
-        runTest {
-            val mockResponse = createErrorResponse<StatusResponse>(401)
-            coEvery { mockApiService.getStatus() } returns mockResponse
-
-            val viewModel = ConnectViewModel(mockApp)
-            viewModel.onTokenChange("expired-token")
-            viewModel.connect()
-            advanceUntilIdle()
-
-            // Verify state is updated with error message
-            assertEquals(UiText.res(R.string.connect_error_401), viewModel.uiState.value.errorMessage)
-            assertFalse(viewModel.uiState.value.connectionSuccess)
-            // Verify AuthManager.setToken(null) was called
-        }
-
     // ── Tier 4: Real-World Scenarios ─────────────────────────────────────
 
     @Test
     fun testFullUserSessionFlow() =
         runTest {
-            // Step 1: User connects with valid token
-            val statusResponse = mockk<StatusResponse>()
-            coEvery { mockApiService.getStatus() } returns Response.success(statusResponse)
-
-            val connectViewModel = ConnectViewModel(mockApp)
-            connectViewModel.onTokenChange("valid-token")
-            connectViewModel.connect()
-            advanceUntilIdle()
-
-            assertTrue(connectViewModel.uiState.value.connectionSuccess)
-            verify { AuthManager.setToken("valid-token") }
-
-            // Step 2: User navigates to SkillsScreen
+            // Step 1: User navigates to SkillsScreen (login itself is covered by the AuthLogin tests)
             val backStack = NavBackStack<NavKey>(ChatScreen)
             NavigationController.backStack = backStack
             NavigationController.navigateTo(SkillsScreen)
             assertEquals(SkillsScreen, NavigationController.backStack?.lastOrNull())
 
-            // Step 3: User toggles a skill, but API fails
+            // Step 2: User toggles a skill, but API fails
             val skill = Skill("Skill X", "Desc X", "Cat X", false)
             coEvery { mockApiService.getSkills() } returns Response.success(listOf(skill))
             coEvery { mockApiService.toggleSkill(any()) } returns createErrorResponse(500)
 
-            val skillsViewModel = SkillsViewModel(mockApp)
+            val skillsViewModel = SkillsViewModel(mockApp).onTestIo()
             skillsViewModel.loadSkills()
             advanceUntilIdle()
 
@@ -1057,13 +1019,13 @@ class E2eIntegrationTest {
                 skillsViewModel.uiState.value.toastMessage,
             )
 
-            // Step 4: User navigates to CronJobsScreen
+            // Step 3: User navigates to CronJobsScreen
             NavigationController.navigateTo(CronJobsScreen)
             assertEquals(CronJobsScreen, NavigationController.backStack?.lastOrNull())
 
-            // Step 5: User triggers a cron job
+            // Step 4: User triggers a cron job
             coEvery { mockApiService.triggerCronJob("job-1") } returns Response.success(Unit)
-            val cronViewModel = CronJobsViewModel()
+            val cronViewModel = CronJobsViewModel().onTestIo()
             cronViewModel.triggerCronJob("job-1")
             advanceUntilIdle()
 
@@ -1095,7 +1057,7 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getPlugins() } returns Response.success(PluginsHubResponse(listOf(plugin)))
             coEvery { mockApiService.enablePlugin("plugin-1") } returns Response.success(Unit)
 
-            val viewModel = PluginsViewModel()
+            val viewModel = PluginsViewModel(ioDispatcher = testDispatcher)
             viewModel.loadPlugins()
             advanceUntilIdle()
 
@@ -1163,7 +1125,7 @@ class E2eIntegrationTest {
                 Response.success(mapOf("KEY1" to EnvVarConfig(true, "value1", "desc", null, null, false)))
             coEvery { mockApiService.updateEnvVar(any()) } returns Response.success(Unit)
 
-            val viewModel = KeysViewModel()
+            val viewModel = KeysViewModel().onTestIo()
             viewModel.loadKeys()
             advanceUntilIdle()
 
@@ -1205,7 +1167,7 @@ class E2eIntegrationTest {
                 Response.success(UpdateCheckResponse())
             coEvery { mockApiService.triggerBackup(BackupTriggerRequest()) } returns Response.success(ActionResponse())
 
-            val viewModel = SystemViewModel(mockApp)
+            val viewModel = SystemViewModel(mockApp, ioDispatcher = testDispatcher)
             viewModel.loadAll()
             advanceUntilIdle()
 
@@ -1231,7 +1193,11 @@ class E2eIntegrationTest {
             coEvery { mockApiService.getBoard("board-1", any(), any()) } returns
                 Response.success(KanbanBoardResponse(listOf(KanbanColumn("todo", listOf(task))), null, null))
 
-            val viewModel = KanbanViewModel(eventsClientProvider = { mockk<KanbanEventsClient>(relaxed = true) })
+            val viewModel =
+                KanbanViewModel(
+                    repository = KanbanRepositoryImpl(ioDispatcher = testDispatcher),
+                    eventsClientProvider = { mockk<KanbanEventsClient>(relaxed = true) },
+                ).also { it.ioDispatcher = testDispatcher }
             viewModel.loadBoards()
             advanceUntilIdle()
 
@@ -1324,7 +1290,11 @@ class E2eIntegrationTest {
                 )
 
             // Issue #1164: keep the real WS singleton off this test's mocked IO dispatcher.
-            val viewModel = ModelViewModel(ModelOptionsRepository(connected = { false }))
+            val viewModel =
+                ModelViewModel(
+                    ModelCatalogStore(repository = ModelOptionsRepository(connected = { false })),
+                    ioDispatcher = testDispatcher,
+                )
             viewModel.loadAll()
             advanceUntilIdle()
 
@@ -1387,7 +1357,11 @@ class E2eIntegrationTest {
 
             // Default loadAll() must call getModelOptions with refresh = false
             // Issue #1164: keep the real WS singleton off this test's mocked IO dispatcher.
-            val viewModel = ModelViewModel(ModelOptionsRepository(connected = { false }))
+            val viewModel =
+                ModelViewModel(
+                    ModelCatalogStore(repository = ModelOptionsRepository(connected = { false })),
+                    ioDispatcher = testDispatcher,
+                )
             viewModel.loadAll()
             advanceUntilIdle()
 

@@ -760,6 +760,7 @@ private fun TaskOverviewTab(
                             value = descriptionDraft,
                             onValueChange = { descriptionDraft = it },
                             modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.kanban_description)) },
                             minLines = 4,
                         )
                         Spacer(modifier = Modifier.height(8.dp))

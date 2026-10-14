@@ -31,9 +31,12 @@ class ChatBackgroundConnectionMenuItemTest {
         }
 
         compose.onNodeWithTag("chat_menu_keep_connected").assertIsDisplayed()
+        // The menu item itself exposes the checkbox state to TalkBack.
+        compose.onNodeWithTag("chat_menu_keep_connected").assertIsOff()
         compose.onNodeWithTag("chat_menu_keep_connected_checkbox", useUnmergedTree = true).assertIsOff()
         compose.onNodeWithTag("chat_menu_keep_connected").performClick()
         compose.onNodeWithTag("chat_menu_keep_connected_checkbox", useUnmergedTree = true).assertIsOn()
+        compose.onNodeWithTag("chat_menu_keep_connected").assertIsOn()
         compose.runOnIdle { assertEquals(true, enabled) }
 
         // The next opening reads the externally changed value rather than a stale menu snapshot.

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -346,12 +348,20 @@ private fun ProviderFieldRow(
 
                 "bool" -> {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .toggleable(
+                                    value = value == "true",
+                                    enabled = enabled,
+                                    role = Role.Switch,
+                                    onValueChange = { onChange(it.toString()) },
+                                ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Switch(
                             checked = value == "true",
-                            onCheckedChange = { onChange(it.toString()) },
+                            onCheckedChange = null,
                             enabled = enabled,
                         )
                         Spacer(modifier = Modifier.width(8.dp))

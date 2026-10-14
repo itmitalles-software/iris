@@ -1,7 +1,8 @@
 # Changelog
 
-All notable Apollo changes. Apollo follows Semantic Versioning; upstream
-Hermes Mobile changes merged into Apollo are summarized per sync.
+All notable Apollo changes. Apollo follows Semantic Versioning. Since
+2026-10-13 Apollo no longer merges Hermes Mobile changes (see
+[ORIGIN.md](ORIGIN.md)); fixes ported by hand are listed like any other change.
 
 ## 0.1.6 — 2026-10-14
 

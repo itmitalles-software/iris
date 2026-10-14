@@ -72,6 +72,11 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -151,9 +156,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val SESSION_SYNC_INTERVAL_MS = 30_000L
-
-/** Desktop-parity cadence for `process.list` polling (issue #1503). */
-private const val BACKGROUND_PROCESS_POLL_MS = 5_000L
 
 internal fun acceptedSaveDestination(
     resultCode: Int,
@@ -383,13 +385,10 @@ fun ChatScreen(
         }
     }
     // Issue #1503: the gateway has no push event for background process start/exit,
-    // so poll process.list (desktop uses 5s) while the chat is on screen.
+    // so poll process.list while the chat is on screen (5 s while busy, 30 s when idle).
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                viewModel.refreshBackgroundProcesses()
-                delay(BACKGROUND_PROCESS_POLL_MS)
-            }
+            viewModel.pollBackgroundProcesses()
         }
     }
     // Plain remember: ImageViewerModel is not Parcelable and data: models can exceed the
@@ -1130,7 +1129,9 @@ fun ChatScreen(
             )
         }
 
-        if (connectionOperationState.operation != null) {
+        // A display card (Hermes v0.22.0) steps aside while Session Integrations is open, then returns for Continue.
+        val connectionDisplayCovered = connectionOperationState.operation?.display != null && connectorsState.isVisible
+        if (connectionOperationState.operation != null && !connectionDisplayCovered) {
             ConnectionSetupSheet(
                 state = connectionOperationState,
                 onRespond = viewModel::respondToConnection,
@@ -1153,6 +1154,7 @@ fun ChatScreen(
                     }
                 },
                 onDismiss = viewModel::continueConnectionOperation,
+                onOpenConnectors = connectorsViewModel::show,
             )
         }
 
@@ -1182,6 +1184,10 @@ internal fun ChatBackgroundConnectionMenuItem(
             )
         },
         onClick = { onToggle(!checked) },
-        modifier = Modifier.testTag("chat_menu_keep_connected"),
+        modifier =
+            Modifier.testTag("chat_menu_keep_connected").semantics {
+                role = Role.Checkbox
+                toggleableState = ToggleableState(checked)
+            },
     )
 }

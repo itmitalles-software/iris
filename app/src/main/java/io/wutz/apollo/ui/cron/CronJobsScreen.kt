@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -284,7 +286,7 @@ fun CronJobsScreen(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Filled.Delete,
-                                            contentDescription = stringResource(R.string.action_delete),
+                                            contentDescription = stringResource(R.string.a11y_delete_named, job.name),
                                             tint = MaterialTheme.colorScheme.error,
                                         )
                                     }
@@ -629,12 +631,17 @@ fun CronJobEditorDialog(
 
                             // No Agent toggle
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .toggleable(value = state.no_agent, role = Role.Checkbox, onValueChange = {
+                                            onToggleNoAgent()
+                                        }),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
                                     checked = state.no_agent,
-                                    onCheckedChange = { onToggleNoAgent() },
+                                    onCheckedChange = null,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
@@ -646,12 +653,17 @@ fun CronJobEditorDialog(
                             // Run Continuity toggle (recurring jobs: inject own
                             // previous output into each run via context_from=["self"])
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .toggleable(value = state.runContinuity, role = Role.Checkbox, onValueChange = {
+                                            onToggleRunContinuity()
+                                        }),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
                                     checked = state.runContinuity,
-                                    onCheckedChange = { onToggleRunContinuity() },
+                                    onCheckedChange = null,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(modifier = Modifier.weight(1f)) {

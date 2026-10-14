@@ -356,7 +356,7 @@ private fun MoaConfigEditor(
                     IconButton(onClick = { onRemoveReference(index) }) {
                         Icon(
                             Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.action_remove),
+                            contentDescription = stringResource(R.string.a11y_remove_named, slot.model),
                             modifier = Modifier.size(14.dp),
                         )
                     }

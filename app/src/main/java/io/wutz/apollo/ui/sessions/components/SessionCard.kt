@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -212,13 +213,27 @@ fun SessionCard(
             else -> displayTitle
         }
 
+    val accessibilityActions =
+        sessionCustomActions(
+            enabled = !isSelecting,
+            isDeleting = isDeleting,
+            isPinned = isPinned,
+            onTogglePin = onTogglePin,
+            isArchived = isArchived,
+            onToggleArchive = onToggleArchive,
+            onSelect = onSelect,
+            onRename = onRename,
+            onDelete = onDelete,
+        )
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .testTag("session_card_${session.id}")
+                .semantics { customActions = accessibilityActions }
                 .combinedClickable(
                     onClick = onCardClick,
+                    onLongClickLabel = stringResource(R.string.a11y_session_actions),
                     onLongClick = { if (!isSelecting) menuExpanded = true },
                 ),
         colors = CardDefaults.cardColors(containerColor = palette.card),

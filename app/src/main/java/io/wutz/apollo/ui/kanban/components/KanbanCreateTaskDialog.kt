@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.CreateTaskBody
@@ -54,6 +56,8 @@ import io.wutz.apollo.data.model.KanbanTask
 import io.wutz.apollo.data.model.ModelProvider
 import io.wutz.apollo.data.model.PinnedModel
 import io.wutz.apollo.data.model.TaskEstimate
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 import io.wutz.apollo.ui.common.rememberSyncedTextFieldState
 import io.wutz.apollo.ui.kanban.KanbanModelOverride
 import io.wutz.apollo.ui.kanban.KanbanStatusConstraints
@@ -289,7 +293,13 @@ fun KanbanCreateTaskDialog(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .toggleable(value = goalMode, enabled = !isCreating, role = Role.Switch, onValueChange = {
+                                goalMode =
+                                    it
+                            }),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -304,7 +314,7 @@ fun KanbanCreateTaskDialog(
                     }
                     Switch(
                         checked = goalMode,
-                        onCheckedChange = { goalMode = it },
+                        onCheckedChange = null,
                         enabled = !isCreating,
                     )
                 }
@@ -317,6 +327,7 @@ fun KanbanCreateTaskDialog(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .expandToggleSemantics(expandToggleLabels(showAdvanced))
                             .clickable { showAdvanced = !showAdvanced }
                             .testTag("kanban_advanced_options")
                             .padding(vertical = 8.dp),

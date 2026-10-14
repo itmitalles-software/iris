@@ -1,0 +1,9 @@
+Fixes from a full code review:
+• Prompts from a background session no longer appear in the open chat
+• Images from other hosts load only after a tap
+• Other apps can no longer open a chat directly
+• Timed-out requests are not sent twice
+• Replies are no longer cut off by a background session
+• Voice mode speaks the new answer after you interrupt
+• Kanban multi-select actions are reachable on phones
+• Rotation and language changes keep the current screen

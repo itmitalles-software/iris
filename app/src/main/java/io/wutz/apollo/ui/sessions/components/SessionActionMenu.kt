@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import io.wutz.apollo.R
 import io.wutz.apollo.theme.LocalHermesStatusColors
 
@@ -105,5 +106,46 @@ fun SessionActionMenu(
             enabled = !isDeleting,
             onClick = onDelete,
         )
+    }
+}
+
+/**
+ * TalkBack custom actions that mirror [SessionActionMenu], so pin, archive, select, rename and delete are
+ * reachable without the long-press gesture. Returns an empty list while selecting (the menu is off then).
+ */
+@Composable
+internal fun sessionCustomActions(
+    enabled: Boolean,
+    isDeleting: Boolean,
+    isPinned: Boolean = false,
+    onTogglePin: (() -> Unit)? = null,
+    isArchived: Boolean = false,
+    onToggleArchive: (() -> Unit)? = null,
+    onSelect: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+): List<CustomAccessibilityAction> {
+    val pinLabel = stringResource(if (isPinned) R.string.sessions_action_unpin else R.string.sessions_action_pin)
+    val archiveLabel =
+        stringResource(if (isArchived) R.string.sessions_action_unarchive else R.string.sessions_action_archive)
+    val selectLabel = stringResource(R.string.sessions_action_select)
+    val renameLabel = stringResource(R.string.sessions_action_rename)
+    val deleteLabel = stringResource(R.string.action_delete)
+    if (!enabled) return emptyList()
+    return buildList {
+        fun action(
+            label: String,
+            run: () -> Unit,
+        ) = add(
+            CustomAccessibilityAction(label) {
+                run()
+                true
+            },
+        )
+        onTogglePin?.let { action(pinLabel, it) }
+        onToggleArchive?.let { action(archiveLabel, it) }
+        action(selectLabel, onSelect)
+        action(renameLabel, onRename)
+        if (!isDeleting) action(deleteLabel, onDelete)
     }
 }

@@ -40,6 +40,7 @@ fun ConnectionSetupSheet(
     onContinue: () -> Unit,
     onOpenBrowser: (operationId: String, url: String) -> Unit,
     onDismiss: () -> Unit,
+    onOpenConnectors: (() -> Unit)? = null,
 ) {
     if (state.operation == null) return
     ModalBottomSheet(
@@ -53,6 +54,7 @@ fun ConnectionSetupSheet(
             onRespond = onRespond,
             onContinue = onContinue,
             onOpenBrowser = onOpenBrowser,
+            onOpenConnectors = onOpenConnectors,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -65,8 +67,20 @@ internal fun ConnectionSetupContent(
     onContinue: () -> Unit,
     onOpenBrowser: (operationId: String, url: String) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenConnectors: (() -> Unit)? = null,
 ) {
     val operation = state.operation ?: return
+    val display = operation.display
+    if (display != null && operation.targets.isEmpty()) {
+        ConnectionDisplayContent(
+            suggested = display.suggested,
+            state = state,
+            onContinue = onContinue,
+            onOpenConnectors = onOpenConnectors,
+            modifier = modifier,
+        )
+        return
+    }
     val target =
         operation.targets.firstOrNull { !isTerminalTarget(it) }
             ?: operation.targets.firstOrNull { !it.discoveryError.isNullOrBlank() }
@@ -261,44 +275,127 @@ internal fun ConnectionSetupContent(
             }
         }
 
-        state.error?.let { error ->
-            Text(
-                text =
-                    stringResource(
-                        when (error.message) {
-                            ChatConnectionOperationDelegate.NOT_OWNER -> {
-                                R.string.session_integrations_err_not_owner
-                            }
-
-                            ChatConnectionOperationDelegate.UNSUPPORTED_RUNTIME -> {
-                                R.string.session_integrations_err_unsupported_runtime
-                            }
-
-                            else -> {
-                                R.string.connection_setup_request_failed
-                            }
-                        },
-                    ),
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.testTag("connection_setup_error"),
-            )
-        }
-        if (pending) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.testTag("connection_setup_pending"),
-            ) {
-                CircularProgressIndicator()
-                Text(stringResource(R.string.connection_setup_pending))
-            }
-        }
+        ConnectionOperationStatus(state)
         ConnectionSetupActions(
             target = target,
             pending = pending,
             onSkip = { onRespond(target.name, emptyMap(), false) },
             onContinue = onContinue,
         )
+    }
+}
+
+/** Request error and pending spinner shared by the target and display cards. */
+@Composable
+private fun ConnectionOperationStatus(state: ConnectionOperationUiState) {
+    val pending = state.pendingAction != null
+    state.error?.let { error ->
+        Text(
+            text =
+                stringResource(
+                    when (error.message) {
+                        ChatConnectionOperationDelegate.NOT_OWNER -> {
+                            R.string.session_integrations_err_not_owner
+                        }
+
+                        ChatConnectionOperationDelegate.UNSUPPORTED_RUNTIME -> {
+                            R.string.session_integrations_err_unsupported_runtime
+                        }
+
+                        else -> {
+                            R.string.connection_setup_request_failed
+                        }
+                    },
+                ),
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.testTag("connection_setup_error"),
+        )
+    }
+    if (pending) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.testTag("connection_setup_pending"),
+        ) {
+            CircularProgressIndicator()
+            Text(stringResource(R.string.connection_setup_pending))
+        }
+    }
+}
+
+/**
+ * Hermes v0.22.0 display card (`manage_connections` action `display`): no targets, only suggested
+ * connector slugs. The agent waits until Continue, so the card offers the session integrations
+ * sheet for connecting and Continue to let the turn go on.
+ */
+@Composable
+private fun ConnectionDisplayContent(
+    suggested: List<String>,
+    state: ConnectionOperationUiState,
+    onContinue: () -> Unit,
+    onOpenConnectors: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val pending = state.pendingAction != null
+    Column(
+        modifier =
+            modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .testTag("connection_display_card"),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.connection_display_title),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.testTag("connection_setup_title"),
+        )
+        Text(
+            text =
+                stringResource(
+                    if (suggested.isEmpty()) {
+                        R.string.connection_display_body_no_suggestions
+                    } else {
+                        R.string.connection_display_body
+                    },
+                ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (suggested.isNotEmpty()) {
+            Text(
+                text = suggested.joinToString(separator = ", "),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag("connection_display_suggested"),
+            )
+        }
+        ConnectionOperationStatus(state)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (onOpenConnectors != null) {
+                OutlinedButton(
+                    onClick = onOpenConnectors,
+                    enabled = !pending,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .testTag("connection_display_open_integrations"),
+                ) {
+                    Text(stringResource(R.string.connection_display_open_integrations))
+                }
+            }
+            Button(
+                onClick = onContinue,
+                enabled = !pending,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .testTag("connection_setup_continue"),
+            ) {
+                Text(stringResource(R.string.connection_setup_continue))
+            }
+        }
     }
 }
 

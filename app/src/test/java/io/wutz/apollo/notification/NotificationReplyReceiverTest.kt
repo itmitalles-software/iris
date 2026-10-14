@@ -30,6 +30,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 
 /**
  * Unit tests for [NotificationReplyReceiver] — the BroadcastReceiver that
@@ -59,6 +61,9 @@ class NotificationReplyReceiverTest {
     private lateinit var mockNotification: Notification
     private lateinit var failedNotification: Notification
     private val failedReplies = mutableListOf<Pair<String?, String?>>()
+
+    // Released once per finished broadcast; settle() waits for it instead of sleeping a fixed time.
+    private val finishedReplies = Semaphore(0)
 
     // Call counters for suspend function tracking
     private var upsertCallCount = 0
@@ -101,6 +106,7 @@ class NotificationReplyReceiverTest {
 
         // Mock PendingResult
         mockPendingResult = mockk(relaxed = true)
+        every { mockPendingResult.finish() } answers { finishedReplies.release() }
 
         // Mock Notification
         mockNotification = mockk(relaxed = true)
@@ -108,7 +114,7 @@ class NotificationReplyReceiverTest {
 
         // Mock HermesWsClient singleton
         mockkObject(HermesWsClient)
-        every { HermesWsClient.request(any(), any(), any()) } answers {
+        every { HermesWsClient.request(any(), any(), any(), any()) } answers {
             val method = arg<String>(0)
             val params = arg<Map<String, Any>>(1)
             val result =
@@ -156,7 +162,7 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500) // Need to wait for coroutine
+        settle()
 
         verify {
             HermesWsClient.request(
@@ -177,7 +183,7 @@ class NotificationReplyReceiverTest {
 
         givenValidReply("session-abc", "Hello")
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         assertEquals("upsert should have been called", 1, upsertCallCount)
         assertEquals("session-abc", entitySlot.captured.sessionId)
@@ -193,7 +199,7 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500) // Need to wait for coroutine
+        settle()
 
         verify {
             mockNotificationManager.notify(
@@ -216,7 +222,7 @@ class NotificationReplyReceiverTest {
 
         givenValidReply("session-abc", "Hello")
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         assertNull(ReplyNotificationTracker.getActiveTarget())
     }
@@ -226,7 +232,7 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         verify { mockPendingResult.finish() }
     }
@@ -302,7 +308,7 @@ class NotificationReplyReceiverTest {
         coEvery { mockDao.sessionExists("unknown-session") } returns false
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         // HermesWsClient should not be called
         verify(inverse = true) { HermesWsClient.sendMessage(any(), any()) }
@@ -322,7 +328,7 @@ class NotificationReplyReceiverTest {
         coEvery { mockDao.upsert(any<ChatMessageEntity>()) } throws RuntimeException("DB full")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         // Error should be logged
         verify { android.util.Log.e("NotificationReply", any<String>(), any()) }
@@ -338,7 +344,7 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         verify {
             HermesWsClient.request(
@@ -374,13 +380,13 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(100)
+        verify(timeout = 5_000) { HermesWsClient.request(WsMethods.PROMPT_SUBMIT, any(), any()) }
 
         assertEquals(0, upsertCallCount)
         verify(inverse = true) { mockNotificationManager.notify(any(), any()) }
 
         sendResult.complete(mapOf("accepted" to true))
-        Thread.sleep(500)
+        settle()
 
         assertEquals(1, upsertCallCount)
         verify { mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, any()) }
@@ -393,7 +399,7 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         assertEquals(0, upsertCallCount)
         verify(inverse = true) { mockNotificationManager.notify(any(), mockNotification) }
@@ -409,8 +415,9 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
+        settle()
 
-        verify(timeout = 3_000) {
+        verify {
             mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, failedNotification)
         }
         assertEquals(listOf<Pair<String?, String?>>("Hello" to "session-abc"), failedReplies)
@@ -442,8 +449,9 @@ class NotificationReplyReceiverTest {
         givenValidReply("gone", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
+        settle()
 
-        verify(timeout = 3_000) {
+        verify {
             mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, failedNotification)
         }
         assertEquals(listOf<Pair<String?, String?>>("Hello" to null), failedReplies)
@@ -455,11 +463,12 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
+        settle()
 
-        verify(timeout = 3_000) {
+        verify {
             mockNotificationManager.notify(ChatNotificationService.PENDING_NOTIFICATION_ID, mockNotification)
         }
-        verify(timeout = 3_000) { mockPendingResult.finish() }
+        verify { mockPendingResult.finish() }
         assertTrue("a sent reply must not be reported as not sent", failedReplies.isEmpty())
     }
 
@@ -477,9 +486,9 @@ class NotificationReplyReceiverTest {
         givenValidReply("session-abc", "Hello")
 
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
         receiver.onReceive(mockContext, mockIntent)
-        Thread.sleep(500)
+        settle()
 
         assertEquals(2, resumeAttempts)
         assertEquals(1, upsertCallCount)
@@ -506,15 +515,21 @@ class NotificationReplyReceiverTest {
             }
 
         shortTimeoutReceiver.onReceive(mockContext, mockIntent)
+        settle()
 
         // Timeout should be caught in catch block and logged
-        verify(timeout = 3_000) { android.util.Log.e("NotificationReply", any<String>(), any()) }
+        verify { android.util.Log.e("NotificationReply", any<String>(), any()) }
 
         // Pending result must still finish after timeout
-        verify(timeout = 3_000) { mockPendingResult.finish() }
+        verify { mockPendingResult.finish() }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
+
+    /** Waits until the receiver finished one more broadcast (pending result finished). */
+    private fun settle() {
+        assertTrue("reply processing did not finish", finishedReplies.tryAcquire(5, TimeUnit.SECONDS))
+    }
 
     private fun givenValidReply(
         sessionId: String?,

@@ -246,7 +246,7 @@ fun ServerCard(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.action_delete),
+                    contentDescription = stringResource(R.string.a11y_delete_named, server.name),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -323,7 +323,7 @@ fun EnvVarSection(
                     ) {
                         Icon(
                             Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.action_remove),
+                            contentDescription = stringResource(R.string.a11y_remove_named, key),
                             modifier = Modifier.size(16.dp),
                         )
                     }

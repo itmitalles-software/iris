@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,7 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -156,11 +160,21 @@ fun AccountConnectorsScreen(
                                         ),
                                     )
                                 }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .toggleable(
+                                                value = enabled == true,
+                                                enabled = editable,
+                                                role = Role.Checkbox,
+                                                onValueChange = { vm.setEnabled(connector.slug, it) },
+                                            ),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
                                     Checkbox(
                                         checked = enabled == true,
                                         enabled = editable,
-                                        onCheckedChange = { vm.setEnabled(connector.slug, it) },
+                                        onCheckedChange = null,
                                     )
                                     Text(stringResource(R.string.account_connectors_enabled))
                                 }
@@ -185,22 +199,39 @@ fun AccountConnectorsScreen(
                                                     .orEmpty()
                                         val toolLocked =
                                             policy?.inherited?.any { !it.toolEnabled(connector.slug, tool) } == true
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Row(
+                                            modifier =
+                                                Modifier.toggleable(
+                                                    value =
+                                                        enabled == true && !disabled && !toolLocked,
+                                                    enabled =
+                                                        editable && enabled == true && !toolLocked,
+                                                    role = Role.Checkbox,
+                                                    onValueChange = { checked ->
+                                                        val updated =
+                                                            state.policy
+                                                                ?.member
+                                                                ?.tools
+                                                                ?.get(
+                                                                    connector.slug,
+                                                                ).orEmpty()
+                                                                .toMutableSet()
+                                                        if (checked) {
+                                                            updated.remove(
+                                                                tool.slug,
+                                                            )
+                                                        } else {
+                                                            updated.add(tool.slug)
+                                                        }
+                                                        vm.setDisabledTools(connector.slug, updated.toList())
+                                                    },
+                                                ),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
                                             Checkbox(
                                                 checked = enabled == true && !disabled && !toolLocked,
                                                 enabled = editable && enabled == true && !toolLocked,
-                                                onCheckedChange = { checked ->
-                                                    val updated =
-                                                        state.policy
-                                                            ?.member
-                                                            ?.tools
-                                                            ?.get(
-                                                                connector.slug,
-                                                            ).orEmpty()
-                                                            .toMutableSet()
-                                                    if (checked) updated.remove(tool.slug) else updated.add(tool.slug)
-                                                    vm.setDisabledTools(connector.slug, updated.toList())
-                                                },
+                                                onCheckedChange = null,
                                             )
                                             Column(Modifier.weight(1f)) {
                                                 Text(tool.name)
@@ -225,12 +256,28 @@ fun AccountConnectorsScreen(
                         )
                     }
                     items(state.accounts, key = { "account-${it.connectionId}" }) { account ->
-                        Card(Modifier.fillMaxWidth()) {
+                        // A retired account (replaced by a reconnect) stays listed, dimmed; only removal remains.
+                        Card(
+                            Modifier.fillMaxWidth().testTag("account_connector_${account.connectionId}"),
+                            colors =
+                                if (account.disabled) {
+                                    CardDefaults.cardColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    CardDefaults.cardColors()
+                                },
+                        ) {
                             Column(
                                 Modifier.padding(spacing.md),
                                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
                             ) {
                                 Text(account.label, style = MaterialTheme.typography.titleMedium)
+                                if (account.disabled) {
+                                    Text(
+                                        stringResource(R.string.account_connectors_account_replaced),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        modifier = Modifier.testTag("account_connector_replaced"),
+                                    )
+                                }
                                 Text(
                                     state.catalog.firstOrNull { it.slug == account.connector }?.name
                                         ?: account.connector,

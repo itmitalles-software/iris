@@ -69,8 +69,14 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -185,6 +191,22 @@ fun ComposerToolbar(
                 cancelDistance = cancelDistancePx,
             )
         }
+    // TalkBack and Switch Access cannot hold and slide: offer the locked recording mode (Cancel/Send panel)
+    // as a custom action that runs the same start + lock steps as the gesture.
+    val recordVoiceNoteLabel = stringResource(R.string.a11y_record_voice_note)
+
+    fun voiceNoteActions(enabled: Boolean): List<CustomAccessibilityAction> =
+        if (enabled) {
+            listOf(
+                CustomAccessibilityAction(recordVoiceNoteLabel) {
+                    currentOnMicHoldStart.value()
+                    currentOnMicLock.value()
+                    true
+                },
+            )
+        } else {
+            emptyList()
+        }
     val actionMicGesture =
         Modifier.pointerInput(Unit) {
             micHoldHandler(
@@ -258,8 +280,11 @@ fun ComposerToolbar(
                             .fillMaxHeight()
                             .clipToBounds()
                             .horizontalScroll(modelScrollState)
-                            .clickable(onClick = onModelTap)
-                            .testTag("model_chip"),
+                            .clickable(
+                                onClickLabel = stringResource(R.string.a11y_change_model),
+                                role = Role.Button,
+                                onClick = onModelTap,
+                            ).testTag("model_chip"),
                 ) {
                     Text(
                         text = modelLabel,
@@ -282,7 +307,11 @@ fun ComposerToolbar(
                         modifier =
                             Modifier
                                 .fillMaxHeight()
-                                .clickable(enabled = reasoningInteractive) { showReasoningMenu = true }
+                                .clickable(
+                                    enabled = reasoningInteractive,
+                                    onClickLabel = stringResource(R.string.a11y_reasoning_options),
+                                    role = Role.Button,
+                                ) { showReasoningMenu = true }
                                 .padding(start = 6.dp, end = 12.dp)
                                 .testTag("reasoning_chip"),
                         verticalAlignment = Alignment.CenterVertically,
@@ -408,6 +437,12 @@ fun ComposerToolbar(
                                     onToggleFastMode()
                                 }
                             },
+                            // The trailing switch is display-only, so the item itself carries the on/off state.
+                            modifier =
+                                Modifier.semantics {
+                                    role = Role.Switch
+                                    toggleableState = ToggleableState(fastMode)
+                                },
                             enabled = fastAvailable && !isFastModeChanging,
                         )
 
@@ -541,8 +576,14 @@ fun ComposerToolbar(
                             .clip(CircleShape)
                             .background(
                                 if (isConnected) micColors.containerColor else micColors.disabledContainerColor,
-                            ).combinedClickable(
+                            ).semantics {
+                                customActions =
+                                    voiceNoteActions(
+                                        isConnected && showSend && !canInterrupt && !isVoiceNoteLocked,
+                                    )
+                            }.combinedClickable(
                                 enabled = isConnected,
+                                role = Role.Button,
                                 onClick = onMicTap,
                             ).testTag(if (isListening) "mic_stop_button" else "mic_button")
                             .then(flatMicGesture),
@@ -586,8 +627,14 @@ fun ComposerToolbar(
                         } else {
                             palette.action
                         },
-                    ).combinedClickable(
+                    ).semantics {
+                        customActions =
+                            voiceNoteActions(
+                                isConnected && !showSend && !canInterrupt && !isVoiceNoteLocked,
+                            )
+                    }.combinedClickable(
                         enabled = actionEnabled,
+                        role = Role.Button,
                         onClick = {
                             when {
                                 // A locked recording always finishes with this

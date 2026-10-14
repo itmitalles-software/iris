@@ -79,6 +79,8 @@ import io.wutz.apollo.ui.chat.tool.ToolView
 import io.wutz.apollo.ui.chat.tool.ToolViewBuilder
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
 import io.wutz.apollo.ui.chat.tool.rememberToolText
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -169,6 +171,7 @@ internal fun ToolBubble(
     ) {
         Card(
             onClick = { expanded = !expanded },
+            modifier = Modifier.expandToggleSemantics(expandToggleLabels(expanded)),
             colors = CardDefaults.cardColors(containerColor = chipColor),
             shape = RoundedCornerShape(8.dp),
         ) {

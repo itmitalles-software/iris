@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkObject
+import io.wutz.apollo.data.ws.withClosingWebSocketUpgrade
 import okhttp3.CookieJar
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
@@ -128,7 +129,7 @@ class ServerHeadersTest {
         ServerHeaders.save(server.url("/hermes/"), headers)
         val message = CountDownLatch(1)
         server.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,

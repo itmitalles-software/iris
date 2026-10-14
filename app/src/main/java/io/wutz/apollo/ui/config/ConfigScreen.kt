@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -59,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -318,6 +320,7 @@ private fun YAMLEditor(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
+            label = { Text(stringResource(R.string.config_yaml_field_label)) },
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
         )
 
@@ -703,7 +706,13 @@ private fun ConfigFieldCard(
             when (field.type) {
                 "boolean" -> {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier =
+                            Modifier.fillMaxWidth().toggleable(
+                                value =
+                                    (row.value as? JsonPrimitive)?.booleanOrNull ?: false,
+                                role = Role.Switch,
+                                onValueChange = { onChange(JsonPrimitive(it)) },
+                            ),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -715,7 +724,7 @@ private fun ConfigFieldCard(
                         )
                         Switch(
                             checked = (row.value as? JsonPrimitive)?.booleanOrNull ?: false,
-                            onCheckedChange = { onChange(JsonPrimitive(it)) },
+                            onCheckedChange = null,
                         )
                     }
                 }

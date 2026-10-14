@@ -79,6 +79,8 @@ import io.wutz.apollo.ui.chat.SubagentIndicator
 import io.wutz.apollo.ui.chat.SubagentTranscriptUiState
 import io.wutz.apollo.ui.chat.TodoItem
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 
 /**
  * Inspection sheet displaying active & completed subagent tasks and agent todos (issue #1030).
@@ -292,14 +294,16 @@ fun SubagentInspectionSheet(
                                 transcriptState = if (isInspectingThis) subagentTranscript else null,
                                 onToggleTranscript = onToggleTranscript,
                                 onRetryTranscript = onRetryTranscript,
+                                // subagent.steer/interrupt address one child by id; without it there is
+                                // nothing to control, so the buttons are hidden.
                                 onSteer =
-                                    if (onSteerSubagent != null) {
+                                    if (onSteerSubagent != null && !indicator.subagentId.isNullOrBlank()) {
                                         { message -> onSteerSubagent(indicator, message) }
                                     } else {
                                         null
                                     },
                                 onStop =
-                                    if (onStopSubagent != null) {
+                                    if (onStopSubagent != null && !indicator.subagentId.isNullOrBlank()) {
                                         { onStopSubagent(indicator) }
                                     } else {
                                         null
@@ -513,7 +517,10 @@ private fun TodoInspectionCard(
                 .padding(start = startPadding)
                 .then(
                     if (onToggleExpand != null) {
-                        Modifier.clickable(onClick = onToggleExpand)
+                        Modifier
+                            .expandToggleSemantics(
+                                expandToggleLabels(row.isExpanded),
+                            ).clickable(onClick = onToggleExpand)
                     } else {
                         Modifier
                     },
@@ -834,7 +841,7 @@ private fun InspectionItemCard(
             }
 
             // Interactive Controls for active subagent (issue #1030)
-            if (indicator.isRunning || indicator.isSteered) {
+            if ((indicator.isRunning || indicator.isSteered) && (onSteer != null || onStop != null)) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),

@@ -108,7 +108,7 @@ class GroupChatViewModelTest {
 
         val createDeferred = CompletableDeferred<Any?>()
         createDeferred.complete(mapOf("session_id" to "session-scout-1"))
-        every { HermesWsClient.request(any(), any(), any()) } returns createDeferred
+        every { HermesWsClient.request(any(), any(), any(), any()) } returns createDeferred
     }
 
     @After

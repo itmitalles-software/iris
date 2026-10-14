@@ -347,6 +347,21 @@ object RpcMethods {
             JsonElement.serializer(),
         )
 
+    // `subagent.interrupt` takes the same `SubagentIdParams` shape as `subagent.tail`.
+    val SUBAGENT_INTERRUPT: RpcMethod<SubagentTailParams, SubagentInterruptResult> =
+        RpcMethod(
+            WsMethods.SUBAGENT_INTERRUPT,
+            SubagentTailParams.serializer(),
+            SubagentInterruptResult.serializer(),
+        )
+
+    val SUBAGENT_STEER: RpcMethod<SubagentSteerParams, SubagentSteerResult> =
+        RpcMethod(
+            WsMethods.SUBAGENT_STEER,
+            SubagentSteerParams.serializer(),
+            SubagentSteerResult.serializer(),
+        )
+
     // Passthrough JsonElement results: callers keep their existing legacy decoders.
     val PROCESS_LIST: RpcMethod<SessionIdParams, JsonElement> =
         RpcMethod(
@@ -575,6 +590,8 @@ object RpcMethods {
             CONNECTORS_OPERATION_WAKE,
             SUBAGENT_LIST,
             SUBAGENT_TAIL,
+            SUBAGENT_INTERRUPT,
+            SUBAGENT_STEER,
             PROCESS_LIST,
             PROCESS_KILL,
             PROCESS_STOP,

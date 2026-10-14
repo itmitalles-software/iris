@@ -223,8 +223,9 @@ private fun SettingsCategoryCard(items: List<SettingsRow>) {
 internal fun InfoRow(
     label: String,
     value: String,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,

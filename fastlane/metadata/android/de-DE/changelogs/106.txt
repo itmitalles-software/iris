@@ -1,0 +1,9 @@
+Korrekturen aus einem Code-Review:
+• Abfragen aus Hintergrund-Sitzungen erscheinen nicht mehr im offenen Chat
+• Bilder fremder Hosts laden erst nach einem Tippen
+• Andere Apps können keinen Chat mehr direkt öffnen
+• Abgelaufene Anfragen werden nicht doppelt gesendet
+• Hintergrund-Sitzungen schneiden Antworten nicht mehr ab
+• Der Sprachmodus spricht nach einer Unterbrechung die neue Antwort
+• Kanban-Mehrfachauswahl ist auf Handys erreichbar
+• Drehen und Sprachwechsel behalten den Bildschirm

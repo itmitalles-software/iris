@@ -1,46 +1,77 @@
 # Connection and authentication reference
 
-Detailed reference for Apollo's connection options, originally taken from the
-Hermes Mobile README. For the
-recommended Tailscale setup see the [README](../README.md#connect-over-tailscale-recommended).
+Detailed reference for Apollo's connection options. For the recommended
+Tailscale setup see the [README](../README.md#connect-over-tailscale-recommended).
 
 ## Authentication modes
 
-The app detects which auth mode your dashboard uses and shows only the fields you need.
+Apollo reads `GET /api/status` from your server, detects which kind of login
+it needs, and shows only those fields.
 
-> **Security:** Use HTTPS for remote connections. Plain HTTP/WS is for trusted local networks only, because authentication does not encrypt the transport.
+> **Security:** Keep Hermes bound to `127.0.0.1` and reach it through
+> Tailscale Serve or another authenticated HTTPS tunnel. Plain HTTP/WS is for
+> trusted local networks only: a password does not encrypt the connection.
 
-### 1. Start the dashboard
+### 1. Run the Hermes backend
 
-On the host machine:
-
-```bash
-hermes dashboard                          # loopback (127.0.0.1:9119) — no auth needed
-hermes dashboard --host 0.0.0.0           # LAN — requires auth
-```
-
-For LAN access, set credentials in `~/.hermes/config.yaml`:
+The supported setup is `hermes serve` (the headless dashboard API) on
+loopback, published over HTTPS by Tailscale Serve. The
+[setup script](../README.md#quick-setup-linux-with-systemd) does this for you.
+For a manual setup, set these Hermes options (environment variables or the
+`dashboard:` section of `~/.hermes/config.yaml`), as listed in the
+[README table](../README.md#manual-setup):
 
 ```yaml
 dashboard:
+  public_url: https://<machine>.<tailnet>.ts.net   # the exact address you enter in Apollo
   basic_auth:
-    username: admin # pick your own
-    password: hermes # pick your own
+    username: <your user name>
+    password_hash: scrypt$16384$8$1$<salt>$<key>    # never store a plaintext password
+    secret: <32 random bytes, base64>
 ```
+
+Hermes turns its login gate on for a non-loopback bind or a non-loopback
+`public_url`. Without one of them it runs in loopback mode with a local
+session token and no password.
 
 ### 2. Connect the app
 
-Tap **Sign in** on the landing screen and enter the dashboard host and port. The app probes the dashboard and shows the fields it needs.
+Tap **Auth Login** on the landing screen and enter the server address (for
+example `https://<machine>.<tailnet>.ts.net`). Apollo probes the server and
+shows the fields it needs:
 
-**Token only** (dashboard on the same machine, bound to loopback)
+**Username and password** (login gate on; the recommended setup)
 
-- Enter the **Token**. You can find it in `~/.hermes/dashboard-token.txt` or in `~/.hermes/.env` as `HERMES_DASHBOARD_SESSION_TOKEN`.
-- The app can also extract the token from the dashboard page for you.
+- Enter the username and password you chose for the Hermes login.
+- Apollo logs in, stores the session cookie in encrypted storage, and requests
+  WebSocket tickets automatically.
 
-**Basic auth** (dashboard on the LAN behind a password)
+**Browser sign-in** (login gate on, OAuth provider such as Nous Portal)
 
-- Enter your **Username** and **Password** (default `admin` / `hermes`).
-- The app logs in, stores a session cookie, and requests a WebSocket ticket automatically.
+- Apollo opens the system browser for the provider's sign-in and receives the
+  result through Hermes' native loopback flow (PKCE).
+
+**Token** (no login gate; only for a loopback address, for example an emulator
+through `adb reverse`)
+
+- Apollo reads the session token from the page Hermes serves at `/` and fills
+  it in for you. If it cannot read it, enter the token yourself.
+- The token changes when Hermes restarts; sign in again after a restart.
+
+### Troubleshooting
+
+- **401 after a correct password:** the login gate is off, so Hermes ignores
+  the password and expects its local session token. This happens when
+  `public_url` is missing or points to a loopback address. Set `public_url` to
+  the exact HTTPS address you use in Apollo and restart Hermes.
+- **400 `Invalid Host header`:** Hermes' DNS-rebinding guard rejects the host
+  name of the proxied request. Set `public_url` to the HTTPS origin (scheme,
+  host and port exactly as entered in Apollo).
+- **Certificate prompt or TLS alert on login:** the server or a proxy in front
+  of it asks for a client certificate. See
+  [mTLS client certificates](#manual-https-client-certificates-mtls) below.
+- **Server signed by your own CA:** see
+  [user-installed private certificate authorities](#user-installed-private-certificate-authorities).
 
 ### Manual HTTPS client certificates (mTLS)
 
@@ -141,7 +172,6 @@ preferences. Saving an empty list removes the headers for that URL.
 
 ### Connection profiles
 
-Have multiple gateways? Switch between them in **Settings → Connection profiles**. Each profile stores its own host, port, and token.
-
----
-
+Have several Hermes servers? Save each one under **Settings → Connection** and
+switch between them there. Each saved connection has its own server URL and
+login.

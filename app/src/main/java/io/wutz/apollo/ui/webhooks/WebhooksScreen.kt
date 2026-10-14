@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -41,6 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -283,7 +287,11 @@ fun WebhooksScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
+                                        .toggleable(
+                                            value = state.enabled,
+                                            role = Role.Switch,
+                                            onValueChange = { viewModel.toggleWebhooks(it) },
+                                        ).padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -306,7 +314,7 @@ fun WebhooksScreen(
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Switch(
                                     checked = state.enabled,
-                                    onCheckedChange = { viewModel.toggleWebhooks(it) },
+                                    onCheckedChange = null,
                                 )
                             }
                         }
@@ -477,6 +485,7 @@ private fun SubscriptionCard(
                         Switch(
                             checked = isEnabled,
                             onCheckedChange = onToggle,
+                            modifier = Modifier.semantics { contentDescription = sub.name },
                         )
                     }
                     Spacer(modifier = Modifier.width(4.dp))

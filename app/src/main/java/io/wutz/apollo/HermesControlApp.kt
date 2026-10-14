@@ -2,6 +2,7 @@ package io.wutz.apollo
 
 import android.app.Application
 import android.os.Build
+import android.os.StrictMode
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -33,11 +34,13 @@ class HermesControlApp :
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
         val startupTimeMs = System.currentTimeMillis()
         appScope.launch(Dispatchers.IO) {
             cleanStalePastedImages(cacheDir, startupTimeMs)
             cleanStaleCameraPhotos(cacheDir, startupTimeMs)
         }
+        OkHttpProvider.initReleaseMetadataCache(cacheDir)
         ServerTrust.initialize(this)
         ClientCertificates.initialize(this)
         AuthManager.init(this)
@@ -53,6 +56,31 @@ class HermesControlApp :
             // cold backend). Fire-and-forget; never blocks UI startup.
             AnalyticsPreloader.preload(this@HermesControlApp)
         }
+    }
+
+    /**
+     * Debug builds log main-thread disk and network access, leaked closeables and leaked
+     * receiver/service registrations (logcat tag `StrictMode`) so regressions show up while
+     * developing. Log only: known startup reads (trust and certificate settings) are still flagged.
+     */
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy
+                .Builder()
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .penaltyLog()
+                .build(),
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy
+                .Builder()
+                .detectLeakedClosableObjects()
+                .detectLeakedRegistrationObjects()
+                .penaltyLog()
+                .build(),
+        )
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

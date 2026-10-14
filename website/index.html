@@ -5,12 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Apollo — Android client for Hermes Agent</title>
   <meta name="description" content="Apollo is an independent open-source Android app for your own Hermes Agent: chat, approvals, sessions, files and automation, privately over Tailscale.">
+  <link rel="canonical" href="https://apollo.wutz.io/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Apollo">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="de_DE">
   <meta property="og:title" content="Apollo — Android client for Hermes Agent">
   <meta property="og:description" content="Your Hermes Agent in your pocket. Open source, no telemetry, by wutz.io.">
   <meta property="og:image" content="https://apollo.wutz.io/assets/img/08-web-og.webp">
+  <meta property="og:image:type" content="image/webp">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Purple engraving of the head of Apollo with a laurel wreath and sun rays on black">
   <meta property="og:url" content="https://apollo.wutz.io/">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="assets/apollo-emblem-dark.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/apple-touch-icon.png" type="image/png" sizes="180x180">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/style.css">
   <script>
@@ -38,8 +49,8 @@
       <a href="https://github.com/wutz-io/apollo-hermes-android">GitHub</a>
     </nav>
     <div class="toggles">
-      <button type="button" id="lang" class="toggle" aria-label="Sprache / language">DE</button>
-      <button type="button" id="theme" class="toggle" data-i18n-aria="themeToggle" aria-label="Switch light/dark"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
+      <button type="button" id="lang" class="toggle" lang="de" aria-label="DE – Auf Deutsch umschalten">DE</button>
+      <button type="button" id="theme" class="toggle" data-i18n-aria="themeToggle" aria-label="Dark mode" aria-pressed="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
     </div>
   </header>
 
@@ -65,7 +76,7 @@
       <article class="card">
         <p class="tag">#1 <span data-i18n="f1Tag">Chat</span></p>
         <h3 data-i18n="f1Title">Talk to your agent</h3>
-        <p data-i18n="f1Text">Live streaming replies, Markdown and code, tool calls with their results, reasoning, images and slash commands. Steer, stop, branch or compress a session.</p>
+        <p data-i18n="f1Text">Live streaming replies, Markdown and code, tool calls with their results, reasoning, images and slash commands. Steer, stop, branch or compress a session, or talk hands-free in a voice conversation.</p>
         <figure class="art"><img src="assets/img/02-web-feature-chat.webp" alt="" loading="lazy" width="1200" height="1200"></figure>
       </article>
       <article class="card">
@@ -105,7 +116,7 @@
       <ol class="steps">
         <li>
           <h3 data-i18n="s1Title">Install Hermes and Tailscale</h3>
-          <p data-i18n="s1Text">On the computer that runs Hermes Agent, install Tailscale. Install Tailscale on your phone as well and sign in to the same tailnet.</p>
+          <p data-i18n-html="s1Text">Install <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> on your computer. Then install Tailscale on that computer and on your phone, and sign in to the same tailnet.</p>
         </li>
         <li>
           <h3 data-i18n="s2Title">Run the setup script</h3>
@@ -127,10 +138,10 @@ bash setup-hermes-for-apollo.sh</code></pre>
         </li>
         <li>
           <h3 data-i18n="s4Title">Sign in with Apollo</h3>
-          <p data-i18n="s4Text">Install the APK, tap “Auth-Login”, enter your computer's tailnet address (https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net) and log in.</p>
+          <p data-i18n="s4Text">Install the APK, tap “Auth Login”, enter your computer's tailnet address (https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net) and log in.</p>
         </li>
       </ol>
-      <p class="small"><span data-i18n="setupMore">Manual setup, macOS and other systems:</span> <a href="https://github.com/wutz-io/apollo-hermes-android#connect-over-tailscale-recommended">README</a></p>
+      <p class="small"><span data-i18n="setupMore">Manual setup and systems without systemd:</span> <a href="https://github.com/wutz-io/apollo-hermes-android#connect-over-tailscale-recommended">README</a></p>
     </section>
 
     <section id="privacy" class="privacy">
@@ -144,6 +155,7 @@ bash setup-hermes-for-apollo.sh</code></pre>
       </ul>
     </section>
   </main>
+  <p id="copy-status" class="visually-hidden" role="status" aria-live="polite"></p>
 
   <footer class="foot">
     <img class="foot-logo only-dark" src="assets/img/14-logo-gold-trippy.webp" alt="" width="160" height="160" loading="lazy">

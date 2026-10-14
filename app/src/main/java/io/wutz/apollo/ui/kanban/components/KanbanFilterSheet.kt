@@ -1,6 +1,5 @@
 package io.wutz.apollo.ui.kanban.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
@@ -81,13 +83,17 @@ fun KanbanFilterSheet(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .toggleable(
+                            value = includeArchived,
+                            role = Role.Switch,
+                            onValueChange = onToggleIncludeArchived,
+                        ).padding(vertical = 4.dp)
+                        .testTag("kanban_show_archived"),
             ) {
                 Text(stringResource(R.string.kanban_show_archived), style = MaterialTheme.typography.bodyMedium)
                 Switch(
                     checked = includeArchived,
-                    onCheckedChange = onToggleIncludeArchived,
-                    modifier = Modifier.testTag("kanban_show_archived"),
+                    onCheckedChange = null,
                 )
             }
 
@@ -98,13 +104,17 @@ fun KanbanFilterSheet(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .toggleable(
+                            value = groupRunning,
+                            role = Role.Switch,
+                            onValueChange = onToggleGroupRunning,
+                        ).padding(vertical = 4.dp)
+                        .testTag("kanban_group_running"),
             ) {
                 Text(stringResource(R.string.kanban_group_running), style = MaterialTheme.typography.bodyMedium)
                 Switch(
                     checked = groupRunning,
-                    onCheckedChange = onToggleGroupRunning,
-                    modifier = Modifier.testTag("kanban_group_running"),
+                    onCheckedChange = null,
                 )
             }
 
@@ -150,12 +160,15 @@ fun KanbanFilterSheet(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .clickable { onSelectAssignee(null) }
+                        .selectable(
+                            selected = selectedAssignee == null,
+                            role = Role.RadioButton,
+                        ) { onSelectAssignee(null) }
                         .padding(vertical = 4.dp),
             ) {
                 RadioButton(
                     selected = selectedAssignee == null,
-                    onClick = { onSelectAssignee(null) },
+                    onClick = null,
                 )
                 Text(stringResource(R.string.kanban_all_assignees), style = MaterialTheme.typography.bodyMedium)
             }
@@ -166,12 +179,15 @@ fun KanbanFilterSheet(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onSelectAssignee(assignee) }
+                            .selectable(
+                                selected = selectedAssignee == assignee,
+                                role = Role.RadioButton,
+                            ) { onSelectAssignee(assignee) }
                             .padding(vertical = 4.dp),
                 ) {
                     RadioButton(
                         selected = selectedAssignee == assignee,
-                        onClick = { onSelectAssignee(assignee) },
+                        onClick = null,
                     )
                     Text(assignee, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -192,12 +208,15 @@ fun KanbanFilterSheet(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clickable { onSelectTenant(null) }
+                            .selectable(
+                                selected = selectedTenant == null,
+                                role = Role.RadioButton,
+                            ) { onSelectTenant(null) }
                             .padding(vertical = 4.dp),
                 ) {
                     RadioButton(
                         selected = selectedTenant == null,
-                        onClick = { onSelectTenant(null) },
+                        onClick = null,
                     )
                     Text(stringResource(R.string.kanban_all_tenants), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -208,12 +227,15 @@ fun KanbanFilterSheet(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .clickable { onSelectTenant(tenant) }
+                                .selectable(
+                                    selected = selectedTenant == tenant,
+                                    role = Role.RadioButton,
+                                ) { onSelectTenant(tenant) }
                                 .padding(vertical = 4.dp),
                     ) {
                         RadioButton(
                             selected = selectedTenant == tenant,
-                            onClick = { onSelectTenant(tenant) },
+                            onClick = null,
                         )
                         Text(tenant, style = MaterialTheme.typography.bodyMedium)
                     }
@@ -233,9 +255,13 @@ private fun FilterChoiceRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+                .padding(vertical = 4.dp),
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        RadioButton(selected = selected, onClick = null)
         Text(label, style = MaterialTheme.typography.bodyMedium)
     }
 }

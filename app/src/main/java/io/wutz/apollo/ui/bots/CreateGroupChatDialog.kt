@@ -1,6 +1,5 @@
 package io.wutz.apollo.ui.bots
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
@@ -93,26 +94,19 @@ fun CreateGroupChatDialog(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .toggleable(value = isChecked, role = Role.Checkbox) { checked ->
                                         selectedBots =
-                                            if (isChecked) {
-                                                selectedBots - bot.name
-                                            } else {
+                                            if (checked) {
                                                 selectedBots + bot.name
+                                            } else {
+                                                selectedBots - bot.name
                                             }
                                     }.padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(
                                 checked = isChecked,
-                                onCheckedChange = { checked ->
-                                    selectedBots =
-                                        if (checked) {
-                                            selectedBots + bot.name
-                                        } else {
-                                            selectedBots - bot.name
-                                        }
-                                },
+                                onCheckedChange = null,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             BotAvatar(

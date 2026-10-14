@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SessionTreeItem
 import io.wutz.apollo.theme.Spacing
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 import io.wutz.apollo.ui.sessions.AutomationSessionGroup
 
 internal fun LazyListScope.automationGroups(
@@ -41,6 +43,7 @@ internal fun LazyListScope.automationGroups(
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .expandToggleSemantics(expandToggleLabels(expanded))
                         .clickable { onToggleGroup(group.key) }
                         .padding(horizontal = spacing.sm, vertical = spacing.md),
                 verticalAlignment = Alignment.CenterVertically,

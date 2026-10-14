@@ -2,6 +2,8 @@ package io.wutz.apollo.ui.authlogin
 
 import android.app.Application
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -101,6 +103,18 @@ fun AuthLoginScreen(
 
     LaunchedEffect(Unit) {
         viewModel.refreshForSelectedConnection()
+    }
+
+    val lanPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+            onResult = { granted -> viewModel.onLanPermissionResult(granted) },
+        )
+
+    LaunchedEffect(state.lanPermissionNeeded) {
+        if (state.lanPermissionNeeded) {
+            lanPermissionLauncher.launch(android.Manifest.permission.ACCESS_LOCAL_NETWORK)
+        }
     }
 
     LaunchedEffect(state.connectionSuccess) {
@@ -402,7 +416,7 @@ fun AuthLoginScreen(
                 onClick = {
                     when (state.authMode) {
                         null -> {
-                            viewModel.probe()
+                            viewModel.requestProbe(context)
                         }
 
                         DashboardAuthMode.BROWSER -> {

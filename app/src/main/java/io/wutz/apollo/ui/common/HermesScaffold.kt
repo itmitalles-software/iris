@@ -37,6 +37,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import io.wutz.apollo.R
 import kotlinx.coroutines.CoroutineScope
@@ -102,6 +104,12 @@ val LocalDrawerGestureController =
     compositionLocalOf<DrawerGestureController?> {
         null
     }
+
+/**
+ * Whether the menu button toggles a persistent sidebar (wide windows) and whether that sidebar is
+ * showing; null on phones, where the button opens the modal drawer. Only used for the button's label.
+ */
+val LocalPersistentSidebarVisible = compositionLocalOf<Boolean?> { null }
 
 /**
  * Opt out of drawer gestures for a screen that does NOT use [HermesScaffold].
@@ -170,7 +178,8 @@ fun HermesScaffold(
         snackbarHost = { snackbarHost() },
         topBar = {
             TopAppBar(
-                title = title,
+                // One merged heading node so TalkBack heading navigation lands on the screen title.
+                title = { Box(Modifier.semantics(mergeDescendants = true) { heading() }) { title() } },
                 navigationIcon = {
                     when (val icon = navigationIcon) {
                         is NavIcon.Back -> {
@@ -187,7 +196,14 @@ fun HermesScaffold(
                             IconButton(onClick = icon.onOpen) {
                                 Icon(
                                     imageVector = Icons.Filled.Menu,
-                                    contentDescription = stringResource(R.string.content_desc_open_drawer),
+                                    contentDescription =
+                                        stringResource(
+                                            when (LocalPersistentSidebarVisible.current) {
+                                                true -> R.string.a11y_hide_sidebar
+                                                false -> R.string.a11y_show_sidebar
+                                                null -> R.string.content_desc_open_drawer
+                                            },
+                                        ),
                                     modifier = Modifier.testTag("menu_button"),
                                 )
                             }

@@ -24,6 +24,8 @@ import io.wutz.apollo.data.model.KanbanProjectsResponse
 import io.wutz.apollo.data.model.KanbanRunInspection
 import io.wutz.apollo.data.model.KanbanRunResponse
 import io.wutz.apollo.data.model.KanbanTaskDetailResponse
+import io.wutz.apollo.data.model.ManagedFileActionResponse
+import io.wutz.apollo.data.model.ManagedFileDelete
 import io.wutz.apollo.data.model.OrchestrationSettings
 import io.wutz.apollo.data.model.OrchestrationSettingsUpdate
 import io.wutz.apollo.data.model.ReassignTaskBody
@@ -43,13 +45,17 @@ import io.wutz.apollo.data.model.UpdateTaskBody
 import io.wutz.apollo.data.model.UpdateTaskResponse
 import io.wutz.apollo.data.model.WorkerLog
 import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.KanbanApiService
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 
 interface KanbanRepository {
@@ -81,6 +87,19 @@ interface KanbanRepository {
     ): NetworkResult<BoardExportResult>
 
     suspend fun importBoard(body: ImportBoardBody): NetworkResult<BoardImportResult>
+
+    /**
+     * Uploads a board archive into the managed files area so [importBoard] can read it. Returns the
+     * server path of the stored archive ([targetPath] when the server does not echo one).
+     */
+    suspend fun uploadImportArchive(
+        targetPath: String,
+        fileName: String,
+        archive: RequestBody,
+    ): NetworkResult<String>
+
+    /** Removes an archive stored by [uploadImportArchive]. */
+    suspend fun deleteImportArchive(serverPath: String): NetworkResult<ManagedFileActionResponse>
 
     suspend fun getTask(
         taskId: String,
@@ -216,6 +235,7 @@ class KanbanRepositoryImpl(
     private val apiProvider: () -> KanbanApiService = { ApiClient.kanbanApi },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val nudger: KanbanDispatcherNudger = DefaultKanbanDispatcherNudger(apiProvider),
+    private val filesApiProvider: () -> HermesApiService = { ApiClient.hermesApi },
 ) : KanbanRepository {
     override suspend fun getBoards(includeArchived: Boolean): NetworkResult<KanbanBoardsResponse> =
         withContext(ioDispatcher) {
@@ -265,6 +285,30 @@ class KanbanRepositoryImpl(
     override suspend fun importBoard(body: ImportBoardBody): NetworkResult<BoardImportResult> =
         withContext(ioDispatcher) {
             safeApiCall { apiProvider().importBoard(body) }
+        }
+
+    // Retrofit streams the body on OkHttp's worker; no withContext, so a confirmed upload response is not
+    // lost to its prompt cancellation on the return hop (#1137).
+    override suspend fun uploadImportArchive(
+        targetPath: String,
+        fileName: String,
+        archive: RequestBody,
+    ): NetworkResult<String> {
+        val pathBody = targetPath.toRequestBody("text/plain".toMediaTypeOrNull())
+        val overwriteBody = "true".toRequestBody("text/plain".toMediaTypeOrNull())
+        val filePart = MultipartBody.Part.createFormData("file", fileName, archive)
+        return when (
+            val result =
+                safeApiCall { filesApiProvider().uploadManagedFileStream(pathBody, overwriteBody, filePart) }
+        ) {
+            is NetworkResult.Success -> NetworkResult.Success(result.data.entry?.path ?: result.data.path ?: targetPath)
+            is NetworkResult.Failure -> result
+        }
+    }
+
+    override suspend fun deleteImportArchive(serverPath: String): NetworkResult<ManagedFileActionResponse> =
+        withContext(ioDispatcher) {
+            safeApiCall { filesApiProvider().deleteManagedFile(ManagedFileDelete(serverPath)) }
         }
 
     override suspend fun getTask(

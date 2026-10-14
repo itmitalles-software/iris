@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,8 +43,9 @@ internal fun ToolBubbleHeader(
     ) {
         // Status icon or spinner
         if (message.isToolRunning) {
+            val runningDescription = stringResource(R.string.a11y_tool_status_running)
             CircularProgressIndicator(
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(14.dp).semantics { contentDescription = runningDescription },
                 strokeWidth = 2.dp,
                 color = MaterialTheme.colorScheme.secondary,
             )
@@ -59,9 +62,16 @@ internal fun ToolBubbleHeader(
                     ToolStatus.FAILED -> statusColors.error
                     else -> contentColor.copy(alpha = 0.6f)
                 }
+            // Color and glyph alone do not reach TalkBack; completed and failed get a spoken status.
+            val statusDescription =
+                when (message.toolStatus) {
+                    ToolStatus.COMPLETED -> stringResource(R.string.a11y_tool_status_completed)
+                    ToolStatus.FAILED -> stringResource(R.string.a11y_tool_status_failed)
+                    else -> null
+                }
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = statusDescription,
                 modifier = Modifier.size(14.dp),
                 tint = tint,
             )

@@ -51,6 +51,17 @@ sealed class WsEvent {
         val text: String? = null,
     ) : WsEvent()
 
+    /**
+     * `message.interim`: mid-turn assistant commentary (text beside tool calls, a pre-nudge answer)
+     * that the client seals as its own bubble. [alreadyStreamed] is true only when [text] arrived
+     * exactly as `message.delta`s; otherwise (e.g. Codex commentary) it was never streamed.
+     */
+    data class MessageInterim(
+        val text: String,
+        val alreadyStreamed: Boolean,
+        val sessionId: String?,
+    ) : WsEvent()
+
     data class MessageComplete(
         val text: String,
         val sessionId: String?,

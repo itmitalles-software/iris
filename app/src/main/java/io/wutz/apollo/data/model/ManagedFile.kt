@@ -74,14 +74,6 @@ data class ManagedFileActionResponse(
     val canChangePath: Boolean = false,
 )
 
-/** Request body for `POST /api/files/upload` (base64 data URL form). */
-@Serializable
-data class ManagedFileUpload(
-    val path: String,
-    val data_url: String,
-    val overwrite: Boolean = false,
-)
-
 /** Request body for `POST /api/files/mkdir`. */
 @Serializable
 data class ManagedDirectoryCreate(

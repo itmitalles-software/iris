@@ -63,6 +63,15 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
   your Hermes server is the optional GitHub release check (the Google Play
   build has no self-updater and makes no such request).
 
+## Requirements and compatibility
+
+- Android 8.0 (API 26) or newer, on phones, tablets and foldables.
+- Hermes Agent with the dashboard API (`hermes serve`). Apollo is tested with
+  Hermes Agent v0.21.6. Its gateway calls are checked against the contract of
+  hermes-agent `ea114c3` (2026-09-29). Newer Hermes releases are expected to
+  work but are not tested with every Apollo release.
+- Tailscale on the computer and the phone for the recommended setup.
+
 ## Install
 
 Download the APK from the
@@ -70,6 +79,24 @@ Download the APK from the
 and open it on your phone. Releases are signed with the Apollo release key;
 updates install over the previous version. To build it yourself, see
 [BUILD.md](BUILD.md).
+
+### Verify the download
+
+Check the signing certificate before you install it (`apksigner` is part of
+the Android SDK build-tools):
+
+```bash
+apksigner verify --print-certs apollo-v<version>.apk | grep SHA-256
+```
+
+The SHA-256 digest must be
+
+```text
+f6ff6e51356e8aa37eb23a518dee62691fad0a1eebb9c68298a0d0bc9880fb3e
+```
+
+(`CN=Apollo, O=wutz.io, C=DE`). Android also refuses an update signed with a
+different key.
 
 ## Connect over Tailscale (recommended)
 
@@ -103,7 +130,7 @@ Options: `--generate-password`, `--port`, `--public-url`, `--no-service` (prints
 the command to run Hermes yourself, e.g. on systems without systemd) and
 `--uninstall`. See `--help`.
 
-Then, in Apollo: tap **Sign in**, enter `https://<machine>.<tailnet>.ts.net` and
+Then, in Apollo: tap **Auth Login**, enter `https://<machine>.<tailnet>.ts.net` and
 log in. Apollo detects the auth mode, stores the session in encrypted storage
 and reconnects automatically.
 
@@ -129,9 +156,21 @@ setting it always enables the login gate. TLS certificates are always
 verified; Apollo never disables certificate checks.
 
 Other setups are covered in the
-[connection reference](docs/connection-reference.md): loopback token, LAN with
-basic auth, mTLS client certificates, private CAs, Cloudflare Access headers,
+[connection reference](docs/connection-reference.md): loopback token, browser
+sign-in, mTLS client certificates, private CAs, Cloudflare Access headers,
 and multiple servers. Plain `http://` works for trusted networks only.
+
+### Troubleshooting
+
+- **401 after a correct password:** `public_url` is missing or a loopback
+  address, so Hermes' login gate is off. Set it to the HTTPS address you enter
+  in Apollo and restart Hermes.
+- **400 `Invalid Host header`:** `public_url` does not match the address you
+  use. It must be the exact HTTPS origin.
+- **Cannot reach the server:** check that Tailscale is connected on the phone
+  and that `tailscale serve status` on the computer lists port 9119.
+- More cases (client certificates, private CAs) are in the
+  [connection reference](docs/connection-reference.md#troubleshooting).
 
 ## Security notes
 
@@ -153,6 +192,7 @@ and multiple servers. Plain `http://` works for trusted networks only.
 - [docs/BRANDING.md](docs/BRANDING.md): Apollo brand, colours, typography and assets
 - [ORIGIN.md](ORIGIN.md): where Apollo comes from and what it changed
 - [CHANGELOG.md](CHANGELOG.md)
+- [SECURITY.md](SECURITY.md): how to report a vulnerability
 
 ## License
 

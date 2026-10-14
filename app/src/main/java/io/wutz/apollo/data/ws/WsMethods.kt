@@ -113,6 +113,12 @@ object WsMethods {
     /** Rolling tail snapshot of a subagent's live execution transcript. */
     const val SUBAGENT_TAIL = "subagent.tail"
 
+    /** Hard-interrupt one live child owned by the session (`found` is false when it already finished). */
+    const val SUBAGENT_INTERRUPT = "subagent.interrupt"
+
+    /** Queue course-correction text into one live child owned by the session. */
+    const val SUBAGENT_STEER = "subagent.steer"
+
     // ── Connectors (issue #1091) ───────────────────────────────────────────
 
     const val CONNECTION_RESPOND = "connection.respond"

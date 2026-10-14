@@ -15,6 +15,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,8 +31,9 @@ data class ToolsetsUiState(
     val toastMessage: UiText? = null,
 )
 
-class ToolsetsViewModel :
-    ViewModel(),
+class ToolsetsViewModel(
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel(),
     ToastHost {
     private val _uiState = MutableStateFlow(ToolsetsUiState())
     val uiState: StateFlow<ToolsetsUiState> = _uiState.asStateFlow()
@@ -82,7 +84,7 @@ class ToolsetsViewModel :
 
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.toggleToolset(toolset.name, ToolsetToggleRequest(targetEnabled)) }
                 }
             val currentScope = runCatching { AuthManager.currentDataScope() }.getOrNull()

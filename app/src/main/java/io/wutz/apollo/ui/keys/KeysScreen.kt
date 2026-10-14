@@ -636,7 +636,7 @@ private fun EnvVarCard(
                         } else {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = stringResource(R.string.content_desc_delete_key),
+                                contentDescription = stringResource(R.string.a11y_delete_named, key),
                                 tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
                             )
                         }
@@ -793,7 +793,7 @@ private fun EnvVarCard(
                             }) {
                                 Icon(
                                     imageVector = Icons.Filled.Edit,
-                                    contentDescription = stringResource(R.string.content_desc_edit),
+                                    contentDescription = stringResource(R.string.a11y_edit_named, key),
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                             }

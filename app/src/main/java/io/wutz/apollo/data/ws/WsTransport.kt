@@ -614,7 +614,9 @@ internal class WsTransport(
 
     @VisibleForTesting
     internal suspend fun awaitOpenSocketForTest() {
-        openSocketJobs.toList().forEach { it.join() }
+        // Iterate the concurrent set directly: toList() can throw NoSuchElementException when a job
+        // completes (and removes itself) between its size check and the read.
+        for (job in openSocketJobs) job.join()
     }
 
     private fun isCurrentGeneration(generation: Int): Boolean =

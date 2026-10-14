@@ -29,6 +29,7 @@ import io.wutz.apollo.ui.common.safeLaunchAction
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,6 +106,7 @@ data class PluginsUiState(
 class PluginsViewModel(
     private val pluginRemoval: PluginRemovalRepository = PluginRemovalRepository(),
     private val pluginManage: PluginManageRepository = PluginManageRepository(),
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel(),
     ToastHost {
     private val _uiState = MutableStateFlow(PluginsUiState())
@@ -224,7 +226,7 @@ class PluginsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(installBusy = true) }
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.installPlugin(
                             io.wutz.apollo.data.model.AgentPluginInstallBody(
@@ -272,7 +274,7 @@ class PluginsViewModel(
             _uiState.update { it.copy(providerBusy = true) }
             val state = _uiState.value
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.savePluginProviders(
                             PluginProvidersPutRequest(
@@ -309,7 +311,7 @@ class PluginsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(rescanBusy = true) }
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.rescanPlugins() }
                 }
             when (result) {
@@ -356,7 +358,7 @@ class PluginsViewModel(
 
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     if (targetEnabled) {
                         safeApiCall { ApiClient.hermesApi.enablePlugin(plugin.name) }
                     } else {
@@ -599,7 +601,7 @@ class PluginsViewModel(
             setRowBusy(plugin.name)
             val targetHidden = !plugin.userHidden
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.setPluginVisibility(
                             plugin.name,
