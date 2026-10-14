@@ -28,8 +28,9 @@ import io.wutz.apollo.ui.common.StatusBadgeType
 internal fun CredentialEntryRow(
     entry: CredentialPoolEntry,
     providerName: String,
-    onRemove: () -> Unit,
+    onRemove: (() -> Unit)?,
     spacing: io.wutz.apollo.theme.Spacing,
+    removeEnabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = spacing.xs),
@@ -62,13 +63,20 @@ internal fun CredentialEntryRow(
                 }
             }
         }
-        IconButton(onClick = onRemove) {
-            Icon(
-                Icons.Filled.Delete,
-                contentDescription = stringResource(R.string.action_delete),
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp),
-            )
+        if (onRemove != null) {
+            IconButton(onClick = onRemove, enabled = removeEnabled) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.action_delete),
+                    tint =
+                        if (removeEnabled) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        },
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }

@@ -102,7 +102,12 @@ class SkillsViewModel(
     private val skillsCache = SwrCache<String, List<Skill>>()
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
+    /** The in-flight skill content load; replaced or cancelled when the editor changes. */
+    private var contentLoadJob: Job? = null
+
     fun clearScopeOwnedState() {
+        contentLoadJob?.cancel()
+        contentLoadJob = null
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -486,7 +491,12 @@ class SkillsViewModel(
         }
     }
 
+    /**
+     * Opens the editor for [skillName] and loads its content. The result is only applied while that skill's
+     * editor is still open, so a late response never fills, or closes, another skill's editor.
+     */
     fun loadSkillContent(skillName: String) {
+        contentLoadJob?.cancel()
         _uiState.update {
             it.copy(
                 isLoadingContent = true,
@@ -495,32 +505,33 @@ class SkillsViewModel(
                 saveContentSuccess = false,
             )
         }
-        viewModelScope.launch {
-            val result =
-                withContext(ioDispatcher) {
-                    safeApiCall { ApiClient.hermesApi.getSkillContent(skillName) }
-                }
-            when (result) {
-                is NetworkResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingContent = false,
-                            skillContent = result.data.content.orEmpty(),
-                        )
+        contentLoadJob =
+            viewModelScope.launch {
+                val result =
+                    withContext(ioDispatcher) {
+                        safeApiCall { ApiClient.hermesApi.getSkillContent(skillName) }
                     }
-                }
+                _uiState.update {
+                    if (it.editingSkillName != skillName || !it.isLoadingContent) return@update it
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            it.copy(
+                                isLoadingContent = false,
+                                skillContent = result.data.content.orEmpty(),
+                            )
+                        }
 
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingContent = false,
-                            editingSkillName = null,
-                            toastMessage = UiText.res(R.string.skills_msg_content_load_failed, result.error.message),
-                        )
+                        is NetworkResult.Failure -> {
+                            it.copy(
+                                isLoadingContent = false,
+                                editingSkillName = null,
+                                toastMessage =
+                                    UiText.res(R.string.skills_msg_content_load_failed, result.error.message),
+                            )
+                        }
                     }
                 }
             }
-        }
     }
 
     fun saveSkillContent(
@@ -543,11 +554,14 @@ class SkillsViewModel(
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {
+                        val saved = UiText.res(R.string.skills_msg_saved)
+                        // The editor may have been closed or switched to another skill meanwhile.
+                        if (it.editingSkillName != skillName) return@update it.copy(toastMessage = saved)
                         it.copy(
                             isSavingContent = false,
                             saveContentSuccess = true,
                             skillContent = content,
-                            toastMessage = UiText.res(R.string.skills_msg_saved),
+                            toastMessage = saved,
                         )
                     }
                 }
@@ -589,6 +603,8 @@ class SkillsViewModel(
     }
 
     fun clearEditor() {
+        contentLoadJob?.cancel()
+        contentLoadJob = null
         _uiState.update {
             it.copy(
                 editingSkillName = null,

@@ -6,6 +6,9 @@
 package io.wutz.apollo.ui.keys
 
 import android.content.ClipData
+import android.content.ClipDescription
+import android.os.Build
+import android.os.PersistableBundle
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -76,7 +79,6 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -772,9 +774,8 @@ private fun EnvVarCard(
                                 }
                                 if (isRevealed && !revealedValue.isNullOrEmpty()) {
                                     IconButton(onClick = {
-                                        val text = AnnotatedString(revealedValue)
                                         scope.launch {
-                                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
+                                            clipboard.setClipEntry(ClipEntry(sensitivePlainClip(revealedValue)))
                                         }
                                         onShowToast(UiText.res(R.string.keys_copied_toast))
                                     }) {
@@ -873,3 +874,18 @@ private fun RestartBanner(
         }
     }
 }
+
+/**
+ * A plain-text clip flagged as sensitive, so Android 13+ hides the value in the clipboard preview overlay and
+ * keyboards do not suggest it. Older releases honour the same extra key where supported.
+ */
+private fun sensitivePlainClip(text: String): ClipData =
+    ClipData.newPlainText(null, text).apply {
+        val key =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ClipDescription.EXTRA_IS_SENSITIVE
+            } else {
+                "android.content.extra.IS_SENSITIVE"
+            }
+        description.extras = PersistableBundle().apply { putBoolean(key, true) }
+    }

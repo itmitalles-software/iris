@@ -57,6 +57,17 @@ class MemoryProviderDetailViewModel :
 
     private var providerName: String = ""
 
+    /** Bumped by [setProvider]; a response for an earlier provider must not touch the current one's state. */
+    private var providerGeneration = 0
+
+    /** Applies [transform] only while the provider of [generation] is still the one shown. */
+    private fun updateIfCurrent(
+        generation: Int,
+        transform: (MemoryProviderDetailUiState) -> MemoryProviderDetailUiState,
+    ) {
+        if (generation == providerGeneration) _uiState.update(transform)
+    }
+
     /**
      * Point the shared instance at [name] and drop all state from the
      * previously viewed provider (config, edits, setup result) so one
@@ -65,6 +76,7 @@ class MemoryProviderDetailViewModel :
     fun setProvider(name: String) {
         if (name == providerName) return
         providerName = name
+        providerGeneration++
         _uiState.value = MemoryProviderDetailUiState(providerName = name)
     }
 
@@ -72,6 +84,7 @@ class MemoryProviderDetailViewModel :
         val name = providerName
         if (name.isEmpty()) return
         if (_uiState.value.isLoading) return
+        val generation = providerGeneration
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             // GET /api/memory for the provider's live status row.
@@ -89,7 +102,7 @@ class MemoryProviderDetailViewModel :
             val configResult = safeApiCall { ApiClient.hermesApi.getMemoryProviderConfig(name) }
             when (configResult) {
                 is NetworkResult.Success -> {
-                    _uiState.update {
+                    updateIfCurrent(generation) {
                         it.copy(
                             isLoading = false,
                             providerName = name,
@@ -101,7 +114,7 @@ class MemoryProviderDetailViewModel :
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update {
+                    updateIfCurrent(generation) {
                         it.copy(
                             isLoading = false,
                             providerName = name,
@@ -137,6 +150,7 @@ class MemoryProviderDetailViewModel :
         if (name.isEmpty() || _uiState.value.saving) return
         val state = _uiState.value
         val config = state.config ?: return
+        val generation = providerGeneration
         _uiState.update { it.copy(saving = true, errorMessage = null) }
         viewModelScope.launch {
             val values =
@@ -155,7 +169,7 @@ class MemoryProviderDetailViewModel :
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update {
+                    updateIfCurrent(generation) {
                         it.copy(
                             saving = false,
                             edits =
@@ -168,7 +182,7 @@ class MemoryProviderDetailViewModel :
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update {
+                    updateIfCurrent(generation) {
                         it.copy(
                             saving = false,
                             toastMessage = UiText.res(R.string.plugins_msg_settings_save_failed, result.error.message),
@@ -176,7 +190,7 @@ class MemoryProviderDetailViewModel :
                     }
                 }
             }
-            refreshStatus(name)
+            refreshStatus(name, generation)
         }
     }
 
@@ -187,6 +201,7 @@ class MemoryProviderDetailViewModel :
     fun runSetup() {
         val name = providerName
         if (name.isEmpty() || _uiState.value.runningSetup) return
+        val generation = providerGeneration
         _uiState.update { it.copy(runningSetup = true, errorMessage = null) }
         viewModelScope.launch {
             val result =
@@ -195,7 +210,7 @@ class MemoryProviderDetailViewModel :
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update {
+                    updateIfCurrent(generation) {
                         it.copy(
                             runningSetup = false,
                             setupResult = result.data,
@@ -210,7 +225,7 @@ class MemoryProviderDetailViewModel :
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update {
+                    updateIfCurrent(generation) {
                         it.copy(
                             runningSetup = false,
                             toastMessage = UiText.res(R.string.plugins_msg_setup_failed, result.error.message),
@@ -218,7 +233,7 @@ class MemoryProviderDetailViewModel :
                     }
                 }
             }
-            refreshStatus(name)
+            refreshStatus(name, generation)
         }
     }
 
@@ -226,13 +241,16 @@ class MemoryProviderDetailViewModel :
         _uiState.update { it.copy(toastMessage = null) }
     }
 
-    private fun refreshStatus(name: String) {
+    private fun refreshStatus(
+        name: String,
+        generation: Int,
+    ) {
         viewModelScope.launch {
             val result = safeApiCall { ApiClient.hermesApi.getMemory() }
             if (result is NetworkResult.Success) {
                 val row = result.data.providers.firstOrNull { it.name == name }
                 if (row != null) {
-                    _uiState.update { it.copy(status = row) }
+                    updateIfCurrent(generation) { it.copy(status = row) }
                 }
             }
         }

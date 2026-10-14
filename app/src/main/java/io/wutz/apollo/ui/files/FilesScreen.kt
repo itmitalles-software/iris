@@ -60,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.ManagedFileEntry
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
@@ -91,17 +92,8 @@ fun FilesScreen(
             contract = ActivityResultContracts.GetContent(),
             onResult = { uri ->
                 if (uri == null) return@rememberLauncherForActivityResult
-                val fileName =
-                    uri.lastPathSegment?.substringAfterLast("/")?.takeIf { it.isNotBlank() }
-                        ?: "upload.bin"
-                val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
-                runCatching {
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        viewModel.uploadFile(fileName, stream.readBytes(), mimeType)
-                    }
-                }.onFailure {
-                    viewModel.showToast(UiText.res(R.string.file_read_failed_reason, it.message.orEmpty()))
-                }
+                // Application resolver: the ViewModel keeps it for a confirmed re-upload across rotation.
+                viewModel.uploadFile(context.applicationContext.contentResolver, uri)
             },
         )
 
@@ -127,6 +119,19 @@ fun FilesScreen(
             onNameChange = viewModel::setNewDirName,
             onConfirm = viewModel::createDir,
             onDismiss = viewModel::dismissCreateDir,
+        )
+    }
+
+    // ── Upload conflict: the picked file's name already exists ─────────
+    state.uploadConflict?.let { conflict ->
+        ConfirmDialog(
+            title = stringResource(R.string.files_upload_conflict_title),
+            message = stringResource(R.string.files_upload_conflict_message, conflict.fileName),
+            onConfirm = viewModel::confirmUploadOverwrite,
+            onDismiss = viewModel::dismissUploadConflict,
+            confirmText = stringResource(R.string.files_upload_conflict_replace),
+            isDestructive = true,
+            icon = Icons.Filled.Upload,
         )
     }
 

@@ -145,7 +145,15 @@ fun LazyListScope.credentialsSection(
                         CredentialEntryRow(
                             entry = entry,
                             providerName = provider.provider ?: "",
-                            onRemove = { onRemoveRequest(Pair(provider.provider ?: "", entry.index ?: 0)) },
+                            // Entries are removed by their server-listed 1-based position: never guess one,
+                            // and wait until the list is current again after a change.
+                            onRemove =
+                                provider.provider?.takeIf { it.isNotBlank() }?.let { providerName ->
+                                    entry.index?.takeIf { it >= 1 }?.let { index ->
+                                        { onRemoveRequest(Pair(providerName, index)) }
+                                    }
+                                },
+                            removeEnabled = !state.credentialsPending,
                             spacing = spacing,
                         )
                     }

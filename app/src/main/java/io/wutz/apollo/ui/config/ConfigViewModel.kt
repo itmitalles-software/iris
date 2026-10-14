@@ -15,6 +15,7 @@ import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -49,8 +50,9 @@ data class ConfigUiState(
     val toastMessage: UiText? = null,
 )
 
-class ConfigViewModel :
-    ViewModel(),
+class ConfigViewModel(
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel(),
     ToastHost {
     private val _uiState = MutableStateFlow(ConfigUiState())
     val uiState: StateFlow<ConfigUiState> = _uiState.asStateFlow()
@@ -114,20 +116,20 @@ class ConfigViewModel :
         viewModelScope.launch {
             try {
                 coroutineScope {
-                    val configDeferred = async(Dispatchers.IO) { safeApiCall { ApiClient.hermesApi.getConfig() } }
+                    val configDeferred = async(ioDispatcher) { safeApiCall { ApiClient.hermesApi.getConfig() } }
                     val schemaDeferred =
                         if (cachedSchema == null) {
-                            async(Dispatchers.IO) { safeApiCall { ApiClient.hermesApi.getConfigSchema() } }
+                            async(ioDispatcher) { safeApiCall { ApiClient.hermesApi.getConfigSchema() } }
                         } else {
                             null
                         }
                     val defaultsDeferred =
                         if (cachedDefaults == null) {
-                            async(Dispatchers.IO) { safeApiCall { ApiClient.hermesApi.getConfigDefaults() } }
+                            async(ioDispatcher) { safeApiCall { ApiClient.hermesApi.getConfigDefaults() } }
                         } else {
                             null
                         }
-                    val rawDeferred = async(Dispatchers.IO) { safeApiCall { ApiClient.hermesApi.getRawConfig() } }
+                    val rawDeferred = async(ioDispatcher) { safeApiCall { ApiClient.hermesApi.getRawConfig() } }
 
                     val configResult = configDeferred.await()
                     val schema: ConfigSchemaResponse? =
@@ -144,7 +146,9 @@ class ConfigViewModel :
                     if (requestScope != null && currentScope != requestScope) return@coroutineScope
 
                     if (configResult is NetworkResult.Success) {
-                        val values = flattenConfig(configResult.data)
+                        // Unsaved edits stay visible on top of the fresh server values, so the screen always
+                        // shows exactly what the next Save sends (a reload never hides pending edits).
+                        val values = withPendingChanges(flattenConfig(configResult.data))
                         val path = (rawResult as? NetworkResult.Success)?.data?.path
 
                         _uiState.update { state ->
@@ -258,7 +262,7 @@ class ConfigViewModel :
             _uiState.update { it.copy(yamlMode = true, yamlIsLoading = true) }
             viewModelScope.launch {
                 val result =
-                    withContext(Dispatchers.IO) {
+                    withContext(ioDispatcher) {
                         safeApiCall { ApiClient.hermesApi.getRawConfig() }
                     }
                 when (result) {
@@ -295,7 +299,7 @@ class ConfigViewModel :
         viewModelScope.launch {
             val changeset = buildChangeset(pendingChanges)
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.updateConfig(
                             ConfigUpdateRequest(config = changeset),
@@ -308,7 +312,7 @@ class ConfigViewModel :
                 is NetworkResult.Success -> {
                     pendingChanges.clear()
                     val configResult =
-                        withContext(Dispatchers.IO) {
+                        withContext(ioDispatcher) {
                             safeApiCall { ApiClient.hermesApi.getConfig() }
                         }
                     val currentScopeAfterGet = runCatching { AuthManager.currentDataScope() }.getOrNull()
@@ -343,7 +347,7 @@ class ConfigViewModel :
         _uiState.update { it.copy(yamlIsSaving = true) }
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.updateRawConfig(
                             UpdateRawConfigRequest(yaml_text = yamlText),
@@ -355,7 +359,7 @@ class ConfigViewModel :
             when (result) {
                 is NetworkResult.Success -> {
                     val configResult =
-                        withContext(Dispatchers.IO) {
+                        withContext(ioDispatcher) {
                             safeApiCall { ApiClient.hermesApi.getConfig() }
                         }
                     val currentScopeAfterGet = runCatching { AuthManager.currentDataScope() }.getOrNull()
@@ -364,7 +368,9 @@ class ConfigViewModel :
                         it.copy(
                             yamlIsSaving = false,
                             values =
-                                (configResult as? NetworkResult.Success)?.data?.let(::flattenConfig)
+                                (configResult as? NetworkResult.Success)
+                                    ?.data
+                                    ?.let { data -> withPendingChanges(flattenConfig(data)) }
                                     ?: it.values,
                             toastMessage = UiText.res(R.string.config_msg_yaml_saved),
                         )
@@ -416,6 +422,10 @@ class ConfigViewModel :
             }
         }
     }
+
+    /** [values] with the unsaved form edits applied, so displayed values match what Save will send. */
+    private fun withPendingChanges(values: Map<String, JsonElement>): Map<String, JsonElement> =
+        if (pendingChanges.isEmpty()) values else values + pendingChanges
 
     override fun clearToast() {
         _uiState.update { it.copy(toastMessage = null) }

@@ -71,10 +71,25 @@ class ProvidersViewModel :
     val uiState: StateFlow<ProvidersUiState> = _uiState.asStateFlow()
 
     private var pollJob: Job? = null
+
+    /** The in-flight `/oauth/{provider}/start` request; cancelled with the flow it belongs to. */
+    private var startJob: Job? = null
+
+    /** Bumped whenever a flow starts or ends, so a late start response of an older flow is ignored. */
+    private var flowGeneration = 0
+
+    /** Stops the start request and polling of the current flow. */
+    private fun stopFlowJobs() {
+        flowGeneration++
+        startJob?.cancel()
+        startJob = null
+        pollJob?.cancel()
+    }
+
     private val providersCache = SwrCache<String, OAuthProvidersResponse>()
 
     fun clearScopeOwnedState() {
-        pollJob?.cancel()
+        stopFlowJobs()
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -176,6 +191,8 @@ class ProvidersViewModel :
         ) {
             return
         }
+        stopFlowJobs()
+        val generation = flowGeneration
         _uiState.update {
             it.copy(
                 flowPhase = OAuthFlowPhase.STARTING,
@@ -188,39 +205,44 @@ class ProvidersViewModel :
                 flowErrorMessage = null,
             )
         }
-        viewModelScope.launch {
-            val result = safeApiCall { ApiClient.hermesApi.startOAuthLogin(provider.id) }
-            when (result) {
-                is NetworkResult.Success -> {
-                    val start = result.data
-                    _uiState.update {
-                        it.copy(
-                            flowPhase =
-                                when (start.flow) {
-                                    "pkce" -> OAuthFlowPhase.WAITING_CODE
-                                    "device_code" -> OAuthFlowPhase.POLLING
-                                    else -> OAuthFlowPhase.IDLE
-                                },
-                            flowStart = start,
-                            flowSessionId = start.sessionId,
-                            flowExpiresIn = formatExpiry(start.expiresIn),
-                        )
-                    }
-                    if (start.flow == "device_code") {
-                        pollSession(provider.id, start.sessionId)
-                    }
+        startJob =
+            viewModelScope.launch {
+                val result = safeApiCall { ApiClient.hermesApi.startOAuthLogin(provider.id) }
+                // The flow was cancelled, dismissed or replaced meanwhile: its result must not revive it.
+                if (generation != flowGeneration || _uiState.value.flowPhase != OAuthFlowPhase.STARTING) {
+                    return@launch
                 }
+                when (result) {
+                    is NetworkResult.Success -> {
+                        val start = result.data
+                        _uiState.update {
+                            it.copy(
+                                flowPhase =
+                                    when (start.flow) {
+                                        "pkce" -> OAuthFlowPhase.WAITING_CODE
+                                        "device_code" -> OAuthFlowPhase.POLLING
+                                        else -> OAuthFlowPhase.IDLE
+                                    },
+                                flowStart = start,
+                                flowSessionId = start.sessionId,
+                                flowExpiresIn = formatExpiry(start.expiresIn),
+                            )
+                        }
+                        if (start.flow == "device_code") {
+                            pollSession(provider.id, start.sessionId)
+                        }
+                    }
 
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            flowPhase = OAuthFlowPhase.IDLE,
-                            flowErrorMessage = UiText.raw(result.error.message),
-                        )
+                    is NetworkResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                flowPhase = OAuthFlowPhase.IDLE,
+                                flowErrorMessage = UiText.raw(result.error.message),
+                            )
+                        }
                     }
                 }
             }
-        }
     }
 
     fun onCodeInputChange(code: String) {
@@ -350,7 +372,7 @@ class ProvidersViewModel :
 
     /** Reset the re-auth flow to IDLE, clearing all flow-specific state. */
     fun dismissFlow() {
-        pollJob?.cancel()
+        stopFlowJobs()
         _uiState.update {
             it.copy(
                 flowPhase = OAuthFlowPhase.IDLE,
@@ -366,7 +388,7 @@ class ProvidersViewModel :
 
     fun cancelOAuthFlow() {
         val sessionId = _uiState.value.flowSessionId
-        pollJob?.cancel()
+        stopFlowJobs()
         _uiState.update {
             it.copy(
                 flowPhase = OAuthFlowPhase.IDLE,

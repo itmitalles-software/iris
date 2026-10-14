@@ -102,10 +102,13 @@ class CronJobsViewModel :
     val uiState: StateFlow<CronJobsUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var editJobLoad: Job? = null
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
     private val jobsCache = SwrCache<String, List<CronJob>>()
 
     fun clearScopeOwnedState() {
+        editJobLoad?.cancel()
+        editJobLoad = null
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -284,6 +287,8 @@ class CronJobsViewModel :
     // ── Editor ──
 
     fun openNewJobDialog() {
+        editJobLoad?.cancel()
+        editJobLoad = null
         _uiState.update {
             it.copy(
                 editorState =
@@ -343,7 +348,13 @@ class CronJobsViewModel :
         }
     }
 
+    /**
+     * Opens the editor for job [id] and loads it. The response is only applied while the editor is still
+     * loading that same job; a failed load closes the editor instead of leaving blank fields that Save would
+     * write over the real job.
+     */
     fun openEditJobDialog(id: String) {
+        editJobLoad?.cancel()
         _uiState.update {
             it.copy(
                 editorState =
@@ -355,66 +366,65 @@ class CronJobsViewModel :
                     ),
             )
         }
-        viewModelScope.launch {
-            val result =
-                withContext(ioDispatcher) {
-                    safeApiCall { ApiClient.hermesApi.getCronJob(id) }
-                }
-            when (result) {
-                is NetworkResult.Success -> {
-                    val job = result.data
-                    _uiState.update {
-                        it.copy(
-                            editorState =
-                                CronJobEditorState(
-                                    isOpen = true,
-                                    isNew = false,
-                                    jobId = id,
-                                    name = job.name,
-                                    schedule = extractScheduleString(job),
-                                    prompt = job.prompt.orEmpty(),
-                                    deliver = job.deliver ?: "local",
-                                    skills = (job.skills ?: emptyList()).joinToString("\n"),
-                                    model = job.model.orEmpty(),
-                                    provider = job.provider.orEmpty(),
-                                    base_url = job.base_url.orEmpty(),
-                                    script = job.script.orEmpty(),
-                                    workdir = job.workdir.orEmpty(),
-                                    enabled = job.enabled ?: true,
-                                    no_agent = job.no_agent ?: false,
-                                    runContinuity = job.context_from?.contains("self") ?: false,
-                                    monitorMode =
-                                        when {
-                                            !job.monitor_script.isNullOrBlank() -> "script"
-                                            !job.monitor_url.isNullOrBlank() -> "url"
-                                            else -> "off"
-                                        },
-                                    monitor_script = job.monitor_script.orEmpty(),
-                                    monitor_url = job.monitor_url.orEmpty(),
-                                ),
-                        )
+        editJobLoad =
+            viewModelScope.launch {
+                val result =
+                    withContext(ioDispatcher) {
+                        safeApiCall { ApiClient.hermesApi.getCronJob(id) }
                     }
-                }
+                _uiState.update {
+                    val editor = it.editorState
+                    if (!editor.isOpen || editor.isNew || editor.jobId != id || !editor.isLoading) return@update it
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            val job = result.data
+                            it.copy(
+                                editorState =
+                                    CronJobEditorState(
+                                        isOpen = true,
+                                        isNew = false,
+                                        jobId = id,
+                                        deliveryTargets = editor.deliveryTargets,
+                                        name = job.name,
+                                        schedule = extractScheduleString(job),
+                                        prompt = job.prompt.orEmpty(),
+                                        deliver = job.deliver ?: "local",
+                                        skills = (job.skills ?: emptyList()).joinToString("\n"),
+                                        model = job.model.orEmpty(),
+                                        provider = job.provider.orEmpty(),
+                                        base_url = job.base_url.orEmpty(),
+                                        script = job.script.orEmpty(),
+                                        workdir = job.workdir.orEmpty(),
+                                        enabled = job.enabled ?: true,
+                                        no_agent = job.no_agent ?: false,
+                                        runContinuity = job.context_from?.contains("self") ?: false,
+                                        monitorMode =
+                                            when {
+                                                !job.monitor_script.isNullOrBlank() -> "script"
+                                                !job.monitor_url.isNullOrBlank() -> "url"
+                                                else -> "off"
+                                            },
+                                        monitor_script = job.monitor_script.orEmpty(),
+                                        monitor_url = job.monitor_url.orEmpty(),
+                                    ),
+                            )
+                        }
 
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            editorState =
-                                CronJobEditorState(
-                                    isOpen = true,
-                                    isNew = false,
-                                    jobId = id,
-                                    toastMessage = UiText.res(R.string.cron_msg_load_job_failed, result.error.message),
-                                ),
-                        )
+                        is NetworkResult.Failure -> {
+                            it.copy(
+                                editorState = CronJobEditorState(),
+                                toastMessage = UiText.res(R.string.cron_msg_load_job_failed, result.error.message),
+                            )
+                        }
                     }
                 }
             }
-        }
         loadDeliveryTargets()
     }
 
     fun closeEditor() {
+        editJobLoad?.cancel()
+        editJobLoad = null
         _uiState.update { it.copy(editorState = CronJobEditorState()) }
     }
 
@@ -466,6 +476,8 @@ class CronJobsViewModel :
 
     fun saveEditor() {
         val editor = _uiState.value.editorState
+        // Never save an editor whose job has not been loaded yet: its blank fields would clear the job.
+        if (editor.isLoading) return
         if (editor.selectedBlueprintKey == null && editor.schedule.isBlank()) {
             _uiState.update {
                 it.copy(

@@ -2,8 +2,11 @@ package io.wutz.apollo.ui.authlogin
 
 import android.app.Application
 import android.util.Log
+import io.mockk.Runs
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
@@ -11,11 +14,15 @@ import io.mockk.unmockkAll
 import io.mockk.verify
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.model.SessionListResponse
+import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.CertificateBindings
 import io.wutz.apollo.data.remote.ClientCertificates
+import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.await
+import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -348,5 +355,65 @@ class AuthLoginViewModelTest {
     fun `modeForProvider follows supports_password`() {
         assertEquals(DashboardAuthMode.BASIC_AUTH, viewModel.modeForProvider(basic))
         assertEquals(DashboardAuthMode.BROWSER, viewModel.modeForProvider(oidc))
+    }
+
+    // ── ALL mode: gate down, token not readable from the dashboard page (review U18) ──
+
+    private fun probeIntoAllMode() {
+        val statusCall = mockk<okhttp3.Call>()
+        val homepageCall = mockk<okhttp3.Call>()
+        every { mockProbeClient.newCall(match { it.url.encodedPath == "/api/status" }) } returns statusCall
+        every { mockProbeClient.newCall(match { it.url.encodedPath == "/" }) } returns homepageCall
+        val response = mockk<Response>()
+        every { response.isSuccessful } returns true
+        every { response.body.string() } returns """{"auth_required":false}"""
+        coEvery { statusCall.await() } returns response
+        coEvery { homepageCall.await() } throws IOException("homepage unavailable")
+        viewModel.probe()
+        val state = runBlocking { viewModel.uiState.first { !it.probing } }
+        assertEquals(DashboardAuthMode.ALL, state.authMode)
+    }
+
+    private fun stubSuccessfulTokenLogin(token: String): HermesApiService {
+        val tempApi = mockk<HermesApiService>()
+        coEvery { tempApi.getSessions() } returns retrofit2.Response.success(mockk<SessionListResponse>(relaxed = true))
+        mockkObject(ApiClient)
+        every { ApiClient.createTempService(any(), token) } returns tempApi
+        every { AuthManager.setBaseUrl(any()) } just Runs
+        every { AuthManager.setToken(any()) } just Runs
+        every { AuthManager.setSessionCookie(any()) } just Runs
+        every { AuthManager.setWsAuthParam(any()) } just Runs
+        every { AuthManager.getSelectedProfileId() } returns null
+        mockkObject(ProfileSwitchCoordinator)
+        coEvery { ProfileSwitchCoordinator.switchConnectionProfile(any()) } just Runs
+        return tempApi
+    }
+
+    @Test
+    fun `ALL mode connects with the entered session token`() {
+        probeIntoAllMode()
+        val tempApi = stubSuccessfulTokenLogin("tok-123")
+
+        viewModel.onTokenChange("tok-123")
+        viewModel.connect()
+        val state = runBlocking { withTimeout(5_000) { viewModel.uiState.first { it.connectionSuccess } } }
+
+        assertNull(state.errorMessage)
+        coVerify(exactly = 1) { tempApi.getSessions() }
+        verify { AuthManager.setToken("tok-123") }
+        verify { AuthManager.setWsAuthParam("token") }
+        verify { AuthManager.setSessionCookie(null) }
+        verify(exactly = 0) { mockProbeClient.newCall(match { it.url.encodedPath == "/auth/password-login" }) }
+    }
+
+    @Test
+    fun `ALL mode without token or username asks for the token`() {
+        probeIntoAllMode()
+
+        viewModel.connect()
+        val state = runBlocking { withTimeout(5_000) { viewModel.uiState.first { !it.isLoading } } }
+
+        assertEquals(UiText.res(R.string.auth_login_error_token_required), state.errorMessage)
+        assertFalse(state.connectionSuccess)
     }
 }

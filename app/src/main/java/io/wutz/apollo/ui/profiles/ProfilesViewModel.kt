@@ -26,6 +26,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,8 @@ data class ProfilesUiState(
     val profiles: List<ProfileInfo> = emptyList(),
     val activeProfileName: String? = null,
     val sharedGatewayProfiles: List<String> = emptyList(),
+    /** Profile whose SOUL.md editor is open; null when the editor is closed. */
+    val soulEditProfileName: String? = null,
     val selectedSoulContent: String? = null,
     val isLoadingSoul: Boolean = false,
     val errorMessage: UiText? = null,
@@ -118,6 +121,7 @@ class ProfilesViewModel(
     }
 
     private val profilesCache = SwrCache<String, ProfilesResponse>()
+    private var soulLoadJob: Job? = null
 
     /**
      * Reset state owned by the previous server/profile context (PR #1192 cache scoping).
@@ -125,12 +129,15 @@ class ProfilesViewModel(
      * server that served them and must not be shown for a new context.
      */
     fun clearScopeOwnedState() {
+        soulLoadJob?.cancel()
+        soulLoadJob = null
         _uiState.update {
             it.copy(
                 isLoading = false,
                 profiles = emptyList(),
                 activeProfileName = null,
                 sharedGatewayProfiles = emptyList(),
+                soulEditProfileName = null,
                 selectedSoulContent = null,
                 isLoadingSoul = false,
                 errorMessage = null,
@@ -253,39 +260,53 @@ class ProfilesViewModel(
         }
     }
 
+    /**
+     * Opens the SOUL.md editor for [profileName] and loads its content. The result is only applied while the
+     * editor still belongs to [profileName]; a failed load closes the editor so an empty field can never be
+     * saved over the real SOUL.md.
+     */
     fun loadSoul(profileName: String) {
-        _uiState.update { it.copy(isLoadingSoul = true, selectedSoulContent = null) }
-        viewModelScope.launch {
-            val result =
-                withContext(ioDispatcher) {
-                    safeApiCall { ApiClient.hermesApi.getProfileSoul(profileName) }
-                }
-            when (result) {
-                is NetworkResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingSoul = false,
-                            selectedSoulContent = result.data.content,
-                        )
+        soulLoadJob?.cancel()
+        _uiState.update {
+            it.copy(soulEditProfileName = profileName, isLoadingSoul = true, selectedSoulContent = null)
+        }
+        soulLoadJob =
+            viewModelScope.launch {
+                val result =
+                    withContext(ioDispatcher) {
+                        safeApiCall { ApiClient.hermesApi.getProfileSoul(profileName) }
                     }
-                }
+                _uiState.update {
+                    if (it.soulEditProfileName != profileName) return@update it
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            it.copy(isLoadingSoul = false, selectedSoulContent = result.data.content)
+                        }
 
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingSoul = false,
-                            toastMessage = UiText.res(R.string.profiles_msg_load_soul_failed, result.error.message),
-                        )
+                        is NetworkResult.Failure -> {
+                            it.copy(
+                                soulEditProfileName = null,
+                                isLoadingSoul = false,
+                                selectedSoulContent = null,
+                                toastMessage =
+                                    UiText.res(R.string.profiles_msg_load_soul_failed, result.error.message),
+                            )
+                        }
                     }
                 }
             }
-        }
     }
 
     fun saveSoul(
         profileName: String,
         content: String,
     ) {
+        // Only content that was actually loaded for this profile may be written back.
+        val state = _uiState.value
+        if (state.soulEditProfileName != profileName || state.isLoadingSoul || state.selectedSoulContent == null) {
+            return
+        }
+        closeSoulDialog()
         viewModelScope.launch {
             val result =
                 withContext(ioDispatcher) {
@@ -298,12 +319,7 @@ class ProfilesViewModel(
                 }
             when (result) {
                 is NetworkResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            selectedSoulContent = null,
-                            toastMessage = UiText.res(R.string.profiles_msg_soul_updated),
-                        )
-                    }
+                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.profiles_msg_soul_updated)) }
                     loadProfiles(forceRefresh = true)
                 }
 
@@ -364,7 +380,9 @@ class ProfilesViewModel(
             ?: UiText.res(R.string.profiles_msg_status_success)
 
     fun closeSoulDialog() {
-        _uiState.update { it.copy(selectedSoulContent = null) }
+        soulLoadJob?.cancel()
+        soulLoadJob = null
+        _uiState.update { it.copy(soulEditProfileName = null, selectedSoulContent = null, isLoadingSoul = false) }
     }
 
     fun cloneProfile(

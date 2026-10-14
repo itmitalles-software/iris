@@ -15,6 +15,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,13 +64,27 @@ class KeysViewModel :
     val uiState: StateFlow<KeysUiState> = _uiState.asStateFlow()
 
     private val keysCache = SwrCache<String, Map<String, EnvVarConfig>>()
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    /**
+     * Bumped by [clearScopeOwnedState]. A key change, reveal or restart that completes after a server/profile
+     * switch belongs to the previous server and must not mark the new one as changed (its restart banner would
+     * restart the wrong gateway) or show the old server's values.
+     */
+    private var scopeGeneration = 0
 
     fun clearScopeOwnedState() {
+        scopeGeneration++
         _uiState.update {
             it.copy(
                 isLoading = false,
                 categories = emptyList(),
                 revealedValues = emptyMap(),
+                deleteTargetKey = null,
+                deletingKeys = emptySet(),
+                isAddingKey = false,
+                keysChanged = false,
+                isRestartingGateway = false,
                 errorMessage = null,
             )
         }
@@ -194,11 +209,13 @@ class KeysViewModel :
         }
 
         _uiState.update { it.copy(isAddingKey = true) }
+        val generation = scopeGeneration
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.updateEnvVar(EnvVarUpdate(key, value)) }
                 }
+            if (generation != scopeGeneration) return@launch
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {
@@ -242,11 +259,13 @@ class KeysViewModel :
 
     private fun deleteKey(key: String) {
         _uiState.update { it.copy(deletingKeys = it.deletingKeys + key) }
+        val generation = scopeGeneration
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.deleteEnvVar(EnvVarDeleteRequest(key)) }
                 }
+            if (generation != scopeGeneration) return@launch
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {
@@ -272,11 +291,13 @@ class KeysViewModel :
     }
 
     fun revealKey(key: String) {
+        val generation = scopeGeneration
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.revealEnvVar(EnvVarRevealRequest(key)) }
                 }
+            if (generation != scopeGeneration) return@launch
             when (result) {
                 is NetworkResult.Success -> {
                     val body = result.data
@@ -310,11 +331,13 @@ class KeysViewModel :
         key: String,
         value: String,
     ) {
+        val generation = scopeGeneration
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.updateEnvVar(EnvVarUpdate(key, value)) }
                 }
+            if (generation != scopeGeneration) return@launch
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {
@@ -343,11 +366,13 @@ class KeysViewModel :
 
     fun restartGateway() {
         _uiState.update { it.copy(isRestartingGateway = true) }
+        val generation = scopeGeneration
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.restartGateway() }
                 }
+            if (generation != scopeGeneration) return@launch
             when (result) {
                 is NetworkResult.Success -> {
                     _uiState.update {

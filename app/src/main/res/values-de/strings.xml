@@ -1871,6 +1871,8 @@
     <string name="mcp_tab_catalog">Katalog</string>
     <string name="mcp_servers_catalog_empty_title">Keine Katalogeinträge</string>
     <string name="mcp_servers_catalog_installed">Installiert</string>
+    <string name="mcp_servers_delete_confirm_title">%1$s löschen?</string>
+    <string name="mcp_servers_delete_confirm_msg">Der MCP-Server und seine Einstellungen werden aus der Hermes-Konfiguration entfernt. Seine Tools stehen danach nicht mehr zur Verfügung.</string>
     <string name="settings_desc_theme_preset_dynamic">Wird für Statusfarben verwendet, während Material You die App-Farben liefert.</string>
     <string name="screen_connections">Verbindungen</string>
     <string name="mtls_title">Konfiguration des mTLS-Clientzertifikats für HTTPS</string>
@@ -2187,6 +2189,9 @@
     <string name="files_msg_create_folder_failed">Ordner konnte nicht erstellt werden: %1$s</string>
     <string name="files_msg_file_uploaded">Datei hochgeladen</string>
     <string name="files_msg_upload_failed">Datei konnte nicht hochgeladen werden: %1$s</string>
+    <string name="files_upload_conflict_title">Datei ersetzen?</string>
+    <string name="files_upload_conflict_message">In diesem Ordner gibt es bereits eine Datei namens „%1$s“. Durch die ausgewählte Datei ersetzen?</string>
+    <string name="files_upload_conflict_replace">Ersetzen</string>
     <string name="files_msg_deleted">%1$s gelöscht</string>
     <string name="files_msg_delete_failed">Löschen fehlgeschlagen: %1$s</string>
     <!-- Skills -->

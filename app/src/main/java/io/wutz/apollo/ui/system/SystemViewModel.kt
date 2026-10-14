@@ -56,6 +56,11 @@ data class SystemUiState(
     val portal: PortalResponse? = null,
     val curator: CuratorResponse? = null,
     val credentials: List<CredentialPoolProvider> = emptyList(),
+    /**
+     * True while a pool change is in flight or [credentials] has not been reloaded since one. Pool entries are
+     * removed by their 1-based position, so removals stay blocked until the shown positions are current again.
+     */
+    val credentialsPending: Boolean = false,
     val checkpoints: CheckpointsResponse? = null,
     val hooks: HookResponse? = null,
     val updateInfo: UpdateCheckResponse? = null,
@@ -135,12 +140,16 @@ class SystemViewModel(
     private var actionPollingJob: Job? = null
     private var downloadJob: Job? = null
 
+    /** Bumped on every credential pool change; a pool load started before the change is stale. */
+    private var credentialsGeneration = 0
+
     // ── Full parallel data load ────────────────────────────────────────
 
     fun loadAll() {
         // Migration support is optional; probe it independently so an older or
         // slow backend cannot hold up the required System data.
         loadMigrationPlan()
+        val credGeneration = credentialsGeneration
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
@@ -201,7 +210,7 @@ class SystemViewModel(
                 launch {
                     val credResult = credDeferred.await()
                     if (credResult is NetworkResult.Success) {
-                        _uiState.update { it.copy(credentials = credResult.data.providers.orEmpty()) }
+                        applyCredentials(credGeneration, credResult.data.providers.orEmpty())
                     } else if (BuildConfig.DEBUG && credResult is NetworkResult.Failure) {
                         Log.w(TAG, "credentials endpoint: ${credResult.error.message}")
                     }
@@ -249,12 +258,28 @@ class SystemViewModel(
     // ── Targeted Data Reloads ──────────────────────────────────────────
 
     fun loadCredentials() {
+        val generation = credentialsGeneration
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) { safeApiCall { ApiClient.hermesApi.getCredentialPool() } }
             if (result is NetworkResult.Success) {
-                _uiState.update { it.copy(credentials = result.data.providers ?: emptyList()) }
+                applyCredentials(generation, result.data.providers.orEmpty())
             }
         }
+    }
+
+    /** Applies a pool listing unless a pool change happened after it was requested. */
+    private fun applyCredentials(
+        generation: Int,
+        providers: List<CredentialPoolProvider>,
+    ) {
+        if (generation != credentialsGeneration) return
+        _uiState.update { it.copy(credentials = providers, credentialsPending = false) }
+    }
+
+    /** Marks the shown pool positions as outdated until the next load after this change. */
+    private fun beginCredentialChange() {
+        credentialsGeneration++
+        _uiState.update { it.copy(credentialsPending = true) }
     }
 
     fun loadHooks() {
@@ -542,6 +567,8 @@ class SystemViewModel(
             return
         }
         _uiState.update { it.copy(addingCred = true) }
+        // A new entry can shift the positions of existing ones (pool priority order).
+        beginCredentialChange()
         viewModelScope.launch {
             val body =
                 CredentialPoolAddRequest(
@@ -573,15 +600,22 @@ class SystemViewModel(
                             toastMessage = UiText.res(R.string.system_msg_credential_add_failed, result.error.message),
                         )
                     }
+                    loadCredentials()
                 }
             }
         }
     }
 
+    /**
+     * Removes pool entry [index] (1-based, as listed by the server) of [provider]. The server only offers removal
+     * by position, so a removal is ignored while the shown list may be outdated ([SystemUiState.credentialsPending]).
+     */
     fun removeCredential(
         provider: String,
         index: Int,
     ) {
+        if (provider.isBlank() || index < 1 || _uiState.value.credentialsPending) return
+        beginCredentialChange()
         viewModelScope.launch {
             val result =
                 withContext(Dispatchers.IO) {
@@ -603,6 +637,8 @@ class SystemViewModel(
                                 ),
                         )
                     }
+                    // A failure (e.g. 404 for a position that no longer exists) can mean the list was outdated.
+                    loadCredentials()
                 }
             }
         }
