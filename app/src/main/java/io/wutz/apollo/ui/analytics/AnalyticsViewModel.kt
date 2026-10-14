@@ -73,8 +73,9 @@ class AnalyticsViewModel(
         // on startup — the first load() call falls back to on-demand fetch if
         // the seed hasn't landed yet.
         viewModelScope.launch {
+            val dataScope = cacheStore.currentScope()
             DAY_OPTIONS.forEach { days ->
-                cacheStore.load(days, _uiState.value.profile)?.let { (usage, models) ->
+                cacheStore.load(days, _uiState.value.profile, dataScope)?.let { (usage, models) ->
                     cache[days] = CacheEntry(usage, models)
                 }
             }
@@ -114,6 +115,7 @@ class AnalyticsViewModel(
     ) {
         loadJob =
             viewModelScope.launch {
+                val dataScope = cacheStore.currentScope()
                 // Issue #537 follow-up (B): fetch the two endpoints independently and
                 // surface the fast one (/models, ~0.1s, carries the totals card) the
                 // instant it lands, while /usage streams in behind a placeholder. The
@@ -152,7 +154,7 @@ class AnalyticsViewModel(
                     val finalModels = models ?: _uiState.value.models
                     cache[days] = CacheEntry(usage, finalModels)
                     // Write-through to disk so a cold app launch stays instant (C).
-                    cacheStore.save(days, profile, usage, finalModels)
+                    cacheStore.save(days, profile, usage, finalModels, dataScope)
                 }
 
                 // Surface the REAL failure (HTTP code / connection / parse error)

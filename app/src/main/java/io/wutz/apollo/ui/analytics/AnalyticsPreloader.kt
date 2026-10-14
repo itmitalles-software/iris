@@ -33,9 +33,11 @@ object AnalyticsPreloader {
         val store = AnalyticsCacheStore(context)
         val daysOptions = listOf(7, 30, 90)
         scope.launch {
+            // Same scope-qualified key the Analytics screen reads (see AnalyticsCacheStore).
+            val dataScope = store.currentScope() ?: return@launch
             for (days in daysOptions) {
-                // Skip windows already cached on disk — don't refetch what we have.
-                if (store.load(days, null) != null) continue
+                // Skip windows already cached on disk for THIS server/profile.
+                if (store.load(days, null, dataScope) != null) continue
                 val usage =
                     safeApiCall<io.wutz.apollo.data.model.AnalyticsResponse> {
                         ApiClient.hermesApi.getAnalytics(days, null)
@@ -46,7 +48,7 @@ object AnalyticsPreloader {
                     }
                 val usageData = (usage as? NetworkResult.Success)?.data ?: continue
                 val modelsData = (models as? NetworkResult.Success)?.data
-                store.save(days, null, usageData, modelsData)
+                store.save(days, null, usageData, modelsData, dataScope)
             }
         }
     }

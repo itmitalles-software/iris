@@ -462,4 +462,31 @@ class BackgroundConnectionControllerTest {
         assertFalse(serviceStopped)
         assertEquals(BackgroundNotificationState.WaitingForReplies, refreshed)
     }
+
+    @Test
+    fun testOnKeepConnectedDisabled_whenNotifyCompletionsOn_keepsLeaseAndService() {
+        var leaseReleased = false
+        var serviceStopped = false
+        val snapshot =
+            BackgroundConnectionSnapshot(
+                appInForeground = false,
+                keepConnectedOptIn = false,
+                pendingReply = false,
+                isEligibleForConnection = true,
+                status = ConnectionStatus.CONNECTED,
+                notifyCompletionsOptIn = true,
+            )
+        val controller =
+            BackgroundConnectionController(
+                snapshotProvider = { snapshot },
+                releaseLease = { leaseReleased = true },
+                requestServiceStop = { serviceStopped = true },
+                onNotificationStateChanged = {},
+            )
+
+        controller.onKeepConnectedDisabled()
+
+        assertFalse("completion notifications still need the live connection", leaseReleased)
+        assertFalse(serviceStopped)
+    }
 }

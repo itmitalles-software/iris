@@ -24,8 +24,9 @@ import java.io.OutputStream
  * app launch can render *something* instantly and refresh in the background —
  * the user never stares at a spinner for a query we already answered recently.
  *
- * Keyed by trailing window (`days`) AND profile id, so switching profiles
- * never leaks one profile's data into another (issue #537 follow-up).
+ * Keyed by trailing window (`days`), requested profile AND the current
+ * [DataScope] (connection profile, server URL, server-side profile), so neither
+ * a profile switch nor a different server ever shows another's usage and cost.
  */
 @Serializable
 private data class CachedWindow(
@@ -35,7 +36,7 @@ private data class CachedWindow(
 
 @Serializable
 private data class AnalyticsCacheState(
-    // Map key = "$days:$profile" so multi-profile installs stay isolated.
+    // Map key = analyticsCacheKey(): DataScope-qualified so servers and profiles stay isolated.
     val windows: Map<String, CachedWindow> = emptyMap(),
 )
 
@@ -71,26 +72,36 @@ private val Context.analyticsCacheDataStore: DataStore<AnalyticsCacheState> by d
     serializer = AnalyticsCacheSerializer,
 )
 
+/**
+ * Disk cache key for one analytics window, or null without a data scope (no
+ * server configured): then nothing is cached rather than shared across servers.
+ */
+internal fun analyticsCacheKey(
+    scope: DataScope?,
+    days: Int,
+    profile: String?,
+): String? = scope?.persistentKey("analytics:$days:${profile ?: "default"}")
+
 class AnalyticsCacheStore(
     private val context: Context,
+    private val scopeProvider: () -> DataScope? = { runCatching { AuthManager.currentDataScope() }.getOrNull() },
 ) {
-    /** Stable cache key covering both window and profile. */
-    private fun key(
-        days: Int,
-        profile: String?,
-    ): String = "$days:${profile ?: "default"}"
+    /** The data scope a request is issued under; pass it back to [load] and [save]. */
+    fun currentScope(): DataScope? = scopeProvider()
 
-    /** Load a previously cached window, or null if absent/corrupt. */
+    /** Load a previously cached window of [scope], or null if absent/corrupt. */
     suspend fun load(
         days: Int,
         profile: String?,
+        scope: DataScope? = currentScope(),
     ): Pair<AnalyticsResponse, ModelsAnalyticsResponse?>? =
         withContext(Dispatchers.IO) {
             try {
+                val key = analyticsCacheKey(scope, days, profile) ?: return@withContext null
                 val win =
                     context.analyticsCacheDataStore.data
                         .first()
-                        .windows[key(days, profile)] ?: return@withContext null
+                        .windows[key] ?: return@withContext null
                 val usage = OkHttpProvider.json.decodeFromString<AnalyticsResponse>(win.usageJson)
                 val models =
                     win.modelsJson
@@ -102,24 +113,39 @@ class AnalyticsCacheStore(
             }
         }
 
-    /** Persist a successful window response. Best-effort; never throws. */
+    /**
+     * Persist a successful window response fetched under [scope]. Skipped when
+     * the scope changed while the (slow) request was in flight, so a response
+     * is never filed under another server or profile. Best-effort; never throws.
+     */
     suspend fun save(
         days: Int,
         profile: String?,
         usage: AnalyticsResponse,
         models: ModelsAnalyticsResponse?,
+        scope: DataScope? = currentScope(),
     ) = withContext(Dispatchers.IO) {
         try {
+            if (scope != currentScope()) return@withContext
+            val key = analyticsCacheKey(scope, days, profile) ?: return@withContext
             context.analyticsCacheDataStore.updateData { state ->
                 val win =
                     CachedWindow(
                         usageJson = OkHttpProvider.json.encodeToString(usage),
                         modelsJson = models?.let { OkHttpProvider.json.encodeToString(it) } ?: "",
                     )
-                state.copy(windows = state.windows + (key(days, profile) to win))
+                // Drop entries from the old unscoped "$days:$profile" format: they
+                // cannot be attributed to a server and must never be served again.
+                val scoped = state.windows.filterKeys { it.startsWith(SCOPED_KEY_PREFIX) }
+                state.copy(windows = scoped + (key to win))
             }
         } catch (e: Exception) {
             // Fail-safe: a cache miss is preferable to a crash on launch.
         }
+    }
+
+    private companion object {
+        /** Every [DataScope.persistentKey] starts with its length-prefixed connection id. */
+        const val SCOPED_KEY_PREFIX = "c"
     }
 }
