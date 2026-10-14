@@ -84,11 +84,62 @@ fun isRetryable(e: IOException): Boolean =
         else -> true
     }
 
+/**
+ * Only safe methods (RFC 9110) are replayed after a failure. A POST, PATCH, PUT or DELETE that
+ * timed out or got a 5xx may already have taken effect on the server (task created, comment added,
+ * credential at an index removed), so resending it could duplicate or widen the change.
+ */
+fun isReplayableMethod(method: String): Boolean = method.uppercase() in REPLAYABLE_METHODS
+
+private val REPLAYABLE_METHODS = setOf("GET", "HEAD", "OPTIONS")
+
+/**
+ * Attached by [NonReplayableFailureInterceptor] as a suppressed exception to an I/O failure of a
+ * request that must not be resent, so [safeApiCall] can tell without changing the exception's type.
+ */
+class NonReplayableRequestMarker(
+    method: String,
+) : Exception("$method request may have reached the server; not retried") {
+    override fun fillInStackTrace(): Throwable = this
+}
+
+/** True when [e] (or an exception it wraps) failed a request that must not be resent. */
+fun isNonReplayableFailure(e: Throwable): Boolean =
+    generateSequence(e) { it.cause }.take(MAX_CAUSE_DEPTH).any { failure ->
+        failure.suppressed.any { it is NonReplayableRequestMarker }
+    }
+
+private const val MAX_CAUSE_DEPTH = 8
+
+/**
+ * Marks I/O failures of non-replayable requests (see [isReplayableMethod]) for [safeApiCall].
+ * A [java.net.ConnectException] is left unmarked: the connection never opened, so the request
+ * never reached the server and a retry is safe for every method.
+ */
+object NonReplayableFailureInterceptor : okhttp3.Interceptor {
+    override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
+        val request = chain.request()
+        try {
+            return chain.proceed(request)
+        } catch (e: IOException) {
+            if (!isReplayableMethod(request.method) && e !is java.net.ConnectException) {
+                e.addSuppressed(NonReplayableRequestMarker(request.method))
+            }
+            throw e
+        }
+    }
+}
+
 fun jitteredBackoff(baseMs: Long): Long {
     val jitter = (baseMs * 0.25 * (Math.random() * 2 - 1)).toLong()
     return baseMs + jitter
 }
 
+/**
+ * Run a Retrofit call and map it to [NetworkResult], retrying up to [retries] times with backoff
+ * on I/O errors, 5xx and 429. Requests with a non-replayable method (see [isReplayableMethod]) are
+ * only retried when the connection was never established.
+ */
 suspend inline fun <reified T> safeApiCall(
     retries: Int = 2,
     crossinline call: suspend () -> Response<T>,
@@ -114,7 +165,10 @@ suspend inline fun <reified T> safeApiCall(
                     } catch (_: Exception) {
                         null
                     }
-                if ((code in 500..599 || code == 429) && attempt < retries) {
+                if ((code in 500..599 || code == 429) &&
+                    attempt < retries &&
+                    isReplayableMethod(response.raw().request.method)
+                ) {
                     val backoff = jitteredBackoff(500L * (1 shl attempt))
                     delay(backoff)
                     continue
@@ -123,7 +177,7 @@ suspend inline fun <reified T> safeApiCall(
             }
         } catch (e: IOException) {
             lastException = e
-            if (attempt == retries || !isRetryable(e)) {
+            if (attempt == retries || !isRetryable(e) || isNonReplayableFailure(e)) {
                 return NetworkResult.Failure(
                     NetworkError.Connection(
                         "Network connection failure: ${e.message ?: "Unknown connection error"}",

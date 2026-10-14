@@ -22,6 +22,8 @@ import io.wutz.apollo.data.remote.ServerEndpoint
 import io.wutz.apollo.data.remote.requiresLocalNetworkPermission
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +57,9 @@ class ConnectViewModel(
      */
     @Suppress("MemberVisibilityCanBePrivate")
     internal var sdkVersion: Int = Build.VERSION.SDK_INT
+
+    /** Runs the gateway host lookup of the local-network gate; tests swap in their dispatcher. */
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
     private val _uiState = MutableStateFlow(ConnectUiState())
     val uiState: StateFlow<ConnectUiState> = _uiState.asStateFlow()
@@ -168,17 +173,21 @@ class ConnectViewModel(
      */
     fun requestConnect(context: Context) {
         val baseUrl = _uiState.value.baseUrl
-        val needsPermission =
-            requiresLocalNetworkPermission(sdkVersion, baseUrl) &&
-                ContextCompat.checkSelfPermission(
-                    context,
-                    android.Manifest.permission.ACCESS_LOCAL_NETWORK,
-                ) != PackageManager.PERMISSION_GRANTED
-        if (needsPermission) {
-            _uiState.update { it.copy(lanPermissionNeeded = true, errorMessage = null) }
-            return
+        // The gate resolves the host name (nas.local, MagicDNS), so it must not run
+        // on the main thread: there the lookup throws and the prompt never showed.
+        viewModelScope.launch {
+            val needsPermission =
+                requiresLocalNetworkPermission(sdkVersion, baseUrl, ioDispatcher) &&
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.ACCESS_LOCAL_NETWORK,
+                    ) != PackageManager.PERMISSION_GRANTED
+            if (needsPermission) {
+                _uiState.update { it.copy(lanPermissionNeeded = true, errorMessage = null) }
+                return@launch
+            }
+            connect()
         }
-        connect()
     }
 
     /** Called by the screen after the user responds to the local-network prompt. */

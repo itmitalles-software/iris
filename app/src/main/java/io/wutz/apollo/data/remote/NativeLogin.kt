@@ -4,7 +4,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
@@ -261,9 +260,10 @@ internal fun parseNativeTokens(json: String): NativeTokenResult {
         runCatching { OkHttpProvider.json.parseToJsonElement(json).jsonObject }.getOrNull()
             ?: return NativeTokenResult.Malformed
 
+    // `as?` instead of `.jsonPrimitive`: an object or array value must read as
+    // malformed, not throw IllegalArgumentException out of the login flow.
     fun field(name: String) =
-        node[name]
-            ?.jsonPrimitive
+        (node[name] as? JsonPrimitive)
             ?.takeIf { it.isString }
             ?.content
             .orEmpty()

@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
+import okhttp3.HttpUrl
 
 /**
  * Persistence contract for server-scoped cookies.
@@ -53,6 +54,8 @@ interface CookieStore {
 class EncryptedCookieStore(
     private val context: Context,
     private val legacyPrefsDeferred: Deferred<SharedPreferences>? = null,
+    /** The server the legacy cookie belongs to (the active one when the scope first loads). */
+    private val legacySessionUrl: () -> HttpUrl? = { null },
 ) : CookieStore {
     private val json =
         Json {
@@ -85,15 +88,27 @@ class EncryptedCookieStore(
             // Fold in legacy single-cookie storage once per server scope.
             // This awaits the deferred prefs on the IO dispatcher — never
             // blocks the caller (e.g. main thread) during app startup.
-            val migrated = maybeMigrateLegacy(serverId)
-            val raw = prefs.getString(keyFor(serverId), null) ?: return@withContext migrated
-            runCatching {
-                json
-                    .decodeFromString<List<CookieHolder>>(raw)
-                    .mapNotNull { it.toCookie() }
-                    .plus(migrated)
-                    .distinctBy { Triple(it.name, it.domain, it.path) }
-            }.getOrDefault(migrated)
+            val migrated = legacySessionCookie()
+            val raw = prefs.getString(keyFor(serverId), null)
+            val stored =
+                raw?.let {
+                    runCatching { json.decodeFromString<List<CookieHolder>>(it).mapNotNull { h -> h.toCookie() } }
+                        .getOrDefault(emptyList())
+                } ?: emptyList()
+            if (migrated == null) return@withContext stored
+            val merged = (stored + migrated).distinctBy { Triple(it.name, it.domain, it.path) }
+            // Persist the migrated cookie into this scope first, and drop the legacy
+            // value only then, so a crash in between cannot lose the session.
+            val written =
+                prefs.edit().putString(keyFor(serverId), json.encodeToString(merged.map { it.serialize() })).commit()
+            if (written) {
+                legacyPrefsDeferred
+                    ?.await()
+                    ?.edit()
+                    ?.remove(LEGACY_SESSION_COOKIE_KEY)
+                    ?.apply()
+            }
+            merged
         }
 
     override suspend fun clear(serverId: String) =
@@ -107,22 +122,17 @@ class EncryptedCookieStore(
         }
 
     /**
-     * If a legacy `hermes_session_at` value exists and we have not yet folded
-     * it into [serverId], wrap it as a host-less session cookie and clear the
-     * legacy key so the migration is one-shot. Awaits the deferred legacy
-     * prefs on the IO dispatcher so [load] (already on IO) never blocks the
-     * caller thread.
+     * The legacy `hermes_session_at` value wrapped as a host-only cookie for the
+     * server it belongs to, or null when there is none or that server is not yet
+     * known (the legacy value is then kept for a later load). Awaits the deferred
+     * legacy prefs on the IO dispatcher so [load] never blocks the caller thread.
      */
-    private suspend fun maybeMigrateLegacy(serverId: String): List<Cookie> {
-        val prefs =
-            legacyPrefsDeferred?.await()
-                ?: return emptyList()
-        val legacy =
-            prefs.getString(LEGACY_SESSION_COOKIE_KEY, null)
-                ?: return emptyList()
-        if (legacy.isBlank()) return emptyList()
-        prefs.edit().remove(LEGACY_SESSION_COOKIE_KEY).apply()
-        return wrapSessionCookie(legacy)?.let { listOf(it) } ?: emptyList()
+    private suspend fun legacySessionCookie(): Cookie? {
+        val prefs = legacyPrefsDeferred?.await() ?: return null
+        val legacy = prefs.getString(LEGACY_SESSION_COOKIE_KEY, null)
+        if (legacy.isNullOrBlank()) return null
+        val url = runCatching { legacySessionUrl() }.getOrNull() ?: return null
+        return wrapSessionCookie(legacy, url)
     }
 
     private fun keyFor(serverId: String) = "cookies::$serverId"

@@ -28,12 +28,16 @@ object OkHttpProvider {
     // (after CookieManager.initialize), not during object construction.
     // Note: retryOnConnectionFailure(true) lets OkHttp recover from low-level
     // connection/route failures (route timeouts, IPv4/IPv6 fallback), separate
-    // from safeApiCall's app-level retries (backoff + 5xx/429/timeouts).
+    // from safeApiCall's app-level retries (backoff + 5xx/429/timeouts, safe
+    // methods only; see NonReplayableFailureInterceptor).
     val base: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
             .let(ClientCertificates::configure)
             .cookieJar(resolveCookieJar())
+            // Outermost application interceptor, so it also sees failures of
+            // the interceptors that derived clients add (auth, profile).
+            .addInterceptor(NonReplayableFailureInterceptor)
             .addNetworkInterceptor(ServerHeadersInterceptor())
             .connectionPool(connectionPool)
             .connectTimeout(15, TimeUnit.SECONDS)

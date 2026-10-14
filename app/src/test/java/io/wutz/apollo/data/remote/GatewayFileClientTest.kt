@@ -2,6 +2,8 @@ package io.wutz.apollo.data.remote
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import io.wutz.apollo.data.config.ServerStore
 import io.wutz.apollo.data.config.ServerStoreState
 import io.wutz.apollo.data.local.AuthManager
@@ -11,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -36,6 +40,35 @@ class GatewayFileClientTest {
         field.isAccessible = true
         field.set(AuthManager, mockStore)
     }
+
+    @After
+    fun tearDown() {
+        CookieManager.resetForTest()
+        unmockkObject(ServerTrust, ClientCertificates)
+    }
+
+    @Test
+    fun `fetch reports an unreachable gateway as Failure instead of throwing`() =
+        runTest {
+            mockSystemServerTrust()
+            mockkObject(ClientCertificates)
+            every { ClientCertificates.cacheKey(any()) } returns "test-origin"
+            CookieManager.setJarForTest(buildFakePersistentCookieJar())
+            val server = MockWebServer().apply { start() }
+            val unreachable = server.url("/").toString()
+            server.shutdown()
+            val cacheDir =
+                kotlin.io.path
+                    .createTempDirectory("gateway-files")
+                    .toFile()
+            try {
+                val result =
+                    GatewayFileClient.fetch("/tmp/apollo-missing-${System.nanoTime()}.bin", unreachable, "", cacheDir)
+                assertTrue(result is GatewayFileResult.Failure)
+            } finally {
+                cacheDir.deleteRecursively()
+            }
+        }
 
     @Test
     fun `file cache separates origins and certificate generations while preserving display name`() {

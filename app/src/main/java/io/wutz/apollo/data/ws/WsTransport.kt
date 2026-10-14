@@ -37,6 +37,12 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
+/** A minted side-socket credential, or a failure flagged [retryable] when it is transient. */
+internal data class WsCredentialResult(
+    val credential: String?,
+    val retryable: Boolean,
+)
+
 /**
  * Socket lifecycle, authentication, outbound queueing, and network transport management.
  *
@@ -55,6 +61,7 @@ internal class WsTransport(
         private const val TAG = "HermesWsClient"
         private const val MAX_OUTBOUND_MESSAGE_BYTES = 16 * 1024 * 1024
         private const val OUTBOUND_DRAIN_TIMEOUT_MS = 60_000L
+        private const val HTTP_UNAUTHORIZED = 401
     }
 
     private val connectionGeneration = AtomicInteger(0)
@@ -266,16 +273,21 @@ internal class WsTransport(
         }
         val status =
             when {
-                ticketResult.exception -> ConnectionStatus.RECONNECTING
+                ticketResult.isTransient -> ConnectionStatus.RECONNECTING
                 ticketResult.httpCode == 401 || ticketResult.httpCode == 403 -> ConnectionStatus.AUTH_EXPIRED
-                ticketResult.httpCode == 408 || ticketResult.httpCode == 429 -> ConnectionStatus.RECONNECTING
-                ticketResult.httpCode != null && ticketResult.httpCode >= 500 -> ConnectionStatus.RECONNECTING
                 else -> ConnectionStatus.DISCONNECTED
             }
         return handleWsTicketRefreshFailure(status, generation)
     }
 
-    suspend fun mintWsTicket(): String? {
+    suspend fun mintWsTicket(): String? = mintWsCredential().credential
+
+    /**
+     * Fresh credential for a side socket, plus whether a failure is worth retrying:
+     * network errors, timeouts, 408/429 and 5xx are transient; a rejected session
+     * (401/403) or a missing token is not.
+     */
+    suspend fun mintWsCredential(): WsCredentialResult {
         val isGated =
             try {
                 AuthManager.serverStore.getLatestState().wsAuthParam == "ticket"
@@ -284,16 +296,21 @@ internal class WsTransport(
             }
         if (!isGated) {
             DashboardSessionTokenRefresher.refreshAsync()
-            return AuthManager.getToken()
+            return WsCredentialResult(AuthManager.getToken(), retryable = false)
         }
-        return requestWsTicket().ticket
+        val result = requestWsTicket()
+        return WsCredentialResult(result.ticket, retryable = result.isTransient)
     }
 
     private data class TicketRequestResult(
         val ticket: String?,
         val httpCode: Int?,
         val exception: Boolean = false,
-    )
+    ) {
+        /** A network failure or a status that says "try again later". */
+        val isTransient: Boolean
+            get() = exception || httpCode == 408 || httpCode == 429 || (httpCode != null && httpCode >= 500)
+    }
 
     private suspend fun requestWsTicket(): TicketRequestResult {
         try {
@@ -769,20 +786,16 @@ internal class WsTransport(
                 outboundDrainJob = null
                 if (this@WsTransport.webSocket === webSocket) this@WsTransport.webSocket = null
                 // Log the exception class only — [Throwable.message] can leak URLs
-                // or headers. The message is still inspected internally for auth
-                // detection.
+                // or headers.
                 Log.e(TAG, "WebSocket failure: ${t.javaClass.simpleName}", t)
                 connected.set(false)
                 ActiveSessionHolder.clear()
                 connectionHealth.stop()
                 rpcChannel.clearCapabilityRequests()
-                val code = response?.code ?: 0
-                if (code == 401 || code == 4401 || code == 4403 ||
-                    t.message?.contains("401") == true ||
-                    t.message?.contains("4401") == true ||
-                    t.message?.contains("4403") == true ||
-                    t.message?.contains("unauthorized", ignoreCase = true) == true
-                ) {
+                // A rejected handshake carries its HTTP response. Never match digits in the
+                // exception message: it holds hosts, IPs and ports (e.g. 10.0.4.401, :4401).
+                // Auth close codes (4401/4403) arrive through onClosing/onClosed.
+                if (response?.code == HTTP_UNAUTHORIZED) {
                     _connectionStatus.value = ConnectionStatus.AUTH_EXPIRED
                 } else if (_connectionStatus.value != ConnectionStatus.AUTH_EXPIRED) {
                     _connectionStatus.value = ConnectionStatus.RECONNECTING

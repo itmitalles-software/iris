@@ -233,6 +233,19 @@ class ConnectViewModelTest {
             val mockResponse = mockk<Response<StatusResponse>>()
             every { mockResponse.isSuccessful } returns false
             every { mockResponse.code() } returns 500
+            // safeApiCall reads the request method to decide whether a 5xx may be retried.
+            every { mockResponse.raw() } returns
+                okhttp3.Response
+                    .Builder()
+                    .request(
+                        okhttp3.Request
+                            .Builder()
+                            .url("https://127.0.0.1:9119/api/status")
+                            .build(),
+                    ).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(500)
+                    .message("error")
+                    .build()
             coEvery { mockApiService.getStatus() } returns mockResponse
 
             viewModel.connect()

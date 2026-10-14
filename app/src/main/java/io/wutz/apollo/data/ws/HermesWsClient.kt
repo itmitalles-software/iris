@@ -89,7 +89,7 @@ object HermesWsClient {
         RpcChannel(
             scope = wsScope,
             json = OkHttpProvider.json,
-            sendRequest = { method, params, onSent -> send(method, params, onSent) },
+            sendRequest = { request, onSent -> transport.send(request, onSent = onSent, queueIfDisconnected = true) },
             sendFrame = { frameJson -> transport.sendDirectFrame(frameJson) },
             removeQueuedMessage = { transport.removeQueuedMessage(it) },
             onIdleCheck = { transport.disconnectIfIdleInBackground() },
@@ -205,6 +205,8 @@ object HermesWsClient {
         transport.refreshWsTicketIfNeeded(generation)
 
     internal suspend fun mintWsTicket(): String? = transport.mintWsTicket()
+
+    internal suspend fun mintWsCredential(): WsCredentialResult = transport.mintWsCredential()
 
     fun disconnect(clearPendingMessages: Boolean = false) = transport.disconnect(clearPendingMessages)
 

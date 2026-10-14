@@ -4,10 +4,12 @@ import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.wutz.apollo.data.model.MessageReaction
+import io.wutz.apollo.data.remote.OkHttpProvider
 import kotlinx.serialization.json.JsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -109,6 +111,17 @@ class EventParserTest {
         assertEquals("clarify", cancelled.method)
         assertEquals("timeout", cancelled.reason)
         assertEquals("session-1", cancelled.sessionId)
+    }
+
+    @Test
+    fun testParseRpcResult_nullResultIsStillAResponse() {
+        val response =
+            OkHttpProvider.json.decodeFromString(
+                JsonRpcResponse.serializer(),
+                """{"jsonrpc":"2.0","id":"789","result":null}""",
+            )
+        assertNull(response.result)
+        assertEquals(WsEvent.RpcResult("789", null), EventParser.parse(response))
     }
 
     @Test

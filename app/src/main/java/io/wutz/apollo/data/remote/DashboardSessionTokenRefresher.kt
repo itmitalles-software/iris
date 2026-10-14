@@ -85,8 +85,12 @@ internal object DashboardSessionTokenRefresher {
         // body into a String risks OOM on low-end devices.
         val html =
             response.body.source().use { source ->
+                // A single read() returns at most one buffered segment (~8 KiB),
+                // so keep reading until the cap or the end of the body.
                 val buffer = Buffer()
-                source.read(buffer, MAX_BODY_BYTES)
+                while (buffer.size < MAX_BODY_BYTES) {
+                    if (source.read(buffer, MAX_BODY_BYTES - buffer.size) == -1L) break
+                }
                 buffer.readUtf8()
             }
         return tokenPattern

@@ -2,7 +2,9 @@ package io.wutz.apollo.data.remote
 
 import io.wutz.apollo.data.local.AuthManager
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import java.io.File
@@ -164,8 +166,17 @@ object GatewayFileClient {
         cacheDir: File,
     ): GatewayFileResult = fetch(path, AuthManager.getBaseUrl(), AuthManager.getToken().orEmpty(), cacheDir)
 
-    /** Fetch a gateway-hosted file with explicit credentials (testable). */
+    /** Fetch a gateway-hosted file with explicit credentials (testable). Runs the
+     * blocking request on [Dispatchers.IO], so callers may use any dispatcher, and
+     * reports network errors as [GatewayFileResult.Failure] instead of throwing. */
     suspend fun fetch(
+        path: String,
+        baseUrl: String,
+        token: String,
+        cacheDir: File,
+    ): GatewayFileResult = withContext(Dispatchers.IO) { fetchBlocking(path, baseUrl, token, cacheDir) }
+
+    private suspend fun fetchBlocking(
         path: String,
         baseUrl: String,
         token: String,
@@ -188,8 +199,13 @@ object GatewayFileClient {
                 ),
             )
         }
-        val call = OkHttpProvider.base.newCall(Request.Builder().url(url).build())
-        val resp = call.execute()
+        val resp =
+            try {
+                OkHttpProvider.base.newCall(Request.Builder().url(url).build()).execute()
+            } catch (e: Exception) {
+                // Offline, DNS, TLS or interceptor failures: report, never throw.
+                return GatewayFileResult.Failure(e)
+            }
         return try {
             classifyStatus(resp.code)?.let { return it }
             if (!resp.isSuccessful) {
