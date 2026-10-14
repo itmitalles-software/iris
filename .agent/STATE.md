@@ -1,6 +1,6 @@
 # Apollo — verified state
 
-_Last updated: 2026-10-13_
+_Last updated: 2026-10-14_
 
 ## Repository
 
@@ -97,6 +97,22 @@ _Last updated: 2026-10-13_
 - A local `hermes serve` over plain HTTP (127.0.0.1) accepts the password
   login but answers 401 afterwards (also with curl), so the recipe below no
   longer works as is; the HTTPS Tailscale endpoint works.
+
+## 2026-10-14: purple illustrations, trippier emblem, website
+
+- Owner review `~/reviews/apollo-art-2026-10-13/review-decision.json`
+  (confirmed 2026-10-14): purple art as lines on black in dark mode, new
+  vector emblem as app icon, painted gold logo on the website, merge only
+  (website not live), release v0.1.3. Owner note: keep the previous gold
+  theme; the black-and-white-only UI was dropped, `ApolloScheme` is unchanged.
+- Art: native Codex outputs and spec in `~/reviews/apollo-art-2026-10-13/`
+  (local only; style references are third-party screenshots, never commit).
+  `scripts/brand/process_art.py <codex-out>` regenerates the transparent
+  WebPs for app and website.
+- Website `website/` is ready but not published. To go live: enable Pages
+  (build type workflow, custom domain apollo.wutz.io), add Cloudflare CNAME
+  apollo → wutz-io.github.io (DNS only, account tim@itmitalles.de), add a
+  push trigger to `.github/workflows/website.yml`, run it, verify HTTPS.
 
 ## Known issues / follow-ups
 

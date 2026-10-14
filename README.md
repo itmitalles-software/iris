@@ -49,8 +49,9 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
 - **Large screens and keyboards:** wide layouts keep the chat readable on
   tablets and foldables; Ctrl+Enter sends from a hardware keyboard.
 - **Look and language:** the Apollo design system (true-black AMOLED dark by
-  default, antique gold accents, classical display type; see
-  [docs/BRANDING.md](docs/BRANDING.md)), an optional light mode, Material You
+  default, antique gold accents, classical display type and purple engraving
+  illustrations; see [docs/BRANDING.md](docs/BRANDING.md)), an optional light
+  mode, Material You
   and seven further themes. English and German follow
   the system language, with a manual switch in Settings (plus partial
   Arabic, Chinese, Italian, Korean and Spanish from Hermes Mobile; newer
@@ -63,10 +64,9 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
 
 Download the APK from the
 [latest release](https://github.com/wutz-io/apollo-hermes-android/releases/latest)
-and open it on your phone. Until signed releases are published, use the debug
-APK from the latest successful
-[CI run](https://github.com/wutz-io/apollo-hermes-android/actions/workflows/android.yml)
-(artifact `apollo-debug-apk`) or build it yourself (see [BUILD.md](BUILD.md)).
+and open it on your phone. Releases are signed with the Apollo release key;
+updates install over the previous version. To build it yourself, see
+[BUILD.md](BUILD.md).
 
 ## Connect over Tailscale (recommended)
 
