@@ -1,5 +1,4 @@
 name: Android CI/CD
-# Stable PR identity for recovery when GitHub omits fork run.pull_requests (#1506).
 run-name: >-
   ${{ github.event_name == 'pull_request' && format('Android CI PR #{0}', github.event.pull_request.number) || format('Android CI {0}', github.ref_name) }}
 
@@ -188,8 +187,27 @@ jobs:
           validate-wrappers: true
 
       # The runner has 4 vCPUs / 16 GB; the local default stays at 2 forks.
-      - name: Run test
-        run: ./gradlew test -PtestForks=4
+      # The Kover tasks attach the coverage agent (local runs without them stay
+      # uninstrumented) and write the debug-variant report; there is no threshold.
+      - name: Run test + coverage report
+        run: ./gradlew test koverXmlReportDebug koverHtmlReportDebug -PtestForks=4
+
+      # Telemetry only, never a gate.
+      - name: Line coverage
+        if: always()
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import os, xml.etree.ElementTree as ET
+          path = "app/build/reports/kover/reportDebug.xml"
+          if os.path.exists(path):
+              root = ET.parse(path).getroot()
+              line = next((c for c in root.findall("counter") if c.get("type") == "LINE"), None)
+              if line is not None:
+                  covered, missed = int(line.get("covered")), int(line.get("missed"))
+                  total = covered + missed
+                  percent = 100 * covered / total if total else 0
+                  print(f"### Line coverage (debug unit tests)\n\n{percent:.1f} % ({covered} of {total} lines)\n")
+          EOF
 
       # Telemetry only, never a gate: surfaces the slowest classes so perf work
       # targets real offenders.
@@ -216,6 +234,17 @@ jobs:
         with:
           name: test-reports
           path: app/build/reports/tests/
+          retention-days: 7
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report
+          path: |
+            app/build/reports/kover/htmlDebug/
+            app/build/reports/kover/reportDebug.xml
+          if-no-files-found: ignore
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────
@@ -353,7 +382,8 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────
-  # Job 7: PR status summary — aggregates all checks.
+  # Job 7: CI Summary — pure aggregator over all jobs; the one check to watch
+  # (and the one the release workflow requires on the tagged commit).
   # ─────────────────────────────────────────────────────────────────────
   ci-summary:
     name: CI Summary
@@ -363,13 +393,11 @@ jobs:
     if: always()
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - name: Check job results
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
           TEMPLATE_RESULT: ${{ needs.pr-template.result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
           KTLINT_RESULT: ${{ needs.ktlint.result }}
           LINT_RESULT: ${{ needs.android-lint.result }}
           TEST_RESULT: ${{ needs.unit-tests.result }}
@@ -377,34 +405,17 @@ jobs:
           RELEASE_COMPILE_RESULT: ${{ needs.release-compile.result }}
           INSTRUMENTED_RESULT: ${{ needs.instrumented-tests.result }}
         run: |
-          LABEL="ci-red"
-          FAILED=0
           FAILED_JOBS=""
-          for entry in "pr-template:$TEMPLATE_RESULT" "ktlint:$KTLINT_RESULT" "android-lint:$LINT_RESULT" "unit-tests:$TEST_RESULT" "build:$BUILD_RESULT" "release-compile:$RELEASE_COMPILE_RESULT" "instrumented-tests:$INSTRUMENTED_RESULT"; do
+          for entry in "pr-template:$TEMPLATE_RESULT" "changes:$CHANGES_RESULT" "ktlint:$KTLINT_RESULT" "android-lint:$LINT_RESULT" "unit-tests:$TEST_RESULT" "build:$BUILD_RESULT" "release-compile:$RELEASE_COMPILE_RESULT" "instrumented-tests:$INSTRUMENTED_RESULT"; do
             name="${entry%%:*}"
             result="${entry#*:}"
             echo "::notice::$name = $result"
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
-              FAILED=1
               FAILED_JOBS+="$name "
             fi
           done
-
-          # Label the PR so red CI is visible at a glance; remove it once green.
-          # Only PR events carry a PR number — pushes to main have nothing to label.
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            PR=${{ github.event.pull_request.number }}
-            if [[ "$FAILED" -eq 1 ]]; then
-              gh api -X POST "repos/$GH_REPO/issues/$PR/labels" -f "labels[]=$LABEL" --silent \
-                && echo "::notice::Added \"$LABEL\" to PR #$PR (failed: ${FAILED_JOBS% })"
-            else
-              # Fails if the label isn't present — that's fine, ignore it.
-              gh api -X DELETE "repos/$GH_REPO/issues/$PR/labels/$LABEL" --silent 2>/dev/null || true
-            fi
-          fi
-
-          if [[ "$FAILED" -eq 1 ]]; then
+          if [[ -n "$FAILED_JOBS" ]]; then
             echo "::error::CI failed (${FAILED_JOBS% }) — check individual job logs"
             exit 1
           fi
-          echo "All CI jobs passed ✅"
+          echo "All CI jobs passed"
