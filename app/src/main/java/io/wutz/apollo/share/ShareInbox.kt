@@ -24,17 +24,42 @@ data class SharedContent(
 
 /**
  * One-slot hand-off between [io.wutz.apollo.MainActivity], which receives the
- * share intent, and the chat screen, which stages it once a new chat exists.
+ * share intent, and the chat screen, which stages it once a new chat exists, or
+ * once [sessionId]'s chat is open for a direct share to a session shortcut.
  * A newer share replaces an unconsumed older one.
  */
 object ShareInbox {
-    private val pending = AtomicReference<SharedContent?>(null)
+    private data class Pending(
+        val content: SharedContent,
+        val sessionId: String?,
+    )
 
-    fun offer(content: SharedContent) {
-        pending.set(content)
+    private val pending = AtomicReference<Pending?>(null)
+
+    fun offer(
+        content: SharedContent,
+        sessionId: String? = null,
+    ) {
+        pending.set(Pending(content, sessionId))
     }
 
-    fun consume(): SharedContent? = pending.getAndSet(null)
+    /** Content for a new chat; a share aimed at a session stays for [consumeFor]. */
+    fun consume(): SharedContent? = take { it.sessionId == null }
+
+    /** Content shared straight into [sessionId] through its share-sheet shortcut. */
+    fun consumeFor(sessionId: String): SharedContent? = take { it.sessionId == sessionId }
+
+    fun clear() {
+        pending.set(null)
+    }
+
+    private fun take(matches: (Pending) -> Boolean): SharedContent? {
+        while (true) {
+            val current = pending.get() ?: return null
+            if (!matches(current)) return null
+            if (pending.compareAndSet(current, null)) return current.content
+        }
+    }
 }
 
 /** Metadata lookup for a shared URI; injectable so parsing is unit-testable. */

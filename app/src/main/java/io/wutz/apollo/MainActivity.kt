@@ -15,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -29,6 +30,9 @@ import io.wutz.apollo.notification.NotificationHelper
 import io.wutz.apollo.notification.NotificationReplyReceiver
 import io.wutz.apollo.share.ShareInbox
 import io.wutz.apollo.share.ShareIntentParser
+import io.wutz.apollo.shortcuts.AppShortcuts
+import io.wutz.apollo.shortcuts.SessionShortcuts
+import io.wutz.apollo.shortcuts.ShortcutRequest
 import io.wutz.apollo.theme.HermesControlTheme
 import io.wutz.apollo.theme.SystemBarsForTheme
 import io.wutz.apollo.theme.resolvesToDark
@@ -102,6 +106,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null && !isReplayedFromHistory(intent.flags)) {
             consumeNotificationIntent(intent)
             consumeShareIntent(intent)
+            consumeShortcutIntent(intent)
         }
 
         lifecycleScope.launch {
@@ -203,6 +208,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         consumeNotificationIntent(intent)
         consumeShareIntent(intent)
+        consumeShortcutIntent(intent)
     }
 
     override fun onResume() {
@@ -259,13 +265,66 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this@MainActivity, R.string.share_nothing_usable, Toast.LENGTH_LONG).show()
                 return@launch
             }
-            ShareInbox.offer(content)
             AuthManager.initializationState.first { it == AuthManager.InitializationState.Ready }
+            // A direct share to a conversation shortcut goes into that chat, if it belongs to the
+            // current connection and profile; otherwise it falls back to a new chat.
+            val targetSession =
+                AppShortcuts
+                    .sessionIdFromShortcutId(shared.getStringExtra(ShortcutManagerCompat.EXTRA_SHORTCUT_ID))
+                    ?.takeIf { SessionShortcuts.isCurrent(this@MainActivity, it, AuthManager.currentDataScope()) }
+            ShareInbox.offer(content, targetSession)
             if (AuthManager.isGatedMode() || !AuthManager.getToken().isNullOrBlank()) {
-                NavigationController.openNewChat()
+                if (targetSession != null) {
+                    NavigationController.openChatSession(targetSession)
+                } else {
+                    NavigationController.openNewChat()
+                }
             } else {
-                ShareInbox.consume()
+                ShareInbox.clear()
                 Toast.makeText(this@MainActivity, R.string.share_sign_in_first, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * Launcher shortcuts and the Quick Settings tile arrive through the non-exported
+     * [AppShortcuts.SHORTCUT_ENTRY_ALIAS]; anything else is ignored. Signed-out users land on
+     * the start screen as usual.
+     */
+    private fun consumeShortcutIntent(intent: Intent?) {
+        val request = intent?.let(AppShortcuts::parse) ?: return
+        intent.action = null
+        lifecycleScope.launch {
+            AuthManager.initializationState.first { it == AuthManager.InitializationState.Ready }
+            if (!AuthManager.isGatedMode() && AuthManager.getToken().isNullOrBlank()) return@launch
+            when (request) {
+                ShortcutRequest.NewChat -> {
+                    NavigationController.openNewChat()
+                }
+
+                ShortcutRequest.VoiceChat -> {
+                    NavigationController.openNewVoiceChat()
+                }
+
+                ShortcutRequest.History -> {
+                    NavigationController.requestScreen(HistoryScreen)
+                }
+
+                is ShortcutRequest.Session -> {
+                    if (SessionShortcuts.matchesScope(request.scopeKey, AuthManager.currentDataScope())) {
+                        ShortcutManagerCompat.reportShortcutUsed(
+                            this@MainActivity,
+                            AppShortcuts.SESSION_SHORTCUT_PREFIX + request.sessionId,
+                        )
+                        NavigationController.openChatSession(request.sessionId)
+                    } else {
+                        // Another connection or profile: its session id means nothing here.
+                        Toast
+                            .makeText(this@MainActivity, R.string.shortcut_session_other_scope, Toast.LENGTH_LONG)
+                            .show()
+                        NavigationController.requestScreen(HistoryScreen)
+                    }
+                }
             }
         }
     }

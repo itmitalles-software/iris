@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PushPin
@@ -76,11 +77,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -136,6 +139,8 @@ import io.wutz.apollo.ui.sessions.components.SessionsDialogs
 import io.wutz.apollo.ui.sessions.components.SessionsStatsRow
 import io.wutz.apollo.ui.sessions.components.automationGroups
 import io.wutz.apollo.ui.sessions.components.localizedSourceLabel
+import io.wutz.apollo.ui.sessions.transfer.SessionTransferActions
+import io.wutz.apollo.ui.sessions.transfer.rememberSessionTransfer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
@@ -213,9 +218,12 @@ internal class SessionsScreenActions(
     val onShowPruneDialog: () -> Unit = {},
     val onPrune: (days: Int) -> Unit = {},
     val onDismissPrune: () -> Unit = {},
+    val onImportConversation: () -> Unit = {},
+    val onShareSession: (sessionId: String) -> Unit = {},
+    val onExportSession: (sessionId: String, title: String?) -> Unit = { _, _ -> },
 )
 
-private fun SessionsViewModel.screenActions(): SessionsScreenActions =
+private fun SessionsViewModel.screenActions(transfer: State<SessionTransferActions>): SessionsScreenActions =
     SessionsScreenActions(
         onRefresh = { loadSessions(forceRefresh = true) },
         onRetryLoad = { loadSessions() },
@@ -259,6 +267,9 @@ private fun SessionsViewModel.screenActions(): SessionsScreenActions =
         onShowPruneDialog = ::showPruneDialog,
         onPrune = ::pruneSessions,
         onDismissPrune = ::hidePruneDialog,
+        onImportConversation = { transfer.value.importFile() },
+        onShareSession = { sessionId -> transfer.value.share(sessionId) },
+        onExportSession = { sessionId, title -> transfer.value.export(sessionId, title) },
     )
 
 @Composable
@@ -268,7 +279,9 @@ fun SessionsScreen(
     viewModel: SessionsViewModel = viewModel { SessionsViewModel() },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val actions = remember(viewModel) { viewModel.screenActions() }
+    val sessionTransfer = rememberSessionTransfer(onImported = { viewModel.loadSessions(forceRefresh = true) })
+    val currentTransfer = rememberUpdatedState(sessionTransfer)
+    val actions = remember(viewModel) { viewModel.screenActions(currentTransfer) }
 
     LaunchedEffect(Unit) {
         viewModel.loadSessions()
@@ -292,6 +305,7 @@ fun SessionsScreen(
         actions = actions,
         modifier = modifier,
         onOpenDrawer = onOpenDrawer,
+        importBusy = sessionTransfer.isBusy,
     )
 }
 
@@ -302,6 +316,7 @@ internal fun SessionsScreenContent(
     actions: SessionsScreenActions,
     modifier: Modifier = Modifier,
     onOpenDrawer: (() -> Unit)? = null,
+    importBusy: Boolean = false,
 ) {
     val statusColors = LocalHermesStatusColors.current
 
@@ -365,6 +380,7 @@ internal fun SessionsScreenContent(
                 showArchived = state.showArchived,
                 hasHiddenSessions = state.hasHiddenSessions,
                 showHidden = state.showHidden,
+                importBusy = importBusy,
                 actions = actions,
             )
         },
@@ -433,6 +449,7 @@ private fun SessionsTopBarActions(
     showArchived: Boolean,
     hasHiddenSessions: Boolean,
     showHidden: Boolean,
+    importBusy: Boolean,
     actions: SessionsScreenActions,
 ) {
     IconButton(
@@ -442,6 +459,16 @@ private fun SessionsTopBarActions(
         Icon(
             imageVector = Icons.Filled.Add,
             contentDescription = stringResource(R.string.content_desc_new_chat),
+        )
+    }
+    IconButton(
+        onClick = actions.onImportConversation,
+        enabled = !importBusy,
+        modifier = Modifier.testTag("sessions_action_import"),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.FileOpen,
+            contentDescription = stringResource(R.string.session_transfer_action_import),
         )
     }
     IconButton(
@@ -819,6 +846,8 @@ private fun SessionsSearchResults(
                                 onSelect = { actions.onStartSelection(session.id) },
                                 onRename = { actions.onOpenRename(session.id, session.title.orEmpty()) },
                                 onDelete = { actions.onRequestDelete(session.id) },
+                                onShare = { actions.onShareSession(session.id) },
+                                onExport = { actions.onExportSession(session.id, session.title) },
                             )
                         }
                         if (state.searchHasMore) {
@@ -1034,6 +1063,8 @@ private fun SessionsList(
                     onTogglePin = { actions.onTogglePin(session.id) },
                     onToggleArchive = { actions.onToggleArchive(session.id) },
                     onDelete = { actions.onRequestDelete(session.id) },
+                    onShare = { actions.onShareSession(session.id) },
+                    onExport = { actions.onExportSession(session.id, item.displayTitle) },
                 )
             }
         }
