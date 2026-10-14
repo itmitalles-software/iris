@@ -36,7 +36,7 @@ Every change must go through a pull request (PR) targeting `main`.
    - CI/chore: `ci/...`, `chore/...`
 3. **Implement your changes** and format them locally (see Code Style).
 4. **Submit a PR** targeting `main`, filling the PR template.
-5. **Ensure all CI checks pass** (ktlint, Android Lint, unit tests, build).
+5. **Run the local gate** (`./gradlew gate`, see [BUILD.md](BUILD.md#local-gate)) and **ensure all CI checks pass**.
 6. **Rebase onto `main` before merge** and re-run verification on the rebased result.
 
 ### Fixing a blocked PR description
@@ -49,9 +49,9 @@ checks again. Green runs and unrelated build/test failures are not restarted.
 The bot announces a restart only after GitHub accepts the request; it does not
 mean CI has passed. Fork workflow-approval requirements still apply.
 
-Recovery runs trusted scripts from `dev`, never contributor code or artifacts.
-Its `workflow_run` completion trigger becomes active once the workflow is on the
-repository's default branch (currently `dev`). Repeated events for the same run
+Recovery runs trusted scripts from `main`, never contributor code or artifacts.
+Its `workflow_run` completion trigger only runs from the repository's default
+branch (`main`). Repeated events for the same run
 and validated metadata are deduplicated using a bot receipt reserved before the
 restart request, then updated after GitHub accepts it. This prevents retry loops
 even if the final comment update fails. If a receipt stays unconfirmed, inspect
@@ -80,7 +80,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) to keep t
 Keep commits **atomic**: one subject line (≤72 chars) + max 2 lines of body. If it needs more, split into multiple commits.
 
 ```
-fix(#431): resume last session from Room cache on cold start
+fix(#5): resume last session from Room cache on cold start
 
 Shows cached messages before WS connects and resumes the last
 session on GatewayReady instead of creating a blank one.
@@ -93,7 +93,7 @@ session on GatewayReady instead of creating a blank one.
 If you use AI coding tools (including agents) to contribute:
 
 - **Never** add the AI tool as author, co-author, or `Co-Authored-By` in commit metadata.
-- Direct AI agents to [`AGENTS.md`](AGENTS.md) and [`DESIGN.md`](DESIGN.md) in the repo root — `AGENTS.md` contains operational and architecture conventions, while `DESIGN.md` defines visual, interaction, and accessibility requirements and links to the token sources. Theme implementation is documented in [`THEMES.md`](app/src/main/java/com/m57/hermescontrol/theme/THEMES.md).
+- Direct AI agents to [`AGENTS.md`](AGENTS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`DESIGN.md`](DESIGN.md). `AGENTS.md` holds the rules for contributors and agents, `docs/ARCHITECTURE.md` the architecture and testing conventions, and `DESIGN.md` the visual, interaction, and accessibility requirements with links to the token sources. Theme implementation is documented in [`THEMES.md`](app/src/main/java/io/wutz/apollo/theme/THEMES.md).
 
 ---
 
@@ -111,7 +111,7 @@ We enforce Kotlin coding conventions and Jetpack Compose best practices.
 
 ### Kotlin Formatting
 
-- Code formatting is checked and enforced by **ktlint 1.8.0** in CI. The authoritative command is the Gradle task (not the standalone binary):
+- Code formatting is checked and enforced by **ktlint 1.8.0** in CI. Use the Gradle tasks; they resolve ktlint 1.8.0 through Gradle, so no separate install is needed:
   ```bash
   ./gradlew ktlintCheck        # check (CI-equivalent)
   ./gradlew ktlintFormat       # auto-fix, then re-check with ktlintCheck
@@ -123,7 +123,7 @@ We enforce Kotlin coding conventions and Jetpack Compose best practices.
 
 - Standard screen structures must use `HermesScaffold` rather than raw Material3 `Scaffold`.
 - Follow existing Compose APIs: required parameters first, `modifier` as the first optional parameter, then other optional parameters; keep trailing composable content last.
-- Do **not** apply `paddingValues` on inner content inside `HermesScaffold` — the scaffold already handles top bar padding. See `AGENTS.md` for the full breakdown of this recurring bug.
+- Do **not** apply `paddingValues` on inner content inside `HermesScaffold` — the scaffold already handles top bar padding. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-hermesscaffold-padding-foot-gun) for the full breakdown of this recurring bug.
 - Every data screen must implement `LoadingState`, `ErrorState`, and `EmptyState` branches in its `when { }` block.
 
 ### Color Usage
@@ -134,9 +134,9 @@ We enforce Kotlin coding conventions and Jetpack Compose best practices.
 
 ### Tests
 
-- Unit tests: `./gradlew testDebugUnitTest` (MockK). Instrumented Compose UI tests run in CI on an emulator.
+- Unit tests: `./gradlew testDebugUnitTest` (MockK). Instrumented Compose UI tests run in CI on an emulator; `./gradlew gate` compiles them (`compileDebugAndroidTestKotlin`) so signature changes do not break the emulator job.
 - **Tests must not touch real on-device storage.** Use `@get:Rule TemporaryFolder` (or Room `inMemoryDatabaseBuilder`) — never write to real app data or external storage. CI/emulator environments are ephemeral; leaking state breaks the next run.
-- Mock time/dispatchers explicitly (`StandardTestDispatcher` + `Dispatchers.setMain`), restore `Dispatchers.Main` in teardown, and cancel test-owned scopes. Follow neighboring tests for the affected component.
+- Mock time/dispatchers explicitly (`StandardTestDispatcher` + `Dispatchers.setMain`), restore `Dispatchers.Main` in teardown, and cancel test-owned scopes. Follow neighboring tests for the affected component and the [testing conventions](docs/ARCHITECTURE.md#testing-conventions).
 - For UI changes, exercise the changed flow on a device or emulator and record the behavior observed. A built or downloaded CI APK alone is not behavioral verification. If device verification is unavailable, state that gate explicitly rather than marking it passed.
 
 
@@ -164,9 +164,7 @@ Before submitting your PR, please verify:
 - [ ] I searched open/closed PRs + issues for duplicates (see *Before You Start*).
 - [ ] PR is focused on one feature or one fix (no unrelated changes).
 - [ ] Branch is rebased onto current `main` (`git rebase origin/main`).
-- [ ] `./gradlew ktlintCheck` passes (ran `ktlintFormat` first — no hand edits).
-- [ ] `checkColorLiterals` passes (no hardcoded Color literals outside theme/).
-- [ ] `./gradlew testDebugUnitTest` passes locally (or CI unit-tests job is green).
+- [ ] `./gradlew gate` passes (ran `ktlintFormat` first — no hand edits).
 - [ ] No unused imports, unused parameters, or dead code.
 - [ ] Meaningful images and icon-only actions have localized accessible labels; decorative images/icons use `contentDescription = null` to avoid redundant announcements.
 - [ ] New screens use `HermesScaffold` and implement Loading/Error/Empty states.

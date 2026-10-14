@@ -5,8 +5,9 @@
 - JDK 21 (Temurin recommended)
 - Android SDK with platform `android-37` and build-tools 37 (Gradle installs
   missing SDK packages automatically when the licenses are accepted)
-- Optional: [ktlint 1.8.0](https://github.com/pinterest/ktlint/releases/tag/1.8.0)
-  on `PATH` for `./gradlew ktlintCheck`
+- Nothing else: `./gradlew ktlintCheck` resolves ktlint 1.8.0
+  (`com.pinterest.ktlint:ktlint-cli`) through Gradle, so no `ktlint` binary
+  is needed on `PATH`
 
 Create `local.properties` (ignored by Git) or export `ANDROID_HOME`:
 
@@ -14,13 +15,37 @@ Create `local.properties` (ignored by Git) or export `ANDROID_HOME`:
 sdk.dir=/path/to/Android/Sdk
 ```
 
+### Nix (optional)
+
+`flake.nix` provides all of the above (JDK 21, the Android SDK with platform
+and build-tools 37 plus an x86_64 emulator image) and sets `JAVA_HOME` and `ANDROID_HOME`:
+
+```bash
+nix develop        # or, with direnv: direnv allow (the repository's .envrc runs `use flake`)
+```
+
+## Local gate
+
+Run this before every commit or pull request:
+
+```bash
+./gradlew gate
+```
+
+It runs `ktlintCheck`, `checkColorLiterals`, `checkGermanStrings`,
+`testDebugUnitTest`, `lintDebug`, `assembleDebug`,
+`compileDebugAndroidTestKotlin`, `compileReleaseKotlin` and
+`checkPlayPermissions`: the checks of the CI jobs except the emulator tests.
+For UI changes, also run the changed flow on a device or emulator.
+
 ## Common tasks
 
 ```bash
 ./gradlew assembleDebug        # debug APK → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew testDebugUnitTest    # JVM unit tests
 ./gradlew lintDebug            # Android Lint
-./gradlew ktlintCheck          # code style (needs ktlint on PATH)
+./gradlew ktlintCheck          # code style (ktlint 1.8.0, resolved by Gradle)
+./gradlew ktlintFormat         # fix code style, then re-run ktlintCheck
 ./gradlew checkColorLiterals   # guard against hard-coded colors outside the theme
 ./gradlew connectedDebugAndroidTest   # Compose UI tests on a device/emulator
 ```
