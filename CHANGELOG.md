@@ -3,7 +3,7 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
-## Unreleased
+## 0.1.5 — 2026-10-14
 
 ### Security
 
