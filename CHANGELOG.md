@@ -3,6 +3,43 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
+## 0.1.6 — 2026-10-14
+
+Fixes from the full code review of 2026-10-14 (PRs #22–#27).
+
+### Security
+
+- Prompts (approval, sudo, secret, vault) from a background session no longer
+  appear in the open chat.
+- Images from other hosts in replies are not loaded until you tap "Load image",
+  and only http, https and mailto links are clickable.
+- Other apps can no longer open a chat by session id; notification taps go
+  through a private entry point.
+- Copied API keys are marked as sensitive, and app data is excluded from cloud
+  backup and device transfer.
+
+### Fixed
+
+- Chat: a background session no longer cuts off or resets the reply you are
+  watching; replies are saved in order; no crash when rotating with the image
+  viewer open; a cleared plan stays cleared; "~5 min, then ~10 min" is no longer
+  rendered as subscript.
+- Voice mode: after talking over a reply, the new answer is spoken; a phone call
+  ends the conversation; broken speech output is reported; transcripts no longer
+  take staged attachments along.
+- Network: timed-out or failed POST requests are not resent (no duplicate tasks
+  or comments); requests fail instead of hanging after a disconnect; the Kanban
+  live view reconnects after network drops; settings and cookies are no longer
+  lost when saved in quick succession.
+- Kanban: the board returns after bulk actions; bulk archive and unassign ask
+  first; Archive, Unassign and Delete are reachable in multi-select on phones.
+- Screens no longer mix up results when you switch quickly (profiles, cron jobs,
+  skills, memory providers, task logs, archived sessions).
+- Uploads keep the real file name, stream large files and ask before replacing.
+- Rotation, dark mode and language changes keep the current screen.
+- Failed inline replies from a notification show "Reply not sent" instead of
+  spinning forever.
+
 ## 0.1.5 — 2026-10-14
 
 ### Security
