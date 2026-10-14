@@ -51,6 +51,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +61,8 @@ import io.wutz.apollo.R
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.chat.MarkdownText
 import io.wutz.apollo.ui.chat.buildHighlightedString
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 
 /**
  * Collapsible card showing the assistant's reasoning trace
@@ -88,6 +93,7 @@ fun ReasoningCard(
     var fullHeight by remember { mutableStateOf(false) }
     // Copy feedback: briefly show "Copied" then revert
     var copied by rememberCopyFeedback()
+    val copyLabel = stringResource(R.string.content_desc_copy)
     val scrollState = rememberScrollState()
     LaunchedEffect(expanded, isCurrentMatch, searchQuery, searchOffset, scrollState.maxValue) {
         if (expanded && isCurrentMatch && searchQuery.isNotBlank() && scrollState.maxValue > 0) {
@@ -103,8 +109,10 @@ fun ReasoningCard(
             modifier
                 .fillMaxWidth()
                 .then(if (!isStreaming) Modifier.animateContentSize() else Modifier)
+                .expandToggleSemantics(expandToggleLabels(expanded))
                 .combinedClickable(
                     onClick = { expanded = !expanded },
+                    onLongClickLabel = copyLabel,
                     onLongClick = {
                         val clipboard =
                             context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -136,6 +144,7 @@ fun ReasoningCard(
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.reasoning_copied),
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )

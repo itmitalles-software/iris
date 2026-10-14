@@ -79,6 +79,8 @@ import io.wutz.apollo.ui.chat.SubagentIndicator
 import io.wutz.apollo.ui.chat.SubagentTranscriptUiState
 import io.wutz.apollo.ui.chat.TodoItem
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 
 /**
  * Inspection sheet displaying active & completed subagent tasks and agent todos (issue #1030).
@@ -515,7 +517,10 @@ private fun TodoInspectionCard(
                 .padding(start = startPadding)
                 .then(
                     if (onToggleExpand != null) {
-                        Modifier.clickable(onClick = onToggleExpand)
+                        Modifier
+                            .expandToggleSemantics(
+                                expandToggleLabels(row.isExpanded),
+                            ).clickable(onClick = onToggleExpand)
                     } else {
                         Modifier
                     },

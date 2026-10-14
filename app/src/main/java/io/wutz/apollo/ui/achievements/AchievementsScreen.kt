@@ -66,6 +66,8 @@ import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 
 @Composable
 fun AchievementsScreen(
@@ -692,6 +694,7 @@ private fun AchievementCard(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .expandToggleSemantics(expandToggleLabels(expanded))
                             .clickable { expanded = !expanded },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),

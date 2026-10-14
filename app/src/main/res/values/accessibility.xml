@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Accessibility labels, state descriptions and announcements (mostly TalkBack-only). -->
+<resources>
+    <string name="a11y_state_expanded">Expanded</string>
+    <string name="a11y_state_collapsed">Collapsed</string>
+    <string name="a11y_tool_status_running">Running</string>
+    <string name="a11y_tool_status_completed">Completed</string>
+    <string name="a11y_tool_status_failed">Failed</string>
+    <string name="a11y_loading">Loading</string>
+    <string name="a11y_connection_status">Connection: %1$s</string>
+    <string name="a11y_connection_connected">Connected</string>
+    <string name="a11y_title_scroll">Scroll title</string>
+    <string name="a11y_delete_named">Delete %1$s</string>
+    <string name="a11y_remove_named">Remove %1$s</string>
+    <string name="a11y_edit_named">Edit %1$s</string>
+    <string name="a11y_session_actions">Show actions</string>
+    <string name="a11y_change_model">Change model</string>
+    <string name="a11y_reasoning_options">Open reasoning options</string>
+    <string name="a11y_record_voice_note">Record voice note</string>
+    <string name="a11y_hide_sidebar">Hide sidebar</string>
+    <string name="a11y_show_sidebar">Show sidebar</string>
+    <string name="a11y_open_link">Open in browser</string>
+    <string name="bot_color_indigo">Indigo</string>
+    <string name="bot_color_blue">Blue</string>
+    <string name="bot_color_teal">Teal</string>
+    <string name="bot_color_green">Green</string>
+    <string name="bot_color_amber">Amber</string>
+    <string name="bot_color_orange">Orange</string>
+    <string name="bot_color_red">Red</string>
+    <string name="bot_color_pink">Pink</string>
+    <string name="bot_color_purple">Purple</string>
+    <string name="bot_color_gray">Gray</string>
+    <string name="config_yaml_field_label">YAML configuration</string>
+    <string name="profiles_soul_field_label">Soul</string>
+</resources>

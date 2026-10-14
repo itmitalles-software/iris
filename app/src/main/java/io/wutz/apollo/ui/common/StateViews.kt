@@ -50,6 +50,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -126,6 +133,7 @@ fun ErrorState(
         Spacer(modifier = Modifier.height(spacing.sm))
         Text(
             text = message,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
@@ -354,12 +362,18 @@ fun SkeletonListState(
     rowHeight: Dp = 72.dp,
     modifier: Modifier = Modifier,
 ) {
+    val loadingDescription = stringResource(R.string.a11y_loading)
     Column(
         modifier =
             modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp)
-                .testTag("skeleton_list_state"),
+                .testTag("skeleton_list_state")
+                // Placeholder rows are silent; announce one "Loading" for the whole list instead.
+                .clearAndSetSemantics {
+                    contentDescription = loadingDescription
+                    progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate
+                },
         verticalArrangement = listItemSpacing,
     ) {
         repeat(itemCount) { SkeletonRow(height = rowHeight) }

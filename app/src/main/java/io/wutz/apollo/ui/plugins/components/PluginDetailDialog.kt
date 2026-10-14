@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -340,12 +342,24 @@ private fun PluginSettingFieldRow(
 
                 PluginSettingFieldType.BOOLEAN -> {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier =
+                            Modifier.fillMaxWidth().toggleable(
+                                value =
+                                    value.equals(
+                                        "true",
+                                        ignoreCase = true,
+                                    ),
+                                enabled = enabled,
+                                role = Role.Switch,
+                                onValueChange = {
+                                    onChange(it.toString())
+                                },
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Switch(
                             checked = value.equals("true", ignoreCase = true),
-                            onCheckedChange = { onChange(it.toString()) },
+                            onCheckedChange = null,
                             enabled = enabled,
                         )
                         Spacer(modifier = Modifier.width(8.dp))

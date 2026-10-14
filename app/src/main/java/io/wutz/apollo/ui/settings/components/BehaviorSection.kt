@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.wutz.apollo.R
@@ -45,9 +47,30 @@ internal fun BehaviorSection(
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) onNotifySessionCompletionsChange(true)
         }
+    val onNotifyToggle: (Boolean) -> Unit = { enabled ->
+        if (!enabled) {
+            onNotifySessionCompletionsChange(false)
+        } else {
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            val granted =
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(context, permission) ==
+                    PackageManager.PERMISSION_GRANTED
+            if (granted) {
+                onNotifySessionCompletionsChange(true)
+            } else {
+                permissionLauncher.launch(permission)
+            }
+        }
+    }
     SectionCard {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth().toggleable(
+                    value = autoReconnect,
+                    role = Role.Switch,
+                    onValueChange = onAutoReconnectChange,
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -66,7 +89,7 @@ internal fun BehaviorSection(
             }
             Switch(
                 checked = autoReconnect,
-                onCheckedChange = onAutoReconnectChange,
+                onCheckedChange = null,
             )
         }
 
@@ -75,7 +98,12 @@ internal fun BehaviorSection(
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth().toggleable(
+                    value = keepConnectedInBackground,
+                    role = Role.Switch,
+                    onValueChange = onKeepConnectedInBackgroundChange,
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -94,7 +122,7 @@ internal fun BehaviorSection(
             }
             Switch(
                 checked = keepConnectedInBackground,
-                onCheckedChange = onKeepConnectedInBackgroundChange,
+                onCheckedChange = null,
             )
         }
 
@@ -103,7 +131,12 @@ internal fun BehaviorSection(
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth().toggleable(
+                    value = notifySessionCompletions,
+                    role = Role.Switch,
+                    onValueChange = onNotifyToggle,
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -122,22 +155,7 @@ internal fun BehaviorSection(
             }
             Switch(
                 checked = notifySessionCompletions,
-                onCheckedChange = { enabled ->
-                    if (!enabled) {
-                        onNotifySessionCompletionsChange(false)
-                    } else {
-                        val permission = Manifest.permission.POST_NOTIFICATIONS
-                        val granted =
-                            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                                ContextCompat.checkSelfPermission(context, permission) ==
-                                PackageManager.PERMISSION_GRANTED
-                        if (granted) {
-                            onNotifySessionCompletionsChange(true)
-                        } else {
-                            permissionLauncher.launch(permission)
-                        }
-                    }
-                },
+                onCheckedChange = null,
             )
         }
 
@@ -146,7 +164,12 @@ internal fun BehaviorSection(
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier.fillMaxWidth().toggleable(
+                    value = restoreLastSession,
+                    role = Role.Switch,
+                    onValueChange = onRestoreLastSessionChange,
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -165,7 +188,7 @@ internal fun BehaviorSection(
             }
             Switch(
                 checked = restoreLastSession,
-                onCheckedChange = onRestoreLastSessionChange,
+                onCheckedChange = null,
             )
         }
     }

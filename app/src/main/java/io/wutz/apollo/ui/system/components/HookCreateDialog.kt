@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
@@ -78,10 +80,18 @@ fun HookCreateDialog(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier =
+                        Modifier.toggleable(
+                            value = approve,
+                            role = Role.Switch,
+                            onValueChange = onApproveChange,
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Switch(
                         checked = approve,
-                        onCheckedChange = onApproveChange,
+                        onCheckedChange = null,
                     )
                     Spacer(modifier = Modifier.width(spacing.sm))
                     Text(

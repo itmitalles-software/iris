@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+import io.wutz.apollo.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -47,12 +49,14 @@ import kotlinx.coroutines.launch
  * @param text The title string.
  * @param onClick Optional callback fired on tap in addition to re-triggering the
  *   scroll (e.g. focus the input, open details).
+ * @param onClickLabel TalkBack action label for [onClick]; defaults to "Scroll title".
  */
 @Composable
 fun AutoScrollingTitleText(
     text: String,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
     color: Color = Color.Unspecified,
     fontSize: TextUnit = TextUnit.Unspecified,
     fontStyle: FontStyle? = null,
@@ -66,6 +70,7 @@ fun AutoScrollingTitleText(
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
+    val scrollLabel = stringResource(R.string.a11y_title_scroll)
 
     // Real available width (px) of the title slot — captured from the outer
     // container, NOT from inside horizontalScroll (which would report Infinity).
@@ -122,10 +127,17 @@ fun AutoScrollingTitleText(
                 .fillMaxWidth()
                 .clipToBounds()
                 .onSizeChanged { availableWidthPx = it.width }
-                .clickable {
-                    triggerScroll()
-                    onClick?.invoke()
-                },
+                .then(
+                    // A title that fits and has no action is plain text, not a button that does nothing.
+                    if (overflows || onClick != null) {
+                        Modifier.clickable(onClickLabel = onClickLabel ?: scrollLabel) {
+                            triggerScroll()
+                            onClick?.invoke()
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

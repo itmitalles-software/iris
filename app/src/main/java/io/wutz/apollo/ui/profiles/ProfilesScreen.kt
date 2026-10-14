@@ -661,6 +661,7 @@ fun ProfilesScreen(
                     OutlinedTextField(
                         state = soulTextFieldState,
                         modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.profiles_soul_field_label)) },
                         lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 10),
                     )
                 }
