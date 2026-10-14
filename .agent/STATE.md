@@ -129,6 +129,40 @@ _Last updated: 2026-10-14_
   apollo → wutz-io.github.io (DNS only, account tim@itmitalles.de), add a
   push trigger to `.github/workflows/website.yml`, run it, verify HTTPS.
 
+## 2026-10-14: full code review, v0.1.5 and v0.1.6 (released, versionCode 106)
+
+- Full review of `app/src/main` (six static reviewers + a review of the latest
+  changes): 84 findings, page and decision in
+  `~/reviews/apollo-code-review-2026-10-14/` (owner confirmed: hotfix S1-S3 as
+  v0.1.5, fix everything else per area, release). Per-area fix reports in its
+  `reports/`.
+- v0.1.5 (PR #21): session cookie only for the active server's host/port
+  (`CookieManager.isActiveServerUrl`), cookie-less `OkHttpProvider.external` for
+  GitHub, approval buttons answer their own card, MCP catalog env scoped.
+  Verified with a header probe: v0.1.4 sent `hermes_session_at` to a foreign
+  image host, v0.1.5 sends none.
+- PRs #22-#27 merged (platform, voice, screens-core, screens-admin, chat,
+  network): all remaining findings fixed, none dropped; plus the Kanban
+  multi-select bar now scrolls (Archive/Unassign/Delete were off-screen on
+  phones). Combined gate before merge: 3,701 unit tests green.
+- Conventions added by the fixes: Kanban VMs `attachScreen/detachScreen` from a
+  DisposableEffect (VMs stay Activity-scoped); back stack via
+  `rememberNavBackStack`; non-GET requests are never replayed
+  (`NonReplayableFailureInterceptor` + `safeApiCall`); notification taps go
+  through the non-exported alias `.NotificationEntryAlias`; third-party markdown
+  images need a tap.
+- Emulator-verified: S1 probe, S7 forged intent (opens a chat on v0.1.4, not
+  now), notification taps, U7 rotation/locale, U19/U27 dialogs (EN/DE,
+  dark/light), U1, S5 placeholder, C1 rotation with image viewer, voice panel.
+  Not device-verified: spoken voice loop (#4), P1 transfer, P2 offline reply,
+  N6 on API 37, N14 Keystore migration.
+- Release-build pitfall: a v0.1.5 release run failed because Maven Central
+  briefly 404'd `compose-group-mapping:2.4.21`; a rerun of the failed job worked.
+- `compileDebugAndroidTestKotlin` is not in the local gate; run it when changing
+  signatures used by `app/src/androidTest` (CI caught one in #27).
+- `HermesWsClientTest.testOpenRequestsReplayUsesTheLiveServerRequestDispatcher`
+  still times out occasionally under heavy load (3/3 green alone).
+
 ## Known issues / follow-ups
 
 Tracked as GitHub issues in the repository.
