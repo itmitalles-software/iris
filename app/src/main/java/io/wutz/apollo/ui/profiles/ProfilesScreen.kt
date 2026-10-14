@@ -87,7 +87,6 @@ fun ProfilesScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dataScope by AuthManager.dataScopeFlow.collectAsStateWithLifecycle()
 
-    var soulEditProfileName by remember { mutableStateOf<String?>(null) }
     var modelEditProfileName by remember { mutableStateOf<String?>(null) }
 
     var cloneProfileName by remember { mutableStateOf<String?>(null) }
@@ -590,10 +589,7 @@ fun ProfilesScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                             ) {
                                                 OutlinedButton(
-                                                    onClick = {
-                                                        soulEditProfileName = profile.name
-                                                        viewModel.loadSoul(profile.name)
-                                                    },
+                                                    onClick = { viewModel.loadSoul(profile.name) },
                                                     modifier = Modifier.padding(end = 8.dp),
                                                 ) {
                                                     Icon(
@@ -626,6 +622,7 @@ fun ProfilesScreen(
         }
     }
 
+    val soulEditProfileName = state.soulEditProfileName
     if (soulEditProfileName != null) {
         val initialText = state.selectedSoulContent ?: ""
         val soulTextFieldState = rememberTextFieldState(initialText)
@@ -639,16 +636,13 @@ fun ProfilesScreen(
         }
 
         AlertDialog(
-            onDismissRequest = {
-                soulEditProfileName = null
-                viewModel.closeSoulDialog()
-            },
+            onDismissRequest = { viewModel.closeSoulDialog() },
             title = {
                 Text(
                     text =
                         stringResource(
                             R.string.profiles_title_edit_soul,
-                            soulEditProfileName.orEmpty(),
+                            soulEditProfileName,
                         ),
                 )
             },
@@ -673,25 +667,14 @@ fun ProfilesScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = {
-                        val profileName = soulEditProfileName
-                        if (profileName != null) {
-                            viewModel.saveSoul(profileName, soulTextFieldState.text.toString())
-                        }
-                        soulEditProfileName = null
-                    },
-                    enabled = !state.isLoadingSoul,
+                    onClick = { viewModel.saveSoul(soulEditProfileName, soulTextFieldState.text.toString()) },
+                    enabled = !state.isLoadingSoul && state.selectedSoulContent != null,
                 ) {
                     Text(stringResource(R.string.action_ok))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        soulEditProfileName = null
-                        viewModel.closeSoulDialog()
-                    },
-                ) {
+                TextButton(onClick = { viewModel.closeSoulDialog() }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

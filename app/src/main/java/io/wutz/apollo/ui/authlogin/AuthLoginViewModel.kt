@@ -56,7 +56,10 @@ enum class DashboardAuthMode {
     /** Dashboard has basic auth (gated `0.0.0.0` bind) — needs username + password. */
     BASIC_AUTH,
 
-    /** Dashboard requires both basic auth credentials and a session token. */
+    /**
+     * No auth gate, but the session token could not be read from the dashboard page: the user enters it.
+     * Username + password are only used when no token is entered.
+     */
     ALL,
 
     /**
@@ -425,23 +428,25 @@ class AuthLoginViewModel(
             runCatching { ServerEndpoint.parseForBuild(state.baseUrl) }.getOrNull()
                 ?: return
 
+        // ALL = no auth gate, but the session token could not be read from the dashboard page: the token the
+        // user entered is what the dashboard needs. Credentials are only tried when no token was entered.
+        val useToken =
+            state.authMode == DashboardAuthMode.TOKEN_ONLY ||
+                (state.authMode == DashboardAuthMode.ALL && (state.token.isNotBlank() || state.username.isBlank()))
+
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
             val result =
                 withContext(Dispatchers.IO) {
                     when (state.authMode) {
-                        DashboardAuthMode.TOKEN_ONLY -> {
-                            val token = connectTokenOnly(endpoint, state.token)
-                            if (token != null) ConnectResult(wsCredential = token) else null
-                        }
-
-                        DashboardAuthMode.BASIC_AUTH -> {
-                            connectBasicAuth(endpoint, state.username, state.password, state.selectedProvider)
-                        }
-
-                        DashboardAuthMode.ALL -> {
-                            connectBasicAuth(endpoint, state.username, state.password, state.selectedProvider)
+                        DashboardAuthMode.TOKEN_ONLY, DashboardAuthMode.ALL, DashboardAuthMode.BASIC_AUTH -> {
+                            if (useToken) {
+                                val token = connectTokenOnly(endpoint, state.token)
+                                if (token != null) ConnectResult(wsCredential = token) else null
+                            } else {
+                                connectBasicAuth(endpoint, state.username, state.password, state.selectedProvider)
+                            }
                         }
 
                         DashboardAuthMode.BROWSER -> {
@@ -459,7 +464,7 @@ class AuthLoginViewModel(
             if (result != null) {
                 AuthManager.setBaseUrl(state.baseUrl)
                 AuthManager.setToken(result.wsCredential)
-                if (state.authMode == DashboardAuthMode.TOKEN_ONLY) {
+                if (useToken) {
                     // Loopback mode — no session cookie; ensure any stale one
                     // is cleared so the jar only sends the Bearer token.
                     AuthManager.setSessionCookie(null)

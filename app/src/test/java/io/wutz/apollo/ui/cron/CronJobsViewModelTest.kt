@@ -21,6 +21,7 @@ import io.wutz.apollo.data.model.UpdateCronJobRequest
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -611,5 +612,96 @@ class CronJobsViewModelTest {
 
         settle()
         coVerify { mockApi.pauseCronJob("j-sched") }
+    }
+
+    // ── Edit job loading (review U11) ──
+
+    private fun job(
+        id: String,
+        name: String,
+    ) = CronJob(id = id, name = name, schedule = JsonPrimitive("0 8 * * *"), prompt = "prompt of $name")
+
+    @Test
+    fun `getCronJob failure closes the editor instead of leaving blank fields to save`() {
+        coEvery { mockApi.getCronJob("j1") } returns Response.error(500, "{}".toResponseBody(null))
+        val vm = createViewModel()
+
+        vm.openEditJobDialog("j1")
+        settle()
+
+        assertFalse(vm.uiState.value.editorState.isOpen)
+        assertNotNull(vm.uiState.value.toastMessage)
+
+        vm.saveEditor()
+        settle()
+        coVerify(exactly = 0) { mockApi.updateCronJob(any(), any()) }
+    }
+
+    @Test
+    fun `saveEditor is ignored while the job is still loading`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getCronJob("j1") } coAnswers {
+            gate.await()
+            Response.success(job("j1", "Job one"))
+        }
+        val vm = createViewModel()
+
+        vm.openEditJobDialog("j1")
+        settle()
+        vm.updateEditorField("schedule", "0 9 * * *")
+        vm.saveEditor()
+        settle()
+
+        coVerify(exactly = 0) { mockApi.updateCronJob(any(), any()) }
+        gate.complete(Unit)
+    }
+
+    @Test
+    fun `late job response does not reopen a closed editor`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getCronJob("j1") } coAnswers {
+            gate.await()
+            Response.success(job("j1", "Job one"))
+        }
+        val vm = createViewModel()
+
+        vm.openEditJobDialog("j1")
+        settle()
+        vm.closeEditor()
+        gate.complete(Unit)
+        settle()
+
+        assertFalse(vm.uiState.value.editorState.isOpen)
+    }
+
+    @Test
+    fun `late job response does not replace another job's editor`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getCronJob("j1") } coAnswers {
+            gate.await()
+            Response.success(job("j1", "Job one"))
+        }
+        coEvery { mockApi.getCronJob("j2") } returns Response.success(job("j2", "Job two"))
+        coEvery { mockApi.updateCronJob(any(), any()) } returns Response.success(job("j2", "Job two"))
+        val vm = createViewModel()
+
+        vm.openEditJobDialog("j1")
+        settle()
+        vm.closeEditor()
+        vm.openEditJobDialog("j2")
+        settle()
+        gate.complete(Unit)
+        settle()
+
+        val editor = vm.uiState.value.editorState
+        assertTrue(editor.isOpen)
+        assertEquals("j2", editor.jobId)
+        assertEquals("Job two", editor.name)
+        assertEquals("prompt of Job two", editor.prompt)
+
+        vm.saveEditor()
+        settle()
+        coVerify(exactly = 1) { mockApi.updateCronJob("j2", any()) }
+        coVerify(exactly = 0) { mockApi.updateCronJob("j1", any()) }
     }
 }

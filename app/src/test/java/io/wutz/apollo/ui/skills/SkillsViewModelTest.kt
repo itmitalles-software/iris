@@ -9,6 +9,8 @@ import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.HubSkill
+import io.wutz.apollo.data.model.SaveSkillContentRequest
+import io.wutz.apollo.data.model.SkillContentResponse
 import io.wutz.apollo.data.model.SkillHubSource
 import io.wutz.apollo.data.model.SkillHubSourcesResponse
 import io.wutz.apollo.data.model.SkillScanFinding
@@ -16,6 +18,7 @@ import io.wutz.apollo.data.model.SkillScanResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -194,5 +197,85 @@ class SkillsViewModelTest {
         assertNull(vm.uiState.value.hubScanResult)
         assertNull(vm.uiState.value.hubScanError)
         assertEquals(false, vm.uiState.value.isHubScanning)
+    }
+
+    // ── Skill editor content (review U17) ──
+
+    @Test
+    fun `late content of a previously edited skill never fills another skill's editor`() {
+        val gateA = CompletableDeferred<Unit>()
+        coEvery { mockApi.getSkillContent("alpha") } coAnswers {
+            gateA.await()
+            Response.success(SkillContentResponse(name = "alpha", content = "alpha content"))
+        }
+        coEvery { mockApi.getSkillContent("beta") } returns
+            Response.success(SkillContentResponse(name = "beta", content = "beta content"))
+        coEvery { mockApi.saveSkillContent(any()) } returns Response.success(Unit)
+        val vm = createViewModel()
+
+        vm.loadSkillContent("alpha")
+        settle()
+        vm.clearEditor()
+        vm.loadSkillContent("beta")
+        settle()
+        gateA.complete(Unit)
+        settle()
+
+        assertEquals("beta", vm.uiState.value.editingSkillName)
+        assertEquals("beta content", vm.uiState.value.skillContent)
+
+        vm.saveSkillContent("beta", "beta edited")
+        settle()
+        coVerify(
+            exactly = 1,
+        ) { mockApi.saveSkillContent(SaveSkillContentRequest(name = "beta", content = "beta edited")) }
+    }
+
+    @Test
+    fun `late content failure does not close another skill's editor`() {
+        val gateA = CompletableDeferred<Unit>()
+        coEvery { mockApi.getSkillContent("alpha") } coAnswers {
+            gateA.await()
+            Response.error(500, "{}".toResponseBody("application/json".toMediaTypeOrNull()))
+        }
+        val gateB = CompletableDeferred<Unit>()
+        coEvery { mockApi.getSkillContent("beta") } coAnswers {
+            gateB.await()
+            Response.success(SkillContentResponse(name = "beta", content = "beta content"))
+        }
+        val vm = createViewModel()
+
+        vm.loadSkillContent("alpha")
+        settle()
+        vm.loadSkillContent("beta")
+        settle()
+        gateA.complete(Unit)
+        settle()
+
+        assertEquals("beta", vm.uiState.value.editingSkillName)
+        assertNull(vm.uiState.value.toastMessage)
+
+        gateB.complete(Unit)
+        settle()
+        assertEquals("beta content", vm.uiState.value.skillContent)
+    }
+
+    @Test
+    fun `content arriving after the editor was closed does not reopen it`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getSkillContent("alpha") } coAnswers {
+            gate.await()
+            Response.success(SkillContentResponse(name = "alpha", content = "alpha content"))
+        }
+        val vm = createViewModel()
+
+        vm.loadSkillContent("alpha")
+        settle()
+        vm.clearEditor()
+        gate.complete(Unit)
+        settle()
+
+        assertNull(vm.uiState.value.editingSkillName)
+        assertNull(vm.uiState.value.skillContent)
     }
 }

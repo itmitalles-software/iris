@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.McpServer
 import io.wutz.apollo.theme.Spacing
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.ManageableItemCard
 import io.wutz.apollo.ui.common.ManageableToggle
 import io.wutz.apollo.ui.common.StatusBadge
@@ -67,6 +68,7 @@ fun ServerCard(
     modifier: Modifier = Modifier,
 ) {
     var showEnv by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val isTesting = server.name in state.testingServers
     val testResult = state.serverTestResults[server.name]
     val healthStatus = McpHealthStatus.resolve(isTesting, testResult, server.status, server.error)
@@ -239,7 +241,7 @@ fun ServerCard(
                 }
             }
             IconButton(
-                onClick = { viewModel.deleteServer(server.name) },
+                onClick = { confirmDelete = true },
                 enabled = !server.isPluginOwned,
             ) {
                 Icon(
@@ -250,6 +252,21 @@ fun ServerCard(
             }
         },
     )
+
+    if (confirmDelete) {
+        ConfirmDialog(
+            title = stringResource(R.string.mcp_servers_delete_confirm_title, server.name),
+            message = stringResource(R.string.mcp_servers_delete_confirm_msg),
+            onConfirm = {
+                confirmDelete = false
+                viewModel.deleteServer(server.name)
+            },
+            onDismiss = { confirmDelete = false },
+            confirmText = stringResource(R.string.action_delete),
+            isDestructive = true,
+            icon = Icons.Filled.Delete,
+        )
+    }
 }
 
 @Composable

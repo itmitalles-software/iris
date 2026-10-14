@@ -68,6 +68,12 @@ class ChannelsViewModel :
 
     private var launchJob: Job? = null
 
+    /** The in-flight onboarding start request; cancelled with the onboarding it belongs to. */
+    private var onboardingStartJob: Job? = null
+
+    /** Bumped whenever onboarding is reset, so a late start response of an earlier attempt is ignored. */
+    private var onboardingGeneration = 0
+
     init {
         // Issue #784: gateway broadcasts platforms.changed — refresh silently
         // (no spinner) instead of waiting for a manual pull.
@@ -352,6 +358,7 @@ class ChannelsViewModel :
         ) {
             return
         }
+        val generation = onboardingGeneration
         _uiState.update {
             it.copy(
                 onboardingPhase = OnboardingPhase.STARTING,
@@ -362,37 +369,45 @@ class ChannelsViewModel :
                 onboardingNewAllowedId = "",
             )
         }
-        viewModelScope.launch {
-            val result =
-                safeApiCall {
-                    ApiClient.hermesApi.startTelegramOnboarding(
-                        TelegramOnboardingStartRequest(botName = "Hermes Agent"),
-                    )
-                }
-            _uiState.update {
-                when (result) {
-                    is io.wutz.apollo.data.remote.NetworkResult.Success -> {
-                        val setup = result.data
-                        it.copy(
-                            onboardingPhase = OnboardingPhase.WAITING,
-                            onboardingSetup = setup,
-                            onboardingQrDataUrl = setup.qrPayload,
-                            onboardingExpiresIn = formatExpiry(setup.expiresAt),
+        onboardingStartJob?.cancel()
+        onboardingStartJob =
+            viewModelScope.launch {
+                val result =
+                    safeApiCall {
+                        ApiClient.hermesApi.startTelegramOnboarding(
+                            TelegramOnboardingStartRequest(botName = "Hermes Agent"),
                         )
                     }
+                // Cancelled or reset meanwhile: the late response must not revive the onboarding.
+                if (generation != onboardingGeneration ||
+                    _uiState.value.onboardingPhase != OnboardingPhase.STARTING
+                ) {
+                    return@launch
+                }
+                _uiState.update {
+                    when (result) {
+                        is io.wutz.apollo.data.remote.NetworkResult.Success -> {
+                            val setup = result.data
+                            it.copy(
+                                onboardingPhase = OnboardingPhase.WAITING,
+                                onboardingSetup = setup,
+                                onboardingQrDataUrl = setup.qrPayload,
+                                onboardingExpiresIn = formatExpiry(setup.expiresAt),
+                            )
+                        }
 
-                    is io.wutz.apollo.data.remote.NetworkResult.Failure -> {
-                        it.copy(
-                            onboardingPhase = OnboardingPhase.IDLE,
-                            onboardingError = UiText.raw(result.error.message),
-                        )
+                        is io.wutz.apollo.data.remote.NetworkResult.Failure -> {
+                            it.copy(
+                                onboardingPhase = OnboardingPhase.IDLE,
+                                onboardingError = UiText.raw(result.error.message),
+                            )
+                        }
                     }
                 }
+                if (_uiState.value.onboardingPhase == OnboardingPhase.WAITING) {
+                    pollOnboardingStatus()
+                }
             }
-            if (_uiState.value.onboardingPhase == OnboardingPhase.WAITING) {
-                pollOnboardingStatus()
-            }
-        }
     }
 
     private fun pollOnboardingStatus() {
@@ -563,6 +578,9 @@ class ChannelsViewModel :
     }
 
     private fun resetOnboarding() {
+        onboardingGeneration++
+        onboardingStartJob?.cancel()
+        onboardingStartJob = null
         launchJob?.cancel()
         _uiState.update {
             it.copy(

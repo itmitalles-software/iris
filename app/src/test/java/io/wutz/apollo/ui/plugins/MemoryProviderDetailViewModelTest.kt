@@ -19,6 +19,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -284,6 +285,76 @@ class MemoryProviderDetailViewModelTest {
         assertEquals(
             UiText.raw("Not Found (HTTP 404): The requested resource could not be found."),
             vm.uiState.value.errorMessage,
+        )
+    }
+
+    // ── Provider switch fencing (review U16) ──
+
+    private val ttsConfig =
+        MemoryProviderConfigResponse(
+            name = "tts",
+            label = "TTS Memory",
+            fields = listOf(MemoryProviderField(key = "voice", kind = "text", label = "Voice", value = "alloy")),
+        )
+
+    @Test
+    fun `late config of the previous provider never fills the current one`() {
+        val webGate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getMemoryProviderConfig("web") } coAnswers {
+            webGate.await()
+            Response.success(webConfig)
+        }
+        coEvery { mockApi.getMemoryProviderConfig("tts") } returns Response.success(ttsConfig)
+        coEvery { mockApi.updateMemoryProviderConfig("tts", any()) } returns
+            Response.success(MemoryProviderConfigUpdateResponse(ok = true, active = "tts"))
+        val vm = MemoryProviderDetailViewModel()
+
+        vm.setProvider("web")
+        vm.load()
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.setProvider("tts")
+        vm.load()
+        testDispatcher.scheduler.advanceUntilIdle()
+        webGate.complete(Unit)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals("tts", state.providerName)
+        assertEquals("tts", state.config?.name)
+        assertEquals(mapOf("voice" to "alloy"), state.edits)
+        assertFalse(state.isLoading)
+
+        vm.saveConfig()
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 1) {
+            mockApi.updateMemoryProviderConfig("tts", MemoryProviderConfigUpdateRequest(mapOf("voice" to "alloy")))
+        }
+        coVerify(exactly = 0) { mockApi.updateMemoryProviderConfig("web", any()) }
+    }
+
+    @Test
+    fun `late save result of the previous provider does not touch the current one`() {
+        val saveGate = CompletableDeferred<Unit>()
+        coEvery { mockApi.updateMemoryProviderConfig("web", any()) } coAnswers {
+            saveGate.await()
+            Response.success(MemoryProviderConfigUpdateResponse(ok = true, active = "web"))
+        }
+        coEvery { mockApi.getMemoryProviderConfig("tts") } returns Response.success(ttsConfig)
+        val vm = createViewModel()
+
+        vm.saveConfig()
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.setProvider("tts")
+        vm.load()
+        testDispatcher.scheduler.advanceUntilIdle()
+        saveGate.complete(Unit)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(vm.uiState.value.toastMessage)
+        assertEquals(
+            "tts",
+            vm.uiState.value.config
+                ?.name,
         )
     }
 }

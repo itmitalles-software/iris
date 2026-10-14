@@ -13,10 +13,12 @@ import io.wutz.apollo.data.model.MessagingPlatform
 import io.wutz.apollo.data.model.MessagingPlatformResponse
 import io.wutz.apollo.data.model.MessagingPlatformUpdate
 import io.wutz.apollo.data.model.MessagingPlatformUpdateResponse
+import io.wutz.apollo.data.model.TelegramOnboardingStartResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -251,5 +254,55 @@ class ChannelsViewModelTest {
             viewModel.uiState.value.toastMessage,
         )
         assertFalse(viewModel.uiState.value.restartNeeded)
+    }
+
+    // ── Telegram onboarding start (review U29) ──
+
+    private val onboardingStart =
+        TelegramOnboardingStartResponse(
+            pairingId = "pair-1",
+            suggestedUsername = "hermes_bot",
+            deepLink = "https://t.me/newbot",
+            qrPayload = "data:image/png;base64,AA==",
+            expiresAt = "2099-01-01T00:00:00",
+        )
+
+    @Test
+    fun `cancelling during STARTING stops the start request and its late response does not revive onboarding`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.startTelegramOnboarding(any()) } coAnswers {
+            gate.await()
+            Response.success(onboardingStart)
+        }
+        val viewModel = ChannelsViewModel()
+
+        viewModel.startTelegramOnboarding()
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(OnboardingPhase.STARTING, viewModel.uiState.value.onboardingPhase)
+
+        viewModel.cancelTelegramOnboarding()
+        gate.complete(Unit)
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(OnboardingPhase.IDLE, viewModel.uiState.value.onboardingPhase)
+        assertNull(viewModel.uiState.value.onboardingSetup)
+        coVerify(exactly = 0) { mockApi.getTelegramOnboardingStatus(any()) }
+    }
+
+    @Test
+    fun `start response moves onboarding to WAITING`() {
+        coEvery { mockApi.startTelegramOnboarding(any()) } returns Response.success(onboardingStart)
+        val viewModel = ChannelsViewModel()
+
+        viewModel.startTelegramOnboarding()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(OnboardingPhase.WAITING, viewModel.uiState.value.onboardingPhase)
+        assertEquals(
+            "pair-1",
+            viewModel.uiState.value.onboardingSetup
+                ?.pairingId,
+        )
+        viewModel.cancelTelegramOnboarding()
     }
 }

@@ -1,5 +1,8 @@
 package io.wutz.apollo.ui.files
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Base64
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
@@ -12,12 +15,16 @@ import io.wutz.apollo.data.model.ManagedFileDelete
 import io.wutz.apollo.data.model.ManagedFileEntry
 import io.wutz.apollo.data.model.ManagedFilesListResponse
 import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.util.StreamingUriRequestBody
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
 data class FilesUiState(
@@ -42,9 +50,22 @@ data class FilesUiState(
     val isCreatingDir: Boolean = false,
     val newDirName: String = "",
     val isUploading: Boolean = false,
+    /** Upload the server refused because the file exists; shown as a replace confirmation. */
+    val uploadConflict: UploadConflict? = null,
     val deleteTarget: ManagedFileEntry? = null,
     val openingPath: String? = null,
     val toastMessage: UiText? = null,
+)
+
+/**
+ * An upload rejected with HTTP 409 because [fileName] already exists at [target]. [body] streams from the picked
+ * document again when the user confirms replacing it.
+ */
+class UploadConflict(
+    val fileName: String,
+    val target: String,
+    val mimeType: String,
+    val body: RequestBody,
 )
 
 /** Decoded file ready to be written to disk and opened on-device. */
@@ -76,8 +97,9 @@ inline fun <T, R> NetworkResult<T>.map(transform: (T) -> R): NetworkResult<R> =
         is NetworkResult.Failure -> this
     }
 
-class FilesViewModel :
-    ViewModel(),
+class FilesViewModel(
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel(),
     ToastHost {
     private val _uiState = MutableStateFlow(FilesUiState())
     val uiState: StateFlow<FilesUiState> = _uiState.asStateFlow()
@@ -101,6 +123,7 @@ class FilesViewModel :
                 isCreatingDir = false,
                 newDirName = "",
                 isUploading = false,
+                uploadConflict = null,
                 deleteTarget = null,
                 openingPath = null,
             )
@@ -195,7 +218,7 @@ class FilesViewModel :
         _uiState.update { it.copy(isCreatingDir = false, newDirName = "", isLoading = true) }
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.createManagedDirectory(ManagedDirectoryCreate(target))
                     }
@@ -205,31 +228,75 @@ class FilesViewModel :
     }
 
     // ── Upload (streaming multipart) ──────────────────────────────────────
+
+    /**
+     * Uploads the document at [uri] into the current directory. Name and size come from the document's
+     * [OpenableColumns] (resolved off the main thread) and the bytes stream straight from the
+     * [contentResolver] into the request, so large files never sit in memory. An existing file is never
+     * replaced silently: the server's 409 becomes [FilesUiState.uploadConflict] for the user to confirm.
+     */
     fun uploadFile(
-        fileName: String,
-        bytes: ByteArray,
-        mimeType: String,
+        contentResolver: ContentResolver,
+        uri: Uri,
     ) {
         val base = _uiState.value.currentPath
-        val target = if (base.isBlank()) fileName else "$base/$fileName"
-        val pathBody = target.toRequestBody("text/plain".toMediaTypeOrNull())
-        val overwriteBody = "true".toRequestBody("text/plain".toMediaTypeOrNull())
-        val part =
-            MultipartBody.Part.createFormData(
-                "file",
-                fileName,
-                bytes.toRequestBody(mimeType.toMediaTypeOrNull()),
-            )
         _uiState.update { it.copy(isUploading = true) }
         viewModelScope.launch {
-            val result =
-                withContext(Dispatchers.IO) {
-                    safeApiCall {
-                        ApiClient.hermesApi.uploadManagedFileStream(pathBody, overwriteBody, part)
+            val picked =
+                try {
+                    withContext(ioDispatcher) { readPickedDocument(contentResolver, uri) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            isUploading = false,
+                            toastMessage = UiText.res(R.string.file_read_failed_reason, e.message.orEmpty()),
+                        )
                     }
+                    return@launch
                 }
-            handleActionResult(result, R.string.files_msg_file_uploaded, R.string.files_msg_upload_failed)
+            val target = if (base.isBlank()) picked.name else "$base/${picked.name}"
+            val body =
+                StreamingUriRequestBody(
+                    contentResolver = contentResolver,
+                    uri = uri,
+                    contentType = picked.mimeType.toMediaTypeOrNull(),
+                    contentLength = picked.size,
+                )
+            sendUpload(UploadConflict(picked.name, target, picked.mimeType, body), overwrite = false)
         }
+    }
+
+    /** Replace the existing file after the user confirmed [FilesUiState.uploadConflict]. */
+    fun confirmUploadOverwrite() {
+        val conflict = _uiState.value.uploadConflict ?: return
+        _uiState.update { it.copy(uploadConflict = null, isUploading = true) }
+        viewModelScope.launch { sendUpload(conflict, overwrite = true) }
+    }
+
+    fun dismissUploadConflict() {
+        _uiState.update { it.copy(uploadConflict = null) }
+    }
+
+    private suspend fun sendUpload(
+        upload: UploadConflict,
+        overwrite: Boolean,
+    ) {
+        val pathBody = upload.target.toRequestBody("text/plain".toMediaTypeOrNull())
+        val overwriteBody = overwrite.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+        val part = MultipartBody.Part.createFormData("file", upload.fileName, upload.body)
+        // Retrofit streams the body on OkHttp's worker; no withContext, so a confirmed response is not lost
+        // to its prompt cancellation on the return hop (same as the Kanban import, #1137).
+        val result =
+            safeApiCall {
+                ApiClient.hermesApi.uploadManagedFileStream(pathBody, overwriteBody, part)
+            }
+        if (!overwrite && (result as? NetworkResult.Failure)?.error.let { it is NetworkError.Http && it.code == 409 }) {
+            _uiState.update { it.copy(isUploading = false, uploadConflict = upload) }
+            return
+        }
+        handleActionResult(result, R.string.files_msg_file_uploaded, R.string.files_msg_upload_failed)
     }
 
     // ── Delete ────────────────────────────────────────────────────────────
@@ -251,7 +318,7 @@ class FilesViewModel :
         }
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall {
                         ApiClient.hermesApi.deleteManagedFile(
                             ManagedFileDelete(target.path, recursive = target.isDirectory),
@@ -295,7 +362,7 @@ class FilesViewModel :
         _uiState.update { it.copy(openingPath = entry.path) }
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     safeApiCall { ApiClient.hermesApi.readManagedFile(entry.path) }
                         .map { read ->
                             val bytes = decodeDataUrl(read.dataUrl)
@@ -364,6 +431,7 @@ class FilesViewModel :
                 isCreatingDir = false,
                 newDirName = "",
                 isUploading = false,
+                uploadConflict = null,
                 deleteTarget = null,
             )
         }
@@ -381,3 +449,51 @@ class FilesViewModel :
         return crumbs
     }
 }
+
+/** Name, MIME type and size (-1 when unknown) of a document picked for upload. */
+internal data class PickedDocument(
+    val name: String,
+    val mimeType: String,
+    val size: Long,
+)
+
+/** Reads [uri]'s [OpenableColumns] metadata. Blocking ContentResolver I/O: call off the main thread. */
+internal fun readPickedDocument(
+    contentResolver: ContentResolver,
+    uri: Uri,
+): PickedDocument {
+    var displayName: String? = null
+    var size = -1L
+    contentResolver
+        .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)
+        ?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && !cursor.isNull(nameIndex)) displayName = cursor.getString(nameIndex)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex).coerceAtLeast(-1L)
+            }
+        }
+    return PickedDocument(
+        name = uploadFileName(displayName, uri.lastPathSegment),
+        mimeType = contentResolver.getType(uri) ?: "application/octet-stream",
+        size = size,
+    )
+}
+
+/**
+ * The file name to upload under: the document's display name, else the last URI segment (which for SAF
+ * documents is an opaque id such as "msf:1000123"), else "upload.bin". Path separators are stripped so the
+ * name cannot point outside the current directory.
+ */
+internal fun uploadFileName(
+    displayName: String?,
+    lastPathSegment: String?,
+): String =
+    listOf(displayName, lastPathSegment)
+        .firstNotNullOfOrNull { candidate ->
+            candidate
+                ?.substringAfterLast('/')
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() && it != "." && it != ".." }
+        } ?: "upload.bin"

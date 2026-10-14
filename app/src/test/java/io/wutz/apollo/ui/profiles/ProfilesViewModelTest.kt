@@ -17,9 +17,11 @@ import io.wutz.apollo.data.model.ProfileDescribeAutoRequest
 import io.wutz.apollo.data.model.ProfileDescribeAutoResponse
 import io.wutz.apollo.data.model.ProfileInfo
 import io.wutz.apollo.data.model.ProfileSetupCommandResponse
+import io.wutz.apollo.data.model.ProfileSoulResponse
 import io.wutz.apollo.data.model.ProfilesResponse
 import io.wutz.apollo.data.model.RenameProfileRequest
 import io.wutz.apollo.data.model.StatusResponse
+import io.wutz.apollo.data.model.UpdateProfileSoulRequest
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.NetworkError
@@ -27,6 +29,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -502,5 +505,96 @@ class ProfilesViewModelTest {
         vm.unhideProfile("secret-bot")
         assertTrue(storedHiddenProfiles.isEmpty())
         assertFalse(vm.uiState.value.hasHiddenProfiles)
+    }
+
+    // ── SOUL.md editor (review U2) ──
+
+    @Test
+    fun `loadSoul failure closes the editor so an empty soul can never be saved`() {
+        coEvery { mockApi.getProfileSoul("default") } returns errorResponse(500)
+        val vm = createViewModel()
+
+        vm.loadSoul("default")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(vm.uiState.value.soulEditProfileName)
+        assertNull(vm.uiState.value.selectedSoulContent)
+        assertFalse(vm.uiState.value.isLoadingSoul)
+        assertEquals(
+            UiText.res(R.string.profiles_msg_load_soul_failed, SERVER_ERROR),
+            vm.uiState.value.toastMessage,
+        )
+
+        vm.saveSoul("default", "")
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 0) { mockApi.updateProfileSoul(any(), any()) }
+    }
+
+    @Test
+    fun `saveSoul is ignored while the soul is still loading`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getProfileSoul("default") } coAnswers {
+            gate.await()
+            Response.success(ProfileSoulResponse("loaded soul"))
+        }
+        val vm = createViewModel()
+
+        vm.loadSoul("default")
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.saveSoul("default", "")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 0) { mockApi.updateProfileSoul(any(), any()) }
+        assertEquals("default", vm.uiState.value.soulEditProfileName)
+        gate.complete(Unit)
+    }
+
+    @Test
+    fun `late soul of a previously edited profile never lands in another profile's editor`() {
+        val gateA = CompletableDeferred<Unit>()
+        coEvery { mockApi.getProfileSoul("alpha") } coAnswers {
+            gateA.await()
+            Response.success(ProfileSoulResponse("alpha soul"))
+        }
+        coEvery { mockApi.getProfileSoul("beta") } returns Response.success(ProfileSoulResponse("beta soul"))
+        coEvery { mockApi.updateProfileSoul(any(), any()) } returns Response.success(Unit)
+        val vm = createViewModel()
+
+        vm.loadSoul("alpha")
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.closeSoulDialog()
+        vm.loadSoul("beta")
+        testDispatcher.scheduler.advanceUntilIdle()
+        gateA.complete(Unit)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("beta", vm.uiState.value.soulEditProfileName)
+        assertEquals("beta soul", vm.uiState.value.selectedSoulContent)
+
+        vm.saveSoul("beta", "beta soul edited")
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { mockApi.updateProfileSoul("beta", UpdateProfileSoulRequest("beta soul edited")) }
+        coVerify(exactly = 0) { mockApi.updateProfileSoul("alpha", any()) }
+        assertNull(vm.uiState.value.soulEditProfileName)
+    }
+
+    @Test
+    fun `late soul response after the editor was closed does not reopen it`() {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { mockApi.getProfileSoul("default") } coAnswers {
+            gate.await()
+            Response.success(ProfileSoulResponse("soul"))
+        }
+        val vm = createViewModel()
+
+        vm.loadSoul("default")
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.closeSoulDialog()
+        gate.complete(Unit)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(vm.uiState.value.soulEditProfileName)
+        assertNull(vm.uiState.value.selectedSoulContent)
+        assertFalse(vm.uiState.value.isLoadingSoul)
     }
 }
