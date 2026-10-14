@@ -41,10 +41,12 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -114,6 +116,7 @@ fun ChatInputBar(
     onFileTap: () -> Unit = {},
     onRemoveAttachment: (Int) -> Unit = {},
     onPreviewAttachment: (Attachment) -> Unit = {},
+    onSetAttachmentSendOriginal: (Int, Boolean) -> Unit = { _, _ -> },
     // NEW: composer toolbar wiring
     currentSessionModel: String? = null,
     reasoningLevel: String? = null,
@@ -328,6 +331,9 @@ fun ChatInputBar(
                                     attachment = attachment,
                                     onPreview = { onPreviewAttachment(attachment) },
                                     onRemove = { onRemoveAttachment(index) },
+                                    onToggleSendOriginal = {
+                                        onSetAttachmentSendOriginal(index, !attachment.sendOriginal)
+                                    },
                                 )
                             }
                         }
@@ -623,7 +629,8 @@ private const val VOICE_LOCK_HINT_KEY = "voice_note_lock_hint_done"
 
 /**
  * Reusable attachment chip composable for showing a pending attachment
- * with a remove button.
+ * with a remove button. Photos that are downscaled before upload also get a
+ * "send original quality" toggle when [onToggleSendOriginal] is set.
  */
 @Composable
 fun AttachmentChip(
@@ -631,6 +638,7 @@ fun AttachmentChip(
     onPreview: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    onToggleSendOriginal: (() -> Unit)? = null,
 ) {
     val thumbnail = attachment.uri
     Surface(
@@ -672,6 +680,25 @@ fun AttachmentChip(
                 modifier = Modifier.widthIn(max = 120.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
+            if (onToggleSendOriginal != null && attachment.isImage && !attachment.isGif && !attachment.isGateway) {
+                IconToggleButton(
+                    checked = attachment.sendOriginal,
+                    onCheckedChange = { onToggleSendOriginal() },
+                    modifier = Modifier.size(40.dp).testTag("attachment_send_original"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.HighQuality,
+                        contentDescription = stringResource(R.string.chat_attach_send_original),
+                        modifier = Modifier.size(18.dp),
+                        tint =
+                            if (attachment.sendOriginal) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                    )
+                }
+            }
             IconButton(onClick = onRemove, modifier = Modifier.size(40.dp)) {
                 Icon(
                     imageVector = Icons.Default.Close,

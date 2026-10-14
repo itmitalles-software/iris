@@ -51,6 +51,23 @@ class ChatAttachmentsDelegate(
         }
     }
 
+    /** Marks the pending image at [index] to go out at full resolution (or downscaled again). */
+    fun setSendOriginal(
+        index: Int,
+        sendOriginal: Boolean,
+    ) {
+        uiState.update { state ->
+            val attachment = state.pendingAttachments.getOrNull(index) ?: return@update state
+            if (attachment.sendOriginal == sendOriginal) return@update state
+            state.copy(
+                pendingAttachments =
+                    state.pendingAttachments.toMutableList().apply {
+                        set(index, attachment.copy(sendOriginal = sendOriginal))
+                    },
+            )
+        }
+    }
+
     fun clearAttachments() {
         uiState.update { it.copy(pendingAttachments = emptyList()) }
     }

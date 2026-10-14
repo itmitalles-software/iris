@@ -115,6 +115,7 @@ import io.wutz.apollo.ui.chat.components.ChatTimelineSheet
 import io.wutz.apollo.ui.chat.components.ConnectionSetupSheet
 import io.wutz.apollo.ui.chat.components.ContextDetailSheet
 import io.wutz.apollo.ui.chat.components.ContextUsageChip
+import io.wutz.apollo.ui.chat.components.GatewayNoticeLine
 import io.wutz.apollo.ui.chat.components.MediaViewerDialog
 import io.wutz.apollo.ui.chat.components.PendingSendRecovery
 import io.wutz.apollo.ui.chat.components.ProjectBadge
@@ -129,10 +130,12 @@ import io.wutz.apollo.ui.chat.components.SpeechRequest
 import io.wutz.apollo.ui.chat.components.SpeechText
 import io.wutz.apollo.ui.chat.components.SubagentInspectionSheet
 import io.wutz.apollo.ui.chat.components.TaskProgressChip
+import io.wutz.apollo.ui.chat.components.TurnCompletionAnnouncer
 import io.wutz.apollo.ui.chat.components.rememberChatImagePaste
 import io.wutz.apollo.ui.chat.components.rememberChatMediaLaunchers
 import io.wutz.apollo.ui.chat.components.rememberChatScrollController
 import io.wutz.apollo.ui.chat.components.rememberChatSpeech
+import io.wutz.apollo.ui.chat.components.rememberComposerDrafts
 import io.wutz.apollo.ui.chat.components.replaceComposerDraft
 import io.wutz.apollo.ui.chat.components.restoreRejectedComposerDraft
 import io.wutz.apollo.ui.chat.components.shouldShowProgressChip
@@ -198,6 +201,7 @@ fun ChatScreen(
     val connectorsState by connectorsViewModel.uiState.collectAsStateWithLifecycle()
     val actionProgressState by viewModel.actionProgress.state.collectAsStateWithLifecycle()
     val connectionOperationState by viewModel.connectionOperationState.collectAsStateWithLifecycle()
+    val gatewayNotice by viewModel.gatewayNotice.collectAsStateWithLifecycle()
     val settingsViewModel: SettingsViewModel = viewModel()
     val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     // Snapshot-backed search state — read directly so only the scopes that
@@ -363,6 +367,13 @@ fun ChatScreen(
         }
     }
     val inputState = rememberTextFieldState()
+    val composerDrafts =
+        rememberComposerDrafts(
+            inputState = inputState,
+            chatGeneration = state.chatGeneration,
+            sessionId = state.currentSessionId,
+            scopeKey = dataScope?.persistentKey("composer-draft"),
+        )
 
     LaunchedEffect(state.pendingPrefillText) {
         val prefill = state.pendingPrefillText
@@ -703,6 +714,19 @@ fun ChatScreen(
                 },
             )
 
+            GatewayNoticeLine(
+                notice = gatewayNotice,
+                onDismiss = viewModel::dismissGatewayNotice,
+            )
+            val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+            TurnCompletionAnnouncer(
+                busy = state.isAgentTyping || streamingState.streamingMessage != null,
+                tail = state.messages.lastOrNull(),
+                replyFailed = state.replyFailure != null,
+                enabled = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && !timelineState.isHistorical,
+                chatGeneration = state.chatGeneration,
+            )
+
             credentialWarning?.let { warning ->
                 CredentialWarningBanner(
                     warning = warning,
@@ -813,6 +837,7 @@ fun ChatScreen(
                             onDismissVaultSaveLogin = viewModel::dismissVaultSaveLogin,
                             onRespondVaultCode = viewModel::respondToVaultCode,
                             onDismissVaultCode = viewModel::dismissVaultCode,
+                            onReactToMessage = viewModel::reactToMessage,
                             onToggleSpeak = { message ->
                                 val scopeKey = "${dataScope?.inMemoryKey(localKey = activeSessionId ?: "none")}"
                                 speechController.toggle(
@@ -952,6 +977,7 @@ fun ChatScreen(
                     onSend = {
                         if (!imagePaste.isReceiving && viewModel.sendMessage(inputState.text.toString())) {
                             inputState.clearText()
+                            scrollScope.launch { composerDrafts.onSendAccepted() }
                             // Jump only after an accepted send. A readiness race keeps the draft intact.
                             scrollController.jumpToBottom(animated = true)
                         }
@@ -978,6 +1004,7 @@ fun ChatScreen(
                     onImageTap = mediaLaunchers.onImageTap,
                     onFileTap = mediaLaunchers.onFileTap,
                     onRemoveAttachment = viewModel::removeAttachment,
+                    onSetAttachmentSendOriginal = viewModel::setAttachmentSendOriginal,
                     onPreviewAttachment = { attachment ->
                         if (attachment.isImage) {
                             viewingImage =

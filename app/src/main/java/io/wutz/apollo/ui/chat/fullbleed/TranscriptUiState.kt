@@ -111,4 +111,6 @@ class TranscriptActions(
     val onRespondVaultCode: (String) -> Unit,
     val onDismissVaultCode: () -> Unit,
     val onToggleSpeak: (ChatMessage) -> Unit,
+    /** (messageId, emoji or null to clear): the user's tapback on a stored agent message. */
+    val onReactToMessage: ((String, String?) -> Unit)? = null,
 )

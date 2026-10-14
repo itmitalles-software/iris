@@ -50,6 +50,7 @@ import io.wutz.apollo.data.ws.contract.ConfigGetParams
 import io.wutz.apollo.data.ws.contract.ConfigSetParams
 import io.wutz.apollo.data.ws.contract.DESKTOP_SESSION_SOURCE
 import io.wutz.apollo.data.ws.contract.FileAttachParams
+import io.wutz.apollo.data.ws.contract.HermesRpcCaller
 import io.wutz.apollo.data.ws.contract.ImageAttachBytesParams
 import io.wutz.apollo.data.ws.contract.ProcessStopParams
 import io.wutz.apollo.data.ws.contract.PromptBtwParams
@@ -70,6 +71,7 @@ import io.wutz.apollo.data.ws.contract.SubagentTailParams
 import io.wutz.apollo.data.ws.contract.TypedRpcSender
 import io.wutz.apollo.data.ws.toAny
 import io.wutz.apollo.data.ws.toJsonElement
+import io.wutz.apollo.notification.NotificationApprovalAnswers
 import io.wutz.apollo.notification.ReplyNotificationTracker
 import io.wutz.apollo.notification.captureTurnBoundary
 import io.wutz.apollo.notification.correlationScopeId
@@ -184,6 +186,8 @@ private sealed interface PrepareAttachmentResult {
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val currentSessionId: String? = null,
+    /** Changes whenever the chat switches to another (or a new) conversation. */
+    val chatGeneration: Long = 0L,
     val sessions: List<SessionUi> = emptyList(),
     val chatTitle: String = "Hermes",
     val connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED,
@@ -854,7 +858,22 @@ class ChatViewModel(
             trackRequest = { id, method -> trackRequest(id, method) },
             addSystemMessage = { text -> addSystemMessage(text) },
             respondToServerRequest = { id, result -> wsClient.respondToServerRequest(id, result) },
+            answeredElsewhere = NotificationApprovalAnswers.answered,
         )
+
+    private val reactionsDelegate =
+        ChatReactionsDelegate(
+            scope = viewModelScope,
+            ioDispatcher = ioDispatcher,
+            uiState = _uiState,
+            runtimeSessionId = { runtimeSessionId },
+            rpc = HermesRpcCaller,
+        )
+
+    private val noticesDelegate = ChatGatewayNoticesDelegate(viewModelScope, { isCurrentSession(it) })
+
+    /** The gateway's newest out-of-band notice for this chat, or null. */
+    val gatewayNotice: StateFlow<GatewayNoticeUi?> get() = noticesDelegate.notice
 
     private val clarifyDelegate =
         ChatClarifyDelegate(
@@ -1419,6 +1438,14 @@ class ChatViewModel(
 
             is WsEvent.GatewayError -> {
                 // Reducer already set errorMessage; no extra VM work needed.
+            }
+
+            is WsEvent.NotificationShow -> {
+                noticesDelegate.onShow(event)
+            }
+
+            is WsEvent.NotificationClear -> {
+                noticesDelegate.onClear(event)
             }
 
             is WsEvent.BackgroundComplete -> {
@@ -3109,7 +3136,7 @@ class ChatViewModel(
                                     val count = source.read(buffer)
                                     if (count < 0) break
                                     copied += count
-                                    if (copied > MAX_CHAT_ATTACHMENT_BYTES) {
+                                    if (copied > attachment.maxSourceBytes()) {
                                         throw QueuedAttachmentTooLargeException(attachment)
                                     }
                                     output.write(buffer, 0, count)
@@ -3368,7 +3395,7 @@ class ChatViewModel(
 
         val oversizedAttachment =
             stagedAttachments.firstOrNull {
-                it.size > MAX_CHAT_ATTACHMENT_BYTES
+                it.size > it.maxSourceBytes()
             }
         if (oversizedAttachment != null) {
             _uiState.update {
@@ -4077,12 +4104,15 @@ class ChatViewModel(
     /** Snapshot one URI to private cache while enforcing the outbound frame limit. */
     private suspend fun prepareAttachment(attachment: Attachment): PrepareAttachmentResult {
         var encodedFile: File? = null
+        var downscaled: PreparedUploadImage? = null
         return try {
             val context = getApplication<Application>()
             val uri = Uri.parse(attachment.uri)
+            // Photos go out downscaled unless the user picked "Send original".
+            downscaled = ImageUploadPreparer.prepare(context, attachment)
             encodedFile = File.createTempFile("chat-attachment-", ".b64", context.cacheDir)
             val result =
-                context.contentResolver.openInputStream(uri)?.use { input ->
+                (downscaled?.file?.inputStream() ?: context.contentResolver.openInputStream(uri))?.use { input ->
                     encodedFile.outputStream().buffered().use { output ->
                         encodeAttachmentBase64(input, output)
                     }
@@ -4090,7 +4120,9 @@ class ChatViewModel(
 
             when (result) {
                 AttachmentSizeResult.WITHIN_LIMIT -> {
-                    PrepareAttachmentResult.Success(PreparedAttachment(attachment, encodedFile))
+                    PrepareAttachmentResult.Success(
+                        PreparedAttachment(downscaled?.attachment ?: attachment, encodedFile),
+                    )
                 }
 
                 AttachmentSizeResult.TOO_LARGE -> {
@@ -4102,6 +4134,8 @@ class ChatViewModel(
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Failed to prepare attachment: ${e.message}", e)
             PrepareAttachmentResult.Unreadable
+        } finally {
+            downscaled?.file?.delete()
         }
     }
 
@@ -4144,6 +4178,20 @@ class ChatViewModel(
     ) = attachmentsDelegate.addAttachment(uri, name, mimeType, size)
 
     fun addAttachments(attachments: List<Attachment>) = attachmentsDelegate.addAttachments(attachments)
+
+    /** Send the pending image at [index] at full resolution instead of downscaled. */
+    fun setAttachmentSendOriginal(
+        index: Int,
+        sendOriginal: Boolean,
+    ) = attachmentsDelegate.setSendOriginal(index, sendOriginal)
+
+    /** Toggle the user's tapback [emoji] (null clears) on the agent message [messageId]. */
+    fun reactToMessage(
+        messageId: String,
+        emoji: String?,
+    ) = reactionsDelegate.react(messageId, emoji)
+
+    fun dismissGatewayNotice(key: String) = noticesDelegate.dismiss(key)
 
     /** Stages share-sheet content in the composer; the user reviews and sends it. */
     fun stageSharedContent(content: SharedContent) {
@@ -6156,6 +6204,7 @@ class ChatViewModel(
         isLoading: Boolean,
     ): Long {
         val generation = ++sessionGeneration
+        noticesDelegate.reset()
         // A slow drain belongs to the old session and must not block the resumed queue.
         queueDrainJob?.cancel()
         queueDrainJob = null
@@ -6194,6 +6243,7 @@ class ChatViewModel(
                 messages = emptyList(),
                 isSessionReady = false,
                 currentSessionId = sessionId,
+                chatGeneration = generation,
                 chatTitle = title,
                 isAgentTyping = false,
                 isSending = false,

@@ -22,4 +22,13 @@ data class StreamingState(
     val turnUsageBaseline: UsageSnapshotResponse? = null,
     /** Distinguishes a captured-but-unavailable baseline from a not-yet-captured one. */
     val turnUsageBaselineCaptured: Boolean = false,
+    /** Mixture-of-agents progress of the running model call; null when the turn uses no MoA. */
+    val moaProgress: MoaProgressUi? = null,
+)
+
+/** Reference models answered [refsDone] of [refsTotal], or the aggregator is combining them. */
+data class MoaProgressUi(
+    val refsDone: Int,
+    val refsTotal: Int,
+    val aggregating: Boolean,
 )

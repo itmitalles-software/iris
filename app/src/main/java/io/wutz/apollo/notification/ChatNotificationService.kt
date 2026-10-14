@@ -435,7 +435,16 @@ class ChatNotificationService : Service() {
                                             event.description?.takeIf { it.isNotBlank() }
                                                 ?: event.command?.takeIf { it.isNotBlank() }
                                                 ?: getString(R.string.notif_input_needed)
-                                        showReplyNotification(preview.take(100), null)
+                                        showReplyNotification(
+                                            preview.take(100),
+                                            null,
+                                            approval =
+                                                ApprovalNotificationTarget(
+                                                    null,
+                                                    event.requestId,
+                                                    event.sessionId,
+                                                ),
+                                        )
                                     }
 
                                     is WsEvent.ServerRequest -> {
@@ -461,7 +470,21 @@ class ChatNotificationService : Service() {
                                             firstServerRequestSighting &&
                                             serverRequestSightings.isOpen(event.id)
                                         ) {
-                                            showReplyNotification(text, null, serverRequestId = event.id)
+                                            showReplyNotification(
+                                                text,
+                                                null,
+                                                serverRequestId = event.id,
+                                                approval =
+                                                    if (event.method == "approval") {
+                                                        ApprovalNotificationTarget(
+                                                            serverRequestId = event.id,
+                                                            requestId = event.params["request_id"] as? String,
+                                                            sessionId = event.params["session_id"] as? String,
+                                                        )
+                                                    } else {
+                                                        null
+                                                    },
+                                            )
                                         }
                                     }
 
@@ -514,6 +537,7 @@ class ChatNotificationService : Service() {
         serverMessageId: Int? = null,
         allowInlineReply: Boolean = true,
         serverRequestId: String? = null,
+        approval: ApprovalNotificationTarget? = null,
     ) {
         val builder =
             NotificationCompat
@@ -557,9 +581,12 @@ class ChatNotificationService : Service() {
                 android.os.Bundle().apply {
                     putString(ReplyNotificationTracker.EXTRA_NOTIF_KIND, ReplyNotificationTracker.KIND_ACTION)
                     serverRequestId?.let { putString(EXTRA_SERVER_REQUEST_ID, it) }
+                    approval?.cardId?.let { putString(ApprovalActionReceiver.EXTRA_APPROVAL_CARD_ID, it) }
                 },
             )
         }
+        // Approve once / Deny right from the notification; the actions require an unlocked device.
+        approval?.let { ApprovalActionReceiver.approvalActions(this, it).forEach(builder::addAction) }
 
         if (allowInlineReply && !sessionId.isNullOrBlank()) {
             builder.addAction(buildInlineReplyAction(this, sessionId))
@@ -579,6 +606,9 @@ class ChatNotificationService : Service() {
             )
         }
     }
+
+    /** True when the gateway cancelled the server request [id] (timeout, interrupt, answered elsewhere). */
+    internal fun isServerRequestWithdrawn(id: String): Boolean = serverRequestSightings.isWithdrawn(id)
 
     /** Withdraws the posted notification of a server request the gateway cancelled (timeout, interrupt). */
     private fun withdrawServerRequestNotification(requestId: String) {

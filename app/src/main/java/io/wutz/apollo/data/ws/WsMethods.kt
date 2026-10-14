@@ -86,6 +86,9 @@ object WsMethods {
     const val CONFIG_GET = "config.get"
     const val CONFIG_SET = "config.set"
 
+    /** Set or clear the user's emoji reaction on a stored message row. */
+    const val MESSAGE_REACT = "message.react"
+
     // ── Attachments ───────────────────────────────────────────────────────
 
     /** Upload image bytes (base64) from a remote client. */

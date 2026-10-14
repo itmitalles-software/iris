@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.wutz.apollo.data.config.ConnectionProfile
 import io.wutz.apollo.data.config.resolveBaseUrl
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.local.ComposerDraftStore
 import io.wutz.apollo.data.local.SessionListCacheStore
 import io.wutz.apollo.data.model.BusySendMode
 import io.wutz.apollo.data.remote.ApiClient
@@ -432,6 +433,7 @@ class SettingsViewModel(
         AuthManager.setWsAuthParam("token")
         AuthManager.clearLastOpenedSessionId()
         SessionListCacheStore.clear()
+        ComposerDraftStore.clear()
         HermesWsClient.disconnect(clearPendingMessages = true)
         // Don't rebuild ApiClient here — let the navigation complete first
     }

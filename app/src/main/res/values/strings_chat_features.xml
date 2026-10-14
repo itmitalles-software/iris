@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mixture-of-agents progress in the chat status line -->
+    <string name="chat_agent_status_moa_aggregating">Combining model answers…</string>
+    <plurals name="chat_agent_status_moa_references">
+        <item quantity="one">Asking %2$d model (%1$d answered)…</item>
+        <item quantity="other">Asking %2$d models (%1$d answered)…</item>
+    </plurals>
+
+    <!-- Message reactions -->
+    <string name="chat_reaction_add">React</string>
+    <string name="chat_reaction_failed">Could not save the reaction.</string>
+
+    <!-- Gateway notices (notification.show) -->
+    <string name="chat_notice_dismiss">Dismiss notice</string>
+    <string name="chat_notice_level_info">Info</string>
+    <string name="chat_notice_level_warning">Warning</string>
+    <string name="chat_notice_level_error">Error</string>
+    <string name="chat_notice_level_success">Success</string>
+
+    <!-- Screen reader announcement when a turn ends -->
+    <string name="chat_a11y_reply_finished">Reply finished</string>
+    <string name="chat_a11y_reply_failed">Reply failed</string>
+
+    <!-- Photo upload -->
+    <string name="chat_attach_send_original">Send in original quality</string>
+
+    <!-- Approval notification actions -->
+    <string name="notif_action_approve_once">Approve once</string>
+    <string name="notif_action_deny">Deny</string>
+    <string name="notif_approval_unlock_first">Unlock your phone to answer this approval.</string>
+    <string name="notif_approval_expired">This approval is no longer open.</string>
+    <string name="notif_approval_open_app">Your answer could not be sent. Open Apollo to answer the approval.</string>
+</resources>

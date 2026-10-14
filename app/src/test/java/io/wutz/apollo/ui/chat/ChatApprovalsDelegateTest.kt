@@ -6,10 +6,12 @@ import io.wutz.apollo.data.ws.WsMethods
 import io.wutz.apollo.data.ws.contract.RpcMethod
 import io.wutz.apollo.data.ws.contract.TypedRpcSender
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -359,4 +361,53 @@ class ChatApprovalsDelegateTest {
                 ?.content,
         )
     }
+
+    @Test
+    fun approvalAnsweredFromNotificationLosesItsButtons() =
+        testScope.runTest {
+            val answered = MutableSharedFlow<String>(replay = 1)
+            val withFlow =
+                ChatApprovalsDelegate(
+                    // The notification-answer collector never completes on its own.
+                    scope = backgroundScope,
+                    ioDispatcher = testDispatcher,
+                    uiState = uiState,
+                    runtimeSessionId = { runtimeId },
+                    rpc =
+                        object : TypedRpcSender {
+                            override fun <P> send(
+                                method: RpcMethod<P, *>,
+                                params: P,
+                                onSent: ((String) -> Unit)?,
+                            ): String = "unused"
+                        },
+                    trackRequest = { _, _ -> },
+                    addSystemMessage = {},
+                    answeredElsewhere = answered,
+                )
+            withFlow.handleApprovalRequest(
+                WsEvent.ApprovalRequest(
+                    command = "rm -rf build",
+                    description = null,
+                    patternKeys = null,
+                    sessionId = "storage-session-1",
+                    requestId = "req-9",
+                    serverRequestId = "srq-9",
+                    choices = listOf("once", "deny"),
+                ),
+            )
+            assertNotNull(
+                uiState.value.messages
+                    .single()
+                    .approvalInfo,
+            )
+            answered.emit("srq-9")
+            // Background collectors are not part of advanceUntilIdle; run the current tasks.
+            runCurrent()
+            assertNull(
+                uiState.value.messages
+                    .single()
+                    .approvalInfo,
+            )
+        }
 }

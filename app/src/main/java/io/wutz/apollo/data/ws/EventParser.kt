@@ -305,8 +305,41 @@ object EventParser {
             // Change events (issue #784): gateway watches on-disk signatures
             // and broadcasts these so screens can refresh on change. pet.changed
             // intentionally absent — mobile has no pet feature.
-            "cron.changed", "sessions.changed", "platforms.changed", "pairing.changed" -> {
+            "cron.changed", "sessions.changed", "platforms.changed", "pairing.changed", "projects.changed" -> {
                 WsEvent.ChangeEvent(eventType, payload)
+            }
+
+            "notification.show" -> {
+                val text = (payload?.get("text") as? String)?.trim()
+                if (text.isNullOrEmpty()) {
+                    WsEvent.Unknown(rawJson)
+                } else {
+                    WsEvent.NotificationShow(
+                        text = text,
+                        level = payload["level"] as? String ?: "info",
+                        kind = payload["kind"] as? String ?: "ttl",
+                        ttlMs = (payload["ttl_ms"] as? Number)?.toLong()?.takeIf { it > 0 },
+                        key = (payload["key"] as? String)?.takeIf { it.isNotBlank() },
+                        sessionId = sessionId,
+                    )
+                }
+            }
+
+            "notification.clear" -> {
+                val key = (payload?.get("key") as? String)?.takeIf { it.isNotBlank() }
+                if (key == null) WsEvent.Unknown(rawJson) else WsEvent.NotificationClear(key, sessionId)
+            }
+
+            "moa.progress", "moa.phase", "moa.aggregating" -> {
+                val aggregator = (payload?.get("aggregator") as? String)?.takeIf { it.isNotBlank() }
+                WsEvent.MoaProgress(
+                    refsDone = (payload?.get("refs_done") as? Number)?.toInt(),
+                    refsTotal = (payload?.get("refs_total") as? Number)?.toInt(),
+                    // moa.phase currently only reports "aggregator"; moa.aggregating always means it.
+                    aggregating = eventType == "moa.aggregating" || payload?.get("phase") == "aggregator",
+                    aggregator = aggregator,
+                    sessionId = sessionId,
+                )
             }
 
             "review.summary" -> {
