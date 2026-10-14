@@ -12,15 +12,15 @@ import kotlinx.coroutines.flow.update
  * Owns the three throttled streams and their synchronous transition flushes, and mutates
  * the shared [uiState] + [streamingState] flows. The owning ViewModel keeps
  * [streamingState] as the single source of truth for the reduced [StreamingState].
- * [isCurrentSession] and [isTestEnvironment] preserve the existing session
- * filtering and immediate-flush test behavior.
+ * [isCurrentSession] filters events of other sessions; [throttle] coalesces deltas into ~30 fps flushes
+ * (`false` flushes every delta immediately, used by deterministic unit tests).
  */
 class ChatStreamingController(
     private val scope: CoroutineScope,
     private val uiState: MutableStateFlow<ChatUiState>,
     private val streamingState: MutableStateFlow<StreamingState>,
     private val isCurrentSession: (String?) -> Boolean,
-    private val isTestEnvironment: () -> Boolean,
+    private val throttle: Boolean = true,
 ) {
     private companion object {
         const val FLUSH_INTERVAL_MS = 33L
@@ -97,7 +97,7 @@ class ChatStreamingController(
     fun handleMessageToken(event: WsEvent.MessageToken) {
         if (!isCurrentSession(event.sessionId)) return
 
-        tokens.append(event.token, isTestEnvironment())
+        tokens.append(event.token, !throttle)
     }
 
     private fun flushTokens(currentContent: String) {
@@ -135,7 +135,7 @@ class ChatStreamingController(
     fun handleThinkingDelta(event: WsEvent.ThinkingDelta) {
         if (!isCurrentSession(event.sessionId)) return
 
-        thinking.append(event.token, isTestEnvironment())
+        thinking.append(event.token, !throttle)
     }
 
     private fun flushThinking(currentContent: String) {
@@ -150,7 +150,7 @@ class ChatStreamingController(
     fun handleReasoningDelta(event: WsEvent.ReasoningDelta) {
         if (!isCurrentSession(event.sessionId)) return
 
-        reasoning.append(event.token, isTestEnvironment())
+        reasoning.append(event.token, !throttle)
     }
 
     private fun flushReasoning(currentContent: String) {

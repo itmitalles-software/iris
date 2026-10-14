@@ -67,7 +67,7 @@ network behavior.
 - `UserImageHydrationTest`: history JSON through deserialization, mapping, live
   merge, entity round-trip, cache merge and repeated REST refresh; confirmed-set
   handoff, partial sets, mixed attachments, caption-only cached alias.
-- `ChatViewModelTest.retiredReceiptKeepsStagedImageReadableWhileBubbleStillReferencesIt`:
+- `ChatViewModelSendTest.retiredReceiptKeepsStagedImageReadableWhileBubbleStillReferencesIt`:
   a staged file stays readable through receipt retirement.
 - `ChatImageDiagnosticsTest`: allowlisted source/error/status metadata, loss
   visibility, and redaction.
