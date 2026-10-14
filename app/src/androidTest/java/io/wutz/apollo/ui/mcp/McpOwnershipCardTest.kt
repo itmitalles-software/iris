@@ -27,11 +27,11 @@ class McpOwnershipCardTest {
         showServer("plugin", "security")
         composeRule.onNodeWithText("From plugin security · Read-only", useUnmergedTree = true).assertExists()
         composeRule.onNode(isToggleable()).assertIsNotEnabled()
-        composeRule.onNodeWithContentDescription("Delete").assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription("Delete", substring = true).assertIsNotEnabled()
         composeRule.onNodeWithText("Authorize").assertIsNotEnabled()
         composeRule.onNodeWithText("Test").assertIsEnabled()
         composeRule.onNodeWithText("Env vars").performClick()
-        composeRule.onNodeWithContentDescription("Remove").assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription("Remove", substring = true).assertIsNotEnabled()
         composeRule.onNodeWithText("Add env var").assertIsNotEnabled()
         composeRule.onNodeWithText("KEY", useUnmergedTree = true).assertExists()
     }
@@ -40,10 +40,10 @@ class McpOwnershipCardTest {
     fun configRowKeepsMutationsEnabled() {
         showServer("config", null)
         composeRule.onNode(isToggleable()).assertIsEnabled()
-        composeRule.onNodeWithContentDescription("Delete").assertIsEnabled()
+        composeRule.onNodeWithContentDescription("Delete", substring = true).assertIsEnabled()
         composeRule.onNodeWithText("Authorize").assertIsEnabled()
         composeRule.onNodeWithText("Env vars").performClick()
-        composeRule.onNodeWithContentDescription("Remove").assertIsEnabled()
+        composeRule.onNodeWithContentDescription("Remove", substring = true).assertIsEnabled()
         composeRule.onNodeWithText("Add env var").assertIsEnabled()
     }
 
