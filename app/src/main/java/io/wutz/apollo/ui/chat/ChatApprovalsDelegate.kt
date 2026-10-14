@@ -159,9 +159,22 @@ class ChatApprovalsDelegate(
         }
     }
 
-    fun respondToApproval(action: String) {
+    /**
+     * Answer the approval card [messageId]. Each card answers only its own request: with
+     * several pending approvals, answering "the newest" would approve a command the user
+     * never saw. Without [messageId] (programmatic callers) the newest card is answered.
+     */
+    fun respondToApproval(
+        action: String,
+        messageId: String? = null,
+    ) {
         val state = uiState.value
-        val approvalMsg = state.messages.lastOrNull { it.approvalInfo != null } ?: return
+        val approvalMsg =
+            if (messageId != null) {
+                state.messages.firstOrNull { it.id == messageId && it.approvalInfo != null }
+            } else {
+                state.messages.lastOrNull { it.approvalInfo != null }
+            } ?: return
         val sessionId = runtimeSessionId() ?: state.currentSessionId ?: return
         // Desktop sends `once` for a single run; legacy mobile sent `approve`
         // (any non-deny still unblocks, but stay on-spec going forward).

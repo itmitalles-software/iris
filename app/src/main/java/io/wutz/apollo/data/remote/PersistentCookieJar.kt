@@ -31,11 +31,17 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * The session cookie (`hermes_session_at`) is explicitly retained across
  * pruning because its lifetime is owned server-side, not by client expiry.
+ *
+ * [isServerUrl] says whether a URL belongs to the active server. Only such URLs
+ * may receive or set the host-agnostic session cookies: every client shares this
+ * jar, including image loads of third-party URLs from tool output, so a
+ * host-agnostic cookie must never leave the server or be planted by another host.
  */
 class PersistentCookieJar(
     private val store: CookieStore,
     private val storeScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     initialServerId: String = DEFAULT_SERVER_ID,
+    private val isServerUrl: (HttpUrl) -> Boolean = { false },
 ) : CookieJar {
     // serverId -> (host -> cookies)
     private val cache = ConcurrentHashMap<String, MutableMap<String, MutableList<Cookie>>>()
@@ -112,7 +118,7 @@ class PersistentCookieJar(
         // entirely — every authenticated download / API call then 401s even
         // though the WebSocket (dialed on the current host) keeps working.
         val sessionCookies = cookies.filter { isSessionCookie(it) }
-        if (sessionCookies.isNotEmpty()) {
+        if (sessionCookies.isNotEmpty() && isServerUrl(url)) {
             val wildcard =
                 cache
                     .getOrPut(serverId) { ConcurrentHashMap() }
@@ -153,18 +159,20 @@ class PersistentCookieJar(
         val hosts = cache[serverId] ?: return emptyList()
         val now = System.currentTimeMillis()
         // The WILDCARD bucket holds session cookies that must be usable on
-        // ANY host of this server scope (the dashboard is reachable over
+        // every address of this server (the dashboard is reachable over
         // several IPs). They are exempted from the host-only domain match —
-        // OkHttp would reject them for a different host — but never sent to
-        // other servers because the scope itself is per-server.
-        val buckets = listOfNotNull(hosts[hostKey], hosts[WILDCARD_HOST])
+        // OkHttp would reject them for a different host — so they are only
+        // sent to the active server's URL, never to any other host.
+        val wildcard = if (isServerUrl(url)) hosts[WILDCARD_HOST] else null
+        val buckets = listOfNotNull(hosts[hostKey], wildcard)
         val seen = mutableSetOf<Pair<String, String>>()
         synchronized(buckets) {
             return buckets.flatMap { bucket ->
                 synchronized(bucket) {
                     bucket.filter { cookie ->
                         val alive = cookie.expiresAt > now || isSessionCookie(cookie)
-                        val usable = isSessionCookie(cookie) || cookie.matches(url)
+                        val secureOk = !cookie.secure || url.isHttps
+                        val usable = secureOk && (isSessionCookie(cookie) || cookie.matches(url))
                         val key = cookie.name to cookie.path
                         alive && usable && seen.add(key)
                     }

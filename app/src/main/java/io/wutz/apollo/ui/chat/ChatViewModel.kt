@@ -7091,7 +7091,10 @@ class ChatViewModel(
 
     // ── Approval flow ───────────────────────────────────────────────────
 
-    fun respondToApproval(action: String) = approvalsDelegate.respondToApproval(action)
+    fun respondToApproval(
+        action: String,
+        messageId: String? = null,
+    ) = approvalsDelegate.respondToApproval(action, messageId)
 
     // ── Sudo / secret prompt flow (issue #524) ──────────────────────────
 

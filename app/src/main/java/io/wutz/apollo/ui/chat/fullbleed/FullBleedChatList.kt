@@ -542,7 +542,9 @@ fun FullBleedChatList(
                                                     } else {
                                                         FullBleedSystemEvent(
                                                             message = sysMessage,
-                                                            onRespondApproval = actions.onRespondApproval,
+                                                            onRespondApproval = { action ->
+                                                                actions.onRespondApproval(sysMessage.id, action)
+                                                            },
                                                         )
                                                     }
                                                 }

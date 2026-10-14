@@ -2,12 +2,15 @@ package io.wutz.apollo.data.remote
 
 import android.content.Context
 import android.content.SharedPreferences
+import io.wutz.apollo.data.local.AuthManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.Cookie
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * Coordinator for the issue #470 cookie stack.
@@ -43,11 +46,20 @@ object CookieManager {
         synchronized(this) {
             if (jar != null) return
             val store = EncryptedCookieStore(context.applicationContext, legacyPrefsDeferred)
-            jar = PersistentCookieJar(store, scope, initialServerId)
+            jar = PersistentCookieJar(store, scope, initialServerId, ::isActiveServerUrl)
             // Eagerly load the initial scope off the caller thread so the
             // first REST call is instant without blocking app startup.
             scope.launch { jar!!.useStore(initialServerId) }
         }
+    }
+
+    /**
+     * True when [url] points at the active server (same host and port as the configured base URL).
+     * Host-agnostic session cookies are only sent to and accepted from such URLs.
+     */
+    internal fun isActiveServerUrl(url: HttpUrl): Boolean {
+        val base = runCatching { AuthManager.getBaseUrl() }.getOrNull()?.toHttpUrlOrNull() ?: return false
+        return url.host == base.host && url.port == base.port
     }
 
     /** Switch the active server scope and load its persisted cookies. */
