@@ -64,15 +64,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.KanbanTaskDetailKey
 import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
+import io.wutz.apollo.data.model.KanbanActiveWorker
+import io.wutz.apollo.data.model.KanbanBoard
+import io.wutz.apollo.data.model.KanbanColumn
+import io.wutz.apollo.data.model.KanbanProfile
+import io.wutz.apollo.data.model.KanbanProject
 import io.wutz.apollo.data.model.KanbanTask
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.common.ErrorState
@@ -168,7 +175,6 @@ fun KanbanScreen(
     var showBulkUnassignDialog by remember { mutableStateOf(false) }
 
     // Board management dialogs
-    var showBoardMenu by remember { mutableStateOf(false) }
     var showCreateBoardDialog by remember { mutableStateOf(false) }
     var showBoardSettingsDialog by remember { mutableStateOf(false) }
     var showDeleteBoardDialog by remember { mutableStateOf(false) }
@@ -214,111 +220,65 @@ fun KanbanScreen(
 
     ToastEffect(toastMessage = state.toastMessage, onClearToast = viewModel::clearToast)
 
+    val openAddTaskDialog: (String) -> Unit = { column ->
+        createTaskDefaultColumn = column
+        showAddTaskDialog = true
+    }
+    val toggleTaskSelection: (KanbanTask) -> Unit = { task ->
+        selectedTaskIds =
+            if (task.id in selectedTaskIds) {
+                selectedTaskIds - task.id
+            } else {
+                selectedTaskIds + task.id
+            }
+    }
+    // Bulk operations keep the failed tasks selected and leave multi-select once everything succeeded.
+    val onBulkComplete: (Set<String>) -> Unit = { failed ->
+        selectedTaskIds = failed
+        if (failed.isEmpty()) isMultiSelectMode = false
+    }
+
     HermesScaffold(
         title = { Text(stringResource(R.string.kanban_board_title)) },
         navigationIcon = onOpenDrawer?.let { NavIcon.Menu(it) },
+        // The board shows its columns side by side and uses the full window width.
+        maxContentWidth = Dp.Unspecified,
         actions = {
-            IconButton(onClick = { showFilterSheet = true }) {
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = stringResource(R.string.kanban_filter),
-                )
-            }
-            Box {
-                IconButton(onClick = { showBoardMenu = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.kanban_board_options),
-                    )
-                }
-                DropdownMenu(
-                    expanded = showBoardMenu,
-                    onDismissRequest = { showBoardMenu = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.kanban_new_board)) },
-                        onClick = {
-                            showBoardMenu = false
-                            showCreateBoardDialog = true
-                        },
-                    )
-                    if (state.selectedBoard != null) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.kanban_active_workers)) },
-                            onClick = {
-                                showBoardMenu = false
-                                showWorkersDialog = true
-                                viewModel.loadActiveWorkers()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.kanban_board_settings)) },
-                            onClick = {
-                                showBoardMenu = false
-                                showBoardSettingsDialog = true
-                            },
-                        )
-                        if (state.boards.size > 1 && !state.selectedBoard?.id.equals("default", ignoreCase = true)) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.kanban_archive_board)) },
-                                onClick = {
-                                    showBoardMenu = false
-                                    showDeleteBoardDialog = true
-                                },
-                            )
+            KanbanTopBarActions(
+                hasSelectedBoard = state.selectedBoard != null,
+                canArchiveBoard =
+                    state.boards.size > 1 && !state.selectedBoard?.id.equals("default", ignoreCase = true),
+                isMultiSelectMode = isMultiSelectMode,
+                onShowFilters = { showFilterSheet = true },
+                onNewBoard = { showCreateBoardDialog = true },
+                onShowWorkers = {
+                    showWorkersDialog = true
+                    viewModel.loadActiveWorkers()
+                },
+                onBoardSettings = { showBoardSettingsDialog = true },
+                onArchiveBoard = { showDeleteBoardDialog = true },
+                onExportBoard = {
+                    state.selectedBoard?.let { b ->
+                        coroutineScope.launch {
+                            val cachedExport = viewModel.prepareBoardExport(b, context.cacheDir)
+                            if (cachedExport != null) {
+                                pendingExportPath = cachedExport.absolutePath
+                                exportLauncher.launch("${b.slug}.tar.gz")
+                            }
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.kanban_export_board)) },
-                            onClick = {
-                                showBoardMenu = false
-                                state.selectedBoard?.let { b ->
-                                    coroutineScope.launch {
-                                        val cachedExport = viewModel.prepareBoardExport(b, context.cacheDir)
-                                        if (cachedExport != null) {
-                                            pendingExportPath = cachedExport.absolutePath
-                                            exportLauncher.launch("${b.slug}.tar.gz")
-                                        }
-                                    }
-                                }
-                            },
-                        )
                     }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.kanban_import_board)) },
-                        onClick = {
-                            showBoardMenu = false
-                            importLauncher.launch(
-                                arrayOf("application/gzip", "application/x-gzip", "application/octet-stream", "*/*"),
-                            )
-                        },
+                },
+                onImportBoard = {
+                    importLauncher.launch(
+                        arrayOf("application/gzip", "application/x-gzip", "application/octet-stream", "*/*"),
                     )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.kanban_orchestration_settings)) },
-                        onClick = {
-                            showBoardMenu = false
-                            showOrchestrationDialog = true
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(
-                                    if (isMultiSelectMode) {
-                                        R.string.kanban_exit_multi_select
-                                    } else {
-                                        R.string.kanban_select_multiple
-                                    },
-                                ),
-                            )
-                        },
-                        onClick = {
-                            showBoardMenu = false
-                            isMultiSelectMode = !isMultiSelectMode
-                            if (!isMultiSelectMode) selectedTaskIds = emptySet()
-                        },
-                    )
-                }
-            }
+                },
+                onOrchestrationSettings = { showOrchestrationDialog = true },
+                onToggleMultiSelect = {
+                    isMultiSelectMode = !isMultiSelectMode
+                    if (!isMultiSelectMode) selectedTaskIds = emptySet()
+                },
+            )
         },
         isRefreshing = state.isLoading,
         onRefresh = { viewModel.loadBoards() },
@@ -347,405 +307,40 @@ fun KanbanScreen(
                             modifier = Modifier.padding(paddingValues),
                         )
                     } else {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            SearchBar(
-                                query = query,
-                                onQueryChange = { query = it },
-                                placeholder = stringResource(R.string.kanban_filter_placeholder),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
-                            // Board selector tab row
-                            if (state.boards.isNotEmpty()) {
-                                PrimaryScrollableTabRow(
-                                    selectedTabIndex = state.boards.indexOf(state.selectedBoard).coerceAtLeast(0),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    state.boards.forEach { board ->
-                                        Tab(
-                                            selected = board == state.selectedBoard,
-                                            onClick = { viewModel.selectBoard(board) },
-                                            text = { Text(board.displayName) },
+                        KanbanBoardContent(
+                            state = state,
+                            query = query,
+                            onQueryChange = { query = it },
+                            tasksByColumn = tasksByColumn,
+                            nowSeconds = nowSeconds,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedTaskIds = selectedTaskIds,
+                            onSelectBoard = viewModel::selectBoard,
+                            onShowFilters = { showFilterSheet = true },
+                            onAddTask = openAddTaskDialog,
+                            onToggleColumnCollapse = viewModel::toggleColumnCollapse,
+                            onTaskClick = { clickedTask ->
+                                if (isMultiSelectMode) {
+                                    toggleTaskSelection(clickedTask)
+                                } else {
+                                    state.selectedBoard?.let { board ->
+                                        NavigationController.navigateTo(
+                                            KanbanTaskDetailKey(
+                                                boardSlug = board.id,
+                                                taskId = clickedTask.id,
+                                            ),
                                         )
                                     }
                                 }
-                            }
-
-                            if (state.selectedBoard == null) {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(R.string.kanban_no_boards))
+                            },
+                            onTaskActionClick = { clickedTask ->
+                                if (isMultiSelectMode) {
+                                    toggleTaskSelection(clickedTask)
+                                } else {
+                                    taskForActions = clickedTask
                                 }
-                            } else if (state.columns.isEmpty()) {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(stringResource(R.string.kanban_no_columns))
-                                }
-                            } else {
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    LiveStatusPill(isLive = state.isLive)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    IconButton(onClick = { showFilterSheet = true }) {
-                                        Icon(
-                                            imageVector = Icons.Default.FilterList,
-                                            contentDescription = stringResource(R.string.kanban_filters),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    IconButton(
-                                        onClick = {
-                                            createTaskDefaultColumn = DEFAULT_COLUMN
-                                            showAddTaskDialog = true
-                                        },
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = stringResource(R.string.kanban_add_task),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-
-                                val boardHasWork = state.tasks.isNotEmpty()
-                                val statusColors = LocalHermesStatusColors.current
-
-                                LazyRow(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding =
-                                        PaddingValues(
-                                            start = 16.dp,
-                                            top = 16.dp,
-                                            end = 16.dp,
-                                            bottom = 16.dp,
-                                        ),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                ) {
-                                    items(state.columns.size, key = { index ->
-                                        state.columns[index].name
-                                    }) { columnIndex ->
-                                        val column = state.columns[columnIndex]
-                                        val colName = column.name
-                                        val colTasks = tasksByColumn[colName.lowercase()] ?: emptyList()
-                                        val isCollapsed =
-                                            KanbanColumnCollapseHelper.isColumnCollapsed(
-                                                columnName = colName,
-                                                columnTaskCount = colTasks.size,
-                                                boardHasWork = boardHasWork,
-                                                overrides = state.columnCollapseOverrides,
-                                            )
-                                        val statusTone =
-                                            when (colName.lowercase()) {
-                                                "ready" -> statusColors.info
-                                                "running" -> statusColors.success
-                                                "blocked" -> statusColors.error
-                                                "review" -> statusColors.warning
-                                                "done" -> statusColors.success
-                                                else -> MaterialTheme.colorScheme.outline
-                                            }
-
-                                        if (isCollapsed) {
-                                            Card(
-                                                modifier =
-                                                    Modifier
-                                                        .width(56.dp)
-                                                        .fillMaxHeight()
-                                                        .clickable {
-                                                            viewModel.toggleColumnCollapse(
-                                                                colName,
-                                                                boardHasWork,
-                                                                colTasks.size,
-                                                            )
-                                                        },
-                                            ) {
-                                                Column(
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    modifier = Modifier.fillMaxSize().padding(vertical = 12.dp),
-                                                ) {
-                                                    Box(
-                                                        modifier =
-                                                            Modifier
-                                                                .size(8.dp)
-                                                                .background(statusTone, shape = CircleShape),
-                                                    )
-                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                    Text(
-                                                        text = colTasks.size.toString(),
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                    Spacer(modifier = Modifier.height(16.dp))
-                                                    Text(
-                                                        text = colName.take(3).uppercase(),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    )
-                                                    Spacer(modifier = Modifier.weight(1f))
-                                                    if (KanbanStatusConstraints.isUserWritableTarget(colName)) {
-                                                        IconButton(
-                                                            onClick = {
-                                                                createTaskDefaultColumn = colName
-                                                                showAddTaskDialog = true
-                                                            },
-                                                            modifier = Modifier.size(32.dp),
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.Add,
-                                                                contentDescription =
-                                                                    stringResource(
-                                                                        R.string.kanban_add_to_column,
-                                                                        colName,
-                                                                    ),
-                                                                modifier = Modifier.size(16.dp),
-                                                            )
-                                                        }
-                                                    }
-                                                    IconButton(
-                                                        onClick = {
-                                                            viewModel.toggleColumnCollapse(
-                                                                colName,
-                                                                boardHasWork,
-                                                                colTasks.size,
-                                                            )
-                                                        },
-                                                        modifier = Modifier.size(32.dp),
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                                            contentDescription =
-                                                                stringResource(
-                                                                    R.string.kanban_expand_column,
-                                                                    colName,
-                                                                ),
-                                                            modifier = Modifier.size(16.dp),
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            Column(
-                                                modifier =
-                                                    Modifier
-                                                        .width(280.dp)
-                                                        .fillMaxSize(),
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    modifier =
-                                                        Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(bottom = 8.dp),
-                                                ) {
-                                                    Text(
-                                                        text = "${colName.replaceFirstChar {
-                                                            it.uppercase()
-                                                        }} (${colTasks.size})",
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        if (KanbanStatusConstraints.isUserWritableTarget(colName)) {
-                                                            IconButton(
-                                                                onClick = {
-                                                                    createTaskDefaultColumn = colName
-                                                                    showAddTaskDialog = true
-                                                                },
-                                                                modifier = Modifier.size(28.dp),
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = Icons.Default.Add,
-                                                                    contentDescription =
-                                                                        stringResource(
-                                                                            R.string.kanban_add_to_column,
-                                                                            colName,
-                                                                        ),
-                                                                    modifier = Modifier.size(18.dp),
-                                                                )
-                                                            }
-                                                        }
-                                                        IconButton(
-                                                            onClick = {
-                                                                viewModel.toggleColumnCollapse(
-                                                                    colName,
-                                                                    boardHasWork,
-                                                                    colTasks.size,
-                                                                )
-                                                            },
-                                                            modifier = Modifier.size(28.dp),
-                                                        ) {
-                                                            Icon(
-                                                                imageVector =
-                                                                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                                                                contentDescription =
-                                                                    stringResource(
-                                                                        R.string.kanban_collapse_column,
-                                                                        colName,
-                                                                    ),
-                                                                modifier = Modifier.size(18.dp),
-                                                            )
-                                                        }
-                                                    }
-                                                }
-
-                                                if (colTasks.isEmpty()) {
-                                                    Box(
-                                                        modifier =
-                                                            Modifier
-                                                                .fillMaxWidth()
-                                                                .padding(vertical = 16.dp),
-                                                        contentAlignment = Alignment.Center,
-                                                    ) {
-                                                        Text(
-                                                            text = stringResource(R.string.kanban_no_tasks),
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        )
-                                                    }
-                                                } else if (colName.equals("running", ignoreCase = true) &&
-                                                    state.groupRunning
-                                                ) {
-                                                    val runningGroups =
-                                                        remember(colTasks) {
-                                                            KanbanLaneGrouping.groupRunningTasks(colTasks)
-                                                        }
-                                                    LazyColumn(
-                                                        modifier = Modifier.weight(1f),
-                                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                                    ) {
-                                                        runningGroups.forEach { group ->
-                                                            item(key = group.lazyKey) {
-                                                                Row(
-                                                                    verticalAlignment = Alignment.CenterVertically,
-                                                                    modifier =
-                                                                        Modifier.fillMaxWidth().padding(
-                                                                            vertical = 4.dp,
-                                                                        ),
-                                                                ) {
-                                                                    Icon(
-                                                                        imageVector = Icons.Default.Person,
-                                                                        contentDescription = null,
-                                                                        modifier = Modifier.size(14.dp),
-                                                                        tint = MaterialTheme.colorScheme.primary,
-                                                                    )
-                                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                                    Text(
-                                                                        text =
-                                                                            "${group.assignee ?: stringResource(
-                                                                                R.string.kanban_unassigned_group,
-                                                                            )} (${group.tasks.size})",
-                                                                        style = MaterialTheme.typography.labelMedium,
-                                                                        fontWeight = FontWeight.Bold,
-                                                                        color = MaterialTheme.colorScheme.primary,
-                                                                    )
-                                                                }
-                                                            }
-                                                            items(group.tasks, key = { it.id }) { task ->
-                                                                KanbanTaskCard(
-                                                                    task = task,
-                                                                    nowSeconds = nowSeconds,
-                                                                    defaultAssignee =
-                                                                        state.orchestration
-                                                                            ?.resolvedDefaultAssignee,
-                                                                    isSelected =
-                                                                        isMultiSelectMode && task.id in selectedTaskIds,
-                                                                    onTaskClick = { clickedTask ->
-                                                                        if (isMultiSelectMode) {
-                                                                            selectedTaskIds =
-                                                                                if (clickedTask.id in selectedTaskIds) {
-                                                                                    selectedTaskIds - clickedTask.id
-                                                                                } else {
-                                                                                    selectedTaskIds + clickedTask.id
-                                                                                }
-                                                                        } else {
-                                                                            state.selectedBoard?.let { board ->
-                                                                                NavigationController.navigateTo(
-                                                                                    KanbanTaskDetailKey(
-                                                                                        boardSlug = board.id,
-                                                                                        taskId = clickedTask.id,
-                                                                                    ),
-                                                                                )
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    onActionClick = { clickedTask ->
-                                                                        if (isMultiSelectMode) {
-                                                                            selectedTaskIds =
-                                                                                if (clickedTask.id in selectedTaskIds) {
-                                                                                    selectedTaskIds - clickedTask.id
-                                                                                } else {
-                                                                                    selectedTaskIds + clickedTask.id
-                                                                                }
-                                                                        } else {
-                                                                            taskForActions = clickedTask
-                                                                        }
-                                                                    },
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                } else {
-                                                    LazyColumn(
-                                                        modifier = Modifier.weight(1f),
-                                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                                    ) {
-                                                        items(colTasks, key = { it.id }) { task ->
-                                                            KanbanTaskCard(
-                                                                task = task,
-                                                                nowSeconds = nowSeconds,
-                                                                defaultAssignee =
-                                                                    state.orchestration
-                                                                        ?.resolvedDefaultAssignee,
-                                                                isSelected =
-                                                                    isMultiSelectMode && task.id in selectedTaskIds,
-                                                                onTaskClick = { clickedTask ->
-                                                                    if (isMultiSelectMode) {
-                                                                        selectedTaskIds =
-                                                                            if (clickedTask.id in selectedTaskIds) {
-                                                                                selectedTaskIds - clickedTask.id
-                                                                            } else {
-                                                                                selectedTaskIds + clickedTask.id
-                                                                            }
-                                                                    } else {
-                                                                        state.selectedBoard?.let { board ->
-                                                                            NavigationController.navigateTo(
-                                                                                KanbanTaskDetailKey(
-                                                                                    boardSlug = board.id,
-                                                                                    taskId = clickedTask.id,
-                                                                                ),
-                                                                            )
-                                                                        }
-                                                                    }
-                                                                },
-                                                                onActionClick = { clickedTask ->
-                                                                    if (isMultiSelectMode) {
-                                                                        selectedTaskIds =
-                                                                            if (clickedTask.id in selectedTaskIds) {
-                                                                                selectedTaskIds - clickedTask.id
-                                                                            } else {
-                                                                                selectedTaskIds + clickedTask.id
-                                                                            }
-                                                                    } else {
-                                                                        taskForActions = clickedTask
-                                                                    }
-                                                                },
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                            },
+                        )
                     }
 
                     if (showAddTaskDialog) {
@@ -814,39 +409,10 @@ fun KanbanScreen(
                     }
 
                     if (showFilterSheet) {
-                        val assignees =
-                            remember(state.tasks) {
-                                state.tasks
-                                    .mapNotNull { it.assignee }
-                                    .distinct()
-                                    .sorted()
-                            }
-                        val tenants =
-                            remember(state.tasks) {
-                                state.tasks
-                                    .mapNotNull { it.tenant }
-                                    .distinct()
-                                    .sorted()
-                            }
-                        KanbanFilterSheet(
-                            assignees = assignees,
-                            tenants = tenants,
+                        KanbanFilterSheetHost(
+                            state = state,
                             selectedAssignee = selectedAssignee,
                             selectedTenant = selectedTenant,
-                            workflowTemplateIds =
-                                state.tasks
-                                    .mapNotNull { it.workflowTemplateId }
-                                    .distinct()
-                                    .sorted(),
-                            currentStepKeys =
-                                state.tasks
-                                    .mapNotNull { it.currentStepKey }
-                                    .distinct()
-                                    .sorted(),
-                            selectedWorkflowTemplateId = state.selectedWorkflowTemplateId,
-                            selectedCurrentStepKey = state.selectedCurrentStepKey,
-                            includeArchived = state.includeArchived,
-                            groupRunning = state.groupRunning,
                             onSelectAssignee = { selectedAssignee = it },
                             onSelectTenant = { selectedTenant = it },
                             onSelectWorkflowFilters = viewModel::setWorkflowFilters,
@@ -864,144 +430,51 @@ fun KanbanScreen(
                     }
 
                     if (isMultiSelectMode) {
-                        Card(
-                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                ),
+                        val allSelected = selectedTaskIds.size == filteredTasks.size
+                        KanbanMultiSelectBar(
+                            selectedCount = selectedTaskIds.size,
+                            allSelected = allSelected,
+                            onToggleSelectAll = {
+                                selectedTaskIds =
+                                    if (allSelected) {
+                                        emptySet()
+                                    } else {
+                                        filteredTasks.map { it.id }.toSet()
+                                    }
+                            },
+                            onMove = { showBulkMoveDialog = true },
+                            onAssign = { showBulkAssignDialog = true },
+                            onUnassign = { showBulkUnassignDialog = true },
+                            onArchive = { showBulkArchiveDialog = true },
+                            onDelete = { showBulkDeleteDialog = true },
+                            onClose = {
+                                isMultiSelectMode = false
+                                selectedTaskIds = emptySet()
+                            },
                             modifier =
                                 Modifier
                                     .align(Alignment.BottomCenter)
                                     .fillMaxWidth(),
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier =
-                                    Modifier
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                        .fillMaxWidth(),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.kanban_selected_count, selectedTaskIds.size),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                // Six actions do not fit a phone's width: scroll them instead of
-                                // squeezing Archive, Unassign and Delete off the screen.
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier =
-                                        Modifier
-                                            .weight(1f, fill = false)
-                                            .horizontalScroll(rememberScrollState()),
-                                ) {
-                                    TextButton(
-                                        onClick = {
-                                            selectedTaskIds =
-                                                if (selectedTaskIds.size == filteredTasks.size) {
-                                                    emptySet()
-                                                } else {
-                                                    filteredTasks.map { it.id }.toSet()
-                                                }
-                                        },
-                                    ) {
-                                        Text(
-                                            if (selectedTaskIds.size == filteredTasks.size) {
-                                                stringResource(R.string.kanban_clear_selection)
-                                            } else {
-                                                stringResource(R.string.kanban_select_all)
-                                            },
-                                        )
-                                    }
-                                    Button(
-                                        onClick = { showBulkMoveDialog = true },
-                                        enabled = selectedTaskIds.isNotEmpty(),
-                                    ) {
-                                        Text(stringResource(R.string.kanban_move))
-                                    }
-                                    Button(
-                                        onClick = { showBulkAssignDialog = true },
-                                        enabled = selectedTaskIds.isNotEmpty(),
-                                    ) {
-                                        Text(stringResource(R.string.kanban_bulk_assign))
-                                    }
-                                    Button(
-                                        onClick = { showBulkUnassignDialog = true },
-                                        enabled = selectedTaskIds.isNotEmpty(),
-                                    ) {
-                                        Text(stringResource(R.string.kanban_bulk_unassign))
-                                    }
-                                    Button(
-                                        onClick = { showBulkArchiveDialog = true },
-                                        enabled = selectedTaskIds.isNotEmpty(),
-                                    ) {
-                                        Text(stringResource(R.string.kanban_action_archive))
-                                    }
-                                    Button(
-                                        onClick = { showBulkDeleteDialog = true },
-                                        enabled = selectedTaskIds.isNotEmpty(),
-                                        colors =
-                                            ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.error,
-                                            ),
-                                    ) {
-                                        Text(stringResource(R.string.kanban_bulk_delete))
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            isMultiSelectMode = false
-                                            selectedTaskIds = emptySet()
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = stringResource(R.string.kanban_close_multi_select),
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        )
                     }
 
                     if (showBulkMoveDialog) {
-                        val writableMoveColumns =
-                            remember(state.columns) {
-                                state.columns.filter { KanbanStatusConstraints.isUserWritableTarget(it.name) }
-                            }
-                        AlertDialog(
-                            onDismissRequest = { showBulkMoveDialog = false },
-                            title = { Text(stringResource(R.string.kanban_move_tasks, selectedTaskIds.size)) },
-                            text = {
-                                Column {
-                                    writableMoveColumns.forEach { col ->
-                                        TextButton(
-                                            onClick = {
-                                                if (col.name.equals("done", ignoreCase = true)) {
-                                                    showBulkCompleteDialog = true
-                                                } else {
-                                                    viewModel.bulkMove(selectedTaskIds.toList(), col.name) { failed ->
-                                                        selectedTaskIds = failed
-                                                        if (failed.isEmpty()) isMultiSelectMode = false
-                                                    }
-                                                }
-                                                showBulkMoveDialog = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text(col.name.uppercase(), modifier = Modifier.fillMaxWidth())
-                                        }
-                                    }
+                        KanbanBulkMoveDialog(
+                            columns = state.columns,
+                            taskCount = selectedTaskIds.size,
+                            onSelectColumn = { columnName ->
+                                if (columnName.equals("done", ignoreCase = true)) {
+                                    showBulkCompleteDialog = true
+                                } else {
+                                    viewModel.bulkMove(
+                                        selectedTaskIds.toList(),
+                                        columnName,
+                                        onComplete = onBulkComplete,
+                                    )
                                 }
+                                showBulkMoveDialog = false
                             },
-                            confirmButton = {},
-                            dismissButton = {
-                                TextButton(onClick = { showBulkMoveDialog = false }) {
-                                    Text(stringResource(R.string.action_cancel))
-                                }
-                            },
+                            onDismiss = { showBulkMoveDialog = false },
                         )
                     }
 
@@ -1013,10 +486,8 @@ fun KanbanScreen(
                                     taskIds = selectedTaskIds.toList(),
                                     targetStatus = "done",
                                     summary = summary,
-                                ) { failed ->
-                                    selectedTaskIds = failed
-                                    if (failed.isEmpty()) isMultiSelectMode = false
-                                }
+                                    onComplete = onBulkComplete,
+                                )
                                 showBulkCompleteDialog = false
                             },
                             onDismiss = { showBulkCompleteDialog = false },
@@ -1024,33 +495,13 @@ fun KanbanScreen(
                     }
 
                     if (showBulkAssignDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showBulkAssignDialog = false },
-                            title = { Text(stringResource(R.string.kanban_bulk_assign)) },
-                            text = {
-                                Column {
-                                    state.profiles.forEach { profile ->
-                                        TextButton(
-                                            onClick = {
-                                                viewModel.bulkAssign(selectedTaskIds.toList(), profile.name) { failed ->
-                                                    selectedTaskIds = failed
-                                                    if (failed.isEmpty()) isMultiSelectMode = false
-                                                }
-                                                showBulkAssignDialog = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text(profile.name, modifier = Modifier.fillMaxWidth())
-                                        }
-                                    }
-                                }
+                        KanbanBulkAssignDialog(
+                            profiles = state.profiles,
+                            onSelectProfile = { profileName ->
+                                viewModel.bulkAssign(selectedTaskIds.toList(), profileName, onBulkComplete)
+                                showBulkAssignDialog = false
                             },
-                            confirmButton = {},
-                            dismissButton = {
-                                TextButton(onClick = { showBulkAssignDialog = false }) {
-                                    Text(stringResource(R.string.action_cancel))
-                                }
-                            },
+                            onDismiss = { showBulkAssignDialog = false },
                         )
                     }
 
@@ -1059,10 +510,7 @@ fun KanbanScreen(
                             message = stringResource(R.string.kanban_bulk_unassign_confirm, selectedTaskIds.size),
                             onConfirm = {
                                 showBulkUnassignDialog = false
-                                viewModel.bulkAssign(selectedTaskIds.toList(), null) { failed ->
-                                    selectedTaskIds = failed
-                                    if (failed.isEmpty()) isMultiSelectMode = false
-                                }
+                                viewModel.bulkAssign(selectedTaskIds.toList(), null, onBulkComplete)
                             },
                             onDismiss = { showBulkUnassignDialog = false },
                         )
@@ -1073,151 +521,36 @@ fun KanbanScreen(
                             message = stringResource(R.string.kanban_bulk_archive_confirm, selectedTaskIds.size),
                             onConfirm = {
                                 showBulkArchiveDialog = false
-                                viewModel.bulkArchive(selectedTaskIds.toList()) { failed ->
-                                    selectedTaskIds = failed
-                                    if (failed.isEmpty()) isMultiSelectMode = false
-                                }
+                                viewModel.bulkArchive(selectedTaskIds.toList(), onBulkComplete)
                             },
                             onDismiss = { showBulkArchiveDialog = false },
                         )
                     }
 
                     if (showBulkDeleteDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showBulkDeleteDialog = false },
-                            title = { Text(stringResource(R.string.kanban_bulk_delete)) },
-                            text = {
-                                Text(stringResource(R.string.kanban_bulk_delete_confirm, selectedTaskIds.size))
+                        KanbanBulkDeleteDialog(
+                            taskCount = selectedTaskIds.size,
+                            onConfirm = {
+                                viewModel.bulkDelete(selectedTaskIds.toList(), onBulkComplete)
+                                showBulkDeleteDialog = false
                             },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        viewModel.bulkDelete(selectedTaskIds.toList()) { failed ->
-                                            selectedTaskIds = failed
-                                            if (failed.isEmpty()) isMultiSelectMode = false
-                                        }
-                                        showBulkDeleteDialog = false
-                                    },
-                                    colors =
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.error,
-                                        ),
-                                ) {
-                                    Text(stringResource(R.string.kanban_bulk_delete))
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showBulkDeleteDialog = false }) {
-                                    Text(stringResource(R.string.action_cancel))
-                                }
-                            },
+                            onDismiss = { showBulkDeleteDialog = false },
                         )
                     }
 
                     if (showCreateBoardDialog) {
-                        var boardSlug by remember { mutableStateOf("") }
-                        var boardName by remember { mutableStateOf("") }
-                        var boardDesc by remember { mutableStateOf("") }
-                        var selectedProjId by remember { mutableStateOf<String?>(null) }
-                        var projectDropdownExpanded by remember { mutableStateOf(false) }
-
-                        AlertDialog(
-                            onDismissRequest = { showCreateBoardDialog = false },
-                            title = { Text(stringResource(R.string.kanban_create_new_board)) },
-                            text = {
-                                Column {
-                                    OutlinedTextField(
-                                        value = boardSlug,
-                                        onValueChange = { boardSlug = it },
-                                        label = { Text(stringResource(R.string.kanban_slug)) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true,
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedTextField(
-                                        value = boardName,
-                                        onValueChange = { boardName = it },
-                                        label = { Text(stringResource(R.string.kanban_display_name)) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true,
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedTextField(
-                                        value = boardDesc,
-                                        onValueChange = { boardDesc = it },
-                                        label = { Text(stringResource(R.string.kanban_description)) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    ExposedDropdownMenuBox(
-                                        expanded = projectDropdownExpanded,
-                                        onExpandedChange = { projectDropdownExpanded = it },
-                                    ) {
-                                        val displayProj =
-                                            state.projects.find { it.id == selectedProjId }?.name
-                                                ?: stringResource(R.string.kanban_no_project)
-                                        OutlinedTextField(
-                                            value = displayProj,
-                                            onValueChange = {},
-                                            readOnly = true,
-                                            label = { Text(stringResource(R.string.kanban_project)) },
-                                            trailingIcon = {
-                                                ExposedDropdownMenuDefaults.TrailingIcon(
-                                                    expanded = projectDropdownExpanded,
-                                                )
-                                            },
-                                            modifier =
-                                                Modifier
-                                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                                    .fillMaxWidth(),
-                                        )
-                                        ExposedDropdownMenu(
-                                            expanded = projectDropdownExpanded,
-                                            onDismissRequest = { projectDropdownExpanded = false },
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.kanban_no_project)) },
-                                                onClick = {
-                                                    selectedProjId = null
-                                                    projectDropdownExpanded = false
-                                                },
-                                            )
-                                            state.projects.forEach { proj ->
-                                                DropdownMenuItem(
-                                                    text = { Text(proj.name) },
-                                                    onClick = {
-                                                        selectedProjId = proj.id
-                                                        projectDropdownExpanded = false
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                        KanbanCreateBoardDialog(
+                            projects = state.projects,
+                            onCreate = { slug, name, description, projectId ->
+                                viewModel.createBoard(
+                                    slug = slug,
+                                    name = name,
+                                    description = description,
+                                    projectId = projectId,
+                                )
+                                showCreateBoardDialog = false
                             },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        if (boardSlug.isNotBlank()) {
-                                            viewModel.createBoard(
-                                                slug = boardSlug.trim(),
-                                                name = boardName.trim().ifBlank { null },
-                                                description = boardDesc.trim().ifBlank { null },
-                                                projectId = selectedProjId,
-                                            )
-                                            showCreateBoardDialog = false
-                                        }
-                                    },
-                                    enabled = boardSlug.isNotBlank(),
-                                ) {
-                                    Text(stringResource(R.string.action_add))
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showCreateBoardDialog = false }) {
-                                    Text(stringResource(R.string.action_cancel))
-                                }
-                            },
+                            onDismiss = { showCreateBoardDialog = false },
                         )
                     }
 
@@ -1246,84 +579,969 @@ fun KanbanScreen(
                     }
 
                     if (showWorkersDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showWorkersDialog = false },
-                            title = { Text(stringResource(R.string.kanban_active_workers)) },
-                            text = {
-                                if (state.isLoadingWorkers) {
-                                    CircularProgressIndicator()
-                                } else if (state.activeWorkers.isEmpty()) {
-                                    Text(stringResource(R.string.kanban_no_active_workers))
-                                } else {
-                                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
-                                        items(state.activeWorkers, key = { it.runId }) { worker ->
-                                            Text(
-                                                "${worker.taskTitle} · ${worker.profile ?: worker.taskAssignee.orEmpty()}",
-                                                modifier =
-                                                    Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable {
-                                                            val board = state.selectedBoard ?: return@clickable
-                                                            showWorkersDialog = false
-                                                            NavigationController.navigateTo(
-                                                                KanbanTaskDetailKey(
-                                                                    boardSlug = board.id,
-                                                                    taskId = worker.taskId,
-                                                                ),
-                                                            )
-                                                        }.padding(vertical = 8.dp),
-                                            )
-                                        }
-                                    }
+                        KanbanActiveWorkersDialog(
+                            isLoading = state.isLoadingWorkers,
+                            workers = state.activeWorkers,
+                            onOpenTask = { taskId ->
+                                state.selectedBoard?.let { board ->
+                                    showWorkersDialog = false
+                                    NavigationController.navigateTo(
+                                        KanbanTaskDetailKey(
+                                            boardSlug = board.id,
+                                            taskId = taskId,
+                                        ),
+                                    )
                                 }
                             },
-                            confirmButton = {
-                                TextButton(onClick = { showWorkersDialog = false }) {
-                                    Text(stringResource(R.string.action_close))
-                                }
-                            },
+                            onDismiss = { showWorkersDialog = false },
                         )
                     }
 
                     if (showDeleteBoardDialog && state.selectedBoard != null) {
-                        AlertDialog(
-                            onDismissRequest = { showDeleteBoardDialog = false },
-                            title = { Text(stringResource(R.string.kanban_archive_board)) },
-                            text = {
-                                Text(
-                                    stringResource(
-                                        R.string.kanban_archive_board_confirm,
-                                        state.selectedBoard?.displayName.orEmpty(),
-                                    ),
-                                )
-                            },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        state.selectedBoard?.let { board ->
-                                            viewModel.deleteBoard(board.id)
-                                        }
-                                        showDeleteBoardDialog = false
-                                    },
-                                    colors =
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.error,
-                                        ),
-                                ) {
-                                    Text(stringResource(R.string.kanban_action_archive))
+                        KanbanArchiveBoardDialog(
+                            boardName = state.selectedBoard?.displayName.orEmpty(),
+                            onConfirm = {
+                                state.selectedBoard?.let { board ->
+                                    viewModel.deleteBoard(board.id)
                                 }
+                                showDeleteBoardDialog = false
                             },
-                            dismissButton = {
-                                TextButton(onClick = { showDeleteBoardDialog = false }) {
-                                    Text(stringResource(R.string.action_cancel))
-                                }
-                            },
+                            onDismiss = { showDeleteBoardDialog = false },
                         )
                     }
                 }
             }
         }
     }
+}
+
+/** Filter button and the board options menu in the top bar. */
+@Composable
+private fun KanbanTopBarActions(
+    hasSelectedBoard: Boolean,
+    canArchiveBoard: Boolean,
+    isMultiSelectMode: Boolean,
+    onShowFilters: () -> Unit,
+    onNewBoard: () -> Unit,
+    onShowWorkers: () -> Unit,
+    onBoardSettings: () -> Unit,
+    onArchiveBoard: () -> Unit,
+    onExportBoard: () -> Unit,
+    onImportBoard: () -> Unit,
+    onOrchestrationSettings: () -> Unit,
+    onToggleMultiSelect: () -> Unit,
+) {
+    var showBoardMenu by remember { mutableStateOf(false) }
+    IconButton(onClick = onShowFilters) {
+        Icon(
+            imageVector = Icons.Default.FilterList,
+            contentDescription = stringResource(R.string.kanban_filter),
+        )
+    }
+    Box {
+        IconButton(onClick = { showBoardMenu = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = stringResource(R.string.kanban_board_options),
+            )
+        }
+        DropdownMenu(
+            expanded = showBoardMenu,
+            onDismissRequest = { showBoardMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.kanban_new_board)) },
+                onClick = {
+                    showBoardMenu = false
+                    onNewBoard()
+                },
+            )
+            if (hasSelectedBoard) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.kanban_active_workers)) },
+                    onClick = {
+                        showBoardMenu = false
+                        onShowWorkers()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.kanban_board_settings)) },
+                    onClick = {
+                        showBoardMenu = false
+                        onBoardSettings()
+                    },
+                )
+                if (canArchiveBoard) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.kanban_archive_board)) },
+                        onClick = {
+                            showBoardMenu = false
+                            onArchiveBoard()
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.kanban_export_board)) },
+                    onClick = {
+                        showBoardMenu = false
+                        onExportBoard()
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.kanban_import_board)) },
+                onClick = {
+                    showBoardMenu = false
+                    onImportBoard()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.kanban_orchestration_settings)) },
+                onClick = {
+                    showBoardMenu = false
+                    onOrchestrationSettings()
+                },
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        stringResource(
+                            if (isMultiSelectMode) {
+                                R.string.kanban_exit_multi_select
+                            } else {
+                                R.string.kanban_select_multiple
+                            },
+                        ),
+                    )
+                },
+                onClick = {
+                    showBoardMenu = false
+                    onToggleMultiSelect()
+                },
+            )
+        }
+    }
+}
+
+/** Search, board tabs, toolbar and the column row of a loaded board. */
+@Composable
+private fun KanbanBoardContent(
+    state: KanbanUiState,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    tasksByColumn: Map<String, List<KanbanTask>>,
+    nowSeconds: Long,
+    isMultiSelectMode: Boolean,
+    selectedTaskIds: Set<String>,
+    onSelectBoard: (KanbanBoard) -> Unit,
+    onShowFilters: () -> Unit,
+    onAddTask: (columnName: String) -> Unit,
+    onToggleColumnCollapse: (columnName: String, boardHasWork: Boolean, taskCount: Int) -> Unit,
+    onTaskClick: (KanbanTask) -> Unit,
+    onTaskActionClick: (KanbanTask) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        SearchBar(
+            query = query,
+            onQueryChange = onQueryChange,
+            placeholder = stringResource(R.string.kanban_filter_placeholder),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        // Board selector tab row
+        if (state.boards.isNotEmpty()) {
+            PrimaryScrollableTabRow(
+                selectedTabIndex = state.boards.indexOf(state.selectedBoard).coerceAtLeast(0),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                state.boards.forEach { board ->
+                    Tab(
+                        selected = board == state.selectedBoard,
+                        onClick = { onSelectBoard(board) },
+                        text = { Text(board.displayName) },
+                    )
+                }
+            }
+        }
+
+        if (state.selectedBoard == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.kanban_no_boards))
+            }
+        } else if (state.columns.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.kanban_no_columns))
+            }
+        } else {
+            KanbanBoardToolbar(
+                isLive = state.isLive,
+                onShowFilters = onShowFilters,
+                onAddTask = { onAddTask(DEFAULT_COLUMN) },
+            )
+
+            val boardHasWork = state.tasks.isNotEmpty()
+            val statusColors = LocalHermesStatusColors.current
+
+            LazyRow(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        top = 16.dp,
+                        end = 16.dp,
+                        bottom = 16.dp,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                items(state.columns.size, key = { index ->
+                    state.columns[index].name
+                }) { columnIndex ->
+                    val column = state.columns[columnIndex]
+                    val colName = column.name
+                    val colTasks = tasksByColumn[colName.lowercase()] ?: emptyList()
+                    val isCollapsed =
+                        KanbanColumnCollapseHelper.isColumnCollapsed(
+                            columnName = colName,
+                            columnTaskCount = colTasks.size,
+                            boardHasWork = boardHasWork,
+                            overrides = state.columnCollapseOverrides,
+                        )
+                    val statusTone =
+                        when (colName.lowercase()) {
+                            "ready" -> statusColors.info
+                            "running" -> statusColors.success
+                            "blocked" -> statusColors.error
+                            "review" -> statusColors.warning
+                            "done" -> statusColors.success
+                            else -> MaterialTheme.colorScheme.outline
+                        }
+                    val onToggleCollapse = { onToggleColumnCollapse(colName, boardHasWork, colTasks.size) }
+
+                    if (isCollapsed) {
+                        KanbanCollapsedColumn(
+                            columnName = colName,
+                            taskCount = colTasks.size,
+                            statusTone = statusTone,
+                            onToggleCollapse = onToggleCollapse,
+                            onAddTask = { onAddTask(colName) },
+                        )
+                    } else {
+                        KanbanExpandedColumn(
+                            columnName = colName,
+                            tasks = colTasks,
+                            groupRunning = state.groupRunning,
+                            nowSeconds = nowSeconds,
+                            defaultAssignee = state.orchestration?.resolvedDefaultAssignee,
+                            isMultiSelectMode = isMultiSelectMode,
+                            selectedTaskIds = selectedTaskIds,
+                            onToggleCollapse = onToggleCollapse,
+                            onAddTask = { onAddTask(colName) },
+                            onTaskClick = onTaskClick,
+                            onTaskActionClick = onTaskActionClick,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Live status, filter and add-task row above the columns. */
+@Composable
+private fun KanbanBoardToolbar(
+    isLive: Boolean,
+    onShowFilters: () -> Unit,
+    onAddTask: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LiveStatusPill(isLive = isLive)
+        Spacer(modifier = Modifier.width(8.dp))
+        IconButton(onClick = onShowFilters) {
+            Icon(
+                imageVector = Icons.Default.FilterList,
+                contentDescription = stringResource(R.string.kanban_filters),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(modifier = Modifier.width(4.dp))
+        IconButton(onClick = onAddTask) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = stringResource(R.string.kanban_add_task),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** A collapsed column: a narrow strip with status dot, count and abbreviated name. */
+@Composable
+private fun KanbanCollapsedColumn(
+    columnName: String,
+    taskCount: Int,
+    statusTone: Color,
+    onToggleCollapse: () -> Unit,
+    onAddTask: () -> Unit,
+) {
+    Card(
+        modifier =
+            Modifier
+                .width(56.dp)
+                .fillMaxHeight()
+                .clickable(onClick = onToggleCollapse),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize().padding(vertical = 12.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .background(statusTone, shape = CircleShape),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = taskCount.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = columnName.take(3).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (KanbanStatusConstraints.isUserWritableTarget(columnName)) {
+                IconButton(
+                    onClick = onAddTask,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription =
+                            stringResource(
+                                R.string.kanban_add_to_column,
+                                columnName,
+                            ),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+            IconButton(
+                onClick = onToggleCollapse,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription =
+                        stringResource(
+                            R.string.kanban_expand_column,
+                            columnName,
+                        ),
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+/** An expanded column: header with count and actions, then the task cards. */
+@Composable
+private fun KanbanExpandedColumn(
+    columnName: String,
+    tasks: List<KanbanTask>,
+    groupRunning: Boolean,
+    nowSeconds: Long,
+    defaultAssignee: String?,
+    isMultiSelectMode: Boolean,
+    selectedTaskIds: Set<String>,
+    onToggleCollapse: () -> Unit,
+    onAddTask: () -> Unit,
+    onTaskClick: (KanbanTask) -> Unit,
+    onTaskActionClick: (KanbanTask) -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .width(280.dp)
+                .fillMaxSize(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+        ) {
+            Text(
+                text = "${columnName.replaceFirstChar {
+                    it.uppercase()
+                }} (${tasks.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (KanbanStatusConstraints.isUserWritableTarget(columnName)) {
+                    IconButton(
+                        onClick = onAddTask,
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription =
+                                stringResource(
+                                    R.string.kanban_add_to_column,
+                                    columnName,
+                                ),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = onToggleCollapse,
+                    modifier = Modifier.size(28.dp),
+                ) {
+                    Icon(
+                        imageVector =
+                            Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription =
+                            stringResource(
+                                R.string.kanban_collapse_column,
+                                columnName,
+                            ),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+
+        val taskCard: @Composable (KanbanTask) -> Unit = { task ->
+            KanbanTaskCard(
+                task = task,
+                nowSeconds = nowSeconds,
+                defaultAssignee = defaultAssignee,
+                isSelected = isMultiSelectMode && task.id in selectedTaskIds,
+                onTaskClick = onTaskClick,
+                onActionClick = onTaskActionClick,
+            )
+        }
+
+        if (tasks.isEmpty()) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.kanban_no_tasks),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else if (columnName.equals("running", ignoreCase = true) && groupRunning) {
+            val runningGroups =
+                remember(tasks) {
+                    KanbanLaneGrouping.groupRunningTasks(tasks)
+                }
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                runningGroups.forEach { group ->
+                    item(key = group.lazyKey) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier =
+                                Modifier.fillMaxWidth().padding(
+                                    vertical = 4.dp,
+                                ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text =
+                                    "${group.assignee ?: stringResource(
+                                        R.string.kanban_unassigned_group,
+                                    )} (${group.tasks.size})",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                    items(group.tasks, key = { it.id }) { task -> taskCard(task) }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(tasks, key = { it.id }) { task -> taskCard(task) }
+            }
+        }
+    }
+}
+
+/** Filter sheet with the assignee, tenant and workflow options derived from the loaded tasks. */
+@Composable
+private fun KanbanFilterSheetHost(
+    state: KanbanUiState,
+    selectedAssignee: String?,
+    selectedTenant: String?,
+    onSelectAssignee: (String?) -> Unit,
+    onSelectTenant: (String?) -> Unit,
+    onSelectWorkflowFilters: (String?, String?) -> Unit,
+    onToggleIncludeArchived: (Boolean) -> Unit,
+    onToggleGroupRunning: (Boolean) -> Unit,
+    onClearFilters: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val assignees =
+        remember(state.tasks) {
+            state.tasks
+                .mapNotNull { it.assignee }
+                .distinct()
+                .sorted()
+        }
+    val tenants =
+        remember(state.tasks) {
+            state.tasks
+                .mapNotNull { it.tenant }
+                .distinct()
+                .sorted()
+        }
+    KanbanFilterSheet(
+        assignees = assignees,
+        tenants = tenants,
+        selectedAssignee = selectedAssignee,
+        selectedTenant = selectedTenant,
+        workflowTemplateIds =
+            state.tasks
+                .mapNotNull { it.workflowTemplateId }
+                .distinct()
+                .sorted(),
+        currentStepKeys =
+            state.tasks
+                .mapNotNull { it.currentStepKey }
+                .distinct()
+                .sorted(),
+        selectedWorkflowTemplateId = state.selectedWorkflowTemplateId,
+        selectedCurrentStepKey = state.selectedCurrentStepKey,
+        includeArchived = state.includeArchived,
+        groupRunning = state.groupRunning,
+        onSelectAssignee = onSelectAssignee,
+        onSelectTenant = onSelectTenant,
+        onSelectWorkflowFilters = onSelectWorkflowFilters,
+        onToggleIncludeArchived = onToggleIncludeArchived,
+        onToggleGroupRunning = onToggleGroupRunning,
+        onClearFilters = onClearFilters,
+        onDismiss = onDismiss,
+    )
+}
+
+/** Bottom bar of the multi-select mode with the selection count and the bulk actions. */
+@Composable
+private fun KanbanMultiSelectBar(
+    selectedCount: Int,
+    allSelected: Boolean,
+    onToggleSelectAll: () -> Unit,
+    onMove: () -> Unit,
+    onAssign: () -> Unit,
+    onUnassign: () -> Unit,
+    onArchive: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hasSelection = selectedCount > 0
+    Card(
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
+        modifier = modifier,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier =
+                Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.kanban_selected_count, selectedCount),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            // Six actions do not fit a phone's width: scroll them instead of
+            // squeezing Archive, Unassign and Delete off the screen.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier
+                        .weight(1f, fill = false)
+                        .horizontalScroll(rememberScrollState()),
+            ) {
+                TextButton(onClick = onToggleSelectAll) {
+                    Text(
+                        if (allSelected) {
+                            stringResource(R.string.kanban_clear_selection)
+                        } else {
+                            stringResource(R.string.kanban_select_all)
+                        },
+                    )
+                }
+                Button(
+                    onClick = onMove,
+                    enabled = hasSelection,
+                ) {
+                    Text(stringResource(R.string.kanban_move))
+                }
+                Button(
+                    onClick = onAssign,
+                    enabled = hasSelection,
+                ) {
+                    Text(stringResource(R.string.kanban_bulk_assign))
+                }
+                Button(
+                    onClick = onUnassign,
+                    enabled = hasSelection,
+                ) {
+                    Text(stringResource(R.string.kanban_bulk_unassign))
+                }
+                Button(
+                    onClick = onArchive,
+                    enabled = hasSelection,
+                ) {
+                    Text(stringResource(R.string.kanban_action_archive))
+                }
+                Button(
+                    onClick = onDelete,
+                    enabled = hasSelection,
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                        ),
+                ) {
+                    Text(stringResource(R.string.kanban_bulk_delete))
+                }
+                IconButton(onClick = onClose) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(R.string.kanban_close_multi_select),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Picks the target column for moving the selected tasks; only user-writable columns are offered. */
+@Composable
+private fun KanbanBulkMoveDialog(
+    columns: List<KanbanColumn>,
+    taskCount: Int,
+    onSelectColumn: (columnName: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val writableMoveColumns =
+        remember(columns) {
+            columns.filter { KanbanStatusConstraints.isUserWritableTarget(it.name) }
+        }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanban_move_tasks, taskCount)) },
+        text = {
+            Column {
+                writableMoveColumns.forEach { col ->
+                    TextButton(
+                        onClick = { onSelectColumn(col.name) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(col.name.uppercase(), modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun KanbanBulkAssignDialog(
+    profiles: List<KanbanProfile>,
+    onSelectProfile: (profileName: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanban_bulk_assign)) },
+        text = {
+            Column {
+                profiles.forEach { profile ->
+                    TextButton(
+                        onClick = { onSelectProfile(profile.name) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(profile.name, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun KanbanBulkDeleteDialog(
+    taskCount: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanban_bulk_delete)) },
+        text = {
+            Text(stringResource(R.string.kanban_bulk_delete_confirm, taskCount))
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+            ) {
+                Text(stringResource(R.string.kanban_bulk_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+/** Creates a board; [onCreate] receives the trimmed slug and the optional name, description and project. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KanbanCreateBoardDialog(
+    projects: List<KanbanProject>,
+    onCreate: (slug: String, name: String?, description: String?, projectId: String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var boardSlug by remember { mutableStateOf("") }
+    var boardName by remember { mutableStateOf("") }
+    var boardDesc by remember { mutableStateOf("") }
+    var selectedProjId by remember { mutableStateOf<String?>(null) }
+    var projectDropdownExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanban_create_new_board)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = boardSlug,
+                    onValueChange = { boardSlug = it },
+                    label = { Text(stringResource(R.string.kanban_slug)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = boardName,
+                    onValueChange = { boardName = it },
+                    label = { Text(stringResource(R.string.kanban_display_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = boardDesc,
+                    onValueChange = { boardDesc = it },
+                    label = { Text(stringResource(R.string.kanban_description)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = projectDropdownExpanded,
+                    onExpandedChange = { projectDropdownExpanded = it },
+                ) {
+                    val displayProj =
+                        projects.find { it.id == selectedProjId }?.name
+                            ?: stringResource(R.string.kanban_no_project)
+                    OutlinedTextField(
+                        value = displayProj,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.kanban_project)) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = projectDropdownExpanded,
+                            )
+                        },
+                        modifier =
+                            Modifier
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                .fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = projectDropdownExpanded,
+                        onDismissRequest = { projectDropdownExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.kanban_no_project)) },
+                            onClick = {
+                                selectedProjId = null
+                                projectDropdownExpanded = false
+                            },
+                        )
+                        projects.forEach { proj ->
+                            DropdownMenuItem(
+                                text = { Text(proj.name) },
+                                onClick = {
+                                    selectedProjId = proj.id
+                                    projectDropdownExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (boardSlug.isNotBlank()) {
+                        onCreate(
+                            boardSlug.trim(),
+                            boardName.trim().ifBlank { null },
+                            boardDesc.trim().ifBlank { null },
+                            selectedProjId,
+                        )
+                    }
+                },
+                enabled = boardSlug.isNotBlank(),
+            ) {
+                Text(stringResource(R.string.action_add))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+/** Lists the running workers; tapping one opens its task. */
+@Composable
+private fun KanbanActiveWorkersDialog(
+    isLoading: Boolean,
+    workers: List<KanbanActiveWorker>,
+    onOpenTask: (taskId: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanban_active_workers)) },
+        text = {
+            if (isLoading) {
+                CircularProgressIndicator()
+            } else if (workers.isEmpty()) {
+                Text(stringResource(R.string.kanban_no_active_workers))
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    items(workers, key = { it.runId }) { worker ->
+                        Text(
+                            "${worker.taskTitle} · ${worker.profile ?: worker.taskAssignee.orEmpty()}",
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onOpenTask(worker.taskId) }
+                                    .padding(vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_close))
+            }
+        },
+    )
+}
+
+@Composable
+private fun KanbanArchiveBoardDialog(
+    boardName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanban_archive_board)) },
+        text = {
+            Text(
+                stringResource(
+                    R.string.kanban_archive_board_confirm,
+                    boardName,
+                ),
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+            ) {
+                Text(stringResource(R.string.kanban_action_archive))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }
 
 @Composable

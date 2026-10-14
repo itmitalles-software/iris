@@ -73,6 +73,7 @@ The app supports 8 built-in presets: `Apollo` (the default: true-black and antiq
 - **Scaffolding (`HermesScaffold`)**:
   - Use the shared scaffold's top bar and supported action slots; do not duplicate its insets or hardcode a parallel top-bar height.
   - **No Floating Action Buttons (FABs)**: Primary triggers live in the top-bar actions or fixed bottom composer docks.
+  - **Content width**: the scaffold centers its content in a column of at most 840dp (`maxContentWidth`), like the chat, so cards and lists keep a readable line length on tablets and unfolded foldables. Opt out with `Dp.Unspecified` only for layouts that need the full width (the Kanban board's side-by-side columns, Logs) or that cap themselves (Chat).
   - **Scaffold Padding Rule**: Do not reapply the supplied `paddingValues` inside the content lambda — the scaffold already handles insets. This includes loading, error, and empty branches. Content-specific spacing is separate from scaffold insets.
 - **Spacing Scale (`Spacing.kt`)**:
   - `xs: 2dp`: Hairline gaps, micro dividers.
