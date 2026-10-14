@@ -162,6 +162,8 @@ import io.wutz.apollo.ui.settings.SettingsViewModel
 import io.wutz.apollo.util.ConnectorUrlValidator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private const val SESSION_SYNC_INTERVAL_MS = 30_000L
@@ -204,6 +206,10 @@ fun ChatScreen(
     // ObservedTranscript and TranscriptTailFollower, so a flush recomposes the list and the tail
     // follower instead of this whole screen; the message list itself is derived below.
     val transcriptStateHolder = viewModel.transcriptState.collectAsStateWithLifecycle()
+    // Only whether a reply is streaming, so flushes do not recompose the screen body.
+    val isStreamingReply by remember(viewModel) {
+        viewModel.streamingState.map { it.streamingMessage != null }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = false)
     val credentialWarning by HermesWsClient.credentialWarning.collectAsStateWithLifecycle()
     val connectorsViewModel: ChatConnectorsViewModel = viewModel()
     val connectorsState by connectorsViewModel.uiState.collectAsStateWithLifecycle()
@@ -726,7 +732,7 @@ fun ChatScreen(
             )
             val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
             TurnCompletionAnnouncer(
-                busy = state.isAgentTyping || streamingState.streamingMessage != null,
+                busy = state.isAgentTyping || isStreamingReply,
                 tail = state.messages.lastOrNull(),
                 replyFailed = state.replyFailure != null,
                 enabled = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && !timelineState.isHistorical,
