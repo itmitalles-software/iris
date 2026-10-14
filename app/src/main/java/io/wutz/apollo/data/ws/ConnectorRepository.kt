@@ -38,9 +38,6 @@ interface ConnectorRepository {
             if (slug.isNullOrBlank()) return false
             return SLUG_REGEX.matches(slug)
         }
-
-        /** `owner` discriminated union required by connector RPCs since hermes-agent v0.21.5 (#1281). */
-        fun sessionOwner(sessionId: String): Map<String, String> = mapOf("type" to "session", "session_id" to sessionId)
     }
 }
 

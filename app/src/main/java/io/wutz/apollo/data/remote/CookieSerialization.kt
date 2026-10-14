@@ -112,9 +112,3 @@ fun isSessionCookieName(name: String): Boolean = name in SESSION_COOKIE_NAMES
 
 /** True when [cookie] is the dashboard session cookie. */
 fun isSessionCookie(cookie: Cookie): Boolean = isSessionCookieName(cookie.name)
-
-/** Parse a raw `Set-Cookie` header value (sans the `hermes_session_at=` key). */
-fun Cookie.Companion.parseRaw(
-    url: HttpUrl,
-    header: String,
-): Cookie? = Cookie.parse(url, header)

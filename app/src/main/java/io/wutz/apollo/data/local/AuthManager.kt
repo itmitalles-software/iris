@@ -466,10 +466,6 @@ object AuthManager {
         }
     }
 
-    fun setHiddenProfiles(hidden: List<String>) {
-        serverStore.update { it.copy(hiddenProfiles = hidden.distinct()) }
-    }
-
     fun getProfileToken(profileId: String): String? = requirePrefs().getString("token_$profileId", null)
 
     fun setProfileToken(
@@ -575,14 +571,6 @@ object AuthManager {
 
     @Volatile
     private var tokenInitialized: Boolean = false
-
-    // For testing purposes
-    fun resetTokenCacheForTest() {
-        synchronized(this) {
-            cachedToken = null
-            tokenInitialized = false
-        }
-    }
 
     @VisibleForTesting
     suspend fun resetAndAwaitForTest() {

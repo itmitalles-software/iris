@@ -117,7 +117,7 @@ class HermesWsClientConnectorsTest {
             }
 
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,
@@ -201,7 +201,7 @@ class HermesWsClientConnectorsTest {
             }
 
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,
@@ -299,7 +299,7 @@ class HermesWsClientConnectorsTest {
             }
 
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,

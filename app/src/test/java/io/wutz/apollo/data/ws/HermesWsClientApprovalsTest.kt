@@ -107,7 +107,7 @@ class HermesWsClientApprovalsTest {
         val frameRef = AtomicReference<JsonObject?>(null)
 
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,
@@ -187,7 +187,7 @@ class HermesWsClientApprovalsTest {
             }
 
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,

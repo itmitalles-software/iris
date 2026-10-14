@@ -77,7 +77,6 @@
 
     <!-- Navigation & Drawer -->
     <string name="press_back_again_to_exit">Zum Beenden erneut zurück drücken</string>
-    <string name="nav_drawer_title">Apollo</string>
     <string name="nav_drawer_subtitle">For Hermes Agent</string>
     <string name="nav_drawer_section_converse">Unterhalten</string>
     <string name="nav_drawer_section_automate">Automatisieren</string>
@@ -355,7 +354,6 @@
     <string name="settings_action_test_connection">Verbindung testen</string>
     <string name="settings_sec_about">Über</string>
     <string name="settings_sec_language">Sprache</string>
-    <string name="settings_about_app_name">Apollo</string>
     <string name="settings_about_version">Version</string>
     <string name="settings_about_build">Build</string>
     <string name="settings_about_debug">Debug</string>
@@ -393,8 +391,6 @@
     <string name="settings_delete_confirm_title">Profil löschen?</string>
     <string name="settings_delete_confirm_message">Möchtest du \"%1$s\" wirklich löschen? Das kann nicht rückgängig gemacht werden.</string>
     <string name="content_desc_delete_profile">Profil löschen</string>
-    <string name="content_desc_hide_token">Token verbergen</string>
-    <string name="content_desc_show_token">Token anzeigen</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Hell</string>
     <string name="theme_dark">Dunkel</string>
@@ -419,35 +415,17 @@
     <string name="language_italian">Italiano</string>
     <string name="language_spanish">Español</string>
 
-    <!-- Connect Screen -->
-    <string name="connect_selected_profile">Profil: %1$s</string>
-    <string name="connect_action_select_profile">Gespeichertes Profil wählen</string>
-    <string name="connect_health_title">Backend-Status</string>
-    <string name="connect_health_body">Hermes %1$s · %2$s</string>
-    <string name="connect_health_auth_gated">Geschützt (OAuth)</string>
-    <string name="connect_health_auth_token">Token</string>
 
     <!-- Connect Error Messages -->
-    <string name="connect_error_token_required">Token ist erforderlich</string>
     <string name="connect_error_401">Ungültiger Token (401 Unauthorized)</string>
     <string name="connect_error_403">Zugriff verweigert (403 Forbidden)</string>
     <string name="connect_error_http_code">Server antwortete mit HTTP %1$d</string>
-    <string name="connect_error_timeout">Zeitüberschreitung bei der Verbindung</string>
-    <string name="connect_error_refused">Verbindung abgelehnt – läuft Hermes?</string>
-    <string name="connect_error_resolve">Host konnte nicht aufgelöst werden</string>
     <string name="connect_error_connection_failed">Verbindung fehlgeschlagen: %1$s</string>
 
-    <string name="connect_save_profile">Verbindungsprofil speichern</string>
-    <string name="connect_profile_name">Profilname</string>
-    <string name="connect_placeholder_profile_name">z. B. Local Hermit, Remote Server</string>
-    <string name="connect_action_hide_manual">Manuelle Eingabe ausblenden</string>
-    <string name="connect_action_show_manual">Stattdessen manuell eingeben</string>
-    <string name="connect_placeholder_token">API-Token</string>
     <string name="connect_server_url_label">Server-URL</string>
     <string name="connect_placeholder_server_url">https://host:9119/ oder http://127.0.0.1:9119/</string>
     <string name="connect_error_url_invalid">Gib eine gültige Server-URL ein (https:// oder http://)</string>
     <string name="connect_error_lan_permission_denied">Zugriff auf das lokale Netzwerk verweigert. Erteile die Berechtigung „Lokales Netzwerk“ in den Einstellungen oder verbinde dich stattdessen mit einer Remote-Gateway-URL.</string>
-    <string name="action_connect">Verbinden</string>
 
     <!-- Kanban Screen -->
     <string name="kanban_board_title">Kanban-Board</string>
@@ -1448,8 +1426,6 @@
     <string name="auth_login_use_profile">Als %1$s fortfahren</string>
 
     <!-- Landing Screen -->
-    <string name="landing_title">Apollo</string>
-    <string name="landing_subtitle">Bedienfeld für Hermes Agent</string>
     <string name="landing_action_auth_login">Auth-Login</string>
 
     <!-- Loading / Startup State (issue #1171) -->

@@ -27,6 +27,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -322,8 +323,9 @@ class HermesWsClientTest {
                 ),
             )
 
+            // UNDISPATCHED: subscribe to the no-replay events flow before connect() can deliver the frame.
             val received =
-                async {
+                async(start = CoroutineStart.UNDISPATCHED) {
                     withTimeout(5_000) {
                         HermesWsClient.events.first {
                             it is WsEvent.ServerRequest && it.id == "srq-secret"
@@ -1735,12 +1737,20 @@ class HermesWsClientTest {
         var receivedMethod: String? = null
         var receivedRequest: JsonObject? = null
         val receivedTokens = Collections.synchronizedList(mutableListOf<String>())
+        val subscribedLatch = CountDownLatch(1)
+        val tokenLatch = CountDownLatch(1)
         val collectorJob =
             CoroutineScope(Dispatchers.IO).launch {
-                HermesWsClient.events.collect { event ->
-                    if (event is WsEvent.MessageToken) receivedTokens.add(event.token)
-                }
+                HermesWsClient.events
+                    .onSubscription { subscribedLatch.countDown() }
+                    .collect { event ->
+                        if (event is WsEvent.MessageToken) {
+                            receivedTokens.add(event.token)
+                            tokenLatch.countDown()
+                        }
+                    }
             }
+        assertTrue("Event collector must subscribe", subscribedLatch.await(5, TimeUnit.SECONDS))
 
         mockWebServer.enqueue(
             MockResponse().withClosingWebSocketUpgrade(
@@ -1791,8 +1801,7 @@ class HermesWsClientTest {
         assertEquals("5", params["last_seen"]?.jsonPrimitive?.content)
         assertFalse(params.containsKey("since_seq"))
 
-        // Wait for replay processing
-        Thread.sleep(200)
+        assertTrue("Replayed token was not emitted", tokenLatch.await(5, TimeUnit.SECONDS))
         assertEquals(6, HermesWsClient.getSeqWatermarks()["s1"])
         assertEquals(listOf("replayed"), receivedTokens)
         collectorJob.cancel()
@@ -1843,11 +1852,19 @@ class HermesWsClientTest {
         val requestLatch = CountDownLatch(1)
         var receivedMethod: String? = null
         val receivedEvents = Collections.synchronizedList(mutableListOf<WsEvent>())
+        val subscribedLatch = CountDownLatch(1)
+        val resyncLatch = CountDownLatch(1)
 
         val collectJob =
             CoroutineScope(Dispatchers.IO).launch {
-                HermesWsClient.events.collect { receivedEvents.add(it) }
+                HermesWsClient.events
+                    .onSubscription { subscribedLatch.countDown() }
+                    .collect {
+                        receivedEvents.add(it)
+                        if (it is WsEvent.TranscriptResyncRequired) resyncLatch.countDown()
+                    }
             }
+        assertTrue("Event collector must subscribe", subscribedLatch.await(5, TimeUnit.SECONDS))
 
         mockWebServer.enqueue(
             MockResponse().withClosingWebSocketUpgrade(
@@ -1889,8 +1906,7 @@ class HermesWsClientTest {
         assertTrue(requestLatch.await(5, TimeUnit.SECONDS))
         assertEquals(WsMethods.SESSION_EVENTS_SINCE, receivedMethod)
 
-        // Wait for replay processing
-        Thread.sleep(300)
+        assertTrue("Resync event was not emitted", resyncLatch.await(5, TimeUnit.SECONDS))
         assertEquals(100, HermesWsClient.getSeqWatermarks()["s1"])
         val resyncEvent = receivedEvents.filterIsInstance<WsEvent.TranscriptResyncRequired>().firstOrNull()
         assertNotNull(resyncEvent)

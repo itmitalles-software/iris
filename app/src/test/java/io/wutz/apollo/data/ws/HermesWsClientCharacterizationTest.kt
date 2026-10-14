@@ -120,7 +120,7 @@ class HermesWsClientCharacterizationTest {
         var serverWs: WebSocket? = null
 
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onClosing(
                         webSocket: WebSocket,
@@ -395,7 +395,7 @@ class HermesWsClientCharacterizationTest {
 
         // Enqueue MockResponse with WebSocketListener on MockWebServer
         mockWebServer.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onClosing(
                         webSocket: WebSocket,

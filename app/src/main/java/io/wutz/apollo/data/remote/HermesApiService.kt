@@ -19,7 +19,6 @@ import io.wutz.apollo.data.model.ConfigSchemaResponse
 import io.wutz.apollo.data.model.ConfigUpdateRequest
 import io.wutz.apollo.data.model.CreateCronJobRequest
 import io.wutz.apollo.data.model.CreateProfileRequest
-import io.wutz.apollo.data.model.CreateTaskBody
 import io.wutz.apollo.data.model.CreateWebhookRequest
 import io.wutz.apollo.data.model.CredentialPoolAddRequest
 import io.wutz.apollo.data.model.CredentialPoolResponse
@@ -45,8 +44,6 @@ import io.wutz.apollo.data.model.HookCreateRequest
 import io.wutz.apollo.data.model.HookDeleteRequest
 import io.wutz.apollo.data.model.HookResponse
 import io.wutz.apollo.data.model.InstantiateBlueprintRequest
-import io.wutz.apollo.data.model.KanbanBoardResponse
-import io.wutz.apollo.data.model.KanbanBoardsResponse
 import io.wutz.apollo.data.model.LatestDescendantResponse
 import io.wutz.apollo.data.model.LearningGraphResponse
 import io.wutz.apollo.data.model.LogResponse
@@ -54,7 +51,6 @@ import io.wutz.apollo.data.model.ManagedDirectoryCreate
 import io.wutz.apollo.data.model.ManagedFileActionResponse
 import io.wutz.apollo.data.model.ManagedFileDelete
 import io.wutz.apollo.data.model.ManagedFileRead
-import io.wutz.apollo.data.model.ManagedFileUpload
 import io.wutz.apollo.data.model.ManagedFilesListResponse
 import io.wutz.apollo.data.model.McpCatalogInstallRequest
 import io.wutz.apollo.data.model.McpCatalogResponse
@@ -105,7 +101,6 @@ import io.wutz.apollo.data.model.RawConfigResponse
 import io.wutz.apollo.data.model.RecentUnlock
 import io.wutz.apollo.data.model.RenameProfileRequest
 import io.wutz.apollo.data.model.SaveSkillContentRequest
-import io.wutz.apollo.data.model.ScanStatus
 import io.wutz.apollo.data.model.SessionDetailResponse
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionListResponse
@@ -531,9 +526,6 @@ interface HermesApiService : KanbanApiService {
     @GET("api/plugins/hermes-achievements/achievements")
     suspend fun getAchievements(): Response<AchievementsResponse>
 
-    @GET("api/plugins/hermes-achievements/scan-status")
-    suspend fun getAchievementScanStatus(): Response<ScanStatus>
-
     @POST("api/plugins/hermes-achievements/rescan")
     suspend fun rescanAchievements(): Response<AchievementsResponse>
 
@@ -836,29 +828,6 @@ interface HermesApiService : KanbanApiService {
     @POST("api/ops/doctor")
     suspend fun runDoctor(): Response<DoctorResponse>
 
-    @GET("api/plugins/kanban/boards")
-    suspend fun getKanbanBoards(): Response<KanbanBoardsResponse>
-
-    @GET("api/plugins/kanban/board")
-    suspend fun getKanbanBoard(): Response<KanbanBoardResponse>
-
-    @POST("api/plugins/kanban/boards/{slug}/switch")
-    suspend fun switchKanbanBoard(
-        @Path("slug") slug: String,
-    ): Response<Unit>
-
-    @PATCH("api/plugins/kanban/tasks/{id}")
-    suspend fun updateKanbanTask(
-        @Path("id") taskId: String,
-        @Body body: Map<String, String?>,
-    ): Response<Unit>
-
-    @POST("api/plugins/kanban/tasks")
-    suspend fun createKanbanTask(
-        @Query("board") board: String?,
-        @Body task: CreateTaskBody,
-    ): Response<Unit>
-
     // ── Admin: Hermes update ──────────────────────────────────────────
     @GET("api/hermes/update/check")
     suspend fun checkHermesUpdate(
@@ -1021,11 +990,6 @@ interface HermesApiService : KanbanApiService {
     suspend fun readManagedFile(
         @Query("path") path: String,
     ): Response<ManagedFileRead>
-
-    @POST("api/files/upload")
-    suspend fun uploadManagedFile(
-        @Body body: ManagedFileUpload,
-    ): Response<ManagedFileActionResponse>
 
     @Multipart
     @POST("api/files/upload-stream")

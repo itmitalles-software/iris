@@ -1,5 +1,6 @@
 package io.wutz.apollo.data.remote
 
+import io.wutz.apollo.data.ws.withClosingWebSocketUpgrade
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -153,7 +154,7 @@ class ServerTrustPolicyTest {
         val policy = policy(true)
         server(user).use { server ->
             server.enqueue(
-                MockResponse().withWebSocketUpgrade(
+                MockResponse().withClosingWebSocketUpgrade(
                     object : WebSocketListener() {
                         override fun onMessage(
                             webSocket: WebSocket,
