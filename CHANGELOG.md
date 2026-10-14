@@ -5,7 +5,18 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
 
 ## Unreleased
 
+### Added
+
+- Purple (#8D4BA3) engraving illustrations with the Apollo theme: on the
+  landing screen, the About banner and the empty, empty-chat and offline
+  states (when there is enough room). Other themes keep their icons.
+- A static website for apollo.wutz.io in `website/` (English/German, light and
+  dark). It is not published yet.
+
 ### Changed
+
+- The app icon, emblem and store graphics get a finer sunburst and two wavy
+  halo rings behind the crown.
 
 - Apollo is now developed independently of Hermes Mobile: it no longer merges
   upstream changes. `UPSTREAM.md` became `ORIGIN.md`; the package-rename sync

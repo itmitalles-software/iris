@@ -54,7 +54,9 @@ all variants). Do not edit the generated files by hand.
 
 Construction (108 dp canvas, safe zone r = 33): nine tapered rays on an arc
 around (54, 63), a thin diadem arc, a Roman A with a thin left stem, heavy
-right stem and slab serifs, and a faint dial ring with 15° ticks. The
+right stem and slab serifs, and a faint dial ring with 15° ticks. Behind the
+crown sit the "trippy" layers added in 0.1.3: about 70 fine sunburst lines above the
+horizon in three lengths and two undulating halo rings (18 and 24 waves). The
 monochrome variant keeps only rays and A so it stays legible at 24 dp.
 
 Regenerate after a geometry change:
@@ -111,9 +113,30 @@ Only when `ThemePreset.APOLLO` is active, so upstream presets look as before:
 - Tool calls: 2 dp gold edge, brighter while the tool runs
   (`ui/chat/ToolBubble.kt`).
 
-## Later improvements
+## Illustrations
 
-Vector artwork is deliberately geometric. Richer illustration (for example a
-rendered marble Apollo bust for store art or an onboarding header) needs an
-image-generation or 3D pipeline and a licence review; it is not part of the
-app today.
+Engraving-style illustrations in one colour, purple `#8D4BA3`, complement the
+gold emblem: classical motifs (Apollo bust, lyre, sun chariot, laurel,
+temple) drawn with fine op-art linework. They are original artwork from an
+owner-run image batch, used only as decoration.
+
+- Pipeline: `scripts/brand/process_art.py <batch folder>` re-inks every
+  native output to exactly `#8D4BA3` with the paper turned into transparency
+  (needs Pillow). One file therefore works on both themes: a purple engraving
+  on marble in light mode, glowing purple lines on black in dark mode.
+- App (`res/drawable-nodpi/art_*.webp`, `ApolloArt` in
+  `ui/common/ApolloBrand.kt`): Landing, About banner, and the empty, empty-chat
+  and offline states (`ui/common/StateViews.kt`). Only with the Apollo theme
+  and when the state has at least 360 dp of height; other presets and short
+  layouts keep the icon.
+- Website: `website/assets/img/*.webp`.
+
+Native outputs are never edited; regenerate the derived files from them.
+
+## Website
+
+`website/` is the static site for apollo.wutz.io (English, German via a
+persisted toggle, system-aware light/dark with a persisted toggle). Its CSS
+tokens mirror the colour table above; the header uses the vector emblem, the
+footer the painted gold emblem. The `Website` workflow publishes it to GitHub
+Pages and runs only on manual dispatch until the site goes live.

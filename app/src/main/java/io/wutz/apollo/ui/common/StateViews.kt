@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -101,6 +102,7 @@ fun ErrorState(
     message: String,
     onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    art: ApolloArt? = ApolloArt.OFFLINE,
 ) {
     val spacing = LocalSpacing.current
     val clipboard = LocalClipboard.current
@@ -113,12 +115,14 @@ fun ErrorState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = Icons.Filled.Refresh,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(48.dp),
-        )
+        StateArtOrIcon(art = art) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp),
+            )
+        }
         Spacer(modifier = Modifier.height(spacing.sm))
         Text(
             text = message,
@@ -168,6 +172,7 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    art: ApolloArt? = ApolloArt.EMPTY,
 ) {
     val spacing = LocalSpacing.current
     Column(
@@ -178,12 +183,14 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(56.dp),
-        )
+        StateArtOrIcon(art = art) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(56.dp),
+            )
+        }
         Spacer(modifier = Modifier.height(spacing.sm))
         Text(
             text = title,
@@ -210,6 +217,31 @@ fun EmptyState(
         }
     }
 }
+
+/**
+ * Shows the Apollo illustration when the Apollo theme is active and the state
+ * has room for it (at least [MIN_ART_SPACE] tall); otherwise the plain [icon].
+ */
+@Composable
+private fun StateArtOrIcon(
+    art: ApolloArt?,
+    icon: @Composable () -> Unit,
+) {
+    if (art == null || !apolloArtEnabled()) {
+        icon()
+        return
+    }
+    BoxWithConstraints(contentAlignment = Alignment.Center) {
+        if (maxHeight >= MIN_ART_SPACE) {
+            ApolloIllustration(art = art, modifier = Modifier.size(ART_SIZE))
+        } else {
+            icon()
+        }
+    }
+}
+
+private val MIN_ART_SPACE = 360.dp
+private val ART_SIZE = 168.dp
 
 // ── Skeleton (shimmer) — see issue #617 ────────────────────────────────
 //

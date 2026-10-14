@@ -49,6 +49,7 @@ import io.wutz.apollo.ui.chat.components.VaultCodeCard
 import io.wutz.apollo.ui.chat.components.VaultSaveLoginCard
 import io.wutz.apollo.ui.chat.components.VaultUnlockCard
 import io.wutz.apollo.ui.chat.toolCallMilestones
+import io.wutz.apollo.ui.common.ApolloArt
 import io.wutz.apollo.ui.common.EmptyState
 
 private object FullBleedContentType {
@@ -131,6 +132,7 @@ fun FullBleedChatList(
             EmptyState(
                 title = stringResource(R.string.chat_empty_title),
                 subtitle = stringResource(R.string.chat_empty_subtitle),
+                art = ApolloArt.EMPTY_CHAT,
             )
         }
     } else {

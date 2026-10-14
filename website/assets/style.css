@@ -1,0 +1,162 @@
+/* apollo.wutz.io — tokens mirror the app's Apollo theme
+   (app/src/main/java/io/wutz/apollo/theme/presets/ApolloScheme.kt): true black
+   and anthracite with antique gold in dark, warm marble with deep gold in
+   light. The illustrations add Apollo's purple (#8D4BA3). */
+
+@font-face {
+  font-family: "Cinzel";
+  src: url("fonts/cinzel.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+:root,
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --fg: #ece8e1;
+  --muted: #a8a49c;
+  --line: #34343b;
+  --surface: #0b0b0d;
+  --surface-2: #17171b;
+  --accent: #d4af72;
+  --button-bg: #d4af72;
+  --button-fg: #1a1408;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f7f4ee;
+  --fg: #1b1a17;
+  --muted: #4f4b44;
+  --line: #cfc7b8;
+  --surface: #f2eee6;
+  --surface-2: #ece7dd;
+  --accent: #765719;
+  --button-bg: #765719;
+  --button-fg: #ffffff;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 16px; background: var(--bg); padding: 8px 12px; z-index: 10; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+[data-theme="dark"] .only-light,
+[data-theme="light"] .only-dark { display: none !important; }
+
+/* Header */
+.top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 24px;
+  padding: 14px clamp(16px, 4vw, 48px);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.emblem { width: 40px; height: 40px; }
+.wordmark { color: var(--accent); font-family: "Cinzel", serif; font-weight: 600; letter-spacing: 0.18em; font-size: 20px; }
+.nav { display: flex; gap: 28px; margin-left: auto; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; }
+.nav a { text-decoration: none; }
+.toggles { display: flex; gap: 8px; }
+.toggle {
+  min-width: 44px; height: 44px; padding: 0 10px;
+  background: transparent; color: var(--fg);
+  border: 1px solid var(--line); border-radius: 0;
+  font: 600 13px/1 system-ui, sans-serif; letter-spacing: 0.08em; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.toggle:hover { border-color: var(--fg); }
+
+/* Hero */
+.hero {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: min(calc(100vh - 73px), 960px);
+  border-bottom: 1px solid var(--line);
+}
+.hero-text { padding: clamp(32px, 7vw, 96px) clamp(16px, 4vw, 48px); align-self: center; }
+.eyebrow, .tag { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
+h1, h2, h3 { font-family: "Cinzel", serif; font-weight: 500; line-height: 1.05; margin: 0; }
+h1 { font-size: clamp(44px, 7vw, 104px); letter-spacing: -0.01em; }
+h2 { font-size: clamp(32px, 4.5vw, 60px); margin-bottom: 40px; }
+h3 { font-size: clamp(22px, 2.2vw, 30px); margin-bottom: 12px; }
+.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--muted); max-width: 34em; margin: 28px 0 32px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.button {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px;
+  border: 1px solid var(--accent); color: var(--accent); text-decoration: none;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.button.primary { background: var(--button-bg); color: var(--button-fg); border-color: var(--button-bg); }
+.small { font-size: 14px; color: var(--muted); }
+.hero .small { margin-top: 20px; }
+.hero-art { margin: 0; border-left: 1px solid var(--line); overflow: hidden; }
+.art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Features */
+.features {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 64px 40px;
+  padding: clamp(48px, 7vw, 96px) clamp(16px, 4vw, 48px);
+  border-bottom: 1px solid var(--line);
+}
+.card p { color: var(--muted); margin: 0 0 24px; }
+.card .tag { margin-bottom: 12px; }
+.card .art { margin: 0; aspect-ratio: 1; overflow: hidden; background: var(--surface); }
+
+/* Setup */
+.setup, .privacy {
+  padding: clamp(48px, 7vw, 96px) clamp(16px, 4vw, 48px);
+  border-bottom: 1px solid var(--line);
+}
+.steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 40px; max-width: 920px; }
+.steps li { counter-increment: step; position: relative; padding-left: 72px; }
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute; left: 0; top: 0;
+  font-family: "Cinzel", serif; font-size: 34px; line-height: 1; color: var(--accent);
+}
+.steps p { color: var(--muted); margin: 0 0 16px; }
+.code { position: relative; background: var(--surface-2); border: 1px solid var(--line); }
+.code pre { margin: 0; padding: 18px 96px 18px 18px; overflow-x: auto; }
+.code code { font: 14px/1.6 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+.copy {
+  position: absolute; top: 10px; right: 10px; min-height: 36px; padding: 0 12px;
+  background: var(--button-bg); color: var(--button-fg); border: 0; cursor: pointer;
+  font: 600 12px/1 system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* Privacy */
+.facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.facts li { padding: 24px 24px 24px 0; border-bottom: 1px solid var(--line); font-size: 18px; }
+
+/* Footer */
+.foot { padding: 40px clamp(16px, 4vw, 48px) 56px; text-align: center; }
+.foot-logo { display: block; margin: 0 auto 24px; width: 160px; height: auto; }
+.foot-logo.only-light { width: 120px; }
+.disclaimer { max-width: 46em; margin: 0 auto 12px; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; min-height: 0; }
+  .hero-art { border-left: 0; border-top: 1px solid var(--line); aspect-ratio: 4 / 5; }
+  .features { grid-template-columns: 1fr; }
+  .nav { display: none; }
+  .toggles { margin-left: auto; }
+  .steps li { padding-left: 56px; }
+}
