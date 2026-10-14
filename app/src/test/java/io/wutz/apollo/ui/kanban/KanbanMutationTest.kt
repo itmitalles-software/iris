@@ -673,4 +673,81 @@ class KanbanMutationTest {
             assertEquals(1200, estimate?.estTokens)
             assertEquals("low", estimate?.complexity)
         }
+
+    @Test
+    fun testSuccessfulTaskMutationsClearTheLoadingSpinner() =
+        runTest(testDispatcher) {
+            val board = KanbanBoard(id = "dev", name = "Dev")
+            val task = KanbanTask(id = "t_1", title = "Task", status = "todo")
+            coEvery { mockRepository.getBoard("dev") } returns
+                NetworkResult.Success(KanbanBoardResponse(columns = listOf(KanbanColumn("todo", listOf(task)))))
+            coEvery { mockRepository.deleteTask("t_1", "dev") } returns NetworkResult.Success(Unit)
+            coEvery { mockRepository.bulkTasks("dev", any()) } returns
+                NetworkResult.Success(BulkTasksResponse(results = listOf(BulkTaskResult("t_1", ok = true))))
+
+            val vm = createViewModel()
+            vm.selectBoard(board)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val mutations: List<Pair<String, (KanbanViewModel) -> Unit>> =
+                listOf(
+                    "deleteTask" to { it.deleteTask("t_1") },
+                    "bulkDelete" to { it.bulkDelete(listOf("t_1")) },
+                    "bulkMove" to { it.bulkMove(listOf("t_1"), "ready") },
+                    "bulkArchive" to { it.bulkArchive(listOf("t_1")) },
+                    "bulkAssign" to { it.bulkAssign(listOf("t_1"), "coder") },
+                )
+            for ((name, mutate) in mutations) {
+                mutate(vm)
+                testDispatcher.scheduler.advanceUntilIdle()
+                assertFalse("$name left the board behind a spinner", vm.uiState.value.isLoading)
+            }
+        }
+
+    @Test
+    fun testBoardCreateClearsSpinnerWhenTheBoardListReloadFails() =
+        runTest(testDispatcher) {
+            val board = KanbanBoard(id = "dev", name = "Dev")
+            val task = KanbanTask(id = "t_1", title = "Task", status = "todo")
+            coEvery { mockRepository.getBoard("dev") } returns
+                NetworkResult.Success(KanbanBoardResponse(columns = listOf(KanbanColumn("todo", listOf(task)))))
+            coEvery { mockRepository.createBoard(any()) } returns
+                NetworkResult.Success(CreateBoardResponse(board = KanbanBoard(id = "next", name = "Next")))
+            coEvery { mockRepository.getBoards() } returns NetworkResult.Failure(NetworkError.Http(503, "down"))
+
+            val vm = createViewModel()
+            vm.selectBoard(board)
+            testDispatcher.scheduler.advanceUntilIdle()
+            vm.createBoard(slug = "next")
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.isLoading)
+        }
+
+    @Test
+    fun testCreateTaskReportsFailedMoveToTargetColumn() =
+        runTest(testDispatcher) {
+            val board = KanbanBoard(id = "dev", name = "Dev")
+            coEvery { mockRepository.getBoard("dev") } returns
+                NetworkResult.Success(KanbanBoardResponse(columns = listOf(KanbanColumn("todo", emptyList()))))
+            coEvery { mockRepository.createTask("dev", any()) } returns
+                NetworkResult.Success(
+                    CreateTaskResponse(task = KanbanTask(id = "t_9", title = "New", status = "todo")),
+                )
+            coEvery { mockRepository.updateTask("t_9", "dev", any()) } returns
+                NetworkResult.Failure(NetworkError.Http(409, "blocked by parent"))
+
+            val vm = createViewModel()
+            vm.selectBoard(board)
+            testDispatcher.scheduler.advanceUntilIdle()
+            vm.createTask("New", null, "ready")
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            coVerify { mockRepository.updateTask("t_9", "dev", match { it.status == "ready" }) }
+            assertEquals(
+                UiText.res(R.string.kanban_msg_task_created_move_failed, "ready", "blocked by parent"),
+                vm.uiState.value.toastMessage,
+            )
+            assertFalse(vm.uiState.value.isCreatingTask)
+        }
 }

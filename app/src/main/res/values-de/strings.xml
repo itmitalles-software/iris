@@ -544,6 +544,8 @@
     <string name="kanban_bulk_unassign">Zuweisung aufheben</string>
     <string name="kanban_bulk_delete">Löschen</string>
     <string name="kanban_bulk_delete_confirm">%1$d ausgewählte Aufgaben löschen? Das kann nicht rückgängig gemacht werden.</string>
+    <string name="kanban_bulk_archive_confirm">%1$d ausgewählte Aufgaben archivieren? Sie verschwinden aus der Standardansicht des Boards.</string>
+    <string name="kanban_bulk_unassign_confirm">Zuweisung von %1$d ausgewählten Aufgaben aufheben? Laufende Worker werden zuerst zurückgeholt.</string>
     <string name="kanban_bulk_complete_title">%1$d Aufgaben abschließen</string>
     <string name="kanban_export_board">Board exportieren</string>
     <string name="kanban_import_board">Board importieren</string>
@@ -2284,6 +2286,7 @@
     <string name="kanban_msg_auto_describe_failed_reason">Automatische Beschreibung fehlgeschlagen: %1$s</string>
     <string name="kanban_msg_task_created">Aufgabe erstellt</string>
     <string name="kanban_msg_task_created_warning">Aufgabe erstellt: %1$s</string>
+    <string name="kanban_msg_task_created_move_failed">Aufgabe erstellt, aber Verschieben nach %1$s fehlgeschlagen: %2$s</string>
     <string name="kanban_msg_task_create_failed">Aufgabe konnte nicht erstellt werden: %1$s</string>
     <string name="kanban_msg_board_created">Board erstellt: %1$s</string>
     <string name="kanban_msg_board_create_failed">Board konnte nicht erstellt werden: %1$s</string>
@@ -2540,6 +2543,11 @@
     <string name="bots_msg_load_failed">Bots konnten nicht geladen werden</string>
     <string name="bots_msg_create_failed">Bot konnte nicht erstellt werden</string>
     <string name="bots_msg_delete_failed">Bot konnte nicht gelöscht werden</string>
+    <string name="bots_msg_create_failed_reason">Bot konnte nicht erstellt werden: %1$s</string>
+    <string name="bots_msg_delete_failed_reason">Bot konnte nicht gelöscht werden: %1$s</string>
+    <string name="bots_msg_meta_save_failed">Bot-Einstellungen konnten nicht gespeichert werden: %1$s</string>
+    <string name="bots_msg_group_save_failed">Gruppenchat konnte nicht aktualisiert werden: %1$s</string>
+    <string name="bots_msg_meta_not_applied">der Server hat die Änderung nicht übernommen</string>
     <string name="group_chat_msg_load_members_failed">Gruppenmitglieder konnten nicht geladen werden</string>
     <!-- Auth login -->
     <string name="auth_login_msg_ws_ticket_failed">WebSocket-Ticket konnte nicht abgerufen werden</string>

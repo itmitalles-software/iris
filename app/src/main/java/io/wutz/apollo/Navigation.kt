@@ -38,6 +38,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,9 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.ws.ConnectionStatus
@@ -215,7 +216,9 @@ fun MainNavigation(sessionId: String? = null) {
     val hasToken = !token.isNullOrBlank()
     val startScreen: NavKey = if (hasToken) ChatScreen else LandingScreen
 
-    val backStack = remember(startScreen) { NavBackStack(startScreen) }
+    // Saveable so rotation, dark-mode or locale changes (no configChanges in the manifest) keep the
+    // current screen; key() still starts a fresh stack when login or logout changes the start screen.
+    val backStack = key(startScreen) { rememberNavBackStack(startScreen) }
     NavigationController.backStack = backStack
 
     val currentScreen = backStack.lastOrNull() ?: startScreen

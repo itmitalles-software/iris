@@ -555,6 +555,8 @@
     <string name="kanban_bulk_unassign">Unassign</string>
     <string name="kanban_bulk_delete">Delete</string>
     <string name="kanban_bulk_delete_confirm">Delete %1$d selected tasks? This cannot be undone.</string>
+    <string name="kanban_bulk_archive_confirm">Archive %1$d selected tasks? They disappear from the default board view.</string>
+    <string name="kanban_bulk_unassign_confirm">Remove the assignee from %1$d selected tasks? Running workers are reclaimed first.</string>
     <string name="kanban_bulk_complete_title">Complete %1$d tasks</string>
     <string name="kanban_export_board">Export Board</string>
     <string name="kanban_import_board">Import Board</string>
@@ -2283,6 +2285,7 @@
     <string name="kanban_msg_auto_describe_failed_reason">Failed to auto-describe: %1$s</string>
     <string name="kanban_msg_task_created">Task created successfully</string>
     <string name="kanban_msg_task_created_warning">Task created: %1$s</string>
+    <string name="kanban_msg_task_created_move_failed">Task created, but moving it to %1$s failed: %2$s</string>
     <string name="kanban_msg_task_create_failed">Failed to create task: %1$s</string>
     <string name="kanban_msg_board_created">Board created: %1$s</string>
     <string name="kanban_msg_board_create_failed">Failed to create board: %1$s</string>
@@ -2539,6 +2542,11 @@
     <string name="bots_msg_load_failed">Failed to load bots</string>
     <string name="bots_msg_create_failed">Failed to create bot</string>
     <string name="bots_msg_delete_failed">Failed to delete bot</string>
+    <string name="bots_msg_create_failed_reason">Failed to create bot: %1$s</string>
+    <string name="bots_msg_delete_failed_reason">Failed to delete bot: %1$s</string>
+    <string name="bots_msg_meta_save_failed">Failed to save bot settings: %1$s</string>
+    <string name="bots_msg_group_save_failed">Failed to update group chat: %1$s</string>
+    <string name="bots_msg_meta_not_applied">the server did not apply the change</string>
     <string name="group_chat_msg_load_members_failed">Failed to load group members</string>
     <!-- Auth login -->
     <string name="auth_login_msg_ws_ticket_failed">Failed to obtain WebSocket ticket</string>

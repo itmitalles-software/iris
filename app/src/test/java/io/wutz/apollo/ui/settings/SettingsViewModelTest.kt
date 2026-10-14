@@ -3,6 +3,7 @@ package io.wutz.apollo.ui.settings
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
@@ -10,7 +11,9 @@ import io.mockk.verify
 import io.wutz.apollo.data.config.ConnectionProfile
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.BusySendMode
+import io.wutz.apollo.data.model.StatusResponse
 import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.theme.ThemePreference
 import io.wutz.apollo.theme.ThemePreset
@@ -25,6 +28,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import retrofit2.Response
 
 /**
  * Tests for [SettingsViewModel] profile operations.
@@ -467,5 +471,32 @@ class SettingsViewModelTest {
 
             verify { AuthManager.setKeepConnectedInBackground(true) }
             assertEquals(true, viewModel.uiState.value.isSaved)
+        }
+
+    @Test
+    fun testTestConnection_probesWithoutPersistingTheLoadedSnapshot() =
+        runTest {
+            // Cookie login: no bearer token is stored.
+            every { AuthManager.getToken() } returns ""
+            val api = mockk<HermesApiService>(relaxed = true)
+            coEvery { api.getStatus() } returns Response.success(mockk<StatusResponse>(relaxed = true))
+            every { ApiClient.hermesApi } returns api
+
+            val viewModel = SettingsViewModel(ioDispatcher = testDispatcher)
+            testDispatcher.scheduler.advanceUntilIdle()
+            viewModel.testConnection()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            coVerify(exactly = 1) { api.getStatus() }
+            verify(exactly = 0) { AuthManager.setToken(any()) }
+            verify(exactly = 0) { AuthManager.setBaseUrl(any()) }
+            verify(exactly = 0) { AuthManager.setKeepConnectedInBackground(any()) }
+            verify(exactly = 0) { ApiClient.rebuild() }
+            assertEquals(false, viewModel.uiState.value.isTesting)
+            assertEquals(
+                true,
+                viewModel.uiState.value.testResult
+                    ?.startsWith("✅"),
+            )
         }
 }

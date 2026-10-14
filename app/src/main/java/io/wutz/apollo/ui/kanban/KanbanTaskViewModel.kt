@@ -79,6 +79,30 @@ class KanbanTaskViewModel(
     private var logPollJob: Job? = null
     private var detailPollJob: Job? = null
 
+    // This ViewModel is Activity-scoped (docs/ARCHITECTURE.md), so it outlives the screen. Polling and the
+    // events socket run only while at least one task screen is composed.
+    private var attachedScreens = 0
+    private var liveUpdatesPaused = false
+
+    /** Called when a task screen enters composition. */
+    fun attachScreen() {
+        attachedScreens++
+        liveUpdatesPaused = false
+    }
+
+    /** Called when a task screen leaves composition; the last one stops polling and the events socket. */
+    fun detachScreen() {
+        attachedScreens = (attachedScreens - 1).coerceAtLeast(0)
+        if (attachedScreens > 0) return
+        liveUpdatesPaused = true
+        stopLogPolling()
+        detailPollJob?.cancel()
+        detailPollJob = null
+        reloadJob?.cancel()
+        eventsClient?.disconnect()
+        eventsBoard = null
+    }
+
     fun loadTask(
         board: String,
         taskId: String,
@@ -202,6 +226,8 @@ class KanbanTaskViewModel(
     ) {
         when (val result = repository.getTaskLog(taskId = taskId, board = board)) {
             is NetworkResult.Success -> {
+                // Fence: a late log of a previously opened task must not land on the current one.
+                if (taskId != activeTaskId || board != activeBoard) return
                 _uiState.update { it.copy(workerLog = result.data) }
             }
 
@@ -216,6 +242,7 @@ class KanbanTaskViewModel(
         taskId: String,
     ) {
         logPollJob?.cancel()
+        if (liveUpdatesPaused) return
         logPollJob =
             viewModelScope.launch {
                 fetchLogInternal(board, taskId)
@@ -241,7 +268,7 @@ class KanbanTaskViewModel(
         board: String,
         taskId: String,
     ) {
-        if (!enableFallbackPolling) return
+        if (!enableFallbackPolling || liveUpdatesPaused) return
         detailPollJob =
             viewModelScope.launch {
                 while (isActive) {
@@ -252,7 +279,7 @@ class KanbanTaskViewModel(
     }
 
     private fun connectEvents(board: String) {
-        if (eventsBoard == board) return
+        if (eventsBoard == board || liveUpdatesPaused) return
         eventsClient?.disconnect()
         eventsBoard = board
         val client = eventsClient ?: eventsClientProvider().also { eventsClient = it }
@@ -455,7 +482,10 @@ class KanbanTaskViewModel(
                             toastMessage = UiText.res(R.string.kanban_msg_task_deleted),
                         )
                     }
-                    onSuccess()
+                    // The coroutine outlives the screen: only leave the screen that is still showing this task,
+                    // otherwise goBack() would pop whatever the user navigated to meanwhile.
+                    val stale = activeTaskId != null && (activeTaskId != taskId || activeBoard != board)
+                    if (!liveUpdatesPaused && !stale) onSuccess()
                 }
 
                 is NetworkResult.Failure -> {
@@ -686,7 +716,11 @@ class KanbanTaskViewModel(
         viewModelScope.launch {
             val run = repository.getRun(runId, board)
             val inspection = if (run is NetworkResult.Success) repository.inspectRun(runId, board) else null
-            if (activeTaskId != null && (activeTaskId != taskId || activeBoard != board)) return@launch
+            if (activeTaskId != null && (activeTaskId != taskId || activeBoard != board)) {
+                // Stale answer for a task the user left: drop it, but keep Inspect usable.
+                _uiState.update { it.copy(isInspectingRun = false) }
+                return@launch
+            }
             _uiState.update {
                 it.copy(
                     isInspectingRun = false,

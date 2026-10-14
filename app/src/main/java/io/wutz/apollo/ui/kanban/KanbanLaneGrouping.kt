@@ -5,7 +5,11 @@ import io.wutz.apollo.data.model.KanbanTask
 data class KanbanRunningGroup(
     val assignee: String?,
     val tasks: List<KanbanTask>,
-)
+) {
+    /** Stable LazyColumn key; a profile literally named "unassigned" must not collide with the null group. */
+    val lazyKey: String
+        get() = assignee?.let { "group_profile:$it" } ?: "group_unassigned"
+}
 
 object KanbanLaneGrouping {
     fun groupRunningTasks(tasks: List<KanbanTask>): List<KanbanRunningGroup> {

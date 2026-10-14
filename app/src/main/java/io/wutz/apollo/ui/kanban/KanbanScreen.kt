@@ -54,6 +54,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -106,6 +107,16 @@ import java.io.File
 import kotlin.coroutines.coroutineContext
 
 private const val DEFAULT_COLUMN = "todo"
+
+/** Keeps only the selected ids that are still visible, so bulk actions cannot reach filtered-out tasks. */
+internal fun pruneKanbanSelection(
+    selectedIds: Set<String>,
+    visibleTasks: List<KanbanTask>,
+): Set<String> {
+    if (selectedIds.isEmpty()) return selectedIds
+    val visibleIds = visibleTasks.mapTo(HashSet()) { it.id }
+    return selectedIds.filterTo(LinkedHashSet()) { it in visibleIds }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,6 +182,8 @@ fun KanbanScreen(
     var showBulkCompleteDialog by remember { mutableStateOf(false) }
     var showBulkAssignDialog by remember { mutableStateOf(false) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
+    var showBulkArchiveDialog by remember { mutableStateOf(false) }
+    var showBulkUnassignDialog by remember { mutableStateOf(false) }
 
     // Board management dialogs
     var showBoardMenu by remember { mutableStateOf(false) }
@@ -343,9 +356,15 @@ fun KanbanScreen(
             }
         }
 
-    LaunchedEffect(state.tasks) {
-        val existingIds = state.tasks.map { it.id }.toSet()
-        selectedTaskIds = selectedTaskIds.intersect(existingIds)
+    // Prune against the filtered list: bulk actions must never hit tasks hidden by search or filters.
+    LaunchedEffect(filteredTasks) {
+        selectedTaskIds = pruneKanbanSelection(selectedTaskIds, filteredTasks)
+    }
+
+    // The ViewModel is Activity-scoped: close the board events socket once this screen is gone.
+    DisposableEffect(viewModel) {
+        viewModel.attachScreen()
+        onDispose { viewModel.detachScreen() }
     }
 
     LaunchedEffect(Unit) {
@@ -782,7 +801,7 @@ fun KanbanScreen(
                                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                                     ) {
                                                         runningGroups.forEach { group ->
-                                                            item(key = "group_${group.assignee ?: "unassigned"}") {
+                                                            item(key = group.lazyKey) {
                                                                 Row(
                                                                     verticalAlignment = Alignment.CenterVertically,
                                                                     modifier =
@@ -1084,23 +1103,13 @@ fun KanbanScreen(
                                         Text(stringResource(R.string.kanban_bulk_assign))
                                     }
                                     Button(
-                                        onClick = {
-                                            viewModel.bulkAssign(selectedTaskIds.toList(), null) { failed ->
-                                                selectedTaskIds = failed
-                                                if (failed.isEmpty()) isMultiSelectMode = false
-                                            }
-                                        },
+                                        onClick = { showBulkUnassignDialog = true },
                                         enabled = selectedTaskIds.isNotEmpty(),
                                     ) {
                                         Text(stringResource(R.string.kanban_bulk_unassign))
                                     }
                                     Button(
-                                        onClick = {
-                                            viewModel.bulkArchive(selectedTaskIds.toList()) { failed ->
-                                                selectedTaskIds = failed
-                                                if (failed.isEmpty()) isMultiSelectMode = false
-                                            }
-                                        },
+                                        onClick = { showBulkArchiveDialog = true },
                                         enabled = selectedTaskIds.isNotEmpty(),
                                     ) {
                                         Text(stringResource(R.string.kanban_action_archive))
@@ -1216,6 +1225,34 @@ fun KanbanScreen(
                                     Text(stringResource(R.string.action_cancel))
                                 }
                             },
+                        )
+                    }
+
+                    if (showBulkUnassignDialog) {
+                        ConfirmActionDialog(
+                            message = stringResource(R.string.kanban_bulk_unassign_confirm, selectedTaskIds.size),
+                            onConfirm = {
+                                showBulkUnassignDialog = false
+                                viewModel.bulkAssign(selectedTaskIds.toList(), null) { failed ->
+                                    selectedTaskIds = failed
+                                    if (failed.isEmpty()) isMultiSelectMode = false
+                                }
+                            },
+                            onDismiss = { showBulkUnassignDialog = false },
+                        )
+                    }
+
+                    if (showBulkArchiveDialog) {
+                        ConfirmActionDialog(
+                            message = stringResource(R.string.kanban_bulk_archive_confirm, selectedTaskIds.size),
+                            onConfirm = {
+                                showBulkArchiveDialog = false
+                                viewModel.bulkArchive(selectedTaskIds.toList()) { failed ->
+                                    selectedTaskIds = failed
+                                    if (failed.isEmpty()) isMultiSelectMode = false
+                                }
+                            },
+                            onDismiss = { showBulkArchiveDialog = false },
                         )
                     }
 

@@ -446,6 +446,8 @@ class SessionsViewModel(
         val requestGeneration = generation
         val requestScope = runCatching { AuthManager.currentDataScope() }.getOrNull()
         val section = _uiState.value.section
+        // Capture the archived filter with the cache key so the request and the key always agree.
+        val archivedQuery = _uiState.value.archivedQuery
         val localKey = listKey(section)
         val inMemoryKey = requestScope?.inMemoryKey(localKey)
         val persistentKey = requestScope?.persistentKey(localKey)
@@ -493,7 +495,7 @@ class SessionsViewModel(
                             order = "recent",
                             source = section.source,
                             excludeSources = section.excludeSources,
-                            archived = _uiState.value.archivedQuery,
+                            archived = archivedQuery,
                         )
                     }
                 },
@@ -990,7 +992,20 @@ class SessionsViewModel(
 
     /** Switch between the active list and the archived-only list. */
     fun toggleShowArchived() {
-        _uiState.update { it.copy(showArchived = !it.showArchived, sessions = emptyList(), selectedIds = emptySet()) }
+        // Invalidate the in-flight load of the other list; otherwise safeLaunchLoad would reuse it and its
+        // response would fill (and be cached for) the wrong view.
+        generation++
+        loadJob?.cancel()
+        pageJob?.cancel()
+        rawPaginationOffset = 0
+        _uiState.update {
+            it.copy(
+                showArchived = !it.showArchived,
+                sessions = emptyList(),
+                selectedIds = emptySet(),
+                isLoadingMore = false,
+            )
+        }
         loadSessions()
     }
 
