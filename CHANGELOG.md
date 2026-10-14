@@ -5,6 +5,14 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
 
 ## Unreleased
 
+### Added
+
+- A Google Play build (`./gradlew bundlePlay`, issue #7): an App Bundle
+  without the GitHub self-updater. It has no update checks, no update rows,
+  banner or dialog, and no `REQUEST_INSTALL_PACKAGES` permission. The GitHub
+  APK (`assembleRelease`) and all existing tasks are unchanged. BUILD.md
+  describes Play App Signing.
+
 ### Fixed
 
 - Approvals, clarifications and other prompts that arrive while Apollo is in

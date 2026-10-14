@@ -25,6 +25,8 @@ import io.wutz.apollo.ui.settings.AppUpdateViewModel
 
 @Composable
 fun ChatAppUpdateSection() {
+    // The Play build has no self-updater (issue #7): no banner, no dialog.
+    if (!UpdateNoticeManager.selfUpdateAvailable) return
     val updateNotice by AppUpdateCache.state.collectAsStateWithLifecycle()
     val appUpdateViewModel: AppUpdateViewModel =
         viewModel {

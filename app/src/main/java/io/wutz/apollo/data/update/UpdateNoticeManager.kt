@@ -35,11 +35,19 @@ object UpdateNoticeManager {
     private var channelGeneration = 0
 
     /**
+     * Whether this build ships the GitHub self-updater at all. False in the
+     * Google Play build (issue #7, `play` build type): no update check (not
+     * even a manual one), no download and no update UI. Tests flip this.
+     */
+    var selfUpdateAvailable: Boolean = BuildConfig.SELF_UPDATE_ENABLED
+        internal set
+
+    /**
      * Release-only feature (issue #890): the launch check and chat banner are
      * disabled in debug builds (BuildConfig.DEBUG) so daily dev builds never
      * hit the GitHub API or nag about updates. Tests flip this to true.
      */
-    var enabled: Boolean = !BuildConfig.DEBUG
+    var enabled: Boolean = BuildConfig.SELF_UPDATE_ENABLED && !BuildConfig.DEBUG
         internal set
 
     /** Avoid duplicate foreground checks in one process; a cold launch always rechecks. */
@@ -54,6 +62,7 @@ object UpdateNoticeManager {
         now: Long = System.currentTimeMillis(),
         force: Boolean = false,
     ) {
+        if (!selfUpdateAvailable) return
         if (!enabled && !force) return
         synchronized(checkLock) {
             if (activeCheck?.isActive == true) return
@@ -198,7 +207,7 @@ object UpdateNoticeManager {
      * release-candidate tag while the user is on the stable channel.
      */
     fun noticeTag(currentVersion: String = BuildConfig.VERSION_NAME): String? {
-        if (!enabled) return null
+        if (!enabled || !selfUpdateAvailable) return null
         val dismissed = AuthManager.getDismissedUpdateTag()
         val candidateTag = (AppUpdateCache.state.value as? AppUpdateState.UpdateAvailable)?.latestTag ?: return null
 

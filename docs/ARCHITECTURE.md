@@ -55,7 +55,7 @@ chmod +x ktlint
 | `android-lint`       | Android Lint                                                                                                                       |
 | `unit-tests`         | JUnit                                                                                                                              |
 | `build`              | assembleDebug (gated by the 3 above)                                                                                               |
-| `release-compile`    | compileReleaseKotlin — catches release-variant compilation issues (e.g. debugImplementation-scoped deps referenced in main source) |
+| `release-compile`    | compileReleaseKotlin — catches release-variant compilation issues (e.g. debugImplementation-scoped deps referenced in main source); checkPlayPermissions — the Play manifest has no REQUEST_INSTALL_PACKAGES |
 | `instrumented-tests` | Compose UI tests on Android emulator (API 34 ATD)                                                                                  |
 | `ci-summary`         | Aggregator (`if: always()`) — branch protection gates on THIS check                                                                |
 

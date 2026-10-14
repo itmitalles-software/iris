@@ -58,7 +58,8 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
   strings fall back to English).
 - **Privacy:** no telemetry, ads or trackers. Credentials live in encrypted
   storage backed by the Android Keystore. The only outbound request besides
-  your Hermes server is the optional GitHub release check.
+  your Hermes server is the optional GitHub release check (the Google Play
+  build has no self-updater and makes no such request).
 
 ## Install
 

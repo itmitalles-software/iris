@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.verify
+import io.wutz.apollo.BuildConfig
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.ui.common.UiText
@@ -73,6 +74,7 @@ class UpdateNoticeManagerTest {
     fun tearDown() {
         UpdateNoticeManager.resetForTests()
         UpdateNoticeManager.enabled = false
+        UpdateNoticeManager.selfUpdateAvailable = BuildConfig.SELF_UPDATE_ENABLED
         unmockkAll()
         Dispatchers.resetMain()
     }
@@ -438,5 +440,41 @@ class UpdateNoticeManagerTest {
             AppUpdateState.UpdateAvailable("v1.23.0", "https://example.com/2.apk", 1L),
         )
         assertEquals("v1.23.0", UpdateNoticeManager.noticeTag(currentVersion))
+    }
+
+    // ── Play build without the self-updater (issue #7) ──────────────────
+
+    @Test
+    fun githubBuild_shipsTheSelfUpdater() {
+        // Unit tests run against the debug build type, i.e. the GitHub
+        // distribution; only the `play` build type sets this to false.
+        assertTrue(BuildConfig.SELF_UPDATE_ENABLED)
+        assertTrue(UpdateNoticeManager.selfUpdateAvailable)
+    }
+
+    @Test
+    fun selfUpdateUnavailable_neverContactsGitHubEvenWhenForced() =
+        runTest {
+            UpdateNoticeManager.selfUpdateAvailable = false
+            val checker = mockk<AppUpdateChecker>()
+            coEvery { checker.fetchLatestRelease(any()) } returns updateInfo()
+
+            UpdateNoticeManager.checkOnLaunch(checker, currentVersion, testDispatcher)
+            UpdateNoticeManager.checkNow(checker, currentVersion, testDispatcher)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { checker.fetchLatestRelease(any()) }
+            assertEquals(AppUpdateState.Idle, AppUpdateCache.state.value)
+            verify(exactly = 0) { AuthManager.setLastKnownLatestTag(any()) }
+        }
+
+    @Test
+    fun selfUpdateUnavailable_hidesTheChatNotice() {
+        AppUpdateCache.update(AppUpdateState.UpdateAvailable("v1.22.0", "https://example.com/apk", 1L))
+        assertEquals("v1.22.0", UpdateNoticeManager.noticeTag(currentVersion))
+
+        UpdateNoticeManager.selfUpdateAvailable = false
+
+        assertNull(UpdateNoticeManager.noticeTag(currentVersion))
     }
 }

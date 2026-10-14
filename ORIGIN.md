@@ -49,7 +49,8 @@ are in `CHANGELOG.md`.
   #10)".
 - **Update checker / releases** — release assets are `apollo-<tag>.apk` from
   `wutz-io/apollo-hermes-android`; the release workflow fails early when
-  signing secrets are missing.
+  signing secrets are missing. The `play` build type leaves the self-updater
+  out for Google Play (#7).
 - **CI** — PR-template gate exempts repository members; the stale bot and
   upstream funding config are removed.
 - **Share target** — `share/ShareInbox.kt` and `share/ShareTargetActivity.kt`
