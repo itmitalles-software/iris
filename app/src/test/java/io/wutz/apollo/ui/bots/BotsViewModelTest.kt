@@ -69,7 +69,7 @@ class BotsViewModelTest {
         every { HermesWsClient.send(any(), any(), any()) } returns "req-1"
         val deferred = kotlinx.coroutines.CompletableDeferred<Any?>()
         deferred.complete(null)
-        every { HermesWsClient.request(any(), any(), any()) } returns deferred
+        every { HermesWsClient.request(any(), any(), any(), any()) } returns deferred
     }
 
     @After

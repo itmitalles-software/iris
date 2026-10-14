@@ -74,7 +74,6 @@
 
     <!-- Navigation & Drawer -->
     <string name="press_back_again_to_exit">Presione hacia atrás nuevamente para salir</string>
-    <string name="nav_drawer_title">Apollo</string>
     <string name="nav_drawer_subtitle">For Hermes Agent</string>
     <string name="nav_drawer_section_converse">Conversar</string>
     <string name="nav_drawer_section_automate">Automatizar</string>
@@ -313,7 +312,6 @@
     <string name="settings_action_test_connection">Conexión de prueba</string>
     <string name="settings_sec_about">Acerca de</string>
     <string name="settings_sec_language">Idioma</string>
-    <string name="settings_about_app_name">Hermes Móvil</string>
     <string name="settings_about_version">Versión</string>
     <string name="settings_about_build">Construir</string>
     <string name="settings_about_debug">Depurar</string>
@@ -351,8 +349,6 @@
     <string name="settings_delete_confirm_title">¿Eliminar perfil?</string>
     <string name="settings_delete_confirm_message">¿Está seguro de que desea eliminar \"%1$s\"? Esto no se puede deshacer.</string>
     <string name="content_desc_delete_profile">Eliminar perfil</string>
-    <string name="content_desc_hide_token">Ocultar token</string>
-    <string name="content_desc_show_token">Mostrar token</string>
     <string name="theme_system">Sistema</string>
     <string name="theme_light">Claro</string>
     <string name="theme_dark">Oscuro</string>
@@ -377,35 +373,17 @@
     <string name="language_italian">Italiano</string>
     <string name="language_spanish">Español</string>
 
-    <!-- Connect Screen -->
-    <string name="connect_selected_profile">Perfil:%1$s</string>
-    <string name="connect_action_select_profile">Seleccionar perfil guardado</string>
-    <string name="connect_health_title">Estado del backend</string>
-    <string name="connect_health_body">Hermes%1$s·%2$s</string>
-    <string name="connect_health_auth_gated">Cerrado (OAuth)</string>
-    <string name="connect_health_auth_token">Token</string>
 
     <!-- Connect Error Messages -->
-    <string name="connect_error_token_required">Se requiere token</string>
     <string name="connect_error_401">Token no válido (401 no autorizado)</string>
     <string name="connect_error_403">Acceso denegado (403 prohibido)</string>
     <string name="connect_error_http_code">El servidor devolvió HTTP %1$d</string>
-    <string name="connect_error_timeout">Se agotó el tiempo de espera de la conexión</string>
-    <string name="connect_error_refused">Conexión rechazada: ¿se está ejecutando Hermes?</string>
-    <string name="connect_error_resolve">No se pudo resolver el host</string>
     <string name="connect_error_connection_failed">Error de conexión: %1$s</string>
 
-    <string name="connect_save_profile">Guardar perfil de conexión</string>
-    <string name="connect_profile_name">Nombre del perfil</string>
-    <string name="connect_placeholder_profile_name">p. ej., Hermes local, Servidor remoto</string>
-    <string name="connect_action_hide_manual">Ocultar entrada manual</string>
-    <string name="connect_action_show_manual">Ingresar manualmente en su lugar</string>
-    <string name="connect_placeholder_token">Token API</string>
     <string name="connect_server_url_label">URL del servidor</string>
     <string name="connect_placeholder_server_url">https://host:9119/ o http://127.0.0.1:9119/</string>
     <string name="connect_error_url_invalid">Ingrese una URL de servidor válida (https:// o http://)</string>
     <string name="connect_error_lan_permission_denied">Acceso a la red local denegado. Otorgue el permiso de red local en Configuración o conéctese a una URL de gateway remota.</string>
-    <string name="action_connect">Conectar</string>
 
     <!-- Kanban Screen -->
     <string name="kanban_board_title">Tablero Kanban</string>
@@ -1381,8 +1359,6 @@
     <string name="auth_login_use_profile">Ingresar como %1$s</string>
 
     <!-- Landing Screen -->
-    <string name="landing_title">Apollo</string>
-    <string name="landing_subtitle">Panel de control para el Agente Hermes</string>
     <string name="landing_action_auth_login">Inicio de sesión de autenticación</string>
 
     <!-- Loading / Startup State (issue #1171) -->

@@ -916,8 +916,6 @@ class ChatConnectorsDelegate(
         }
     }
 
-    fun onLaunchError(message: String) = launchError(message)
-
     /**
      * Clear active error message.
      */

@@ -89,4 +89,26 @@ class LocalNetworkTest {
         assertFalse(needed)
         assertTrue(io.thread.get() == null)
     }
+
+    // Gate decision matrix, moved here from the removed ConnectPermissionGateTest.
+
+    @Test
+    fun `permission gate needs the permission for a LAN host on API 37`() {
+        assertTrue(runBlocking { requiresLocalNetworkPermission(37, "http://192.168.1.50:9119") })
+    }
+
+    @Test
+    fun `permission gate skips a LAN host below API 37`() {
+        assertFalse(runBlocking { requiresLocalNetworkPermission(36, "http://192.168.1.50:9119") })
+    }
+
+    @Test
+    fun `permission gate skips loopback on API 37`() {
+        assertFalse(runBlocking { requiresLocalNetworkPermission(37, "http://127.0.0.1:9119") })
+    }
+
+    @Test
+    fun `permission gate skips a public host on API 37`() {
+        assertFalse(runBlocking { requiresLocalNetworkPermission(37, "https://gateway.example.com") })
+    }
 }

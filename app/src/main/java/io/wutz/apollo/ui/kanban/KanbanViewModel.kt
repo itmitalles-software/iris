@@ -1,6 +1,10 @@
 package io.wutz.apollo.ui.kanban
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.annotation.PluralsRes
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.wutz.apollo.R
@@ -29,6 +33,8 @@ import io.wutz.apollo.data.model.RenameBoardBody
 import io.wutz.apollo.data.model.TaskEstimate
 import io.wutz.apollo.data.model.UpdateTaskBody
 import io.wutz.apollo.data.remote.ApiClient
+import io.wutz.apollo.data.remote.GatewayFileClient
+import io.wutz.apollo.data.remote.GatewayFileResult
 import io.wutz.apollo.data.remote.NetworkError
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
@@ -38,17 +44,24 @@ import io.wutz.apollo.data.ws.KanbanEventsClient
 import io.wutz.apollo.data.ws.KanbanLiveStatus
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.util.StreamingUriRequestBody
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import java.io.File
 
 data class KanbanUiState(
     val isLoading: Boolean = false,
@@ -170,6 +183,9 @@ class KanbanViewModel(
     private val eventsClientProvider: () -> KanbanEventsClient = { KanbanEventsClient() },
     private val endpointProvider: () -> String = {
         runCatching { AuthManager.endpointForBuild().baseUrl.toString() }.getOrDefault("default")
+    },
+    private val exportDownloader: suspend (path: String, cacheDir: File) -> GatewayFileResult = { path, dir ->
+        GatewayFileClient.fetch(path, dir)
     },
 ) : ViewModel(),
     ToastHost {
@@ -784,61 +800,25 @@ class KanbanViewModel(
             onComplete?.invoke(taskIds.toSet())
             return
         }
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val body =
+        runBulk(
+            board = board,
+            taskIds = taskIds,
+            body =
                 BulkTasksBody(
                     ids = taskIds,
                     status = targetStatus,
                     summary = completionSummary,
                     result = completionSummary,
-                )
-            when (val res = repository.bulkTasks(board.id, body)) {
-                is NetworkResult.Success -> {
-                    val results = res.data.results
-                    val succeeded = results.filter { it.ok }.map { it.id }.toSet()
-                    val failed = results.filter { !it.ok }.map { it.id }.toSet()
-                    val firstError = results.firstOrNull { !it.ok }?.error
-                    val msg =
-                        when {
-                            failed.isEmpty() -> {
-                                UiText.plural(
-                                    R.plurals.kanban_msg_bulk_moved,
-                                    succeeded.size,
-                                    succeeded.size,
-                                    targetStatus,
-                                )
-                            }
-
-                            succeeded.isEmpty() -> {
-                                UiText.res(R.string.kanban_msg_bulk_move_failed_all, bulkErrorText(firstError))
-                            }
-
-                            else -> {
-                                bulkPartial(
-                                    R.plurals.kanban_msg_bulk_moved_partial,
-                                    succeeded.size,
-                                    failed.size,
-                                    firstError,
-                                )
-                            }
-                        }
-                    _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
-                    reloadBoardSilently()
-                    onComplete?.invoke(failed)
-                }
-
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_bulk_move_failed, res.error.message),
-                        )
-                    }
-                    onComplete?.invoke(taskIds.toSet())
-                }
-            }
-        }
+                ),
+            messages =
+                BulkMessages(
+                    all = { count -> UiText.plural(R.plurals.kanban_msg_bulk_moved, count, count, targetStatus) },
+                    failedAll = R.string.kanban_msg_bulk_move_failed_all,
+                    partial = R.plurals.kanban_msg_bulk_moved_partial,
+                ),
+            requestFailed = R.string.kanban_msg_bulk_move_failed,
+            onComplete = onComplete,
+        )
     }
 
     fun bulkArchive(
@@ -846,49 +826,19 @@ class KanbanViewModel(
         onComplete: ((failedIds: Set<String>) -> Unit)? = null,
     ) {
         val board = _uiState.value.selectedBoard ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            when (val res = repository.bulkTasks(board.id, BulkTasksBody(ids = taskIds, archive = true))) {
-                is NetworkResult.Success -> {
-                    val results = res.data.results
-                    val succeeded = results.filter { it.ok }.map { it.id }.toSet()
-                    val failed = results.filter { !it.ok }.map { it.id }.toSet()
-                    val firstError = results.firstOrNull { !it.ok }?.error
-                    val msg =
-                        when {
-                            failed.isEmpty() -> {
-                                UiText.plural(R.plurals.kanban_msg_bulk_archived, succeeded.size)
-                            }
-
-                            succeeded.isEmpty() -> {
-                                UiText.res(R.string.kanban_msg_bulk_archive_failed_all, bulkErrorText(firstError))
-                            }
-
-                            else -> {
-                                bulkPartial(
-                                    R.plurals.kanban_msg_bulk_archived_partial,
-                                    succeeded.size,
-                                    failed.size,
-                                    firstError,
-                                )
-                            }
-                        }
-                    _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
-                    reloadBoardSilently()
-                    onComplete?.invoke(failed)
-                }
-
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_bulk_archive_failed, res.error.message),
-                        )
-                    }
-                    onComplete?.invoke(taskIds.toSet())
-                }
-            }
-        }
+        runBulk(
+            board = board,
+            taskIds = taskIds,
+            body = BulkTasksBody(ids = taskIds, archive = true),
+            messages =
+                BulkMessages(
+                    all = { count -> UiText.plural(R.plurals.kanban_msg_bulk_archived, count) },
+                    failedAll = R.string.kanban_msg_bulk_archive_failed_all,
+                    partial = R.plurals.kanban_msg_bulk_archived_partial,
+                ),
+            requestFailed = R.string.kanban_msg_bulk_archive_failed,
+            onComplete = onComplete,
+        )
     }
 
     fun bulkAssign(
@@ -897,67 +847,35 @@ class KanbanViewModel(
         onComplete: ((failedIds: Set<String>) -> Unit)? = null,
     ) {
         val board = _uiState.value.selectedBoard ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val body =
+        val assigned = !assignee.isNullOrBlank()
+        runBulk(
+            board = board,
+            taskIds = taskIds,
+            body =
                 BulkTasksBody(
                     ids = taskIds,
                     assignee = assignee ?: "",
                     reclaimFirst = true,
-                )
-            when (val res = repository.bulkTasks(board.id, body)) {
-                is NetworkResult.Success -> {
-                    val results = res.data.results
-                    val succeeded = results.filter { it.ok }.map { it.id }.toSet()
-                    val failed = results.filter { !it.ok }.map { it.id }.toSet()
-                    val firstError = results.firstOrNull { !it.ok }?.error
-                    val assigned = !assignee.isNullOrBlank()
-                    val msg =
-                        when {
-                            failed.isEmpty() -> {
-                                UiText.plural(
-                                    if (assigned) {
-                                        R.plurals.kanban_msg_bulk_assigned
-                                    } else {
-                                        R.plurals.kanban_msg_bulk_unassigned
-                                    },
-                                    succeeded.size,
-                                )
-                            }
-
-                            succeeded.isEmpty() -> {
-                                UiText.res(R.string.kanban_msg_bulk_assign_failed_all, bulkErrorText(firstError))
-                            }
-
-                            else -> {
-                                bulkPartial(
-                                    if (assigned) {
-                                        R.plurals.kanban_msg_bulk_assigned_partial
-                                    } else {
-                                        R.plurals.kanban_msg_bulk_unassigned_partial
-                                    },
-                                    succeeded.size,
-                                    failed.size,
-                                    firstError,
-                                )
-                            }
-                        }
-                    _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
-                    reloadBoardSilently()
-                    onComplete?.invoke(failed)
-                }
-
-                is NetworkResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_bulk_assign_failed, res.error.message),
+                ),
+            messages =
+                BulkMessages(
+                    all = { count ->
+                        UiText.plural(
+                            if (assigned) R.plurals.kanban_msg_bulk_assigned else R.plurals.kanban_msg_bulk_unassigned,
+                            count,
                         )
-                    }
-                    onComplete?.invoke(taskIds.toSet())
-                }
-            }
-        }
+                    },
+                    failedAll = R.string.kanban_msg_bulk_assign_failed_all,
+                    partial =
+                        if (assigned) {
+                            R.plurals.kanban_msg_bulk_assigned_partial
+                        } else {
+                            R.plurals.kanban_msg_bulk_unassigned_partial
+                        },
+                ),
+            requestFailed = R.string.kanban_msg_bulk_assign_failed,
+            onComplete = onComplete,
+        )
     }
 
     fun bulkDelete(
@@ -984,24 +902,77 @@ class KanbanViewModel(
                 }
             }
 
-            val msg =
-                when {
-                    failed.isEmpty() -> {
-                        UiText.plural(R.plurals.kanban_msg_bulk_deleted, succeeded.size)
-                    }
-
-                    succeeded.isEmpty() -> {
-                        UiText.res(R.string.kanban_msg_bulk_delete_failed_all, bulkErrorText(firstError))
-                    }
-
-                    else -> {
-                        bulkPartial(R.plurals.kanban_msg_bulk_deleted_partial, succeeded.size, failed.size, firstError)
-                    }
-                }
-            _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
-            reloadBoardSilently()
-            onComplete?.invoke(failed)
+            finishBulk(
+                succeeded = succeeded,
+                failed = failed,
+                firstError = firstError,
+                messages =
+                    BulkMessages(
+                        all = { count -> UiText.plural(R.plurals.kanban_msg_bulk_deleted, count) },
+                        failedAll = R.string.kanban_msg_bulk_delete_failed_all,
+                        partial = R.plurals.kanban_msg_bulk_deleted_partial,
+                    ),
+                onComplete = onComplete,
+            )
         }
+    }
+
+    /** Toast texts of one bulk operation for: all tasks succeeded, all failed, and a partial result. */
+    private class BulkMessages(
+        val all: (succeeded: Int) -> UiText,
+        @param:StringRes val failedAll: Int,
+        @param:PluralsRes val partial: Int,
+    )
+
+    /** Sends one `bulkTasks` request and reports per-task results through [finishBulk]. */
+    private fun runBulk(
+        board: KanbanBoard,
+        taskIds: List<String>,
+        body: BulkTasksBody,
+        messages: BulkMessages,
+        @StringRes requestFailed: Int,
+        onComplete: ((failedIds: Set<String>) -> Unit)?,
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            when (val res = repository.bulkTasks(board.id, body)) {
+                is NetworkResult.Success -> {
+                    val results = res.data.results
+                    finishBulk(
+                        succeeded = results.filter { it.ok }.map { it.id }.toSet(),
+                        failed = results.filter { !it.ok }.map { it.id }.toSet(),
+                        firstError = results.firstOrNull { !it.ok }?.error,
+                        messages = messages,
+                        onComplete = onComplete,
+                    )
+                }
+
+                is NetworkResult.Failure -> {
+                    _uiState.update {
+                        it.copy(isLoading = false, toastMessage = UiText.res(requestFailed, res.error.message))
+                    }
+                    onComplete?.invoke(taskIds.toSet())
+                }
+            }
+        }
+    }
+
+    private fun finishBulk(
+        succeeded: Set<String>,
+        failed: Set<String>,
+        firstError: String?,
+        messages: BulkMessages,
+        onComplete: ((failedIds: Set<String>) -> Unit)?,
+    ) {
+        val msg =
+            when {
+                failed.isEmpty() -> messages.all(succeeded.size)
+                succeeded.isEmpty() -> UiText.res(messages.failedAll, bulkErrorText(firstError))
+                else -> bulkPartial(messages.partial, succeeded.size, failed.size, firstError)
+            }
+        _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
+        reloadBoardSilently()
+        onComplete?.invoke(failed)
     }
 
     suspend fun exportBoard(slug: String): NetworkResult<BoardExportResult> =
@@ -1009,6 +980,181 @@ class KanbanViewModel(
 
     suspend fun importBoard(serverArchive: String): NetworkResult<BoardImportResult> =
         repository.importBoard(ImportBoardBody(archive = serverArchive))
+
+    /**
+     * Has the server export [board] and downloads the archive into [cacheDir]. Returns the cached file,
+     * or null after a toast. The caller then asks the user for a destination ([saveBoardExport]).
+     */
+    suspend fun prepareBoardExport(
+        board: KanbanBoard,
+        cacheDir: File,
+    ): File? =
+        when (val res = exportBoard(board.id)) {
+            is NetworkResult.Success -> {
+                when (val download = exportDownloader(res.data.archive, cacheDir)) {
+                    is GatewayFileResult.Success -> {
+                        download.file.cacheFile
+                    }
+
+                    else -> {
+                        showToast(UiText.res(R.string.kanban_export_download_failed))
+                        null
+                    }
+                }
+            }
+
+            is NetworkResult.Failure -> {
+                showToast(UiText.res(R.string.kanban_export_failed, res.error.message))
+                null
+            }
+        }
+
+    /**
+     * Copies the export cached by [prepareBoardExport] to the user-picked [destination]. Runs in
+     * [viewModelScope], so it finishes even when the board screen is left meanwhile.
+     */
+    fun saveBoardExport(
+        contentResolver: ContentResolver,
+        cachedPath: String?,
+        destination: Uri,
+    ): Job =
+        viewModelScope.launch {
+            val failure: UiText? =
+                try {
+                    if (cachedPath == null) {
+                        UiText.res(R.string.kanban_msg_no_pending_export)
+                    } else {
+                        withContext(ioDispatcher) { copyExport(contentResolver, File(cachedPath), destination) }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    UiText.raw(e.message.orEmpty())
+                }
+            showToast(
+                if (failure == null) {
+                    UiText.res(R.string.kanban_export_success)
+                } else {
+                    UiText.res(R.string.kanban_export_save_failed, failure)
+                },
+            )
+        }
+
+    /** Returns null on success, otherwise why the copy failed. */
+    private fun copyExport(
+        contentResolver: ContentResolver,
+        cachedFile: File,
+        destination: Uri,
+    ): UiText? {
+        if (!cachedFile.isFile) return UiText.res(R.string.kanban_msg_cached_export_missing)
+        val output =
+            contentResolver.openOutputStream(destination)
+                ?: return UiText.res(R.string.kanban_msg_open_destination_failed)
+        output.use { out -> cachedFile.inputStream().use { input -> input.copyTo(out) } }
+        return null
+    }
+
+    /**
+     * Uploads the user-picked archive [source], imports it as a board and removes the uploaded
+     * archive again. Runs in [viewModelScope], so leaving the board screen does not cancel it.
+     */
+    fun importBoardFrom(
+        contentResolver: ContentResolver,
+        source: Uri,
+    ): Job =
+        viewModelScope.launch {
+            try {
+                val (fileName, contentLength) =
+                    withContext(
+                        ioDispatcher,
+                    ) { describeImportSource(contentResolver, source) }
+                val archive =
+                    StreamingUriRequestBody(
+                        contentResolver = contentResolver,
+                        uri = source,
+                        contentType = "application/gzip".toMediaTypeOrNull(),
+                        contentLength = contentLength,
+                    )
+                when (val upload = repository.uploadImportArchive("kanban-imports/$fileName", fileName, archive)) {
+                    is NetworkResult.Success -> {
+                        importUploadedArchive(upload.data)
+                    }
+
+                    is NetworkResult.Failure -> {
+                        currentCoroutineContext().ensureActive()
+                        showToast(UiText.res(R.string.kanban_import_upload_failed, upload.error.message))
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                showToast(UiText.res(R.string.kanban_import_failed, e.message.orEmpty()))
+            }
+        }
+
+    private suspend fun importUploadedArchive(serverPath: String) {
+        withKanbanImportCleanup(
+            cleanup = {
+                val result = repository.deleteImportArchive(serverPath)
+                if (result is NetworkResult.Failure) throw KanbanImportCleanupException(result.error)
+            },
+            onCleanupFailure = { e ->
+                val reason =
+                    ((e as? KanbanImportCleanupException)?.error as? NetworkError.Http)
+                        ?.let { UiText.res(R.string.kanban_msg_archive_cleanup_failed_http, it.code) }
+                        ?: UiText.raw(e.message.orEmpty())
+                showToast(UiText.res(R.string.kanban_import_cleanup_failed, reason))
+            },
+            dispatcher = ioDispatcher,
+        ) {
+            val importResult = importBoard(serverPath)
+            currentCoroutineContext().ensureActive()
+            when (importResult) {
+                is NetworkResult.Success -> {
+                    val res = importResult.data
+                    showToast(
+                        if (res.renamed) {
+                            UiText.res(R.string.kanban_import_success_renamed, res.name, res.board)
+                        } else {
+                            UiText.res(R.string.kanban_import_success, res.name)
+                        },
+                    )
+                    loadBoards()
+                }
+
+                is NetworkResult.Failure -> {
+                    showToast(UiText.res(R.string.kanban_import_failed, importResult.error.message))
+                }
+            }
+        }
+    }
+
+    /** Display name and size of the picked archive; falls back to `board.tar.gz` and an unknown size. */
+    private fun describeImportSource(
+        contentResolver: ContentResolver,
+        source: Uri,
+    ): Pair<String, Long> {
+        val fileName =
+            contentResolver.query(source, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
+            } ?: DEFAULT_IMPORT_FILE_NAME
+        val contentLength =
+            contentResolver.query(source, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (sizeIndex != -1 && cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
+                    cursor.getLong(sizeIndex).takeIf { it >= 0L }
+                } else {
+                    null
+                }
+            } ?: -1L
+        return fileName to contentLength
+    }
+
+    /** A failed delete of the uploaded import archive, carrying the typed error for the toast. */
+    private class KanbanImportCleanupException(
+        val error: NetworkError,
+    ) : Exception(error.message)
 
     fun moveTask(
         task: KanbanTask,
@@ -1314,5 +1460,6 @@ class KanbanViewModel(
 
     private companion object {
         const val RELOAD_DEBOUNCE_MS = 250L
+        const val DEFAULT_IMPORT_FILE_NAME = "board.tar.gz"
     }
 }

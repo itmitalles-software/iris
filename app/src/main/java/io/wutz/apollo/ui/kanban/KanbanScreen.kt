@@ -1,7 +1,6 @@
 package io.wutz.apollo.ui.kanban
 
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -66,7 +65,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,12 +74,6 @@ import io.wutz.apollo.KanbanTaskDetailKey
 import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.KanbanTask
-import io.wutz.apollo.data.model.ManagedFileDelete
-import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.remote.GatewayFileClient
-import io.wutz.apollo.data.remote.GatewayFileResult
-import io.wutz.apollo.data.remote.NetworkResult
-import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
@@ -89,24 +81,13 @@ import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.SearchBar
 import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
-import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.kanban.components.KanbanBoardSettingsDialog
 import io.wutz.apollo.ui.kanban.components.KanbanCreateTaskDialog
 import io.wutz.apollo.ui.kanban.components.KanbanFilterSheet
 import io.wutz.apollo.ui.kanban.components.KanbanOrchestrationDialog
 import io.wutz.apollo.ui.kanban.components.KanbanTaskCard
-import io.wutz.apollo.util.StreamingUriRequestBody
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
-import kotlin.coroutines.coroutineContext
 
 private const val DEFAULT_COLUMN = "todo"
 
@@ -130,7 +111,6 @@ fun KanbanScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val nowSeconds = rememberKanbanNowSeconds(state.tasks.any { it.status.equals("running", ignoreCase = true) })
     val context = LocalContext.current
-    val resources = LocalResources.current
     val coroutineScope = rememberCoroutineScope()
 
     var query by remember { mutableStateOf("") }
@@ -197,38 +177,14 @@ fun KanbanScreen(
     // Board Transfer (Export / Import)
     var pendingExportPath by rememberPendingKanbanExportPath()
 
+    // The launchers only forward the picked Uri; the ViewModel owns the I/O so it survives leaving the screen.
     val exportLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/gzip"),
         ) { uri ->
             if (uri != null) {
-                coroutineScope.launch {
-                    try {
-                        val cachedFile =
-                            File(
-                                checkNotNull(
-                                    pendingExportPath,
-                                ) { resources.getString(R.string.kanban_msg_no_pending_export) },
-                            )
-                        withContext(Dispatchers.IO) {
-                            check(cachedFile.isFile) { resources.getString(R.string.kanban_msg_cached_export_missing) }
-                            context.contentResolver.openOutputStream(uri)?.use { output ->
-                                cachedFile.inputStream().use { input ->
-                                    input.copyTo(output)
-                                }
-                            } ?: error(resources.getString(R.string.kanban_msg_open_destination_failed))
-                        }
-                        viewModel.showToast(UiText.res(R.string.kanban_export_success))
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        viewModel.showToast(
-                            UiText.res(R.string.kanban_export_save_failed, e.message.orEmpty()),
-                        )
-                    } finally {
-                        pendingExportPath = null
-                    }
-                }
+                viewModel.saveBoardExport(context.applicationContext.contentResolver, pendingExportPath, uri)
+                pendingExportPath = null
             }
         }
 
@@ -237,124 +193,7 @@ fun KanbanScreen(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri: Uri? ->
             if (uri != null) {
-                coroutineScope.launch {
-                    try {
-                        var fileName = "board.tar.gz"
-                        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                            if (nameIndex != -1 && cursor.moveToFirst()) {
-                                fileName = cursor.getString(nameIndex) ?: "board.tar.gz"
-                            }
-                        }
-
-                        val contentLength =
-                            context.contentResolver
-                                .query(
-                                    uri,
-                                    arrayOf(OpenableColumns.SIZE),
-                                    null,
-                                    null,
-                                    null,
-                                )?.use { cursor ->
-                                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                                    if (sizeIndex != -1 && cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
-                                        cursor.getLong(sizeIndex).takeIf { it >= 0L } ?: -1L
-                                    } else {
-                                        -1L
-                                    }
-                                } ?: -1L
-                        val targetPath = "kanban-imports/$fileName"
-                        val pathBody = targetPath.toRequestBody("text/plain".toMediaTypeOrNull())
-                        val overwriteBody = "true".toRequestBody("text/plain".toMediaTypeOrNull())
-                        val requestBody =
-                            StreamingUriRequestBody(
-                                contentResolver = context.contentResolver,
-                                uri = uri,
-                                contentType = "application/gzip".toMediaTypeOrNull(),
-                                contentLength = contentLength,
-                            )
-                        val filePart = MultipartBody.Part.createFormData("file", fileName, requestBody)
-                        // Retrofit streams the body on OkHttp's worker; avoid losing a confirmed
-                        // response to withContext's prompt cancellation on the return hop (#1137).
-                        val uploadResult =
-                            safeApiCall {
-                                ApiClient.hermesApi.uploadManagedFileStream(pathBody, overwriteBody, filePart)
-                            }
-                        when (uploadResult) {
-                            is NetworkResult.Success -> {
-                                val serverPath =
-                                    uploadResult.data.entry?.path ?: uploadResult.data.path ?: targetPath
-                                withKanbanImportCleanup(
-                                    cleanup = {
-                                        val response =
-                                            ApiClient.hermesApi.deleteManagedFile(
-                                                ManagedFileDelete(serverPath),
-                                            )
-                                        check(
-                                            response.isSuccessful,
-                                        ) {
-                                            resources.getString(
-                                                R.string.kanban_msg_archive_cleanup_failed_http,
-                                                response.code(),
-                                            )
-                                        }
-                                    },
-                                    onCleanupFailure = {
-                                        viewModel.showToast(
-                                            UiText.res(
-                                                R.string.kanban_import_cleanup_failed,
-                                                it.message.orEmpty(),
-                                            ),
-                                        )
-                                    },
-                                ) {
-                                    val importResult = viewModel.importBoard(serverPath)
-                                    coroutineContext.ensureActive()
-                                    when (importResult) {
-                                        is NetworkResult.Success -> {
-                                            val res = importResult.data
-                                            val msg =
-                                                if (res.renamed) {
-                                                    UiText.res(
-                                                        R.string.kanban_import_success_renamed,
-                                                        res.name,
-                                                        res.board,
-                                                    )
-                                                } else {
-                                                    UiText.res(R.string.kanban_import_success, res.name)
-                                                }
-                                            viewModel.showToast(msg)
-                                            viewModel.loadBoards()
-                                        }
-
-                                        is NetworkResult.Failure -> {
-                                            viewModel.showToast(
-                                                UiText.res(
-                                                    R.string.kanban_import_failed,
-                                                    importResult.error.message,
-                                                ),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            is NetworkResult.Failure -> {
-                                coroutineContext.ensureActive()
-                                viewModel.showToast(
-                                    UiText.res(
-                                        R.string.kanban_import_upload_failed,
-                                        uploadResult.error.message,
-                                    ),
-                                )
-                            }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        viewModel.showToast(UiText.res(R.string.kanban_import_failed, e.message.orEmpty()))
-                    }
-                }
+                viewModel.importBoardFrom(context.applicationContext.contentResolver, uri)
             }
         }
 
@@ -434,31 +273,10 @@ fun KanbanScreen(
                                 showBoardMenu = false
                                 state.selectedBoard?.let { b ->
                                     coroutineScope.launch {
-                                        when (val res = viewModel.exportBoard(b.id)) {
-                                            is NetworkResult.Success -> {
-                                                val download =
-                                                    GatewayFileClient.fetch(
-                                                        res.data.archive,
-                                                        context.cacheDir,
-                                                    )
-                                                if (download is GatewayFileResult.Success) {
-                                                    pendingExportPath = download.file.cacheFile.absolutePath
-                                                    exportLauncher.launch("${b.slug}.tar.gz")
-                                                } else {
-                                                    viewModel.showToast(
-                                                        UiText.res(R.string.kanban_export_download_failed),
-                                                    )
-                                                }
-                                            }
-
-                                            is NetworkResult.Failure -> {
-                                                viewModel.showToast(
-                                                    UiText.res(
-                                                        R.string.kanban_export_failed,
-                                                        res.error.message,
-                                                    ),
-                                                )
-                                            }
+                                        val cachedExport = viewModel.prepareBoardExport(b, context.cacheDir)
+                                        if (cachedExport != null) {
+                                            pendingExportPath = cachedExport.absolutePath
+                                            exportLauncher.launch("${b.slug}.tar.gz")
                                         }
                                     }
                                 }

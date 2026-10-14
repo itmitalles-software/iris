@@ -337,11 +337,6 @@ class ToolsetDetailViewModel :
             }
     }
 
-    fun closePostSetup() {
-        postSetupJob?.cancel()
-        _uiState.update { it.copy(postSetup = null) }
-    }
-
     override fun clearToast() {
         _uiState.update { it.copy(toastMessage = null) }
     }

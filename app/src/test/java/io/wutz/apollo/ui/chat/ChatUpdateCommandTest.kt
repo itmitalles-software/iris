@@ -144,7 +144,7 @@ class ChatUpdateCommandTest {
             id
         }
         // Catch-all: mirror send() but complete immediately (no 120s timer).
-        every { HermesWsClient.request(any(), any(), any()) } answers {
+        every { HermesWsClient.request(any(), any(), any(), any()) } answers {
             HermesWsClient.send(arg(0), arg(1)) {}
             CompletableDeferred<Any?>(Unit)
         }

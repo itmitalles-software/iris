@@ -282,7 +282,10 @@ class ChatViewModelTest {
         // deferred freezes the VM's event collector at the SESSION_CREATE
         // session.usage await and lets its late completion race per-test
         // capture stubs (slash-focus flake, CI 31137581335 on 4645a2b).
-        every { HermesWsClient.request(any(), any(), any()) } answers {
+        // All four parameters: a three-matcher stub only covers suppressErrorEvent = false, so slash.exec
+        // and process calls (suppressErrorEvent = true) reached the real transport, which queued the request,
+        // opened a real socket on Dispatchers.IO and crashed a later test on the unstubbed AuthManager.
+        every { HermesWsClient.request(any(), any(), any(), any()) } answers {
             HermesWsClient.send(arg(0), arg(1)) {}
             CompletableDeferred<Any?>(Unit)
         }
@@ -325,6 +328,10 @@ class ChatViewModelTest {
         // later real-AuthManager emission cannot resume a stale
         // Main-dispatched collector between test classes.
         every { AuthManager.dataScopeFlow } returns MutableStateFlow<DataScope?>(null)
+        // sendScope() reads the active server profile for its send-owner check. Isolate it from the
+        // real singleton flow: a late write by another test class in the same fork would make the
+        // owner stale and silently drop a queued prompt. Profile tests re-stub this.
+        every { AuthManager.activeProfileId } returns MutableStateFlow<String?>(null)
         mockkObject(ProfileSwitchCoordinator)
         every { ProfileSwitchCoordinator.switched } returns mockSwitchFlow
         every { ProfileSwitchCoordinator.connectionSwitched } returns MutableSharedFlow<String>()
@@ -10861,7 +10868,7 @@ class ChatViewModelTest {
             assertTrue(sentPrompts.isEmpty())
 
             // Now emit SESSION_CREATE result for the active session request
-            val createReqId = "req-id-$reqCount"
+            val createReqId = sentRequestMethods.last { it.first == WsMethods.SESSION_CREATE }.second
             mockEventsFlow.emit(
                 WsEvent.RpcResult(
                     createReqId,
@@ -10896,7 +10903,7 @@ class ChatViewModelTest {
             val sentPrompts = mutableListOf<String>()
             every { HermesWsClient.sendMessage(any(), capture(sentPrompts), any(), any()) } returns "req-send-2"
 
-            val createReqId = "req-id-$reqCount"
+            val createReqId = sentRequestMethods.last { it.first == WsMethods.SESSION_CREATE }.second
             vm.sendMessage("Prompt typed during reconnect")
             advanceUntilIdle()
 
@@ -10933,7 +10940,7 @@ class ChatViewModelTest {
 
             assertTrue(vm.uiState.value.isSending)
 
-            val createReqId = "req-id-$reqCount"
+            val createReqId = sentRequestMethods.last { it.first == WsMethods.SESSION_CREATE }.second
             // Emit RPC error for SESSION_CREATE
             mockEventsFlow.emit(WsEvent.RpcError(createReqId, JsonRpcError(code = 500, message = "Backend exploded")))
             advanceUntilIdle()

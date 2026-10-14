@@ -13,6 +13,7 @@ import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.data.ws.ReconnectPolicy
 import io.wutz.apollo.data.ws.WsTransport
+import io.wutz.apollo.data.ws.withClosingWebSocketUpgrade
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -344,7 +345,7 @@ class CertificateTlsTest {
                         for (alias in listOf("first", "second")) {
                             aliases[origin] = alias
                             server.enqueue(MockResponse().setBody("""{"ticket":"test-ticket"}"""))
-                            server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {}))
+                            server.enqueue(MockResponse().withClosingWebSocketUpgrade(object : WebSocketListener() {}))
                             transport.openSocket()
                             withTimeout(5000) {
                                 transport.connectionStatus.first { it == ConnectionStatus.CONNECTED }
@@ -386,7 +387,7 @@ class CertificateTlsTest {
             val url = server.url("/ws")
             aliases[CertificateOrigin.from(url)!!] = "first"
             server.enqueue(
-                MockResponse().withWebSocketUpgrade(
+                MockResponse().withClosingWebSocketUpgrade(
                     object : WebSocketListener() {
                         override fun onOpen(
                             webSocket: WebSocket,

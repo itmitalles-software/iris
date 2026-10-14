@@ -1,5 +1,6 @@
 package io.wutz.apollo.data.voice
 
+import io.wutz.apollo.data.ws.withClosingWebSocketUpgrade
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -98,7 +99,7 @@ class VoiceSocketSessionTest {
         val received = Collections.synchronizedList(mutableListOf<String>())
         val audio = byteArrayOf(1, 2, 3, 4, 5, 6)
         server.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onMessage(
                         webSocket: WebSocket,
@@ -138,7 +139,7 @@ class VoiceSocketSessionTest {
     @Test
     fun `speak stream reports the server's fallback verdict`() {
         server.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onMessage(
                         webSocket: WebSocket,
@@ -169,7 +170,7 @@ class VoiceSocketSessionTest {
         val closed = CountDownLatch(1)
         val gotText = CountDownLatch(1)
         server.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onMessage(
                         webSocket: WebSocket,
@@ -214,7 +215,7 @@ class VoiceSocketSessionTest {
     @Test
     fun `server closing before end is a failure`() {
         server.enqueue(
-            MockResponse().withWebSocketUpgrade(
+            MockResponse().withClosingWebSocketUpgrade(
                 object : WebSocketListener() {
                     override fun onOpen(
                         webSocket: WebSocket,
@@ -237,7 +238,7 @@ class VoiceSocketSessionTest {
             val texts = Collections.synchronizedList(mutableListOf<String>())
             val audio = ByteArrayOutputStream()
             server.enqueue(
-                MockResponse().withWebSocketUpgrade(
+                MockResponse().withClosingWebSocketUpgrade(
                     object : WebSocketListener() {
                         override fun onMessage(
                             webSocket: WebSocket,
@@ -278,7 +279,7 @@ class VoiceSocketSessionTest {
     fun `transcribe stream without live STT fails so the caller uploads`() =
         runBlocking {
             server.enqueue(
-                MockResponse().withWebSocketUpgrade(
+                MockResponse().withClosingWebSocketUpgrade(
                     object : WebSocketListener() {
                         override fun onOpen(
                             webSocket: WebSocket,
@@ -302,7 +303,7 @@ class VoiceSocketSessionTest {
     @Test
     fun `transcribe stream times out to null`() =
         runBlocking {
-            server.enqueue(MockResponse().withWebSocketUpgrade(ClosingListener()))
+            server.enqueue(MockResponse().withClosingWebSocketUpgrade(ClosingListener()))
             val session = TranscribeStreamSession(scope, 16_000, {}, opener)
             session.open()
             Thread.sleep(300)

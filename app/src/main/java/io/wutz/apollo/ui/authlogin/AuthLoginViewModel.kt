@@ -1,7 +1,11 @@
 package io.wutz.apollo.ui.authlogin
 
 import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -25,9 +29,11 @@ import io.wutz.apollo.data.remote.await
 import io.wutz.apollo.data.remote.isClientCertificateAuthenticationFailure
 import io.wutz.apollo.data.remote.nativeAuthorizeUrl
 import io.wutz.apollo.data.remote.redeemNativeCode
+import io.wutz.apollo.data.remote.requiresLocalNetworkPermission
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,10 +94,13 @@ data class AuthLoginUiState(
     val connectionSuccess: Boolean = false,
     val errorMessage: UiText? = null,
     val loggedInProfiles: List<ConnectionProfile> = emptyList(),
+    /** Android 17+: the screen must ask for `ACCESS_LOCAL_NETWORK` before the LAN host can be probed. */
+    val lanPermissionNeeded: Boolean = false,
 )
 
 class AuthLoginViewModel(
     private val app: Application,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -100,6 +109,9 @@ class AuthLoginViewModel(
             ),
         )
     val uiState: StateFlow<AuthLoginUiState> = _uiState.asStateFlow()
+
+    /** Device API level; a field so tests can set it ([Build.VERSION.SDK_INT] cannot be mocked on the JVM). */
+    internal var sdkVersion: Int = Build.VERSION.SDK_INT
 
     private var browserJob: Job? = null
     private var refreshedConnectionId: String? = null
@@ -191,7 +203,12 @@ class AuthLoginViewModel(
         certificatePrompt.reset()
         // A browser sign-in keeps running (and keeps its spinner) while the user is away in the browser.
         _uiState.update {
-            it.copy(connectionSuccess = false, errorMessage = null, isLoading = it.browserWaiting)
+            it.copy(
+                connectionSuccess = false,
+                errorMessage = null,
+                isLoading = it.browserWaiting,
+                lanPermissionNeeded = false,
+            )
         }
     }
 
@@ -214,6 +231,46 @@ class AuthLoginViewModel(
 
     fun onPasswordChange(value: String) {
         _uiState.update { it.copy(password = value, errorMessage = null) }
+    }
+
+    /**
+     * Entry point for the probe button, the first request to the entered host. On Android 17 (API 37)
+     * a LAN gateway host (private, link-local or CGNAT address, which includes Tailscale) requires the
+     * `ACCESS_LOCAL_NETWORK` runtime permission. When it is needed and not granted yet,
+     * [AuthLoginUiState.lanPermissionNeeded] asks the screen to show the system prompt instead of
+     * dialing out. Loopback and public hosts skip the gate.
+     */
+    fun requestProbe(context: Context) {
+        val baseUrl = _uiState.value.baseUrl
+        // The gate resolves the host name (nas.local, MagicDNS), so it must not run on the main thread.
+        viewModelScope.launch {
+            val needsPermission =
+                requiresLocalNetworkPermission(sdkVersion, baseUrl, ioDispatcher) &&
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.ACCESS_LOCAL_NETWORK,
+                    ) != PackageManager.PERMISSION_GRANTED
+            if (needsPermission) {
+                _uiState.update { it.copy(lanPermissionNeeded = true, errorMessage = null) }
+                return@launch
+            }
+            probe()
+        }
+    }
+
+    /** Called by the screen after the user answered the local-network prompt. */
+    fun onLanPermissionResult(granted: Boolean) {
+        if (granted) {
+            _uiState.update { it.copy(lanPermissionNeeded = false) }
+            probe()
+        } else {
+            _uiState.update {
+                it.copy(
+                    lanPermissionNeeded = false,
+                    errorMessage = UiText.res(R.string.connect_error_lan_permission_denied),
+                )
+            }
+        }
     }
 
     /**
@@ -240,7 +297,7 @@ class AuthLoginViewModel(
         viewModelScope.launch {
             var certificateFailure = false
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     probeDashboardInternal(endpoint) { certificateFailure = true }
                 }
             _uiState.update {
@@ -438,7 +495,7 @@ class AuthLoginViewModel(
 
         viewModelScope.launch {
             val result =
-                withContext(Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     when (state.authMode) {
                         DashboardAuthMode.TOKEN_ONLY, DashboardAuthMode.ALL, DashboardAuthMode.BASIC_AUTH -> {
                             if (useToken) {
@@ -650,7 +707,7 @@ class AuthLoginViewModel(
         browserJob =
             viewModelScope.launch {
                 val outcome =
-                    withContext(Dispatchers.IO) { runBrowserLogin(endpoint, provider, openBrowser) }
+                    withContext(ioDispatcher) { runBrowserLogin(endpoint, provider, openBrowser) }
                 if (outcome.connected) {
                     AuthManager.setBaseUrl(state.baseUrl)
                     AuthManager.setToken(outcome.wsTicket)

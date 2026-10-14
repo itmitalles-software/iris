@@ -164,13 +164,11 @@ object CookieManager {
      * Replace the backing jar with [jar] (used by unit tests to inject a
      * [FakePersistentCookieJar]). Not for production use.
      */
-    @Suppress("unused")
     internal fun setJarForTest(jar: PersistentCookieJar?) {
         this.jar = jar
     }
 
     /** Reset to uninitialized state (tests only). */
-    @Suppress("unused")
     internal fun resetForTest() {
         jar = null
     }

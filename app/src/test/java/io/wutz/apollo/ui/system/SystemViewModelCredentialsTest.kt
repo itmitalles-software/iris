@@ -16,11 +16,9 @@ import io.wutz.apollo.data.remote.HermesApiService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,12 +33,13 @@ import java.util.concurrent.atomic.AtomicInteger
  * (`DELETE /api/credentials/pool/{provider}/{index}`, hermes_cli/web_routers/ops.py), so a removal
  * must never target a guessed or outdated position.
  *
- * SystemViewModel hops to Dispatchers.IO; the tests wait for the state with a bounded poll.
+ * The VM's IO dispatcher is injected, so the tests run on virtual time without sleeps.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SystemViewModelCredentialsTest {
     private val mockApp = mockk<Application>(relaxed = true)
     private val mockApi = mockk<HermesApiService>(relaxed = true)
+    private val testDispatcher = StandardTestDispatcher()
 
     private fun pool(vararg labels: String) =
         CredentialPoolResponse(
@@ -55,7 +54,7 @@ class SystemViewModelCredentialsTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(testDispatcher)
         mockkObject(ApiClient)
         every { ApiClient.hermesApi } returns mockApi
     }
@@ -66,15 +65,10 @@ class SystemViewModelCredentialsTest {
         unmockkAll()
     }
 
-    private fun awaitState(
-        vm: SystemViewModel,
-        condition: (SystemUiState) -> Boolean,
-    ) {
-        val deadline = System.currentTimeMillis() + 5_000
-        while (!condition(vm.uiState.value)) {
-            check(System.currentTimeMillis() < deadline) { "state not reached: ${vm.uiState.value}" }
-            Thread.sleep(10)
-        }
+    private fun createViewModel() = SystemViewModel(mockApp, ioDispatcher = testDispatcher)
+
+    private fun settle() {
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
@@ -85,7 +79,7 @@ class SystemViewModelCredentialsTest {
             Response.success(ActionResponse(ok = true))
         }
         coEvery { mockApi.getCredentialPool() } returns Response.success(pool("second"))
-        val vm = SystemViewModel(mockApp)
+        val vm = createViewModel()
 
         vm.removeCredential("openrouter", 1)
         assertTrue(vm.uiState.value.credentialsPending)
@@ -93,7 +87,8 @@ class SystemViewModelCredentialsTest {
         vm.removeCredential("openrouter", 2)
 
         removeGate.complete(Unit)
-        awaitState(vm) { !it.credentialsPending }
+        settle()
+        assertFalse(vm.uiState.value.credentialsPending)
 
         assertEquals(
             listOf("second"),
@@ -108,7 +103,7 @@ class SystemViewModelCredentialsTest {
 
     @Test
     fun `a removal is never sent for a missing or invalid position`() {
-        val vm = SystemViewModel(mockApp)
+        val vm = createViewModel()
 
         vm.removeCredential("openrouter", 0)
         vm.removeCredential("", 1)
@@ -133,15 +128,17 @@ class SystemViewModelCredentialsTest {
         }
         coEvery { mockApi.removeCredentialPoolEntry("openrouter", 1) } returns
             Response.success(ActionResponse(ok = true))
-        val vm = SystemViewModel(mockApp)
+        val vm = createViewModel()
 
         vm.loadCredentials()
-        runBlocking { withTimeout(5_000) { staleListStarted.await() } }
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(staleListStarted.isCompleted)
         vm.removeCredential("openrouter", 1)
-        awaitState(vm) { !it.credentialsPending }
+        settle()
+        assertFalse(vm.uiState.value.credentialsPending)
         staleListGate.complete(Unit)
-        awaitState(vm) { calls.get() == 2 }
-        Thread.sleep(100)
+        settle()
+        assertEquals(2, calls.get())
 
         assertFalse(vm.uiState.value.credentialsPending)
         assertEquals(

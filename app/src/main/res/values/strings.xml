@@ -76,7 +76,6 @@
 
     <!-- Navigation & Drawer -->
     <string name="press_back_again_to_exit">Press back again to exit</string>
-    <string name="nav_drawer_title">Apollo</string>
     <string name="nav_drawer_subtitle">For Hermes Agent</string>
     <string name="nav_drawer_section_converse">Converse</string>
     <string name="nav_drawer_section_automate">Automate</string>
@@ -353,7 +352,6 @@
     <string name="settings_action_test_connection">Test Connection</string>
     <string name="settings_sec_about">About</string>
     <string name="settings_sec_language">Language</string>
-    <string name="settings_about_app_name">Apollo</string>
     <string name="brand_wordmark" translatable="false">APOLLO</string>
     <string name="brand_lockup_subtitle" translatable="false">for hermes agent</string>
     <string name="brand_website" translatable="false">https://wutz.io</string>
@@ -397,8 +395,6 @@
     <string name="settings_delete_confirm_title">Delete Profile?</string>
     <string name="settings_delete_confirm_message">Are you sure you want to delete \"%1$s\"? This can\'t be undone.</string>
     <string name="content_desc_delete_profile">Delete Profile</string>
-    <string name="content_desc_hide_token">Hide token</string>
-    <string name="content_desc_show_token">Show token</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
@@ -429,35 +425,17 @@
     <string name="language_italian">Italiano</string>
     <string name="language_spanish">Español</string>
 
-    <!-- Connect Screen -->
-    <string name="connect_selected_profile">Profile: %1$s</string>
-    <string name="connect_action_select_profile">Select Saved Profile</string>
-    <string name="connect_health_title">Backend health</string>
-    <string name="connect_health_body">Hermes %1$s · %2$s</string>
-    <string name="connect_health_auth_gated">Gated (OAuth)</string>
-    <string name="connect_health_auth_token">Token</string>
 
     <!-- Connect Error Messages -->
-    <string name="connect_error_token_required">Token is required</string>
     <string name="connect_error_401">Invalid token (401 Unauthorized)</string>
     <string name="connect_error_403">Access denied (403 Forbidden)</string>
     <string name="connect_error_http_code">Server returned HTTP %1$d</string>
-    <string name="connect_error_timeout">Connection timed out</string>
-    <string name="connect_error_refused">Connection refused – is Hermes running?</string>
-    <string name="connect_error_resolve">Could not resolve host</string>
     <string name="connect_error_connection_failed">Connection failed: %1$s</string>
 
-    <string name="connect_save_profile">Save connection profile</string>
-    <string name="connect_profile_name">Profile Name</string>
-    <string name="connect_placeholder_profile_name">e.g. Local Hermit, Remote Server</string>
-    <string name="connect_action_hide_manual">Hide manual entry</string>
-    <string name="connect_action_show_manual">Enter manually instead</string>
-    <string name="connect_placeholder_token">API token</string>
     <string name="connect_server_url_label">Server URL</string>
     <string name="connect_placeholder_server_url">https://host:9119/ or http://127.0.0.1:9119/</string>
     <string name="connect_error_url_invalid">Enter a valid server URL (https:// or http://)</string>
     <string name="connect_error_lan_permission_denied">Local network access denied. Grant the Local network permission in Settings, or connect to a remote gateway URL instead.</string>
-    <string name="action_connect">Connect</string>
 
     <!-- Kanban Screen -->
     <string name="kanban_board_title">Kanban Board</string>
@@ -1456,8 +1434,6 @@
     <string name="auth_login_use_profile">Enter as %1$s</string>
 
     <!-- Landing Screen -->
-    <string name="landing_title">Apollo</string>
-    <string name="landing_subtitle">Control panel for Hermes Agent</string>
     <string name="landing_action_auth_login">Auth Login</string>
 
     <!-- Loading / Startup State (issue #1171) -->

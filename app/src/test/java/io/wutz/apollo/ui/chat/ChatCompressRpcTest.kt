@@ -113,7 +113,7 @@ class ChatCompressRpcTest {
             arg<((String) -> Unit)?>(2)?.invoke(id)
             id
         }
-        every { HermesWsClient.request(any(), any(), any()) } answers {
+        every { HermesWsClient.request(any(), any(), any(), any()) } answers {
             HermesWsClient.send(arg(0), arg(1)) {}
             CompletableDeferred<Any?>(Unit)
         }
