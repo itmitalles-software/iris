@@ -94,9 +94,21 @@ _Last updated: 2026-10-14_
   emulator in DE/EN, dark/light, read-only against the owner's live Hermes.
 - The `upstream` remote was removed when Apollo went independent; `gh repo
   set-default` points at `wutz-io/apollo-hermes-android`.
-- A local `hermes serve` over plain HTTP (127.0.0.1) accepts the password
-  login but answers 401 afterwards (also with curl), so the recipe below no
-  longer works as is; the HTTPS Tailscale endpoint works.
+- The old 401 with a local `hermes serve` came from a loopback public URL: the
+  password gate is only active for a non-loopback `public_url`; otherwise
+  `/api/*` wants the SPA session token Apollo does not use. The recipe below
+  (fixed 2026-10-14) uses `http://10.0.2.2:19120`.
+
+## 2026-10-14: issues #3, #7, #9
+
+- #3 (PR #18): server-request prompts (approval/clarify/sudo/secret/vault)
+  now post background notifications; approval heading bold. Verified live.
+- #7 (PR #19): `play` build type, `bundlePlay`, `checkPlayPermissions`.
+- #9 (PR #20): voice conversation (`ui/chat/voice/`, `data/voice/`).
+  Protocol verified against a real server from the JVM; spoken loop on a
+  phone still open (#4).
+- `HermesWsClientTest.testOpenRequestsReplayUsesTheLiveServerRequestDispatcher`
+  timed out once under heavy load (passed 3/3 alone).
 
 ## 2026-10-14: purple illustrations, trippier emblem, website
 
@@ -120,15 +132,33 @@ Tracked as GitHub issues in the repository.
 
 ## How to test against a live Hermes
 
+The owner's server uses smart approvals (a guardian model approves), so the
+approval card never shows there. For approvals, voice and anything that must
+not touch the owner's setup, run an isolated instance (verified 2026-10-14):
+
 ```bash
-# isolated instance; does not touch ~/.hermes/config.yaml
-HERMES_DASHBOARD_PUBLIC_URL=https://<machine>.<tailnet>.ts.net \
-HERMES_DASHBOARD_BASIC_AUTH_USERNAME=apollo-test \
-HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<random> \
-HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random> \
-hermes serve --host 127.0.0.1 --port 19120 --skip-build
-adb -s emulator-5580 reverse tcp:19120 tcp:19120   # app URL: http://127.0.0.1:19120
+H=<scratch>/hermes-test; mkdir -p $H      # own HERMES_HOME; installs its own venv on first start
+cat > $H/config.yaml <<'YAML'
+_config_version: 50
+model: {provider: ollama, base_url: http://127.0.0.1:11434/v1, default: hermes-qwen3-vl:8b-instruct, context_length: 64000}
+approvals: {mode: manual}
+YAML
+# Non-loopback public URL activates the password gate; 10.0.2.2 is the host as seen by the emulator.
+HERMES_HOME=$H HERMES_DASHBOARD_PUBLIC_URL=http://10.0.2.2:19120 \
+HERMES_DASHBOARD_BASIC_AUTH_USERNAME=apollo-test HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<random> \
+HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random> hermes serve --host 127.0.0.1 --port 19120 --skip-build
+adb -s emulator-5580 reverse tcp:19120 tcp:19120   # app URL: http://127.0.0.1:19120/
 ```
+
+- Ollama model `hermes-qwen3-vl:8b-instruct` has the 64k context Hermes needs
+  (`MINIMUM_CONTEXT_LENGTH`). Approval probe: ask it to `rm -r` a missing
+  `/tmp` path; prefix `sleep 8` to get the request while the app is in the background.
+- Voice: Edge TTS answered 403 on 2026-10-14. Local providers without touching
+  the Hermes install: a scratch venv with `piper-tts` and `faster-whisper`
+  (decode via ffmpeg; its bundled PyAV is incompatible), wired as
+  `tts.providers.<name>` / `stt.providers.<name>` with `type: command`.
+- The emulator's PulseAudio input fails on this PipeWire host ("Failed to
+  initialize PA context"), so the spoken loop needs a real phone (#4).
 
 ## 2026-10-13: #10 ViewModel messages (branch work/i18n-viewmodel-messages)
 
