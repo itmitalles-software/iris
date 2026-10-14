@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -16,6 +17,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlin.io.path.createTempDirectory
 
 /**
  * Endpoint contract for the opt-in release-candidate channel: the stable path
@@ -174,6 +176,33 @@ class AppUpdateCheckerNetworkTest {
 
             assertFalse(downloaded)
             assertFalse(destination.exists())
+        }
+
+    @Test
+    fun fetchLatestRelease_revalidatesCachedMetadataWithETag() =
+        runTest {
+            val cacheDir = createTempDirectory("release-cache").toFile()
+            try {
+                val cached = OkHttpClient.Builder().cache(Cache(cacheDir, 1024L * 1024)).build()
+                val checker =
+                    AppUpdateChecker(
+                        client = OkHttpClient(),
+                        apiBaseUrl = server.url("/repos/Hy4ri/hermes-mobile").toString(),
+                        apiClient = cached,
+                    )
+                enqueue(STABLE_BODY, headers = mapOf("ETag" to "\"v1\"", "Cache-Control" to "max-age=0"))
+                server.enqueue(MockResponse().setResponseCode(304).addHeader("ETag", "\"v1\""))
+
+                val first = checker.fetchLatestRelease()
+                val second = checker.fetchLatestRelease()
+
+                assertEquals("v1.24.2", first?.tagName)
+                assertEquals("v1.24.2", second?.tagName)
+                assertNull(server.takeRequest().getHeader("If-None-Match"))
+                assertEquals("\"v1\"", server.takeRequest().getHeader("If-None-Match"))
+            } finally {
+                cacheDir.deleteRecursively()
+            }
         }
 
     private companion object {

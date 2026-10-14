@@ -3,8 +3,10 @@ package io.wutz.apollo.data.remote
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
+import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object OkHttpProvider {
@@ -68,6 +70,33 @@ object OkHttpProvider {
             .cookieJar(okhttp3.CookieJar.NO_COOKIES)
             .build()
     }
+
+    /** Set once at app start by [initReleaseMetadataCache]; null in unit tests. */
+    @Volatile
+    private var releaseMetadataCache: Cache? = null
+
+    /**
+     * Give the GitHub releases API client a small disk cache. OkHttp then
+     * revalidates stored release metadata with `If-None-Match`; an unchanged release is
+     * answered with 304, which carries no body and does not count against GitHub's
+     * unauthenticated rate limit. Call before the first update check.
+     */
+    fun initReleaseMetadataCache(cacheDir: File) {
+        if (releaseMetadataCache == null) {
+            releaseMetadataCache = Cache(File(cacheDir, "github-releases"), RELEASE_METADATA_CACHE_BYTES)
+        }
+    }
+
+    // [external] with the release metadata cache, for GitHub API calls only: APK
+    // downloads keep using [external] so the cache never holds an APK.
+    val githubApi: OkHttpClient by lazy {
+        external
+            .newBuilder()
+            .apply { releaseMetadataCache?.let(::cache) }
+            .build()
+    }
+
+    private const val RELEASE_METADATA_CACHE_BYTES = 4L * 1024 * 1024
 
     // Short-timeout variant for probes and ticket minting
     val probe: OkHttpClient by lazy {

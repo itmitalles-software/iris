@@ -1,24 +1,20 @@
 # ── Kotlin / Coroutines ─────────────────────────────────────────────────
 -dontwarn kotlinx.coroutines.**
 
+# ── Logging ──────────────────────────────────────────────────────────────
+# Strip debug and verbose logs from minified builds; warnings and errors stay.
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+}
 
-# ── Room ─────────────────────────────────────────────────────────────────
--keep class * extends androidx.room.RoomDatabase { *; }
--keep @androidx.room.Entity class * { *; }
--keepclassmembers class * { @androidx.room.* <methods>; }
--dontwarn androidx.room.**
+# ── Room 3 / kotlinx.serialization ──────────────────────────────────────
+# No app rules needed: room3-runtime ships a keep rule for RoomDatabase
+# subclasses, and kotlinx.serialization, Retrofit and SQLCipher ship their own
+# R8 rules. API models are deserialized through generated serializers, not
+# reflection, so they are shrunk and obfuscated like any other class.
 
-# ── Gson / Serialization ─────────────────────────────────────────────────
-# Keep all data model classes — Gson uses reflection to access fields
--keep class io.wutz.apollo.data.model.** { *; }
--keep class io.wutz.apollo.data.ws.JsonRpc* { *; }
--keep class io.wutz.apollo.data.ws.WsEvent* { *; }
--keep class io.wutz.apollo.data.ws.WsMethods { *; }
--keep class io.wutz.apollo.ui.chat.ChatMessage { *; }
--keep class io.wutz.apollo.ui.chat.MessageRole { *; }
--keep class io.wutz.apollo.ui.chat.ToolStatus { *; }
-
-# Generic type signatures used by serialization
+# Generic type signatures and annotations read by Retrofit
 -keepattributes Signature
 -keepattributes *Annotation*
 -keepattributes EnclosingMethod
@@ -34,12 +30,16 @@
     @retrofit2.http.* <methods>;
 }
 
-# ── AndroidX Security Crypto ─────────────────────────────────────────────
-# EncryptedSharedPreferences / MasterKey resolve primitives via Tink's
-# reflection-based Registry. Without -keep, R8 obfuscates those classes and
-# token reads silently fail (401 on every API call, "Session expired").
--keep class androidx.security.crypto.** { *; }
--keep class com.google.crypto.tink.** { *; }
+# ── AndroidX Security Crypto / Tink ─────────────────────────────────────
+# EncryptedSharedPreferences reads its keysets with Tink's shaded protobuf-lite
+# runtime, which looks up message fields by name. Without that, token reads
+# fail after obfuscation (401 on every API call, "Session expired"). Tink
+# registers its key managers in code, so this field rule (the one Tink ships in
+# META-INF/proguard/protobuf.pro, repeated here so it cannot get lost) is all
+# it needs; a blanket keep of Tink would retain ~9,000 unused methods.
+-keepclassmembers class * extends com.google.crypto.tink.shaded.protobuf.GeneratedMessageLite {
+    <fields>;
+}
 -dontwarn androidx.security.crypto.**
 
 # ── Tink / Error Prone ───────────────────────────────────────────────────

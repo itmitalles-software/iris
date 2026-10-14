@@ -7,9 +7,12 @@ import io.mockk.unmockkStatic
 import io.wutz.apollo.data.model.ProcessInfo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -25,6 +28,7 @@ class ChatProcessesDelegateTest {
     private var sessionId: String? = "s1"
     private var listed: List<ProcessInfo> = emptyList()
     private var listError: Exception? = null
+    private var listCalls = 0
     private val killed = mutableListOf<Pair<String, String>>()
 
     private fun delegate() =
@@ -33,7 +37,10 @@ class ChatProcessesDelegateTest {
             scope = scope,
             ioDispatcher = dispatcher,
             runtimeSessionId = { sessionId },
-            listProcesses = { listError?.let { throw it } ?: listed },
+            listProcesses = {
+                listCalls++
+                listError?.let { throw it } ?: listed
+            },
             killProcess = { sid, pid -> killed += sid to pid },
         )
 
@@ -110,6 +117,74 @@ class ChatProcessesDelegateTest {
             assertNull(uiState.value.killingProcessId)
             assertEquals(emptyList<ProcessInfo>(), uiState.value.backgroundProcesses)
         }
+
+    @Test
+    fun `idle chat polls at the idle interval`() =
+        scope.runTest {
+            val poll = launch { delegate().pollWhileVisible() }
+            runCurrent()
+            assertEquals(1, listCalls)
+            advanceTimeBy(ChatProcessesDelegate.ACTIVE_POLL_MS + 1)
+            assertEquals(1, listCalls)
+            advanceTimeBy(ChatProcessesDelegate.IDLE_POLL_MS - ChatProcessesDelegate.ACTIVE_POLL_MS)
+            assertEquals(2, listCalls)
+            poll.cancel()
+        }
+
+    @Test
+    fun `busy turn or listed processes poll at the active interval`() =
+        scope.runTest {
+            uiState.value = uiState.value.copy(isMainTurnBusy = true)
+            val poll = launch { delegate().pollWhileVisible() }
+            runCurrent()
+            advanceTimeBy(ChatProcessesDelegate.ACTIVE_POLL_MS + 1)
+            assertEquals(2, listCalls)
+            poll.cancel()
+
+            uiState.value = uiState.value.copy(isMainTurnBusy = false)
+            listed = listOf(proc("a"))
+            listCalls = 0
+            val idleWithProcess = launch { delegate().pollWhileVisible() }
+            runCurrent()
+            advanceTimeBy(ChatProcessesDelegate.ACTIVE_POLL_MS + 1)
+            assertEquals(2, listCalls)
+            idleWithProcess.cancel()
+        }
+
+    @Test
+    fun `turn end and session switch refresh at once`() =
+        scope.runTest {
+            uiState.value = uiState.value.copy(isMainTurnBusy = true)
+            val poll = launch { delegate().pollWhileVisible() }
+            runCurrent()
+            assertEquals(1, listCalls)
+
+            advanceTimeBy(1_000)
+            uiState.value = uiState.value.copy(isMainTurnBusy = false)
+            runCurrent()
+            assertEquals(2, listCalls)
+
+            advanceTimeBy(1_000)
+            sessionId = "s2"
+            uiState.value = uiState.value.copy(currentSessionId = "s2")
+            runCurrent()
+            assertEquals(3, listCalls)
+            poll.cancel()
+        }
+
+    @Test
+    fun `pollIntervalMs adapts to turn and process state`() {
+        val idle = ChatUiState(currentSessionId = "s1")
+        assertEquals(ChatProcessesDelegate.IDLE_POLL_MS, ChatProcessesDelegate.pollIntervalMs(idle))
+        assertEquals(
+            ChatProcessesDelegate.ACTIVE_POLL_MS,
+            ChatProcessesDelegate.pollIntervalMs(idle.copy(isMainTurnBusy = true)),
+        )
+        assertEquals(
+            ChatProcessesDelegate.ACTIVE_POLL_MS,
+            ChatProcessesDelegate.pollIntervalMs(idle.copy(backgroundProcesses = listOf(proc("a")))),
+        )
+    }
 
     @Test
     fun `parseProcessList skips entries without session_id`() {

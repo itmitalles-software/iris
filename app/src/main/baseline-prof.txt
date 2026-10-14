@@ -1,0 +1,47 @@
+# Apollo baseline profile (hand-written rules).
+#
+# AGP merges these rules with the library profiles into assets/dexopt/baseline.prof,
+# expands the wildcards and rewrites the names through the R8 mapping. ART compiles
+# the matching code ahead of time at install and update, so the first launches after
+# an update do not run cold start and opening a chat interpreted or under the JIT.
+#
+# Scope: app start, navigation, theme, the WebSocket client, credential and database
+# init, and the chat screen with its transcript and markdown rendering. Keep it to hot
+# start-up and chat paths; every rule adds install-time compilation.
+
+# App start and navigation
+HSPLio/wutz/apollo/HermesControlApp**;->**(**)**
+HSPLio/wutz/apollo/MainActivity**;->**(**)**
+HSPLio/wutz/apollo/ExternalActivityLifecycleGuard**;->**(**)**
+HSPLio/wutz/apollo/Navigation**;->**(**)**
+HSPLio/wutz/apollo/ScreenRegistry**;->**(**)**
+HSPLio/wutz/apollo/theme/**;->**(**)**
+HSPLio/wutz/apollo/util/LocaleContextWrapper**;->**(**)**
+
+# Settings, credentials and the local database
+HSPLio/wutz/apollo/data/config/**;->**(**)**
+HSPLio/wutz/apollo/data/local/AuthManager**;->**(**)**
+HSPLio/wutz/apollo/data/local/HermesDatabase**;->**(**)**
+HSPLio/wutz/apollo/data/local/ChatMessage**;->**(**)**
+
+# WebSocket client and RPC
+HSPLio/wutz/apollo/data/ws/**;->**(**)**
+
+# Chat screen, transcript and markdown
+HSPLio/wutz/apollo/ui/chat/ChatScreen**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/ChatViewModel**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/ChatUiState**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/ChatMessage**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/ChatStreamingController**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/ChatWsEventReducer**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/ChatTranscriptMerge**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/MarkdownText**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/MessageSegment**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/fullbleed/**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/markdown/**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/components/ChatComposer**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/components/ChatScrollController**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/components/CodeBlockCard**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/components/CodeSyntaxHighlighter**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/components/ReasoningCard**;->**(**)**
+HSPLio/wutz/apollo/ui/chat/components/TypingIndicator**;->**(**)**

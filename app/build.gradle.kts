@@ -18,6 +18,12 @@ android {
     lint {
         disable += "MissingTranslation"
     }
+    androidResources {
+        // Package only the locales the app translates (values-*); library-only
+        // translations in ~80 other locales would just grow resources.arsc.
+        // AndroidX ships Chinese as zh-rCN/zh-rHK/zh-rTW, so keep those too.
+        localeFilters += listOf("en", "de", "ar", "es", "it", "ko", "zh", "zh-rCN", "zh-rHK", "zh-rTW")
+    }
     compileSdk = 37
     buildToolsVersion = "37.0.0"
     defaultConfig {

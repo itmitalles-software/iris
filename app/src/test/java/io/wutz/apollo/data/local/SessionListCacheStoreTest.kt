@@ -6,12 +6,15 @@ import io.mockk.every
 import io.mockk.mockk
 import io.wutz.apollo.data.model.SessionInfo
 import io.wutz.apollo.data.model.SessionListResponse
+import kotlinx.coroutines.asCoroutineDispatcher
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class SessionListCacheStoreTest {
     private lateinit var mockPrefs: SharedPreferences
@@ -126,5 +129,31 @@ class SessionListCacheStoreTest {
         SessionListCacheStore.clear()
         assertNull(SessionListCacheStore.get("k1"))
         assertNull(SessionListCacheStore.get("k2"))
+    }
+
+    @Test
+    fun writesRunOffTheCallerThreadInCallOrder() {
+        val writer = Executors.newSingleThreadExecutor { Thread(it, "cache-writer-test") }
+        val writeThreads = mutableListOf<String>()
+        every { mockEditor.putString(any(), any()) } answers {
+            writeThreads += Thread.currentThread().name.substringBefore(" @coroutine")
+            prefStorage[firstArg()] = secondArg()
+            mockEditor
+        }
+        try {
+            SessionListCacheStore.resetForTesting(mockPrefs, writer.asCoroutineDispatcher())
+            val sample = SessionListResponse(sessions = emptyList(), total = 0)
+
+            SessionListCacheStore.put("k1", sample)
+            SessionListCacheStore.remove("k1")
+            SessionListCacheStore.put("k2", sample)
+            writer.submit {}.get(5, TimeUnit.SECONDS)
+
+            assertNull(SessionListCacheStore.get("k1"))
+            assertNotNull(SessionListCacheStore.get("k2"))
+            assertEquals(listOf("cache-writer-test", "cache-writer-test"), writeThreads)
+        } finally {
+            writer.shutdownNow()
+        }
     }
 }

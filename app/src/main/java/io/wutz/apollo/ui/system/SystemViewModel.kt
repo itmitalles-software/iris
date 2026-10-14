@@ -113,6 +113,11 @@ class SystemViewModel(
         // exists (up to ~3 minutes, 328MB backups took ~70s in testing).
         private const val DOWNLOAD_RETRY_DELAY_MS = 5_000L
         private const val MAX_DOWNLOAD_ATTEMPTS = 36
+
+        internal const val ACTION_POLL_INTERVAL_MS = 1_200L
+
+        /** Same cap as [io.wutz.apollo.ui.common.ActionProgressController]. */
+        internal const val MAX_ACTION_POLL_FAILURES = 5
     }
 
     private val _uiState = MutableStateFlow(SystemUiState())
@@ -990,17 +995,37 @@ class SystemViewModel(
         _uiState.update { it.copy(activeAction = name, actionLog = null) }
         actionPollingJob =
             viewModelScope.launch {
+                var consecutiveFailures = 0
                 while (isActive) {
-                    delay(1200)
+                    delay(ACTION_POLL_INTERVAL_MS)
                     val result =
                         withContext(Dispatchers.IO) {
                             safeApiCall { ApiClient.hermesApi.getActionStatus(name) }
                         }
-                    if (result is NetworkResult.Success) {
-                        _uiState.update { it.copy(actionLog = result.data) }
-                        if (result.data.running != true) {
-                            loadAll()
-                            break
+                    when (result) {
+                        is NetworkResult.Success -> {
+                            consecutiveFailures = 0
+                            _uiState.update { it.copy(actionLog = result.data) }
+                            if (result.data.running != true) {
+                                loadAll()
+                                break
+                            }
+                        }
+
+                        is NetworkResult.Failure -> {
+                            // Transient failures are expected (the action may restart the
+                            // gateway). The ViewModel outlives the screen, so stop after a
+                            // run of failures instead of polling forever in the background.
+                            consecutiveFailures++
+                            if (consecutiveFailures >= MAX_ACTION_POLL_FAILURES) {
+                                _uiState.update {
+                                    it.copy(
+                                        toastMessage =
+                                            UiText.res(R.string.system_msg_action_status_lost, result.error.message),
+                                    )
+                                }
+                                break
+                            }
                         }
                     }
                 }

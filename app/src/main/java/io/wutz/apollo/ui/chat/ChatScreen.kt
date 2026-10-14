@@ -152,9 +152,6 @@ import kotlinx.coroutines.launch
 
 private const val SESSION_SYNC_INTERVAL_MS = 30_000L
 
-/** Desktop-parity cadence for `process.list` polling (issue #1503). */
-private const val BACKGROUND_PROCESS_POLL_MS = 5_000L
-
 internal fun acceptedSaveDestination(
     resultCode: Int,
     destination: Uri?,
@@ -383,13 +380,10 @@ fun ChatScreen(
         }
     }
     // Issue #1503: the gateway has no push event for background process start/exit,
-    // so poll process.list (desktop uses 5s) while the chat is on screen.
+    // so poll process.list while the chat is on screen (5 s while busy, 30 s when idle).
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                viewModel.refreshBackgroundProcesses()
-                delay(BACKGROUND_PROCESS_POLL_MS)
-            }
+            viewModel.pollBackgroundProcesses()
         }
     }
     // Plain remember: ImageViewerModel is not Parcelable and data: models can exceed the

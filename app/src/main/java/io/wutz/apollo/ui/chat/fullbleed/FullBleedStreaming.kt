@@ -46,9 +46,13 @@ internal fun StreamingFullBleedWithTypingEffect(
         caretVisible = false
     }
 
+    // Space positions of the content, extended incrementally as the stream grows
+    // (splitting and re-joining the whole reply on every tick made the
+    // work per reply quadratic in its length).
+    val boundaries = remember { WordBoundaries() }
+
     // Timer that ticks at the configured delay, incrementing the visible word
     // count each tick. Stops ticking when streaming ends, then shows all words.
-    // Optimized: split is only called when waiting for new content, not per tick.
     LaunchedEffect(Unit) {
         var wordCount = 0
         while (true) {
@@ -60,9 +64,8 @@ internal fun StreamingFullBleedWithTypingEffect(
                     onAnimationComplete()
                     break
                 }
-                // Only split when we need to check for new content arriving
-                val words = currentContent.value.split(" ")
-                wordCount = words.size
+                // Only rescan when waiting for new content to arrive
+                wordCount = boundaries.update(currentContent.value)
                 if (visibleWordCount < wordCount) continue
                 delay(100)
             }
@@ -71,17 +74,17 @@ internal fun StreamingFullBleedWithTypingEffect(
     }
 
     // Derive display text from the latest full content at each recomposition
-    val words = remember(streaming.content) { streaming.content.split(" ") }
+    val wordCount = remember(streaming.content) { boundaries.update(streaming.content) }
     val visibleCount =
         if (visibleWordCount >= Int.MAX_VALUE / 2) {
-            words.size
+            wordCount
         } else {
-            visibleWordCount.coerceIn(0, words.size)
+            visibleWordCount.coerceIn(0, wordCount)
         }
     val isStreaming = currentIsStreaming.value
     val displayText =
-        remember(words, visibleCount, caretVisible, isStreaming) {
-            words.take(visibleCount.coerceAtLeast(1)).joinToString(" ") +
+        remember(streaming.content, visibleCount, caretVisible, isStreaming) {
+            boundaries.prefix(streaming.content, visibleCount.coerceAtLeast(1)) +
                 if (caretVisible && isStreaming) "▍" else ""
         }
 
@@ -100,4 +103,48 @@ internal fun StreamingFullBleedWithTypingEffect(
         searchQuery = "",
         isCurrentMatch = false,
     )
+}
+
+/**
+ * Space positions of a growing text, so the typing effect can show the first
+ * `n` space-separated words without splitting the whole reply on every tick.
+ *
+ * [prefix] returns exactly `text.split(" ").take(n).joinToString(" ")`.
+ * Streaming text only grows, so [update] scans just the new tail; any other
+ * change is rescanned from the start.
+ */
+internal class WordBoundaries {
+    private var text: String = ""
+    private var spaces = IntArray(16)
+    private var spaceCount = 0
+
+    /** Index [content] and return its word count (`content.split(" ").size`). */
+    fun update(content: String): Int {
+        if (content !== text) {
+            val from =
+                if (content.length >= text.length && content.startsWith(text)) {
+                    text.length
+                } else {
+                    spaceCount = 0
+                    0
+                }
+            for (i in from until content.length) {
+                if (content[i] == ' ') {
+                    if (spaceCount == spaces.size) spaces = spaces.copyOf(spaces.size * 2)
+                    spaces[spaceCount++] = i
+                }
+            }
+            text = content
+        }
+        return spaceCount + 1
+    }
+
+    /** The first [words] words of [content], joined by their original single spaces. */
+    fun prefix(
+        content: String,
+        words: Int,
+    ): String {
+        update(content)
+        return if (words > spaceCount) content else content.substring(0, spaces[words - 1])
+    }
 }

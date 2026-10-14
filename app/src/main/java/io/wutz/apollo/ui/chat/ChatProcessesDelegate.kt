@@ -11,7 +11,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -20,7 +24,7 @@ import kotlinx.coroutines.launch
  * (`process.kill`) so the chat task widget can surface them (issue #1503).
  *
  * Mirrors the desktop composer status stack: the gateway has no push event for process
- * start/exit, so callers poll [refresh] while the chat is visible. Only running processes
+ * start/exit, so the chat screen runs [pollWhileVisible] while it is visible. Only running processes
  * are kept; finished ones drop out on the next snapshot.
  */
 class ChatProcessesDelegate(
@@ -33,13 +37,16 @@ class ChatProcessesDelegate(
 ) {
     private var refreshJob: Job? = null
 
-    /** Pull the session's process snapshot and keep only running entries. Failures keep the last list. */
-    fun refresh(sessionId: String? = runtimeSessionId()) {
+    /**
+     * Pull the session's process snapshot and keep only running entries. Failures keep the last list.
+     * Returns the request's job, or null when there is no session to ask about.
+     */
+    fun refresh(sessionId: String? = runtimeSessionId()): Job? {
         val target = sessionId?.trim()
-        if (target.isNullOrEmpty()) return
+        if (target.isNullOrEmpty()) return null
         refreshJob?.cancel()
-        refreshJob =
-            scope.launch(ioDispatcher) {
+        return scope
+            .launch(ioDispatcher) {
                 try {
                     val running = listProcesses(target).filter { it.isRunning }
                     uiState.update { current ->
@@ -56,6 +63,24 @@ class ChatProcessesDelegate(
                     throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "process.list failed for session $target: ${e.message}")
+                }
+            }.also { refreshJob = it }
+    }
+
+    /**
+     * Poll `process.list` until the calling coroutine is cancelled (the chat screen runs this while
+     * it is STARTED). Every [ACTIVE_POLL_MS] while a turn runs or processes are listed, otherwise
+     * every [IDLE_POLL_MS] (an idle chat used to make 12 RPCs a minute). A session switch or a turn
+     * starting or ending restarts the loop, so those changes are picked up at once.
+     */
+    suspend fun pollWhileVisible() {
+        uiState
+            .map { it.currentSessionId to it.isMainTurnBusy }
+            .distinctUntilChanged()
+            .collectLatest {
+                while (true) {
+                    refresh()?.join()
+                    delay(pollIntervalMs(uiState.value))
                 }
             }
     }
@@ -81,6 +106,15 @@ class ChatProcessesDelegate(
 
     companion object {
         private const val TAG = "ChatProcessesDelegate"
+
+        /** Desktop-parity cadence while work is visible (issue #1503). */
+        internal const val ACTIVE_POLL_MS = 5_000L
+
+        /** Idle chats: a process started outside a turn shows up within this interval. */
+        internal const val IDLE_POLL_MS = 30_000L
+
+        internal fun pollIntervalMs(state: ChatUiState): Long =
+            if (state.isMainTurnBusy || state.backgroundProcesses.isNotEmpty()) ACTIVE_POLL_MS else IDLE_POLL_MS
 
         private suspend fun listViaGateway(sessionId: String): List<ProcessInfo> {
             val result =
