@@ -3,7 +3,7 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
-## Unreleased
+## 0.1.3 — 2026-10-14
 
 ### Added
 
@@ -17,7 +17,6 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
 
 - The app icon, emblem and store graphics get a finer sunburst and two wavy
   halo rings behind the crown.
-
 - Apollo is now developed independently of Hermes Mobile: it no longer merges
   upstream changes. `UPSTREAM.md` became `ORIGIN.md`; the package-rename sync
   script and the upstream Weblate config are gone. Credit, `LICENSE` and
