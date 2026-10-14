@@ -70,7 +70,8 @@ Apollo uses Semantic Versioning with Git tags `vMAJOR.MINOR.PATCH`
 - `versionCode` = `MAJOR * 10000 + MINOR * 100 + PATCH` (so `MINOR` and `PATCH`
   stay below 100; the release workflow enforces it)
 
-Local builds without `-PversionName/-PversionCode` report `1.0-dev`.
+Local builds without `-PversionName/-PversionCode` report `1.0-dev` (debug builds
+add their `-dev` suffix, so About shows `1.0-dev-dev`).
 
 ## Releases
 
