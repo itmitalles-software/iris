@@ -33,6 +33,7 @@ class ServerStoreMigrationTest {
     private val migration = ServerStoreMigration(context)
 
     @Before
+    @Suppress("DEPRECATION") // Mocks the deprecated security-crypto API.
     fun setUp() {
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0

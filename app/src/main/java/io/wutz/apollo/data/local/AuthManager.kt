@@ -208,7 +208,12 @@ object AuthManager {
                         _serverStore = store
                         ensureDefaultProfile()
                         store.update { it.migrateConnectionAuthParam() }
+                        // security-crypto 1.1.0 deprecates the whole library with no drop-in replacement.
+                        // Moving off it needs a Keystore + DataStore migration; until then it stays in use here.
+                        @Suppress("DEPRECATION")
                         val masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+
+                        @Suppress("DEPRECATION")
                         val p =
                             EncryptedSharedPreferences.create(
                                 PREFS_FILE,
