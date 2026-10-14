@@ -487,6 +487,14 @@ fun FullBleedChatList(
                                                                 onImageClick = actions.onImageClick,
                                                                 isSpeaking = isSpeakingThis,
                                                                 onToggleSpeak = toggleSpeakAction,
+                                                                onReact =
+                                                                    actions.onReactToMessage
+                                                                        ?.takeIf { proseMessage.serverRowId != null }
+                                                                        ?.let { react ->
+                                                                            { emoji: String? ->
+                                                                                react(proseMessage.id, emoji)
+                                                                            }
+                                                                        },
                                                                 messageStatsEnabled = messageStatsEnabled,
                                                                 showAssistantMessageTokens = showAssistantMessageTokens,
                                                                 showTokensPerSecond = showTokensPerSecond,

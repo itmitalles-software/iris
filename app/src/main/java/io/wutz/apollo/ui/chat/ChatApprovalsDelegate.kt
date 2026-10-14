@@ -9,7 +9,9 @@ import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.contract.TypedRpcSender
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
@@ -31,7 +33,31 @@ class ChatApprovalsDelegate(
     private val trackRequest: (id: String, method: String) -> Unit,
     private val addSystemMessage: (text: String) -> Unit,
     private val respondToServerRequest: ((String, JsonElement) -> Unit)? = null,
+    answeredElsewhere: Flow<String> = emptyFlow(),
 ) {
+    init {
+        // An approval answered from its notification must not keep live buttons in the chat.
+        scope.launch { answeredElsewhere.collect(::clearAnsweredElsewhere) }
+    }
+
+    /** Drops the buttons of the card answered outside the chat ([id] is its server or request id). */
+    fun clearAnsweredElsewhere(id: String) {
+        uiState.update { state ->
+            if (state.messages.none { it.approvalInfo.matches(id) }) {
+                state
+            } else {
+                state.copy(
+                    messages =
+                        state.messages.map { message ->
+                            if (message.approvalInfo.matches(id)) message.copy(approvalInfo = null) else message
+                        },
+                )
+            }
+        }
+    }
+
+    private fun ApprovalInfo?.matches(id: String): Boolean = this != null && (serverRequestId == id || requestId == id)
+
     fun handleApprovalRequest(event: WsEvent.ApprovalRequest) {
         val existingIndex =
             uiState.value.messages.indexOfLast { message ->

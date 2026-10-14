@@ -78,6 +78,10 @@ internal class ServerRequestSightings(
     @Synchronized
     fun isOpen(id: String): Boolean = requests[id] == true
 
+    /** True only for a request seen and then cancelled; unknown ids are not withdrawn. */
+    @Synchronized
+    fun isWithdrawn(id: String): Boolean = requests[id] == false
+
     private fun remember(
         id: String,
         open: Boolean,

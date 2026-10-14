@@ -7,6 +7,7 @@ import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.local.DataScope
 import io.wutz.apollo.data.model.DiscoveredRepo
 import io.wutz.apollo.data.model.ProjectInfo
+import io.wutz.apollo.data.ws.ChangeEvents
 import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.data.ws.ProjectsRepository
 import io.wutz.apollo.data.ws.ProjectsResult
@@ -85,8 +86,24 @@ class ProjectsViewModel(
             }
         }
         viewModelScope.launch {
-            events.collect { if (it is WsEvent.GatewayReady) load() }
+            events.collect {
+                when {
+                    it is WsEvent.GatewayReady -> load()
+                    it is WsEvent.ChangeEvent && it.type == ChangeEvents.PROJECTS -> refreshSilently()
+                }
+            }
         }
+    }
+
+    /** Another client changed projects.db: refetch without a spinner; a failure keeps the current list. */
+    private fun refreshSilently() {
+        if (loadJob?.isActive == true) return
+        loadJob =
+            viewModelScope.launch {
+                val repos = async { repository.discoveredRepos() }
+                val result = repository.list()
+                if (result is ProjectsResult.Ok) applyProjects(result.value, repos.await())
+            }
     }
 
     fun load() {

@@ -1,7 +1,9 @@
 package io.wutz.apollo.ui.chat.fullbleed
 
 import android.content.ClipData
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -11,27 +13,35 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.AddReaction
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.Attachment
@@ -40,7 +50,9 @@ import io.wutz.apollo.ui.chat.ImageViewerModel
 import io.wutz.apollo.ui.chat.InlineAttachment
 import io.wutz.apollo.ui.chat.MarkdownText
 import io.wutz.apollo.ui.chat.MessageSegment
+import io.wutz.apollo.ui.chat.QUICK_REACTIONS
 import io.wutz.apollo.ui.chat.TokenEstimator
+import io.wutz.apollo.ui.chat.USER_REACTION_AUTHOR
 import io.wutz.apollo.ui.chat.components.MessageReactionChips
 import io.wutz.apollo.ui.chat.components.ReasoningCard
 import io.wutz.apollo.ui.chat.components.rememberCopyFeedback
@@ -73,6 +85,7 @@ internal fun FullBleedAgentMessage(
     onImageClick: (ImageViewerModel) -> Unit = {},
     isSpeaking: Boolean = false,
     onToggleSpeak: (() -> Unit)? = null,
+    onReact: ((String?) -> Unit)? = null,
     messageStatsEnabled: Boolean = false,
     showAssistantMessageTokens: Boolean = true,
     showTokensPerSecond: Boolean = true,
@@ -167,7 +180,8 @@ internal fun FullBleedAgentMessage(
                         }
                         copied = true
                     },
-                    modifier = Modifier.size(28.dp).testTag("fullbleed_copy"),
+                    // 48dp touch target; the drawn icon stays 14dp.
+                    modifier = Modifier.size(48.dp).testTag("fullbleed_copy"),
                 ) {
                     Icon(
                         imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
@@ -180,7 +194,7 @@ internal fun FullBleedAgentMessage(
                 if (onToggleSpeak != null) {
                     IconButton(
                         onClick = onToggleSpeak,
-                        modifier = Modifier.size(28.dp).testTag("fullbleed_speak"),
+                        modifier = Modifier.size(48.dp).testTag("fullbleed_speak"),
                     ) {
                         Icon(
                             imageVector =
@@ -202,6 +216,12 @@ internal fun FullBleedAgentMessage(
                         )
                     }
                 }
+                if (onReact != null) {
+                    MessageReactionButton(
+                        currentEmoji = message.reactions.firstOrNull { it.author == USER_REACTION_AUTHOR }?.emoji,
+                        onReact = onReact,
+                    )
+                }
                 if (showTokenStat) {
                     AssistantStatItem(
                         value =
@@ -221,6 +241,58 @@ internal fun FullBleedAgentMessage(
                             ),
                         testTag = "fullbleed_tps",
                     )
+                }
+            }
+        }
+    }
+}
+
+/** Footer action that opens the quick tapback row; tapping the current reaction again removes it. */
+@Composable
+private fun MessageReactionButton(
+    currentEmoji: String?,
+    onReact: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(48.dp).testTag("fullbleed_react"),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.AddReaction,
+                contentDescription = stringResource(R.string.chat_reaction_add),
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            Row(modifier = Modifier.padding(horizontal = 4.dp).testTag("reaction_picker")) {
+                QUICK_REACTIONS.forEach { emoji ->
+                    val selected = emoji == currentEmoji
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                                ).selectable(
+                                    selected = selected,
+                                    role = Role.Button,
+                                    onClick = {
+                                        expanded = false
+                                        // Tapback semantics: the same emoji again retracts the reaction.
+                                        onReact(if (selected) null else emoji)
+                                    },
+                                ).testTag("reaction_option"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(text = emoji, style = MaterialTheme.typography.titleLarge)
+                    }
                 }
             }
         }

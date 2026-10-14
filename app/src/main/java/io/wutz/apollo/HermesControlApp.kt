@@ -11,6 +11,7 @@ import coil3.gif.GifDecoder
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.local.ComposerDraftStore
 import io.wutz.apollo.data.local.SessionListCacheStore
 import io.wutz.apollo.data.remote.CertificateImageInterceptor
 import io.wutz.apollo.data.remote.ClientCertificates
@@ -48,6 +49,7 @@ class HermesControlApp :
         AuthManager.init(this)
         NetworkMonitor.init(this)
         SessionListCacheStore.init(this)
+        ComposerDraftStore.init(this)
         // Reply-notification turn boundaries survive process death (armed before
         // each mobile prompt, consumed by the matching completion).
         TurnCorrelationTracker.attach(this)

@@ -1324,6 +1324,13 @@ class SessionsViewModel(
                         }
                 }
 
+                // projects.changed: refresh the project labels on the rows.
+                launch {
+                    ChangeEventHub.events
+                        .filter { it.type == ChangeEvents.PROJECTS }
+                        .collect { loadProjects() }
+                }
+
                 // Visible-only 30s poll backstop
                 launch {
                     while (true) {
