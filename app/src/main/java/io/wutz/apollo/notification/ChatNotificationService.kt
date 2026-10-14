@@ -229,15 +229,17 @@ class ChatNotificationService : Service() {
             context: Context,
             sessionId: String?,
         ): PendingIntent {
+            // Explicit component set in one chain (not inside apply) so static analysis
+            // sees the explicit target as well.
             val intent =
-                Intent(MainActivity.ACTION_OPEN_CHAT_FROM_NOTIFICATION).apply {
-                    component = android.content.ComponentName(context, MainActivity.NOTIFICATION_ENTRY_ALIAS)
-                    setPackage(context.packageName)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    if (!sessionId.isNullOrBlank()) {
-                        putExtra(NotificationReplyReceiver.EXTRA_SESSION_ID, sessionId)
-                    }
-                }
+                Intent()
+                    .setClassName(context, MainActivity.NOTIFICATION_ENTRY_ALIAS)
+                    .setPackage(context.packageName)
+                    .setAction(MainActivity.ACTION_OPEN_CHAT_FROM_NOTIFICATION)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            if (!sessionId.isNullOrBlank()) {
+                intent.putExtra(NotificationReplyReceiver.EXTRA_SESSION_ID, sessionId)
+            }
             return PendingIntent.getActivity(
                 context,
                 sessionId?.hashCode() ?: 0,
