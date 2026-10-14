@@ -367,6 +367,27 @@ class ChatNotificationService : Service() {
                                         showReplyNotification(preview.take(100), null)
                                     }
 
+                                    is WsEvent.ServerRequest -> {
+                                        when (val notice = serverRequestNotice(event.method, event.params)) {
+                                            is ServerRequestNotice.Text -> {
+                                                showReplyNotification(notice.text, null)
+                                            }
+
+                                            ServerRequestNotice.ClarificationNeeded -> {
+                                                showReplyNotification(
+                                                    getString(R.string.notif_clarification_needed),
+                                                    null,
+                                                )
+                                            }
+
+                                            ServerRequestNotice.InputNeeded -> {
+                                                showReplyNotification(getString(R.string.notif_input_needed), null)
+                                            }
+
+                                            null -> {}
+                                        }
+                                    }
+
                                     is WsEvent.VaultUnlockRequest,
                                     is WsEvent.VaultSaveLoginRequest,
                                     is WsEvent.VaultCodeRequest,

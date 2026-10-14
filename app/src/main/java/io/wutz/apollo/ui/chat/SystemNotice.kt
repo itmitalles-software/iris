@@ -123,4 +123,26 @@ internal object SystemNotice {
         }
         return content
     }
+
+    /**
+     * Splits [text] at `**bold**` markers into (segment, isBold) pairs. System rows are shown as plain
+     * text, so the approval heading's Markdown emphasis is turned into a bold span instead of showing
+     * the asterisks. An unmatched `**` stays literal.
+     */
+    fun boldSegments(text: String): List<Pair<String, Boolean>> {
+        val segments = mutableListOf<Pair<String, Boolean>>()
+        var index = 0
+        while (index < text.length) {
+            val open = text.indexOf("**", index)
+            val close = if (open >= 0) text.indexOf("**", open + 2) else -1
+            if (open < 0 || close < 0) {
+                segments += text.substring(index) to false
+                break
+            }
+            if (open > index) segments += text.substring(index, open) to false
+            if (close > open + 2) segments += text.substring(open + 2, close) to true
+            index = close + 2
+        }
+        return segments
+    }
 }
