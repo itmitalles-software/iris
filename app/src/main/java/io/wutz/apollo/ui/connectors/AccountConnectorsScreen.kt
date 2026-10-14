@@ -15,14 +15,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LinkOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +43,7 @@ import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.notification.NotificationHelper
 import io.wutz.apollo.theme.LocalSpacing
 import io.wutz.apollo.ui.chat.components.ConnectionSetupSheet
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
@@ -277,21 +276,18 @@ fun AccountConnectorsScreen(
         },
     )
     pendingRemoval?.let { account ->
-        AlertDialog(
-            onDismissRequest = { pendingRemoval = null },
-            title = { Text(stringResource(R.string.account_connectors_remove_confirm_title)) },
-            text = { Text(stringResource(R.string.account_connectors_remove_confirm_message, account.label)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.remove(account.connectionId)
-                    pendingRemoval = null
-                }, enabled = !state.busy) { Text(stringResource(R.string.account_connectors_remove)) }
+        ConfirmDialog(
+            title = stringResource(R.string.account_connectors_remove_confirm_title),
+            message = stringResource(R.string.account_connectors_remove_confirm_message, account.label),
+            confirmText = stringResource(R.string.account_connectors_remove),
+            dismissText = stringResource(R.string.common_cancel),
+            isDestructive = true,
+            confirmEnabled = !state.busy,
+            onConfirm = {
+                vm.remove(account.connectionId)
+                pendingRemoval = null
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { pendingRemoval = null },
-                ) { Text(stringResource(R.string.common_cancel)) }
-            },
+            onDismiss = { pendingRemoval = null },
         )
     }
 }

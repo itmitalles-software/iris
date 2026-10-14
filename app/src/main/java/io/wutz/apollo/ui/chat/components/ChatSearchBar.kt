@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,7 +46,7 @@ fun CompactSearchInput(
         onValueChange = onValueChange,
         modifier =
             modifier
-                .height(40.dp)
+                .heightIn(min = 40.dp)
                 .background(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(20.dp),
@@ -74,7 +74,7 @@ fun CompactSearchInput(
                         Text(
                             text = stringResource(R.string.chat_search_placeholder),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     innerTextField()
@@ -82,7 +82,7 @@ fun CompactSearchInput(
                 if (value.isNotEmpty()) {
                     IconButton(
                         onClick = { onValueChange("") },
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
@@ -113,7 +113,7 @@ fun SearchBarRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CompactSearchInput(

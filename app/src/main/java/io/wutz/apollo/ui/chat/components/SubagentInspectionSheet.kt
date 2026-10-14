@@ -582,7 +582,7 @@ private fun TodoInspectionCard(
                 fontWeight = if (todo.isInProgress) FontWeight.Bold else FontWeight.Normal,
                 color =
                     if (todo.isCompleted) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
@@ -742,7 +742,7 @@ private fun InspectionItemCard(
                         Text(
                             text = indicator.model,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -1091,7 +1091,6 @@ private fun SubagentTranscriptView(
                             )
                             IconButton(
                                 onClick = onRetry,
-                                modifier = Modifier.size(24.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Autorenew,

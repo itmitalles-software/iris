@@ -60,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
 import io.wutz.apollo.SettingsConnection
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
@@ -493,6 +494,20 @@ private fun AuxTasksDialog(
     onResetAll: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var confirmResetAll by remember { mutableStateOf(false) }
+    if (confirmResetAll) {
+        ConfirmDialog(
+            title = stringResource(R.string.model_reset_all_auto_confirm_title),
+            message = stringResource(R.string.model_reset_all_auto_confirm_msg),
+            confirmText = stringResource(R.string.model_reset_all_auto),
+            isDestructive = true,
+            onConfirm = {
+                confirmResetAll = false
+                onResetAll()
+            },
+            onDismiss = { confirmResetAll = false },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.model_aux_tasks_title)) },
@@ -560,7 +575,7 @@ private fun AuxTasksDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = onResetAll,
+                    onClick = { confirmResetAll = true },
                     enabled = !busy,
                     colors =
                         ButtonDefaults.outlinedButtonColors(
@@ -705,7 +720,6 @@ private fun PinnedSectionCard(
                                     }
                                     IconButton(
                                         onClick = { onUnpin(pinned.providerSlug, pinned.modelName) },
-                                        modifier = Modifier.size(24.dp),
                                     ) {
                                         Icon(
                                             imageVector = Icons.Filled.PushPin,

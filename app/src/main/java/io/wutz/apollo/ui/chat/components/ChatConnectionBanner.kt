@@ -72,7 +72,7 @@ fun ChatConnectionBanner(
                     }
                     Text(
                         modifier = Modifier.weight(1f, fill = false),
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         text =
                             when (connectionStatus) {

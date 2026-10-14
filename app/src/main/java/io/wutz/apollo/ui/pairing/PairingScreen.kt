@@ -24,6 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -35,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.PairingItem
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
@@ -53,6 +57,8 @@ fun PairingScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dataScope by AuthManager.dataScopeFlow.collectAsStateWithLifecycle()
+    var confirmClearPending by remember { mutableStateOf(false) }
+    var revokeTarget by remember { mutableStateOf<PairingItem?>(null) }
 
     LaunchedEffect(dataScope) {
         viewModel.clearScopeOwnedState()
@@ -101,7 +107,7 @@ fun PairingScreen(
                         item(key = "pending_header") {
                             PendingHeader(
                                 isClearing = state.actionKey == "clear",
-                                onClearAll = { viewModel.clearPending() },
+                                onClearAll = { confirmClearPending = true },
                             )
                         }
 
@@ -143,15 +149,47 @@ fun PairingScreen(
                             ApprovedCard(
                                 item = item,
                                 isActing = state.actionKey == "revoke:${item.platform}:${item.userId}",
-                                onRevoke = {
-                                    item.userId?.let { viewModel.revokePairing(item.platform, it) }
-                                },
+                                onRevoke = { if (item.userId != null) revokeTarget = item },
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    if (confirmClearPending) {
+        ConfirmDialog(
+            title = stringResource(R.string.pairing_confirm_clear_title),
+            message = stringResource(R.string.pairing_confirm_clear_msg),
+            confirmText = stringResource(R.string.pairing_action_clear_all),
+            isDestructive = true,
+            onConfirm = {
+                confirmClearPending = false
+                viewModel.clearPending()
+            },
+            onDismiss = { confirmClearPending = false },
+        )
+    }
+
+    revokeTarget?.let { item ->
+        val userId = item.userId ?: return@let
+        ConfirmDialog(
+            title = stringResource(R.string.pairing_confirm_revoke_title),
+            message =
+                stringResource(
+                    R.string.pairing_confirm_revoke_msg,
+                    item.userName?.takeIf { it.isNotBlank() } ?: userId,
+                    item.platform,
+                ),
+            confirmText = stringResource(R.string.pairing_action_revoke),
+            isDestructive = true,
+            onConfirm = {
+                revokeTarget = null
+                viewModel.revokePairing(item.platform, userId)
+            },
+            onDismiss = { revokeTarget = null },
+        )
     }
 }
 
@@ -242,7 +280,7 @@ private fun PendingCard(
                     Text(
                         text = formatAge(age),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

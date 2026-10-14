@@ -91,7 +91,15 @@ fun MemoryScreen(
         AlertDialog(
             onDismissRequest = { resetTarget = null },
             title = { Text(stringResource(R.string.memory_reset_confirm_title)) },
-            text = { Text(stringResource(R.string.memory_reset_confirm_desc, target)) },
+            text = {
+                Text(
+                    when (target) {
+                        "memory" -> stringResource(R.string.memory_reset_confirm_desc_file, "MEMORY.md")
+                        "user" -> stringResource(R.string.memory_reset_confirm_desc_file, "USER.md")
+                        else -> stringResource(R.string.memory_reset_confirm_desc_all)
+                    },
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -297,7 +305,7 @@ private fun SelfImprovementSection(graph: LearningGraphResponse?) {
                 Text(
                     text = stringResource(R.string.memory_self_improvement_no_activity),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 val skillNodes = graph.nodes.filter { it.kind == "skill" }

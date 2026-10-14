@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import io.wutz.apollo.R
@@ -71,8 +72,9 @@ internal fun LazyListScope.automationGroups(
                     )
                     Text(
                         text =
-                            stringResource(
-                                R.string.sessions_section_automation_runs,
+                            pluralStringResource(
+                                R.plurals.sessions_section_automation_runs,
+                                group.sessions.size,
                                 group.sessions.size,
                             ),
                         style = MaterialTheme.typography.labelMedium,

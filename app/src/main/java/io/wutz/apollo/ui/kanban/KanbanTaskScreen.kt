@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -89,6 +90,7 @@ import io.wutz.apollo.data.model.TaskLinks
 import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.chat.MarkdownText
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
@@ -497,7 +499,7 @@ private fun TaskOverviewTab(
                             TextButton(
                                 onClick = { assigneeMenuExpanded = true },
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.height(32.dp),
+                                modifier = Modifier.heightIn(min = 32.dp),
                             ) {
                                 Text(
                                     text = task.assignee ?: stringResource(R.string.kanban_unassigned_group),
@@ -1464,19 +1466,16 @@ private fun TaskFilesTab(
         }
     }
     attachmentToDelete?.let { attachment ->
-        AlertDialog(
-            onDismissRequest = { attachmentToDelete = null },
-            title = { Text(stringResource(R.string.kanban_delete_attachment)) },
-            text = { Text(stringResource(R.string.kanban_delete_attachment_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    attachmentToDelete = null
-                    viewModel.deleteAttachment(board, taskId, attachment.id)
-                }) { Text(stringResource(R.string.kanban_delete_attachment)) }
+        ConfirmDialog(
+            title = stringResource(R.string.kanban_delete_attachment),
+            message = stringResource(R.string.kanban_delete_attachment_confirm),
+            confirmText = stringResource(R.string.kanban_delete_attachment),
+            isDestructive = true,
+            onConfirm = {
+                attachmentToDelete = null
+                viewModel.deleteAttachment(board, taskId, attachment.id)
             },
-            dismissButton = {
-                TextButton(onClick = { attachmentToDelete = null }) { Text(stringResource(R.string.action_cancel)) }
-            },
+            onDismiss = { attachmentToDelete = null },
         )
     }
 }

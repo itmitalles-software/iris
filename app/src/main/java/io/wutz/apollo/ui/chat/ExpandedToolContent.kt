@@ -68,7 +68,7 @@ internal fun ExpandedToolContent(
                     text = "$ $command",
                     style =
                         MaterialTheme.typography.bodySmall.copy(
-                            color = contentColor.copy(alpha = 0.7f),
+                            color = contentColor,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                         ),
@@ -84,7 +84,7 @@ internal fun ExpandedToolContent(
                             .verticalScroll(rememberScrollState()),
                     style =
                         MaterialTheme.typography.bodySmall.copy(
-                            color = contentColor.copy(alpha = 0.9f),
+                            color = contentColor,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                         ),
@@ -100,7 +100,7 @@ internal fun ExpandedToolContent(
                             .verticalScroll(rememberScrollState()),
                     style =
                         MaterialTheme.typography.bodySmall.copy(
-                            color = contentColor.copy(alpha = 0.6f),
+                            color = contentColor,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                         ),
@@ -153,7 +153,7 @@ internal fun ExpandedToolContent(
                         text = label,
                         style =
                             MaterialTheme.typography.labelSmall.copy(
-                                color = contentColor.copy(alpha = 0.6f),
+                                color = contentColor,
                                 fontWeight = FontWeight.Bold,
                             ),
                     )
@@ -165,7 +165,7 @@ internal fun ExpandedToolContent(
                                 text = hit.title,
                                 style =
                                     MaterialTheme.typography.bodySmall.copy(
-                                        color = contentColor.copy(alpha = 0.9f),
+                                        color = contentColor,
                                         fontWeight = FontWeight.Medium,
                                     ),
                             )
@@ -175,7 +175,7 @@ internal fun ExpandedToolContent(
                                 text = hit.snippet,
                                 style =
                                     MaterialTheme.typography.bodySmall.copy(
-                                        color = contentColor.copy(alpha = 0.6f),
+                                        color = contentColor,
                                         fontSize = 11.sp,
                                     ),
                                 maxLines = 3,
@@ -187,7 +187,7 @@ internal fun ExpandedToolContent(
                                 text = hit.url,
                                 style =
                                     MaterialTheme.typography.bodySmall.copy(
-                                        color = contentColor.copy(alpha = 0.7f),
+                                        color = contentColor,
                                         fontSize = 11.sp,
                                     ),
                                 maxLines = 1,
@@ -209,7 +209,7 @@ internal fun ExpandedToolContent(
                             .verticalScroll(rememberScrollState()),
                     style =
                         MaterialTheme.typography.bodySmall.copy(
-                            color = contentColor.copy(alpha = 0.9f),
+                            color = contentColor,
                             fontSize = 12.sp,
                         ),
                 )
@@ -229,7 +229,7 @@ internal fun ExpandedToolContent(
                 text = stringResource(R.string.tool_duration, it),
                 style =
                     MaterialTheme.typography.labelSmall.copy(
-                        color = contentColor.copy(alpha = 0.5f),
+                        color = contentColor,
                     ),
             )
         }

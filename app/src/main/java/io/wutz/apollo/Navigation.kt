@@ -10,16 +10,21 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -372,9 +377,12 @@ fun MainNavigation(sessionId: String? = null) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(12.dp))
     }
+    val horizontalCutout = WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)
+    val startCutout = WindowInsets.displayCutout.only(WindowInsetsSides.Start)
     val screenContent: @Composable () -> Unit = {
         Scaffold(
-            contentWindowInsets = WindowInsets.navigationBars,
+            // Keep content out of a camera cutout on the short edge in landscape (edge-to-edge).
+            contentWindowInsets = WindowInsets.navigationBars.union(horizontalCutout),
         ) { paddingValues ->
             NavDisplay(
                 backStack = backStack,
@@ -404,6 +412,7 @@ fun MainNavigation(sessionId: String? = null) {
             drawerContent = {
                 ModalDrawerSheet(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
+                    windowInsets = DrawerDefaults.windowInsets.union(startCutout),
                     content = drawerItems,
                 )
             },
@@ -417,13 +426,21 @@ fun MainNavigation(sessionId: String? = null) {
                                     Modifier
                                         .width(SIDEBAR_WIDTH)
                                         .verticalScroll(rememberScrollState()),
+                                windowInsets = DrawerDefaults.windowInsets.union(startCutout),
                                 content = drawerItems,
                             )
                             VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                 }
-                Box(modifier = Modifier.weight(1f)) {
+                // The visible sidebar already sits on the start edge and keeps clear of the cutout there.
+                val sidebarShown = isExpandedWidth && sidebarVisible
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .then(if (sidebarShown) Modifier.consumeWindowInsets(startCutout) else Modifier),
+                ) {
                     screenContent()
                 }
             }

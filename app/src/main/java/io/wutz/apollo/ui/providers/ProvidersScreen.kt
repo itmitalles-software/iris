@@ -196,7 +196,7 @@ private fun ProviderCard(
                     Text(
                         text = stringResource(R.string.providers_via, label),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))

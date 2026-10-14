@@ -670,7 +670,6 @@
     <string name="memory_reset_user">Ripristina USER.md</string>
     <string name="memory_reset_all">Ripristina tutto</string>
     <string name="memory_reset_confirm_title">Ripristina memoria</string>
-    <string name="memory_reset_confirm_desc">Questa operazione cancellerà definitivamente i file di memoria integrata (%1$s). L\'azione non può essere annullata.</string>
     <string name="memory_empty_title">Nessun dato di memoria</string>
     <string name="memory_empty_desc">Impossibile caricare lo stato della memoria.</string>
     <string name="memory_providers_heading">Provider</string>
@@ -710,7 +709,6 @@
     <string name="system_debug_share_copy_all">Copia tutto</string>
     <string name="system_debug_share_failed">caricamento non riuscito</string>
     <string name="system_sec_checkpoints">Punti di controllo</string>
-    <string name="system_checkpoints_summary">%1$d sessione/i · %2$s</string>
     <string name="system_checkpoints_prune">Elimina vecchi</string>
     <string name="system_checkpoints_prune_confirm_title">Eliminare punti di controllo?</string>
     <string name="system_checkpoints_prune_confirm_desc">Eliminare lo shadow store dei checkpoint di ripristino? I punti di /rollback esistenti andranno persi.</string>
@@ -783,7 +781,6 @@
     <string name="sessions_search_placeholder">Cerca sessioni…</string>
     <string name="sessions_search_empty_title">Nessun risultato</string>
     <string name="sessions_search_empty_desc">Nessuna sessione corrisponde a “%1$s”</string>
-    <string name="sessions_search_results_header">%1$d risultato/i per “%2$s”</string>
     <string name="sessions_search_played_at">Eseguita %1$s</string>
     <string name="sessions_search_match_label">Corrispondenza</string>
     <string name="sessions_search_model_label">Modello</string>
@@ -795,7 +792,6 @@
     <string name="sessions_automations_empty_desc">Le esecuzioni avviate da automazioni pianificate appariranno qui.</string>
     <string name="sessions_section_automation_job">Processo %1$s</string>
     <string name="sessions_section_automation_unknown">Esecuzione automazione</string>
-    <string name="sessions_section_automation_runs">%1$d esecuzione/i caricata/e</string>
     <string name="sessions_action_prune">Elimina vecchie</string>
     <string name="sessions_prune_title">Elimina vecchie sessioni</string>
     <string name="sessions_prune_desc">Elimina le sessioni più vecchie del numero specificato di giorni.</string>
@@ -804,12 +800,10 @@
     <string name="sessions_pruning">Eliminazione vecchie sessioni in corso…</string>
     <string name="sessions_empty_cleanup_desc">Vuote</string>
     <string name="sessions_empty_cleanup_title">Eliminare le sessioni vuote?</string>
-    <string name="sessions_empty_cleanup_message">Elimina %1$d sessione/i vuota/e. Le sessioni attive e archiviate verranno conservate.</string>
     <string name="sessions_empty_cleanup_confirm">Elimina</string>
     <string name="sessions_delete_title">Eliminare la sessione?</string>
     <string name="sessions_delete_message">Sei sicuro di voler eliminare \"%1$s\"? L\'azione non può essere annullata.</string>
     <string name="sessions_bulk_delete_title">Eliminare le sessioni?</string>
-    <string name="sessions_bulk_delete_message">Sei sicuro di voler eliminare %1$d sessione/i? L\'azione non può essere annullata.</string>
     <string name="sessions_action_select_all">Seleziona tutto</string>
     <string name="sessions_action_deselect_all">Deseleziona</string>
     <string name="sessions_action_delete_n">Elimina %1$d</string>
@@ -1458,7 +1452,6 @@
     <string name="system_checkpoint_prune">Pulizia checkpoint</string>
     <string name="system_config_migrate">Migrazione configurazione</string>
     <string name="system_curator_run">Esecuzione curator</string>
-    <string name="system_more_lines">… altre %1$d righe</string>
     <string name="system_prompt_size_check">Controllo dimensione prompt</string>
     <string name="system_security_audit">Audit di sicurezza</string>
     <string name="system_skills_update">Aggiornamento skill</string>

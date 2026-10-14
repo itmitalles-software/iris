@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -197,7 +198,7 @@ private fun VaultSourceRow(
                     FilledTonalButton(
                         onClick = onLock,
                         enabled = !isActionInProgress,
-                        modifier = Modifier.height(32.dp),
+                        modifier = Modifier.heightIn(min = 32.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Lock,
@@ -214,7 +215,7 @@ private fun VaultSourceRow(
                     Button(
                         onClick = onUnlock,
                         enabled = !isActionInProgress && source.enabled,
-                        modifier = Modifier.height(32.dp),
+                        modifier = Modifier.heightIn(min = 32.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.LockOpen,

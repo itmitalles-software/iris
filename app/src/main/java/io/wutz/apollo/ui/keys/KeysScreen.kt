@@ -617,7 +617,7 @@ private fun EnvVarCard(
                         Text(
                             text = config.description,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -751,7 +751,7 @@ private fun EnvVarCard(
                                     if (config.isSet) {
                                         MaterialTheme.colorScheme.onSurface
                                     } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                     },
                                 fontFamily = FontFamily.Monospace,
                                 maxLines = 1,

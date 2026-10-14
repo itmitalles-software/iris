@@ -121,7 +121,7 @@ fun ToolCallDivider(
     modifier: Modifier = Modifier,
 ) {
     val lineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
-    val labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         modifier =
             modifier

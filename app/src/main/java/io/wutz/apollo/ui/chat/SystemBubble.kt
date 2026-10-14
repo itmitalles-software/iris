@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -176,7 +177,7 @@ internal fun SystemBubble(
                                 onClick = { onRespondApproval("deny") },
                                 modifier =
                                     Modifier
-                                        .height(36.dp)
+                                        .heightIn(min = 36.dp)
                                         .testTag("deny_button"),
                                 colors =
                                     ButtonDefaults.filledTonalButtonColors(
@@ -198,7 +199,7 @@ internal fun SystemBubble(
                                 onClick = { onRespondApproval("session") },
                                 modifier =
                                     Modifier
-                                        .height(36.dp)
+                                        .heightIn(min = 36.dp)
                                         .testTag("session_button"),
                                 colors =
                                     ButtonDefaults.filledTonalButtonColors(
@@ -220,7 +221,7 @@ internal fun SystemBubble(
                                 onClick = { confirmAlways = true },
                                 modifier =
                                     Modifier
-                                        .height(36.dp)
+                                        .heightIn(min = 36.dp)
                                         .testTag("always_button"),
                                 colors =
                                     ButtonDefaults.filledTonalButtonColors(
@@ -243,7 +244,7 @@ internal fun SystemBubble(
                                 onClick = { onRespondApproval(choice) },
                                 modifier =
                                     Modifier
-                                        .height(36.dp)
+                                        .heightIn(min = 36.dp)
                                         .testTag("approve_button"),
                                 colors =
                                     ButtonDefaults.filledTonalButtonColors(

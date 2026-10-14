@@ -61,6 +61,7 @@ import io.wutz.apollo.data.model.CronBlueprintField
 import io.wutz.apollo.data.model.CronJob
 import io.wutz.apollo.data.model.DeliveryTarget
 import io.wutz.apollo.theme.LocalSpacing
+import io.wutz.apollo.ui.common.ConfirmDialog
 import io.wutz.apollo.ui.common.EmptyState
 import io.wutz.apollo.ui.common.ErrorState
 import io.wutz.apollo.ui.common.ExposedDropdownField
@@ -232,7 +233,7 @@ fun CronJobsScreen(
                                 Text(
                                     text = job.scheduleText,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Spacer(modifier = Modifier.height(spacing.sm))
                                 Row(
@@ -382,20 +383,13 @@ fun CronJobsScreen(
 
     // ── Delete Confirm Dialog ──
     state.deleteTarget?.let { job ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissDeleteDialog() },
-            title = { Text(stringResource(R.string.cron_delete_title)) },
-            text = { Text(stringResource(R.string.cron_delete_message, job.name)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.confirmDeleteJob() }) {
-                    Text(stringResource(R.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissDeleteDialog() }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.cron_delete_title),
+            message = stringResource(R.string.cron_delete_message, job.name),
+            confirmText = stringResource(R.string.action_delete),
+            isDestructive = true,
+            onConfirm = { viewModel.confirmDeleteJob() },
+            onDismiss = { viewModel.dismissDeleteDialog() },
         )
     }
 }
@@ -668,7 +662,7 @@ fun CronJobEditorDialog(
                                     Text(
                                         text = stringResource(R.string.cron_edit_hint_run_continuity),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -775,7 +769,7 @@ private fun MonitorModeSection(
         Text(
             text = stringResource(R.string.cron_edit_monitor_hint),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -901,7 +895,7 @@ private fun BlueprintSlotField(
                         {
                             Text(
                                 text = field.help,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     } else {
@@ -952,7 +946,7 @@ private fun DeliverField(
                     {
                         Text(
                             text = it,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 },

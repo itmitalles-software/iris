@@ -120,7 +120,7 @@ fun resolveConnectorStatusVisuals(
         status == ConnectorStatus.DISCONNECTED -> {
             ConnectorStatusVisuals(
                 icon = Icons.Filled.LinkOff,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 label = stringResource(R.string.session_integrations_status_disconnected),
             )
         }
@@ -128,7 +128,7 @@ fun resolveConnectorStatusVisuals(
         else -> {
             ConnectorStatusVisuals(
                 icon = Icons.AutoMirrored.Filled.HelpOutline,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 label = stringResource(R.string.session_integrations_status_unknown),
             )
         }

@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import io.wutz.apollo.R
@@ -44,7 +45,12 @@ fun SessionsDialogs(
     if (state.showEmptyCleanupDialog) {
         ConfirmDialog(
             title = stringResource(R.string.sessions_empty_cleanup_title),
-            message = stringResource(R.string.sessions_empty_cleanup_message, state.emptyCount),
+            message =
+                pluralStringResource(
+                    R.plurals.sessions_empty_cleanup_message,
+                    state.emptyCount,
+                    state.emptyCount,
+                ),
             onConfirm = onConfirmEmptyCleanup,
             onDismiss = onDismissEmptyCleanup,
             confirmText = stringResource(R.string.sessions_empty_cleanup_confirm),
@@ -113,7 +119,12 @@ fun SessionsDialogs(
     if (state.showBulkDeleteConfirm) {
         ConfirmDialog(
             title = stringResource(R.string.sessions_bulk_delete_title),
-            message = stringResource(R.string.sessions_bulk_delete_message, state.selectedIds.size),
+            message =
+                pluralStringResource(
+                    R.plurals.sessions_bulk_delete_message,
+                    state.selectedIds.size,
+                    state.selectedIds.size,
+                ),
             onConfirm = onConfirmBulkDelete,
             onDismiss = onDismissBulkDelete,
             confirmText = stringResource(R.string.action_delete),

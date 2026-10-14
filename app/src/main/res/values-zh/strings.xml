@@ -595,7 +595,6 @@
     <string name="memory_reset_user">重置 USER.md</string>
     <string name="memory_reset_all">全部重置</string>
     <string name="memory_reset_confirm_title">重置记忆</string>
-    <string name="memory_reset_confirm_desc">这将永久清除 %1$s 个内置记忆文件。此操作无法撤销。</string>
     <string name="memory_empty_title">无记忆数据</string>
     <string name="memory_empty_desc">无法加载记忆状态。</string>
     <string name="memory_providers_heading">提供商</string>
@@ -635,7 +634,6 @@
     <string name="system_debug_share_copy_all">全部复制</string>
     <string name="system_debug_share_failed">上传失败</string>
     <string name="system_sec_checkpoints">检查点</string>
-    <string name="system_checkpoints_summary">%1$d 个会话 · %2$s</string>
     <string name="system_checkpoints_prune">清理</string>
     <string name="system_checkpoints_prune_confirm_title">清理检查点</string>
     <string name="system_checkpoints_prune_confirm_desc">删除回滚检查点存储？现有的 /rollback 恢复点将丢失。</string>
@@ -708,7 +706,6 @@
     <string name="sessions_search_placeholder">搜索会话…</string>
     <string name="sessions_search_empty_title">无结果</string>
     <string name="sessions_search_empty_desc">没有匹配"%1$s"的会话</string>
-    <string name="sessions_search_results_header">找到 %1$d 个结果（"%2$s"）</string>
     <string name="sessions_search_played_at">运行于 %1$s</string>
     <string name="sessions_search_match_label">匹配</string>
     <string name="sessions_search_model_label">模型</string>
@@ -721,12 +718,10 @@
     <string name="sessions_pruning">正在清理旧会话…</string>
     <string name="sessions_empty_cleanup_desc">空会话</string>
     <string name="sessions_empty_cleanup_title">删除空会话？</string>
-    <string name="sessions_empty_cleanup_message">删除 %1$d 个空会话？活动与归档会话会被保留。</string>
     <string name="sessions_empty_cleanup_confirm">删除</string>
     <string name="sessions_delete_title">删除会话？</string>
     <string name="sessions_delete_message">确定要删除"%1$s"吗？此操作无法撤销。</string>
     <string name="sessions_bulk_delete_title">删除会话？</string>
-    <string name="sessions_bulk_delete_message">确定要删除 %1$d 个会话吗？此操作无法撤销。</string>
     <string name="sessions_action_select_all">全选</string>
     <string name="sessions_action_deselect_all">取消选择</string>
     <string name="sessions_action_delete_n">删除 %1$d 个</string>
@@ -1326,7 +1321,6 @@
     <string name="system_checkpoint_prune">清理检查点</string>
     <string name="system_config_migrate">迁移配置</string>
     <string name="system_curator_run">运行技能维护器</string>
-    <string name="system_more_lines">… 还有 %1$d 行</string>
     <string name="system_prompt_size_check">提示词大小检查</string>
     <string name="system_security_audit">安全审计</string>
     <string name="system_skills_update">更新技能</string>
@@ -1551,7 +1545,6 @@
     <string name="sessions_automations_empty_desc">由定时自动化启动的运行会显示在这里。</string>
     <string name="sessions_automations_empty_title">暂无自动化历史</string>
     <string name="sessions_section_automation_job">任务 %1$s</string>
-    <string name="sessions_section_automation_runs">已加载 %1$d 次运行</string>
     <string name="sessions_section_automation_unknown">自动运行</string>
     <string name="sessions_stat_messages_loaded">已加载消息</string>
     <string name="sessions_tab_automations">自动化</string>

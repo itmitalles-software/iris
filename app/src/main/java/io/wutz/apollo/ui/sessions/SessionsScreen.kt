@@ -87,6 +87,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
@@ -293,7 +294,15 @@ fun SessionsScreen(
         AlertDialog(
             onDismissRequest = { viewModel.hideEmptyCleanupDialog() },
             title = { Text(stringResource(R.string.sessions_empty_cleanup_title)) },
-            text = { Text(stringResource(R.string.sessions_empty_cleanup_message, state.emptyCount)) },
+            text = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.sessions_empty_cleanup_message,
+                        state.emptyCount,
+                        state.emptyCount,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { viewModel.confirmEmptyCleanup() }) {
                     if (state.isCleaningEmpty) {
@@ -405,8 +414,9 @@ fun SessionsScreen(
             title = { Text(stringResource(R.string.sessions_bulk_delete_title)) },
             text = {
                 Text(
-                    stringResource(
-                        R.string.sessions_bulk_delete_message,
+                    pluralStringResource(
+                        R.plurals.sessions_bulk_delete_message,
+                        state.selectedIds.size,
                         state.selectedIds.size,
                     ),
                 )
@@ -687,8 +697,9 @@ fun SessionsScreen(
                                     Column(modifier = Modifier.fillMaxSize()) {
                                         Text(
                                             text =
-                                                stringResource(
-                                                    R.string.sessions_search_results_header,
+                                                pluralStringResource(
+                                                    R.plurals.sessions_search_results_header,
+                                                    state.searchResults.size,
                                                     state.searchResults.size,
                                                     state.searchQuery,
                                                 ),

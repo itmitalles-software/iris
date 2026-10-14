@@ -641,7 +641,6 @@
     <string name="sessions_delete_title">세션 삭제?</string>
     <string name="sessions_delete_message">정말 \"%1$s\"을(를) 삭제하시겠습니까? 되돌릴 수 없습니다.</string>
     <string name="sessions_bulk_delete_title">세션 삭제?</string>
-    <string name="sessions_bulk_delete_message">정말 %1$d개 세션을 삭제하시겠습니까? 되돌릴 수 없습니다.</string>
     <string name="sessions_action_select_all">전체 선택</string>
     <string name="sessions_action_deselect_all">선택 해제</string>
     <string name="sessions_action_delete_n">%1$d개 삭제</string>
@@ -1369,7 +1368,6 @@
     <string name="memory_reset_user">USER.md 초기화</string>
     <string name="memory_reset_all">모두 초기화</string>
     <string name="memory_reset_confirm_title">메모리 초기화</string>
-    <string name="memory_reset_confirm_desc">내장 메모리 파일 %1$s개를 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.</string>
     <string name="memory_empty_title">메모리 데이터 없음</string>
     <string name="memory_empty_desc">메모리 상태를 불러올 수 없습니다.</string>
     <string name="memory_providers_heading">제공자</string>
@@ -1409,7 +1407,6 @@
     <string name="system_debug_share_copy_all">모두 복사</string>
     <string name="system_debug_share_failed">업로드 실패</string>
     <string name="system_sec_checkpoints">체크포인트</string>
-    <string name="system_checkpoints_summary">세션 %1$d개 · %2$s</string>
     <string name="system_checkpoints_prune">정리</string>
     <string name="system_checkpoints_prune_confirm_title">체크포인트 정리</string>
     <string name="system_checkpoints_prune_confirm_desc">롤백 체크포인트 섀도 저장소를 삭제하시겠습니까? 기존 /rollback 복구 지점을 사용할 수 없게 됩니다.</string>
@@ -1422,7 +1419,6 @@
     <string name="system_hooks_not_approved">승인되지 않음</string>
     <string name="sessions_search_empty_title">결과 없음</string>
     <string name="sessions_search_empty_desc">“%1$s”와(과) 일치하는 세션이 없습니다</string>
-    <string name="sessions_search_results_header">“%2$s”에 대한 결과 %1$d개</string>
     <string name="sessions_search_played_at">%1$s에 재생됨</string>
     <string name="sessions_search_match_label">일치 항목</string>
     <string name="sessions_search_model_label">모델</string>
@@ -1433,10 +1429,8 @@
     <string name="sessions_automations_empty_desc">예약된 자동화로 시작된 실행이 여기에 표시됩니다.</string>
     <string name="sessions_section_automation_job">작업 %1$s</string>
     <string name="sessions_section_automation_unknown">자동화 실행</string>
-    <string name="sessions_section_automation_runs">불러온 실행 %1$d개</string>
     <string name="sessions_empty_cleanup_desc">빈 세션</string>
     <string name="sessions_empty_cleanup_title">빈 세션을 삭제하시겠습니까?</string>
-    <string name="sessions_empty_cleanup_message">빈 세션 %1$d개를 삭제합니다. 활성 및 보관된 세션은 유지됩니다.</string>
     <string name="sessions_empty_cleanup_confirm">삭제</string>
     <string name="sessions_action_select">선택</string>
     <string name="sessions_action_rename">이름 변경</string>
@@ -1680,7 +1674,6 @@
     <string name="system_checkpoint_prune">체크포인트 정리</string>
     <string name="system_config_migrate">설정 마이그레이션</string>
     <string name="system_curator_run">큐레이터 실행</string>
-    <string name="system_more_lines">... %1$d줄 더 있음</string>
     <string name="system_prompt_size_check">프롬프트 크기 확인</string>
     <string name="system_security_audit">보안 감사</string>
     <string name="system_skills_update">스킬 업데이트</string>

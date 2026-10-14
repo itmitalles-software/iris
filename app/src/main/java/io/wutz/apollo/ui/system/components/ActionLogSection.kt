@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -120,7 +121,12 @@ fun LazyListScope.actionLogSection(
                                 }
                                 if (lines.size > 20) {
                                     Text(
-                                        text = stringResource(R.string.system_more_lines, lines.size - 20),
+                                        text =
+                                            pluralStringResource(
+                                                R.plurals.system_more_lines,
+                                                lines.size - 20,
+                                                lines.size - 20,
+                                            ),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
