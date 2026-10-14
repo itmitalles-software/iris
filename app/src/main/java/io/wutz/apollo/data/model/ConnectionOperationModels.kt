@@ -14,6 +14,17 @@ data class ConnectionOperationSnapshot(
     val settledBy: String?,
     val targets: List<ConnectionOperationTarget>,
     val accountOwned: Boolean = false,
+    /**
+     * Hermes v0.22.0 `manage_connections` action `display`: a target-less card that suggests
+     * connectors. Only Continue (or the deadline or /stop) settles it; connecting happens through
+     * the regular connectors UI, never through this operation.
+     */
+    val display: ConnectionDisplay? = null,
+)
+
+/** The `display` block of a `connection.request`: connector slugs the agent suggests. */
+data class ConnectionDisplay(
+    val suggested: List<String>,
 )
 
 data class ConnectionOperationTarget(

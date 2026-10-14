@@ -1010,6 +1010,182 @@ class ChatWsEventReducerTest {
         assertEquals("thinking...", result.streamingState.reasoningText)
     }
 
+    private fun liveStreaming(content: String) =
+        StreamingState(
+            streamingMessage = ChatMessage(role = MessageRole.ASSISTANT, content = content, isStreaming = true),
+        )
+
+    @Test
+    fun messageInterim_alreadyStreamed_sealsLiveBubbleAndTracksIt() {
+        val state = ChatUiState(currentSessionId = "session-1")
+        val streaming = liveStreaming("Checking the logs first.")
+
+        val result =
+            ChatWsEventReducer.reduce(
+                state,
+                streaming,
+                WsEvent.MessageInterim("Checking the logs first.", alreadyStreamed = true, sessionId = "session-1"),
+                "session-1",
+            )
+
+        val sealed = result.state.messages.single()
+        assertEquals(streaming.streamingMessage!!.id, sealed.id)
+        assertEquals("Checking the logs first.", sealed.content)
+        assertFalse(sealed.isStreaming)
+        assertNull(result.streamingState.streamingMessage)
+        assertEquals(listOf(sealed.id), result.streamingState.sealedOrphanIds)
+        assertTrue(result.state.isAgentTyping)
+        assertTrue(result.effects.any { it is ReducerEffect.PersistMessage && it.message.id == sealed.id })
+
+        // The following tool.start has nothing left to seal: the commentary appears once.
+        val tool =
+            ChatWsEventReducer.reduce(
+                result.state,
+                result.streamingState,
+                WsEvent.ToolStart("terminal", mapOf("args_text" to "ls"), "session-1"),
+                "session-1",
+            )
+        assertEquals(1, tool.state.messages.count { it.role == MessageRole.ASSISTANT })
+    }
+
+    @Test
+    fun messageInterim_notStreamed_withoutLiveText_addsSealedBubble() {
+        val state = ChatUiState(currentSessionId = "session-1")
+
+        val result =
+            ChatWsEventReducer.reduce(
+                state,
+                StreamingState(),
+                WsEvent.MessageInterim(
+                    "I'll inspect the config next.",
+                    alreadyStreamed = false,
+                    sessionId = "session-1",
+                ),
+                "session-1",
+            )
+
+        val sealed = result.state.messages.single()
+        assertEquals(MessageRole.ASSISTANT, sealed.role)
+        assertEquals("I'll inspect the config next.", sealed.content)
+        assertEquals(listOf(sealed.id), result.streamingState.sealedOrphanIds)
+
+        // A repeated frame in the same turn does not add it twice.
+        val repeated =
+            ChatWsEventReducer.reduce(
+                result.state,
+                result.streamingState,
+                WsEvent.MessageInterim(
+                    "I'll inspect the config next.",
+                    alreadyStreamed = false,
+                    sessionId = "session-1",
+                ),
+                "session-1",
+            )
+        assertEquals(1, repeated.state.messages.size)
+    }
+
+    @Test
+    fun messageInterim_truncatedStream_usesAuthoritativeText() {
+        val state = ChatUiState(currentSessionId = "session-1")
+
+        val result =
+            ChatWsEventReducer.reduce(
+                state,
+                liveStreaming("Running the te"),
+                WsEvent.MessageInterim("Running the tests now.", alreadyStreamed = false, sessionId = "session-1"),
+                "session-1",
+            )
+
+        assertEquals(
+            "Running the tests now.",
+            result.state.messages
+                .single()
+                .content,
+        )
+        assertNull(result.streamingState.streamingMessage)
+    }
+
+    @Test
+    fun messageInterim_unrelatedLiveText_insertsCommentaryBeforeLiveBubble() {
+        val state = ChatUiState(currentSessionId = "session-1")
+        val streaming = liveStreaming("Final answer so far")
+
+        val result =
+            ChatWsEventReducer.reduce(
+                state,
+                streaming,
+                WsEvent.MessageInterim("Codex commentary", alreadyStreamed = false, sessionId = "session-1"),
+                "session-1",
+            )
+
+        assertEquals(
+            "Codex commentary",
+            result.state.messages
+                .single()
+                .content,
+        )
+        assertEquals(streaming.streamingMessage, result.streamingState.streamingMessage)
+        assertEquals(
+            listOf(
+                result.state.messages
+                    .single()
+                    .id,
+            ),
+            result.streamingState.sealedOrphanIds,
+        )
+    }
+
+    @Test
+    fun messageInterim_finalTextRepeatingCommentary_isStrippedOnComplete() {
+        val state = ChatUiState(currentSessionId = "session-1")
+        val interim =
+            ChatWsEventReducer.reduce(
+                state,
+                StreamingState(),
+                WsEvent.MessageInterim("Looking it up. ", alreadyStreamed = false, sessionId = "session-1"),
+                "session-1",
+            )
+
+        val complete =
+            ChatWsEventReducer.reduce(
+                interim.state,
+                interim.streamingState,
+                WsEvent.MessageComplete("Looking it up.The answer is 42.", "session-1"),
+                "session-1",
+            )
+
+        assertEquals(
+            listOf("Looking it up.", "The answer is 42."),
+            complete.state.messages.map { it.content },
+        )
+    }
+
+    @Test
+    fun messageInterim_otherSessionOrBlank_isIgnored() {
+        val state = ChatUiState(currentSessionId = "session-1")
+        val streaming = liveStreaming("Live text")
+
+        val other =
+            ChatWsEventReducer.reduce(
+                state,
+                streaming,
+                WsEvent.MessageInterim("Live text", alreadyStreamed = true, sessionId = "session-2"),
+                "session-1",
+            )
+        val blank =
+            ChatWsEventReducer.reduce(
+                state,
+                streaming,
+                WsEvent.MessageInterim("   ", alreadyStreamed = false, sessionId = "session-1"),
+                "session-1",
+            )
+
+        for (result in listOf(other, blank)) {
+            assertTrue(result.state.messages.isEmpty())
+            assertEquals(streaming, result.streamingState)
+        }
+    }
+
     @Test
     fun testMultiToolCommentaryTurn_noDuplicateInterimText() {
         // Regression for issue #842 (m57 repro, 2026-08-08): a turn where the

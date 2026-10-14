@@ -143,6 +143,42 @@ class ConnectionOperationParserTest {
     }
 
     @Test
+    fun displayOperation_withoutTargets_isAcceptedWithSuggestions() {
+        // Hermes v0.22.0 `manage_connections` action `display` (tools/connectors/display.py).
+        val snapshot =
+            ConnectionOperationParser.parse(
+                completePayload() +
+                    ("targets" to emptyList<Any>()) +
+                    ("display" to mapOf("suggested" to listOf("gmail", "notion", "gmail", " "))),
+                "runtime-session",
+            )!!
+
+        assertTrue(snapshot.targets.isEmpty())
+        assertEquals(listOf("gmail", "notion"), snapshot.display?.suggested)
+        assertEquals("runtime-session", snapshot.sessionId)
+    }
+
+    @Test
+    fun settledUpdateWithoutTargets_isAcceptedSoTheCardCloses() {
+        val snapshot =
+            ConnectionOperationParser.parse(
+                completePayload() +
+                    ("targets" to emptyList<Any>()) +
+                    ("settled" to true) +
+                    ("settled_by" to "continue"),
+                "runtime-session",
+            )!!
+
+        assertTrue(snapshot.settled)
+        assertNull(snapshot.display)
+    }
+
+    @Test
+    fun regularOperation_hasNoDisplayBlock() {
+        assertNull(ConnectionOperationParser.parse(completePayload(), "runtime-session")!!.display)
+    }
+
+    @Test
     fun secretDefaultsAndOAuthUrls_areNeverExposedByModels() {
         val canary = "issue1218-secret-canary"
         val payload =

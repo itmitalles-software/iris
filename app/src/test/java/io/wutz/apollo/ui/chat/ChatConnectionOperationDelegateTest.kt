@@ -1,5 +1,6 @@
 package io.wutz.apollo.ui.chat
 
+import io.wutz.apollo.data.model.ConnectionDisplay
 import io.wutz.apollo.data.model.ConnectionEnvField
 import io.wutz.apollo.data.model.ConnectionOperationSnapshot
 import io.wutz.apollo.data.model.ConnectionOperationTarget
@@ -58,6 +59,43 @@ class ChatConnectionOperationDelegateTest {
             delegate.state.value.operation
                 ?.opId,
         )
+    }
+
+    @Test
+    fun displayCard_keepsDisplayAcrossUpdates_continuesAndClosesOnSettlement() =
+        runTest {
+            val requester = RecordingRequester()
+            val delegate = delegate(requester)
+            delegate.reset("session-a")
+            val display = ConnectionDisplay(listOf("gmail"))
+            val request = snapshot(seq = 1L).copy(targets = emptyList(), display = display)
+
+            assertTrue(delegate.acceptRequest(request))
+            // A target-less update without the display block keeps the card's suggestions.
+            assertTrue(delegate.acceptUpdate(snapshot(seq = 2L).copy(targets = emptyList())))
+            assertEquals(
+                display,
+                delegate.state.value.operation
+                    ?.display,
+            )
+
+            delegate.continueOperation()
+            val respond = requester.calls.single() as ConnectionOperationRequest.Respond
+            assertEquals(ConnectionAnswer(settledBy = "continue"), respond.params.result)
+
+            assertTrue(
+                delegate.acceptUpdate(snapshot(seq = 3L, settled = true).copy(targets = emptyList())),
+            )
+            assertNull(delegate.state.value.operation)
+        }
+
+    @Test
+    fun targetlessOperationWithoutDisplay_isNeverDrawn() {
+        val delegate = delegate()
+        delegate.reset("session-a")
+
+        assertFalse(delegate.acceptRequest(snapshot().copy(targets = emptyList())))
+        assertNull(delegate.state.value.operation)
     }
 
     @Test

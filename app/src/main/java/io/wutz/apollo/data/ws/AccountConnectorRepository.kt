@@ -234,6 +234,8 @@ class HermesAccountConnectorRepository(
                     r.bool("active"),
                     r.str("created_at"),
                     r.str("updated_at"),
+                    // Absent before Hermes v0.22.0, where it defaults to false.
+                    disabled = r.bool("disabled"),
                 )
             }
         }

@@ -122,6 +122,14 @@ object EventParser {
                 WsEvent.ReasoningAvailable(sessionId, text)
             }
 
+            "message.interim" -> {
+                WsEvent.MessageInterim(
+                    text = payload?.get("text") as? String ?: "",
+                    alreadyStreamed = payload?.get("already_streamed") as? Boolean ?: false,
+                    sessionId = sessionId,
+                )
+            }
+
             "message.complete" -> {
                 val text = payload?.get("text") as? String ?: ""
                 val reasoning = payload?.get("reasoning") as? String

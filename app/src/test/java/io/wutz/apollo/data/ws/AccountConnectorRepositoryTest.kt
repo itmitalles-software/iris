@@ -217,6 +217,29 @@ class AccountConnectorRepositoryTest {
             assertEquals(mapOf("profile" to "work", "connection_id" to "conn-1"), calls[3].second)
         }
 
+    @Test fun `accounts parse disabled from Hermes v0_22_0 and default it to false`() =
+        runTest {
+            val row =
+                mapOf(
+                    "connector" to "drive",
+                    "label" to "Old account",
+                    "status" to "active",
+                    "active" to false,
+                )
+            val repo =
+                accountRepo { _, _ ->
+                    mapOf(
+                        "accounts" to
+                            listOf(
+                                row + ("connection_id" to "conn-old") + ("disabled" to true),
+                                row + ("connection_id" to "conn-legacy"),
+                            ),
+                    )
+                }
+            val accounts = (repo.accounts() as AccountConnectorResult.Success).value
+            assertEquals(listOf(true, false), accounts.map { it.disabled })
+        }
+
     @Test fun `policy keeps member revision separate from effective and respects inherited rules`() =
         runTest {
             val repo = accountRepo { _, _ -> policyFixture() }
