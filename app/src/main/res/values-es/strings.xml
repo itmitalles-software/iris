@@ -699,7 +699,6 @@
     <string name="memory_reset_user">Restablecer USER.md</string>
     <string name="memory_reset_all">Restablecer todo</string>
     <string name="memory_reset_confirm_title">Restablecer memoria</string>
-    <string name="memory_reset_confirm_desc">Esto borra permanentemente los archivos de memoria incorporada de%1$s. Esto no se puede deshacer.</string>
     <string name="memory_empty_title">No hay datos de memoria</string>
     <string name="memory_empty_desc">No se pudo cargar el estado de la memoria.</string>
     <string name="memory_providers_heading">Proveedores</string>
@@ -747,7 +746,6 @@
 
     <!-- Checkpoints section -->
     <string name="system_sec_checkpoints">Puntos de control</string>
-    <string name="system_checkpoints_summary">Sesiones de%1$d·%2$s</string>
     <string name="system_checkpoints_prune">Podar</string>
     <string name="system_checkpoints_prune_confirm_title">Eliminar puntos de control</string>
     <string name="system_checkpoints_prune_confirm_desc">¿Eliminar el almacén oculto del punto de control de reversión? Se perderán los puntos existentes/de reversión.</string>
@@ -833,7 +831,6 @@
     <string name="sessions_search_placeholder">Buscar sesiones…</string>
     <string name="sessions_search_empty_title">Sin resultados</string>
     <string name="sessions_search_empty_desc">Ninguna sesión coincide con “%1$s”</string>
-    <string name="sessions_search_results_header">%1$d resultado(s) para “%2$s”</string>
     <string name="sessions_search_played_at">Reproducido %1$s</string>
     <string name="sessions_search_match_label">Coincidencia</string>
     <string name="sessions_search_model_label">Modelo</string>
@@ -845,7 +842,6 @@
     <string name="sessions_automations_empty_desc">Las ejecuciones iniciadas por automatizaciones programadas aparecerán aquí.</string>
     <string name="sessions_section_automation_job">Trabajo %1$s</string>
     <string name="sessions_section_automation_unknown">Ejecución de automatización</string>
-    <string name="sessions_section_automation_runs">%1$d ejecuciones cargadas</string>
     <string name="sessions_action_prune">Eliminar</string>
     <string name="sessions_prune_title">Eliminar sesiones antiguas</string>
     <string name="sessions_prune_desc">Eliminar sesiones anteriores al número de días especificado.</string>
@@ -854,12 +850,10 @@
     <string name="sessions_pruning">Eliminando sesiones antiguas…</string>
     <string name="sessions_empty_cleanup_desc">Vaciar</string>
     <string name="sessions_empty_cleanup_title">¿Eliminar sesiones vacías?</string>
-    <string name="sessions_empty_cleanup_message">Eliminar %1$d sesión(es) vacía(s). Se mantienen las sesiones activas y archivadas.</string>
     <string name="sessions_empty_cleanup_confirm">Eliminar</string>
     <string name="sessions_delete_title">¿Eliminar sesión?</string>
     <string name="sessions_delete_message">¿Está seguro de que desea eliminar \"%1$s\"? Esto no se puede deshacer.</string>
     <string name="sessions_bulk_delete_title">¿Eliminar sesiones?</string>
-    <string name="sessions_bulk_delete_message">¿Está seguro de que desea eliminar %1$d sesiones? Esto no se puede deshacer.</string>
     <string name="sessions_action_select_all">Seleccionar todo</string>
     <string name="sessions_action_deselect_all">Deseleccionar</string>
     <string name="sessions_action_delete_n">Eliminar %1$d</string>
@@ -1559,7 +1553,6 @@
     <string name="system_checkpoint_prune">Eliminación de puntos de control</string>
     <string name="system_config_migrate">Migración de configuración</string>
     <string name="system_curator_run">Ejecución del curador</string>
-    <string name="system_more_lines">...%1$dmás líneas</string>
     <string name="system_prompt_size_check">Comprobación de tamaño de solicitud</string>
     <string name="system_security_audit">Auditoría de seguridad</string>
     <string name="system_skills_update">Actualización de habilidades</string>

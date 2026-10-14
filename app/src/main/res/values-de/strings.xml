@@ -744,7 +744,8 @@
     <string name="memory_reset_user">USER.md zurücksetzen</string>
     <string name="memory_reset_all">Alle zurücksetzen</string>
     <string name="memory_reset_confirm_title">Speicher zurücksetzen</string>
-    <string name="memory_reset_confirm_desc">Dadurch werden %1$s integrierte Speicherdatei(en) endgültig gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="memory_reset_confirm_desc_file">Dadurch wird die integrierte Speicherdatei %1$s endgültig gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="memory_reset_confirm_desc_all">Dadurch werden beide integrierten Speicherdateien, MEMORY.md und USER.md, endgültig gelöscht. Das kann nicht rückgängig gemacht werden.</string>
     <string name="memory_empty_title">Keine Speicherdaten</string>
     <string name="memory_empty_desc">Speicherstatus konnte nicht geladen werden.</string>
     <string name="memory_providers_heading">Provider</string>
@@ -775,7 +776,7 @@
     <string name="system_op_restore_upload">Upload wiederherstellen</string>
     <string name="system_op_restore_pick">Backup-Archiv auswählen</string>
     <string name="system_op_import_confirm_title">Vollständiges Hermes-Backup wiederherstellen?</string>
-    <string name="system_op_import_confirm_desc">Dadurch werden deine aktuelle Hermes-Konfiguration, Skills, Sessions und Daten überschrieben. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="system_op_import_confirm_desc">Dadurch werden deine aktuelle Hermes-Konfiguration, Skills, Sitzungen und Daten überschrieben. Das kann nicht rückgängig gemacht werden.</string>
 
     <!-- Debug share section -->
     <string name="system_sec_debug_share">Debug-Freigabe</string>
@@ -792,7 +793,10 @@
 
     <!-- Checkpoints section -->
     <string name="system_sec_checkpoints">Checkpoints</string>
-    <string name="system_checkpoints_summary">%1$d Session(s) · %2$s</string>
+    <plurals name="system_checkpoints_summary">
+        <item quantity="one">%1$d Sitzung · %2$s</item>
+        <item quantity="other">%1$d Sitzungen · %2$s</item>
+    </plurals>
     <string name="system_checkpoints_prune">Bereinigen</string>
     <string name="system_checkpoints_prune_confirm_title">Checkpoints bereinigen</string>
     <string name="system_checkpoints_prune_confirm_desc">Den Shadow-Store der Rollback-Checkpoints löschen? Vorhandene /rollback-Punkte gehen verloren.</string>
@@ -811,7 +815,7 @@
     <string name="system_hooks_field_matcher">Matcher (optional)</string>
     <string name="system_hooks_field_timeout">Timeout (s)</string>
     <string name="system_hooks_field_approve">Jetzt genehmigen (Zustimmung erteilen, damit er ausgelöst wird; sonst bleibt er konfiguriert, aber inaktiv)</string>
-    <string name="system_hooks_warning">Shell-Hooks führen beliebige Befehle auf diesem Host aus. Füge nur Skripte hinzu, denen du vertraust. Wirkt ab dem nächsten Neustart von Gateway/Session.</string>
+    <string name="system_hooks_warning">Shell-Hooks führen beliebige Befehle auf diesem Host aus. Füge nur Skripte hinzu, denen du vertraust. Wirkt ab dem nächsten Neustart von Gateway/Sitzung.</string>
     <string name="system_hooks_create">Hook erstellen</string>
 
     <!-- Action log viewer -->
@@ -846,7 +850,7 @@
 
     <!-- Sessions (History) Screen -->
     <string name="history_empty_title">Kein Verlauf</string>
-    <string name="history_empty_desc">Frühere Chat-Sessions von Hermes erscheinen hier.</string>
+    <string name="history_empty_desc">Frühere Chat-Sitzungen von Hermes erscheinen hier.</string>
     <string name="history_untitled">Ohne Titel</string>
     <plurals name="sessions_card_message_count">
         <item quantity="one">%1$d Nachricht</item>
@@ -872,13 +876,16 @@
         <item quantity="other">Vor %1$d Tagen aktiv</item>
     </plurals>
     <string name="session_age_date_desc">Aktiv am %1$s</string>
-    <string name="history_load_more">Weitere Sessions laden…</string>
+    <string name="history_load_more">Weitere Sitzungen laden…</string>
 
     <!-- Sessions Stats -->
-    <string name="sessions_search_placeholder">Sessions durchsuchen…</string>
+    <string name="sessions_search_placeholder">Sitzungen durchsuchen…</string>
     <string name="sessions_search_empty_title">Keine Ergebnisse</string>
-    <string name="sessions_search_empty_desc">Keine Sessions passen zu „%1$s“</string>
-    <string name="sessions_search_results_header">%1$d Ergebnis(se) für „%2$s“</string>
+    <string name="sessions_search_empty_desc">Keine Sitzungen passen zu „%1$s“</string>
+    <plurals name="sessions_search_results_header">
+        <item quantity="one">%1$d Ergebnis für „%2$s“</item>
+        <item quantity="other">%1$d Ergebnisse für „%2$s“</item>
+    </plurals>
     <string name="sessions_search_played_at">Gespielt %1$s</string>
     <string name="sessions_search_match_label">Treffer</string>
     <string name="sessions_search_model_label">Modell</string>
@@ -890,21 +897,30 @@
     <string name="sessions_automations_empty_desc">Durch geplante Automatisierungen gestartete Läufe erscheinen hier.</string>
     <string name="sessions_section_automation_job">Job %1$s</string>
     <string name="sessions_section_automation_unknown">Automatisierungslauf</string>
-    <string name="sessions_section_automation_runs">%1$d geladene(r) Lauf/Läufe</string>
+    <plurals name="sessions_section_automation_runs">
+        <item quantity="one">%1$d geladener Lauf</item>
+        <item quantity="other">%1$d geladene Läufe</item>
+    </plurals>
     <string name="sessions_action_prune">Bereinigen</string>
-    <string name="sessions_prune_title">Alte Sessions bereinigen</string>
-    <string name="sessions_prune_desc">Sessions löschen, die älter als die angegebene Anzahl Tage sind.</string>
+    <string name="sessions_prune_title">Alte Sitzungen bereinigen</string>
+    <string name="sessions_prune_desc">Sitzungen löschen, die älter als die angegebene Anzahl Tage sind.</string>
     <string name="sessions_prune_days_label">Tage-Schwelle</string>
     <string name="sessions_prune_confirm">Bereinigen</string>
-    <string name="sessions_pruning">Alte Sessions werden bereinigt…</string>
+    <string name="sessions_pruning">Alte Sitzungen werden bereinigt…</string>
     <string name="sessions_empty_cleanup_desc">Leer</string>
-    <string name="sessions_empty_cleanup_title">Leere Sessions löschen?</string>
-    <string name="sessions_empty_cleanup_message">%1$d leere Session(s) löschen. Aktive und archivierte Sessions bleiben erhalten.</string>
+    <string name="sessions_empty_cleanup_title">Leere Sitzungen löschen?</string>
+    <plurals name="sessions_empty_cleanup_message">
+        <item quantity="one">%1$d leere Sitzung löschen. Aktive und archivierte Sitzungen bleiben erhalten.</item>
+        <item quantity="other">%1$d leere Sitzungen löschen. Aktive und archivierte Sitzungen bleiben erhalten.</item>
+    </plurals>
     <string name="sessions_empty_cleanup_confirm">Löschen</string>
-    <string name="sessions_delete_title">Session löschen?</string>
+    <string name="sessions_delete_title">Sitzung löschen?</string>
     <string name="sessions_delete_message">Möchtest du \"%1$s\" wirklich löschen? Das kann nicht rückgängig gemacht werden.</string>
-    <string name="sessions_bulk_delete_title">Sessions löschen?</string>
-    <string name="sessions_bulk_delete_message">Möchtest du %1$d Session(s) wirklich löschen? Das kann nicht rückgängig gemacht werden.</string>
+    <string name="sessions_bulk_delete_title">Sitzungen löschen?</string>
+    <plurals name="sessions_bulk_delete_message">
+        <item quantity="one">Möchtest du %1$d Sitzung wirklich löschen? Das kann nicht rückgängig gemacht werden.</item>
+        <item quantity="other">Möchtest du %1$d Sitzungen wirklich löschen? Das kann nicht rückgängig gemacht werden.</item>
+    </plurals>
     <string name="sessions_action_select_all">Alle auswählen</string>
     <string name="sessions_action_deselect_all">Abwählen</string>
     <string name="sessions_action_delete_n">%1$d löschen</string>
@@ -914,14 +930,14 @@
     <string name="sessions_action_unpin">Lösen</string>
     <string name="sessions_action_archive">Archivieren</string>
     <string name="sessions_action_unarchive">Aus Archiv holen</string>
-    <string name="sessions_archived_empty_title">Keine archivierten Sessions</string>
-    <string name="sessions_archived_empty_desc">Von dir archivierte Sessions erscheinen hier.</string>
-    <string name="sessions_show_archived">Archivierte Sessions anzeigen</string>
-    <string name="sessions_hide_archived">Zurück zu aktiven Sessions</string>
-    <string name="sessions_show_hidden">Ausgeblendete Sessions anzeigen</string>
-    <string name="sessions_hide_hidden">Ausgeblendete Sessions verbergen</string>
+    <string name="sessions_archived_empty_title">Keine archivierten Sitzungen</string>
+    <string name="sessions_archived_empty_desc">Von dir archivierte Sitzungen erscheinen hier.</string>
+    <string name="sessions_show_archived">Archivierte Sitzungen anzeigen</string>
+    <string name="sessions_hide_archived">Zurück zu aktiven Sitzungen</string>
+    <string name="sessions_show_hidden">Ausgeblendete Sitzungen anzeigen</string>
+    <string name="sessions_hide_hidden">Ausgeblendete Sitzungen verbergen</string>
     <string name="sessions_hidden_badge">Ausgeblendet</string>
-    <string name="sessions_all_hidden_desc">Alle Sessions sind derzeit ausgeblendet. Tippe unten, um ausgeblendete Sessions anzuzeigen.</string>
+    <string name="sessions_all_hidden_desc">Alle Sitzungen sind derzeit ausgeblendet. Tippe unten, um ausgeblendete Sitzungen anzuzeigen.</string>
     <string name="sessions_pinned_indicator">Angeheftet</string>
     <string name="sessions_project_none">Kein Projekt</string>
     <string name="chat_project_default">Standard-Workspace</string>
@@ -930,13 +946,13 @@
     <string name="sessions_group_by_project">Nach Projekt gruppieren</string>
     <string name="sessions_project_group_collapse">%1$s einklappen</string>
     <string name="sessions_project_group_expand">%1$s ausklappen</string>
-    <string name="sessions_fork_indicator">Abgezweigte Session</string>
+    <string name="sessions_fork_indicator">Abgezweigte Sitzung</string>
     <string name="sessions_live_status_running">Läuft</string>
     <string name="sessions_live_status_waiting">Eingabe erforderlich</string>
-    <string name="sessions_live_status_running_desc">Session läuft</string>
-    <string name="sessions_live_status_waiting_desc">Session benötigt eine Eingabe</string>
-    <string name="sessions_rename_title">Session umbenennen</string>
-    <string name="sessions_rename_hint">Session-Titel</string>
+    <string name="sessions_live_status_running_desc">Sitzung läuft</string>
+    <string name="sessions_live_status_waiting_desc">Sitzung benötigt eine Eingabe</string>
+    <string name="sessions_rename_title">Sitzung umbenennen</string>
+    <string name="sessions_rename_hint">Sitzungstitel</string>
 
     <!-- Toolsets Screen -->
     <string name="toolsets_empty_title">Keine Toolsets gemeldet</string>
@@ -1124,7 +1140,7 @@
     <string name="plugins_server_state_connected">Verbunden</string>
     <string name="plugins_server_state_app_not_running">App läuft nicht</string>
     <string name="plugins_server_state_endpoint_unavailable">Endpoint nicht verfügbar</string>
-    <string name="plugins_server_state_no_interactive_session">Keine interaktive Session</string>
+    <string name="plugins_server_state_no_interactive_session">Keine interaktive Sitzung</string>
     <string name="plugins_server_state_version_too_old">Version zu alt</string>
     <string name="plugins_server_state_missing_app">App fehlt</string>
     <string name="plugins_server_state_unknown">Status unbekannt</string>
@@ -1209,6 +1225,8 @@
     <string name="mcp_servers_env_key">Schlüssel</string>
     <string name="mcp_servers_env_value">Wert</string>
     <string name="mcp_servers_env_no_vars">Keine Umgebungsvariablen konfiguriert.</string>
+    <string name="mcp_servers_env_remove_confirm_title">%1$s entfernen?</string>
+    <string name="mcp_servers_env_remove_confirm_msg">Die Umgebungsvariable wird aus der Konfiguration des MCP-Servers gelöscht. Enthält sie ein Geheimnis, musst du es zum Wiederherstellen erneut eingeben.</string>
     <string name="mcp_servers_catalog_search">Katalog durchsuchen…</string>
     <string name="mcp_servers_catalog_empty">Keine Katalogeinträge passen zu deiner Suche.</string>
     <string name="mcp_servers_catalog_install">Installieren</string>
@@ -1239,7 +1257,7 @@
 
     <!-- Host pressure banner (issue #903) -->
     <string name="pressure_banner_disk_critical">Die Festplatte des Agents ist fast voll — neue Nachrichten, Erinnerungen und Einstellungen lassen sich möglicherweise nicht speichern</string>
-    <string name="pressure_banner_disk_elevated">Die Festplatte des Agents füllt sich — erwäge, alte Sessions zu löschen oder den Speicher zu erweitern</string>
+    <string name="pressure_banner_disk_elevated">Die Festplatte des Agents füllt sich — erwäge, alte Sitzungen zu löschen oder den Speicher zu erweitern</string>
     <string name="pressure_banner_disk_free_suffix"> · %1$d MB frei</string>
     <string name="pressure_banner_memory_critical">Dem Agent geht fast der Arbeitsspeicher aus, ein Neustart ist möglich</string>
     <string name="pressure_banner_memory_oom">Der Agent wurde unerwartet neu gestartet — wahrscheinlich war der Arbeitsspeicher erschöpft</string>
@@ -1395,6 +1413,10 @@
     <string name="pairing_label_unknown_user">Unbekannter Nutzer</string>
     <string name="pairing_label_request_age_m">vor %1$d Min.</string>
     <string name="pairing_label_request_age_hm">vor %1$d Std. %2$d Min.</string>
+    <string name="pairing_confirm_clear_title">Ausstehende Anfragen löschen?</string>
+    <string name="pairing_confirm_clear_msg">Alle ausstehenden Kopplungsanfragen werden entfernt. Die Nutzer müssen den Zugriff erneut anfragen.</string>
+    <string name="pairing_confirm_revoke_title">Zugriff widerrufen?</string>
+    <string name="pairing_confirm_revoke_msg">%1$s (%2$s) verliert den Zugriff auf deine Messaging-Kanäle, bis du ihn erneut freigibst.</string>
 
     <!-- Settings -->
     <string name="settings_saved_profiles">Gespeicherte Profile (%1$d)</string>
@@ -1584,6 +1606,8 @@
     <string name="model_picker_no_models">Keine Modelle verfügbar.</string>
     <string name="model_picker_search">Modelle und Provider suchen…</string>
     <string name="model_reset_all_auto">Alle auf Auto zurücksetzen</string>
+    <string name="model_reset_all_auto_confirm_title">Alle Hilfsaufgaben zurücksetzen?</string>
+    <string name="model_reset_all_auto_confirm_msg">Jede Hilfsaufgabe wird wieder auf Auto gesetzt und verwendet das Hauptmodell. Deine Zuweisungen pro Aufgabe werden entfernt.</string>
     <string name="model_search_placeholder">Modelle suchen…</string>
     <string name="model_set_aux">Hilfsmodell festlegen: %1$s</string>
     <string name="model_set_main">Hauptmodell festlegen</string>
@@ -1628,7 +1652,10 @@
     <string name="system_checkpoint_prune">Checkpoint-Bereinigung</string>
     <string name="system_config_migrate">Konfigurationsmigration</string>
     <string name="system_curator_run">Curator-Lauf</string>
-    <string name="system_more_lines">… %1$d weitere Zeile(n)</string>
+    <plurals name="system_more_lines">
+        <item quantity="one">… %1$d weitere Zeile</item>
+        <item quantity="other">… %1$d weitere Zeilen</item>
+    </plurals>
     <string name="system_prompt_size_check">Prompt-Größenprüfung</string>
     <string name="system_security_audit">Sicherheitsaudit</string>
     <string name="system_skills_update">Skills-Update</string>

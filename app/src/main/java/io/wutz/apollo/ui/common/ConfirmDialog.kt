@@ -35,6 +35,7 @@ fun ConfirmDialog(
     confirmText: String = stringResource(R.string.action_confirm),
     dismissText: String = stringResource(R.string.action_cancel),
     isDestructive: Boolean = false,
+    confirmEnabled: Boolean = true,
     icon: ImageVector? = null,
     extraContent: (@Composable () -> Unit)? = null,
 ) {
@@ -78,6 +79,7 @@ fun ConfirmDialog(
             if (isDestructive) {
                 Button(
                     onClick = onConfirm,
+                    enabled = confirmEnabled,
                     colors =
                         ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,
@@ -87,7 +89,7 @@ fun ConfirmDialog(
                     Text(confirmText)
                 }
             } else {
-                Button(onClick = onConfirm) {
+                Button(onClick = onConfirm, enabled = confirmEnabled) {
                     Text(confirmText)
                 }
             }

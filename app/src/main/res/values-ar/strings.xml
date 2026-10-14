@@ -583,7 +583,6 @@
 <string name="memory_reset_user">إعادة ضبط USER.md</string>
 <string name="memory_reset_all">إعادة ضبط الكل</string>
 <string name="memory_reset_confirm_title">إعادة ضبط الذاكرة</string>
-<string name="memory_reset_confirm_desc">سيؤدي هذا إلى مسح ملف (ملفات) الذاكرة المدمجة %1$s نهائيًا. لا يمكن التراجع عن هذا الإجراء.</string>
 <string name="memory_empty_title">لا توجد بيانات ذاكرة</string>
 <string name="memory_empty_desc">تعذر تحميل حالة الذاكرة.</string>
 <string name="memory_providers_heading">المزوّدون</string>
@@ -623,7 +622,6 @@
 <string name="system_debug_share_copy_all">نسخ الكل</string>
 <string name="system_debug_share_failed">فشل الرفع</string>
 <string name="system_sec_checkpoints">نقاط الفحص (Checkpoints)</string>
-<string name="system_checkpoints_summary">%1$d جلسة/جلسات · %2$s</string>
 <string name="system_checkpoints_prune">تنظيف</string>
 <string name="system_checkpoints_prune_confirm_title">تنظيف نقاط الفحص</string>
 <string name="system_checkpoints_prune_confirm_desc">هل تريد حذف مخزن الظل لنقاط فحص التراجع؟ سيتم فقدان نقاط /rollback الحالية.</string>
@@ -716,7 +714,6 @@
 <string name="sessions_search_placeholder">البحث في الجلسات…</string>
 <string name="sessions_search_empty_title">لا توجد نتائج</string>
 <string name="sessions_search_empty_desc">لا توجد جلسات تطابق “%1$s”</string>
-<string name="sessions_search_results_header">%1$d نتيجة لـ \"%2$s\"</string>
 <string name="sessions_search_played_at">تم التشغيل %1$s</string>
 <string name="sessions_search_match_label">تطابق</string>
 <string name="sessions_search_model_label">النموذج</string>
@@ -729,12 +726,10 @@
 <string name="sessions_pruning">جارٍ تنظيف الجلسات القديمة…</string>
 <string name="sessions_empty_cleanup_desc">فارغة</string>
 <string name="sessions_empty_cleanup_title">هل تريد حذف الجلسات الفارغة؟</string>
-<string name="sessions_empty_cleanup_message">حذف %1$d من الجلسات الفارغة. سيتم الاحتفاظ بالجلسات النشطة والمؤرشفة.</string>
 <string name="sessions_empty_cleanup_confirm">حذف</string>
 <string name="sessions_delete_title">هل تريد حذف الجلسة؟</string>
 <string name="sessions_delete_message">هل أنت متأكد من رغبتك في حذف \"%1$s\"؟ لا يمكن التراجع عن هذا الإجراء.</string>
 <string name="sessions_bulk_delete_title">هل تريد حذف الجلسات؟</string>
-<string name="sessions_bulk_delete_message">هل أنت متأكد من رغبتك في حذف %1$d من الجلسات؟ لا يمكن التراجع عن هذا الإجراء.</string>
 <string name="sessions_action_select_all">تحديد الكل</string>
 <string name="sessions_action_deselect_all">إلغاء التحديد</string>
 <string name="sessions_action_delete_n">حذف %1$d</string>
@@ -1336,7 +1331,6 @@
 <string name="system_checkpoint_prune">تنظيف نقاط الفحص</string>
 <string name="system_config_migrate">ترحيل الإعدادات</string>
 <string name="system_curator_run">تشغيل المنسق</string>
-<string name="system_more_lines">... %1$d أسطر إضافية</string>
 <string name="system_prompt_size_check">فحص حجم المطالبة (Prompt)</string>
 <string name="system_security_audit">تدقيق أمني</string>
 <string name="system_skills_update">تحديث المهارات</string>
@@ -1588,7 +1582,6 @@
     <string name="sessions_automations_empty_desc">ستظهر عمليات التشغيل التي تبدأها الأتمتة المجدولة هنا.</string>
     <string name="sessions_section_automation_job">المهمة %1$s</string>
     <string name="sessions_section_automation_unknown">تشغيل أتمتة</string>
-    <string name="sessions_section_automation_runs">%1$d عملية (عمليات) تشغيل محملة</string>
     <string name="sessions_storage_corrupt">مساحة تخزين الجلسات تالفة لـ %1$s. قد يكون السجل غير مكتمل؛ تم الاحتفاظ بالجلسات المحملة مسبقًا. استعد قاعدة البيانات أو أصلحها على الخادم، ثم حدّث.</string>
     <string name="plugins_settings_loading">جارٍ تحميل إعدادات الإضافات…</string>
     <string name="plugins_settings_save">حفظ الإعدادات</string>

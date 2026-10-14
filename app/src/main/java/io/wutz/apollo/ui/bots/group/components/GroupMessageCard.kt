@@ -280,7 +280,7 @@ fun GroupMessageCard(
                             Text(
                                 text = stringResource(R.string.group_chat_typing),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     } else if (message.text.isNotBlank()) {
@@ -322,7 +322,7 @@ fun GroupMessageCard(
                                         message.timestamp,
                                         DateFormat.is24HourFormat(LocalContext.current),
                                     ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall,
                             )
                             val botTokens =
@@ -341,7 +341,7 @@ fun GroupMessageCard(
                                             R.string.chat_msg_tokens,
                                             TokenEstimator.formatTokenCount(botTokens),
                                         ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             }
@@ -359,7 +359,7 @@ fun GroupMessageCard(
                                             R.string.chat_msg_tps,
                                             TokenEstimator.formatTps(message.tps),
                                         ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             }

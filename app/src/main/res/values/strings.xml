@@ -754,7 +754,8 @@
     <string name="memory_reset_user">Reset USER.md</string>
     <string name="memory_reset_all">Reset all</string>
     <string name="memory_reset_confirm_title">Reset memory</string>
-    <string name="memory_reset_confirm_desc">This permanently erases the %1$s built-in memory file(s). This cannot be undone.</string>
+    <string name="memory_reset_confirm_desc_file">This permanently erases the built-in memory file %1$s. This cannot be undone.</string>
+    <string name="memory_reset_confirm_desc_all">This permanently erases both built-in memory files, MEMORY.md and USER.md. This cannot be undone.</string>
     <string name="memory_empty_title">No memory data</string>
     <string name="memory_empty_desc">Could not load memory status.</string>
     <string name="memory_providers_heading">Providers</string>
@@ -802,7 +803,10 @@
 
     <!-- Checkpoints section -->
     <string name="system_sec_checkpoints">Checkpoints</string>
-    <string name="system_checkpoints_summary">%1$d session(s) · %2$s</string>
+    <plurals name="system_checkpoints_summary">
+        <item quantity="one">%1$d session · %2$s</item>
+        <item quantity="other">%1$d sessions · %2$s</item>
+    </plurals>
     <string name="system_checkpoints_prune">Prune</string>
     <string name="system_checkpoints_prune_confirm_title">Prune checkpoints</string>
     <string name="system_checkpoints_prune_confirm_desc">Delete the rollback checkpoint shadow store? Existing /rollback points will be lost.</string>
@@ -888,7 +892,10 @@
     <string name="sessions_search_placeholder">Search sessions…</string>
     <string name="sessions_search_empty_title">No results</string>
     <string name="sessions_search_empty_desc">No sessions match “%1$s”</string>
-    <string name="sessions_search_results_header">%1$d result(s) for “%2$s”</string>
+    <plurals name="sessions_search_results_header">
+        <item quantity="one">%1$d result for “%2$s”</item>
+        <item quantity="other">%1$d results for “%2$s”</item>
+    </plurals>
     <string name="sessions_search_played_at">Played %1$s</string>
     <string name="sessions_search_match_label">Match</string>
     <string name="sessions_search_model_label">Model</string>
@@ -900,7 +907,10 @@
     <string name="sessions_automations_empty_desc">Runs started by scheduled automations will appear here.</string>
     <string name="sessions_section_automation_job">Job %1$s</string>
     <string name="sessions_section_automation_unknown">Automation run</string>
-    <string name="sessions_section_automation_runs">%1$d loaded run(s)</string>
+    <plurals name="sessions_section_automation_runs">
+        <item quantity="one">%1$d loaded run</item>
+        <item quantity="other">%1$d loaded runs</item>
+    </plurals>
     <string name="sessions_action_prune">Prune</string>
     <string name="sessions_prune_title">Prune Old Sessions</string>
     <string name="sessions_prune_desc">Delete sessions older than the specified number of days.</string>
@@ -909,12 +919,18 @@
     <string name="sessions_pruning">Pruning old sessions…</string>
     <string name="sessions_empty_cleanup_desc">Empty</string>
     <string name="sessions_empty_cleanup_title">Delete empty sessions?</string>
-    <string name="sessions_empty_cleanup_message">Delete %1$d empty session(s). Active and archived sessions are kept.</string>
+    <plurals name="sessions_empty_cleanup_message">
+        <item quantity="one">Delete %1$d empty session. Active and archived sessions are kept.</item>
+        <item quantity="other">Delete %1$d empty sessions. Active and archived sessions are kept.</item>
+    </plurals>
     <string name="sessions_empty_cleanup_confirm">Delete</string>
     <string name="sessions_delete_title">Delete Session?</string>
     <string name="sessions_delete_message">Are you sure you want to delete \"%1$s\"? This can\'t be undone.</string>
     <string name="sessions_bulk_delete_title">Delete Sessions?</string>
-    <string name="sessions_bulk_delete_message">Are you sure you want to delete %1$d session(s)? This can\'t be undone.</string>
+    <plurals name="sessions_bulk_delete_message">
+        <item quantity="one">Are you sure you want to delete %1$d session? This can\'t be undone.</item>
+        <item quantity="other">Are you sure you want to delete %1$d sessions? This can\'t be undone.</item>
+    </plurals>
     <string name="sessions_action_select_all">Select All</string>
     <string name="sessions_action_deselect_all">Deselect</string>
     <string name="sessions_action_delete_n">Delete %1$d</string>
@@ -1219,6 +1235,8 @@
     <string name="mcp_servers_env_key">Key</string>
     <string name="mcp_servers_env_value">Value</string>
     <string name="mcp_servers_env_no_vars">No environment variables configured.</string>
+    <string name="mcp_servers_env_remove_confirm_title">Remove %1$s?</string>
+    <string name="mcp_servers_env_remove_confirm_msg">This deletes the environment variable from the MCP server configuration. If it holds a secret, you have to enter it again to restore it.</string>
     <string name="mcp_servers_catalog_search">Search catalog…</string>
     <string name="mcp_servers_catalog_empty">No catalog entries match your search.</string>
     <string name="mcp_servers_catalog_install">Install</string>
@@ -1404,6 +1422,10 @@
     <string name="pairing_label_unknown_user">Unknown user</string>
     <string name="pairing_label_request_age_m">%1$dm ago</string>
     <string name="pairing_label_request_age_hm">%1$dh %2$dm ago</string>
+    <string name="pairing_confirm_clear_title">Clear pending requests?</string>
+    <string name="pairing_confirm_clear_msg">All pending pairing requests are removed. Users have to request access again.</string>
+    <string name="pairing_confirm_revoke_title">Revoke access?</string>
+    <string name="pairing_confirm_revoke_msg">%1$s (%2$s) loses access to your messaging channels until you approve them again.</string>
 
     <!-- Settings -->
     <string name="settings_saved_profiles">Saved Profiles (%1$d)</string>
@@ -1593,6 +1615,8 @@
     <string name="model_picker_no_models">No models available.</string>
     <string name="model_picker_search">Search models and providers...</string>
     <string name="model_reset_all_auto">Reset all to auto</string>
+    <string name="model_reset_all_auto_confirm_title">Reset all auxiliary tasks?</string>
+    <string name="model_reset_all_auto_confirm_msg">Every auxiliary task goes back to auto and uses the main model. Your per-task overrides are removed.</string>
     <string name="model_search_placeholder">Search models...</string>
     <string name="model_set_aux">Set Aux: %1$s</string>
     <string name="model_set_main">Set Main Model</string>
@@ -1637,7 +1661,10 @@
     <string name="system_checkpoint_prune">Checkpoint prune</string>
     <string name="system_config_migrate">Config migrate</string>
     <string name="system_curator_run">Curator run</string>
-    <string name="system_more_lines">... %1$d more line(s)</string>
+    <plurals name="system_more_lines">
+        <item quantity="one">... %1$d more line</item>
+        <item quantity="other">... %1$d more lines</item>
+    </plurals>
     <string name="system_prompt_size_check">Prompt size check</string>
     <string name="system_security_audit">Security audit</string>
     <string name="system_skills_update">Skills update</string>

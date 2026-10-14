@@ -279,6 +279,21 @@ fun EnvVarSection(
 ) {
     val isEditing = !server.isPluginOwned && state.editingEnvFor == server.name
     val env = server.env ?: emptyMap()
+    var envKeyToRemove by remember { mutableStateOf<String?>(null) }
+
+    envKeyToRemove?.let { key ->
+        ConfirmDialog(
+            title = stringResource(R.string.mcp_servers_env_remove_confirm_title, key),
+            message = stringResource(R.string.mcp_servers_env_remove_confirm_msg),
+            confirmText = stringResource(R.string.action_remove),
+            isDestructive = true,
+            onConfirm = {
+                envKeyToRemove = null
+                viewModel.removeEnvVar(server.name, key)
+            },
+            onDismiss = { envKeyToRemove = null },
+        )
+    }
 
     Column(modifier = modifier) {
         if (env.isEmpty() && !isEditing) {
@@ -303,7 +318,7 @@ fun EnvVarSection(
                         )
                     }
                     IconButton(
-                        onClick = { viewModel.removeEnvVar(server.name, key) },
+                        onClick = { envKeyToRemove = key },
                         enabled = !server.isPluginOwned,
                     ) {
                         Icon(

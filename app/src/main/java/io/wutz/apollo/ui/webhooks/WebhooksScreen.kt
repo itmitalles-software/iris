@@ -449,7 +449,7 @@ private fun SubscriptionCard(
                             if (isEnabled) {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

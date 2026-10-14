@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -214,7 +215,7 @@ fun SearchBar(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .heightIn(min = 40.dp)
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     shape = RoundedCornerShape(12.dp),
@@ -242,7 +243,7 @@ fun SearchBar(
                         Text(
                             text = placeholder,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     innerTextField()
@@ -250,7 +251,7 @@ fun SearchBar(
                 if (query.isNotEmpty()) {
                     IconButton(
                         onClick = { onQueryChange("") },
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,

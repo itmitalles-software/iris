@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -169,7 +172,9 @@ fun HermesScaffold(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentWindowInsets = WindowInsets.navigationBars,
+        // targetSdk 35+ enforces edge-to-edge, so adjustResize no longer shrinks the window for the
+        // keyboard. Pad the content by the IME as well so bottom fields and Save buttons stay visible.
+        contentWindowInsets = WindowInsets.navigationBars.union(WindowInsets.ime),
         snackbarHost = { snackbarHost() },
         topBar = {
             TopAppBar(
@@ -237,6 +242,8 @@ fun HermesScaffold(
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        // Screens that still apply imePadding() themselves must not pad twice.
+                        .consumeWindowInsets(paddingValues)
                         .padding(
                             start = paddingValues.calculateStartPadding(layoutDirection),
                             end = paddingValues.calculateEndPadding(layoutDirection),

@@ -207,7 +207,6 @@ fun SkillsStep(
                             )
                             IconButton(
                                 onClick = { onAddedHubSkillsChange(addedHubSkills - skillName) },
-                                modifier = Modifier.size(24.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,

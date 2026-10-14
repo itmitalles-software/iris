@@ -408,7 +408,7 @@ fun ComposerToolbar(
                                         Text(
                                             text = stringResource(R.string.chat_fast_mode_unavailable),
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
@@ -451,7 +451,7 @@ fun ComposerToolbar(
                         Text(
                             text = stringResource(R.string.chat_reasoning_header),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         )
@@ -459,7 +459,7 @@ fun ComposerToolbar(
                             Text(
                                 text = stringResource(R.string.chat_reasoning_always_on),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
                             )
                         }
@@ -467,7 +467,7 @@ fun ComposerToolbar(
                             Text(
                                 text = stringResource(R.string.chat_reasoning_unsupported),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
                             )
                         }

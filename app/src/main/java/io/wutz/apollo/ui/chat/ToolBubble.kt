@@ -216,7 +216,7 @@ internal fun ToolBubble(
                             ),
                         style =
                             MaterialTheme.typography.bodySmall.copy(
-                                color = contentColor.copy(alpha = 0.7f),
+                                color = contentColor,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp,
                             ),
@@ -250,7 +250,7 @@ internal fun ToolBubble(
                                 text = buildHighlightedString(firstLine, searchQuery, isCurrentMatch, statusColors),
                                 style =
                                     MaterialTheme.typography.bodySmall.copy(
-                                        color = contentColor.copy(alpha = 0.7f),
+                                        color = contentColor,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp,
                                     ),
@@ -263,7 +263,7 @@ internal fun ToolBubble(
                                 text = buildHighlightedString(secondLine, searchQuery, isCurrentMatch, statusColors),
                                 style =
                                     MaterialTheme.typography.bodySmall.copy(
-                                        color = contentColor.copy(alpha = 0.5f),
+                                        color = contentColor,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp,
                                     ),
@@ -334,7 +334,7 @@ internal fun ToolBubble(
                 // ── Timestamp ──
                 Text(
                     text = formatTimestamp(message.timestamp, DateFormat.is24HourFormat(LocalContext.current)),
-                    color = contentColor.copy(alpha = 0.5f),
+                    color = contentColor,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.align(Alignment.End).padding(top = 4.dp),
                 )

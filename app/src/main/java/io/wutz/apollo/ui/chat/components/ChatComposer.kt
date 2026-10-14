@@ -672,7 +672,7 @@ fun AttachmentChip(
                 modifier = Modifier.widthIn(max = 120.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
-            IconButton(onClick = onRemove, modifier = Modifier.size(18.dp)) {
+            IconButton(onClick = onRemove, modifier = Modifier.size(40.dp)) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = stringResource(R.string.chat_attach_remove_desc),

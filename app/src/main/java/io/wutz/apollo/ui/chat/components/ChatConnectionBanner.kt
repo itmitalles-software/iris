@@ -78,7 +78,7 @@ fun ChatConnectionBanner(
                             Modifier
                                 .weight(1f, fill = false)
                                 .semantics { liveRegion = LiveRegionMode.Polite },
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         text =
                             when (connectionStatus) {

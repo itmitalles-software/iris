@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
@@ -49,8 +50,9 @@ fun LazyListScope.checkpointsSection(
                     InfoRow(
                         label = "",
                         value =
-                            stringResource(
-                                R.string.system_checkpoints_summary,
+                            pluralStringResource(
+                                R.plurals.system_checkpoints_summary,
+                                sessionsCount,
                                 sessionsCount,
                                 formatBytes(totalBytes),
                             ),

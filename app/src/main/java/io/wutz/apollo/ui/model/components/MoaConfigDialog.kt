@@ -353,7 +353,7 @@ private fun MoaConfigEditor(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                 ) { Text(stringResource(R.string.model_action_change), style = MaterialTheme.typography.labelSmall) }
                 if (effectivePreset.reference_models.size > 1) {
-                    IconButton(onClick = { onRemoveReference(index) }, modifier = Modifier.size(24.dp)) {
+                    IconButton(onClick = { onRemoveReference(index) }) {
                         Icon(
                             Icons.Filled.Close,
                             contentDescription = stringResource(R.string.a11y_remove_named, slot.model),
