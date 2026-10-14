@@ -3,12 +3,14 @@
 _Last updated: 2026-10-14_
 
 Owner decisions are in `DECISIONS.md`; open work is in GitHub Issues
-(currently #4 real-phone check, #28 credential recovery after a device transfer).
+(#4 real-phone check, #28 credential recovery after a device transfer, and
+the deferred improvement items #29-#41).
 
 ## Repository
 
-- GitHub: `wutz-io/apollo-hermes-android` (public), branch `main` (no branch
-  protection; merge when CI Summary is green).
+- GitHub: `wutz-io/apollo-hermes-android` (public), branch `main`. Rulesets
+  since 2026-10-14: no force-push or deletion on main (direct pushes allowed),
+  `v*` tags admin-only. Merge when CI Summary is green.
 - Started as a fork of `Hy4ri/hermes-mobile` `dev` at `689a2d30`; independent
   since 2026-10-13 (see `ORIGIN.md`). No `upstream` remote; `gh repo
   set-default` points at `wutz-io/apollo-hermes-android`.
@@ -77,6 +79,38 @@ notification taps go through the non-exported alias `.NotificationEntryAlias`;
 session cookies only for the active server (`CookieManager.isActiveServerUrl`),
 GitHub calls through the cookie-less `OkHttpProvider.external`. Testing
 conventions are in `docs/ARCHITECTURE.md`.
+
+## 2026-10-14: improvement round (v0.2.0)
+
+- Six read-only audits (UX/a11y, performance, code health, build/CI, docs,
+  features vs. the Hermes API) produced 116 proposals; reports and the owner's
+  decision page are in `~/reviews/apollo-improvements-2026-10-14/` (local).
+  The owner confirmed all recommendations; deferred items are issues #29-#41.
+- Wave 1 = PRs #42-#48, wave 2 = PR #54 (one merge commit per area).
+- Release workflow: verify (SemVer tag on main, green CI Summary, CHANGELOG
+  section) -> build (environment `release`, the only job with the signing
+  secrets) -> publish (SHA256SUMS, provenance). The signer is pinned in
+  `.github/release-cert.sha256`; release notes come from CHANGELOG.md via
+  `scripts/release-notes.sh`. A tag must point at a main commit whose CI
+  Summary passed (older main commits are often cancelled by concurrency).
+- Signing secrets live in the `release` environment (tag policy `v*`); the
+  repository-level copies are deleted once a release built from the
+  environment succeeded.
+- Gate on the merged state: 3,892 unit tests green; the unsigned Play APK is
+  12.77 MB (no x86, R8 without blanket keeps, app locales only).
+- Emulator-verified (API 37, R8 build, isolated gated hermes serve): login via
+  a LAN URL with the Android 17 local-network prompt, chat streaming,
+  reactions, drafts per chat, History share/Direct Share/archive undo,
+  approval from the notification (with "Stay connected in background"), app
+  lock with a PIN, launcher shortcuts (the non-exported alias rejects adb).
+- Not device-verified: voice shortcut, Quick Settings tile, JSON
+  export/import round trip, memory edit/forget, cron runs, Hermes v0.22.0
+  paths, TalkBack walkthrough, large fonts.
+- Local builds of several agents in parallel: use an isolated
+  GRADLE_USER_HOME and `-Pkotlin.compiler.execution.strategy=in-process`
+  (the shared Kotlin daemon runs out of memory); never `./gradlew --stop`.
+- Instrumented tests: `-Pandroid.testInstrumentationRunnerArguments.class=`
+  takes one class per run here (a comma list ran only the first).
 
 ## Brand assets
 

@@ -1,0 +1,1 @@
+New: approve tool requests from the notification, a draft per chat, emoji reactions, share/export/import chats, edit or forget memories, cron run history, launcher shortcuts, Direct Share, a Quick Settings tile and an optional app lock. Photos upload downscaled. Better accessibility, German error messages, a smaller download and fixes for subagent controls.

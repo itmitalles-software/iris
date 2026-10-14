@@ -1,0 +1,1 @@
+Neu: Freigaben direkt aus der Benachrichtigung, ein Entwurf pro Chat, Emoji-Reaktionen, Chats teilen/exportieren/importieren, Erinnerungen bearbeiten oder vergessen, Cron-Laufhistorie, App-Shortcuts, Direktes Teilen, Schnelleinstellungs-Kachel und optionale App-Sperre. Fotos werden verkleinert hochgeladen. Bessere Barrierefreiheit, deutsche Fehlermeldungen, kleinerer Download.

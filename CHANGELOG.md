@@ -4,6 +4,55 @@ All notable Apollo changes. Apollo follows Semantic Versioning. Since
 2026-10-13 Apollo no longer merges Hermes Mobile changes (see
 [ORIGIN.md](ORIGIN.md)); fixes ported by hand are listed like any other change.
 
+## 0.2.0 — 2026-10-14
+
+Improvement round across the whole app (PRs #42–#48 and #54).
+
+### New
+
+- Approve or deny tool approvals right from the notification (unlock required).
+- Each chat keeps its own unsent draft, also after a restart.
+- React to agent replies with an emoji.
+- Share a conversation as text, export it as JSON and import exports again.
+- Edit or forget a single memory or skill.
+- Cron jobs show their recent runs.
+- Launcher shortcuts (New chat, Voice, History), recent chats in the share
+  sheet and a "New chat" Quick Settings tile.
+- Optional app lock with fingerprint or screen lock (Settings > Behavior).
+- Server notices ("still starting the agent", failed model switch) and
+  mixture-of-agents progress appear in the chat.
+- Open-source licenses in Settings > About; a setup help link on the first
+  screen, whose button now reads "Sign in".
+
+### Changed
+
+- Photos are downscaled to 2048 px before upload; a per-image toggle sends the
+  original.
+- Messages on admin screens appear as snackbars; errors can be copied, and
+  archiving or pinning a chat can be undone. Network errors are shown in
+  German on German devices.
+- Smaller download (about 12.8 MB instead of 16.5 MB): unused code and
+  translations are no longer packaged, and 32-bit x86 devices are no longer
+  supported.
+- On tablets, screens other than the chat use a centered column.
+- Release notes in the update dialog now come from this changelog; each
+  release has a checksum file and a build attestation.
+
+### Fixed
+
+- Stopping or steering a subagent now reaches the subagent instead of sending
+  "/stop" text to the main agent.
+- Interim commentary of models such as Codex shows live in the chat.
+- Android 17: Sign in asks for the local-network permission before connecting
+  to a LAN or Tailscale address.
+- Accessibility: switches, cards, headings and status changes are announced by
+  TalkBack; larger touch targets; no clipped buttons at large font sizes; the
+  keyboard no longer covers editors; better contrast for secondary text;
+  confirmations before revoking pairings, resetting models and removing MCP
+  variables.
+- Ready for Hermes v0.22.0: connection suggestion cards no longer stall a turn
+  for five minutes, and replaced connector accounts are marked.
+
 ## 0.1.6 — 2026-10-14
 
 Fixes from the full code review of 2026-10-14 (PRs #22–#27).
