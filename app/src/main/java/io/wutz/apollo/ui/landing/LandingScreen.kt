@@ -18,9 +18,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +40,7 @@ fun LandingScreen(
     modifier: Modifier = Modifier,
     onConnections: () -> Unit = {},
 ) {
+    val uriHandler = LocalUriHandler.current
     Box(
         modifier =
             modifier
@@ -78,6 +81,14 @@ fun LandingScreen(
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
+            // First-time users need a running Hermes server; the README explains the setup.
+            TextButton(onClick = { runCatching { uriHandler.openUri(SERVER_SETUP_URL) } }) {
+                Text(stringResource(R.string.landing_setup_help))
+            }
         }
     }
 }
+
+/** README section that walks through installing Hermes and reaching it over Tailscale. */
+internal const val SERVER_SETUP_URL =
+    "https://github.com/wutz-io/apollo-hermes-android#connect-over-tailscale-recommended"

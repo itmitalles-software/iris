@@ -13,7 +13,6 @@ import io.wutz.apollo.R
 import io.wutz.apollo.data.config.ConnectionProfile
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.remote.ApiClient
-import io.wutz.apollo.data.remote.AuthPayloads
 import io.wutz.apollo.data.remote.CallbackPageText
 import io.wutz.apollo.data.remote.CertificateOrigin
 import io.wutz.apollo.data.remote.CleartextPolicy
@@ -24,7 +23,9 @@ import io.wutz.apollo.data.remote.NativeCallback
 import io.wutz.apollo.data.remote.NativePkce
 import io.wutz.apollo.data.remote.NativeTokenResult
 import io.wutz.apollo.data.remote.OkHttpProvider
+import io.wutz.apollo.data.remote.PasswordLoginClient
 import io.wutz.apollo.data.remote.ServerEndpoint
+import io.wutz.apollo.data.remote.WsTicketResult
 import io.wutz.apollo.data.remote.await
 import io.wutz.apollo.data.remote.isClientCertificateAuthenticationFailure
 import io.wutz.apollo.data.remote.nativeAuthorizeUrl
@@ -47,7 +48,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 /**
@@ -164,6 +164,8 @@ class AuthLoginViewModel(
 
     private val probeClient: OkHttpClient =
         io.wutz.apollo.data.remote.OkHttpProvider.probe
+
+    private val passwordLoginClient = PasswordLoginClient(ioDispatcher = ioDispatcher)
 
     internal val certificatePrompt = CertificatePromptController()
 
@@ -613,77 +615,21 @@ class AuthLoginViewModel(
             return null
         }
 
-        val jsonBody = AuthPayloads.passwordLogin(username, password, provider ?: "basic")
-
-        try {
-            // Step 1: Authenticate via the password login endpoint to get a session cookie.
-            // IMPORTANT: use the SHARED OkHttpProvider.probe client (it carries the
-            // persistent CookieManager.cookieJar). Do NOT build a fresh client here —
-            // a separate client would not share the jar, so the Set-Cookie from this
-            // login would never reach the ws-ticket request below and auth would fail.
-            val loginReq =
-                Request
-                    .Builder()
-                    .url(endpoint.resolve("auth/password-login").toString())
-                    .header("Content-Type", "application/json")
-                    .post(jsonBody.toRequestBody())
-                    .build()
-            val loginResp = OkHttpProvider.probe.newCall(loginReq).await()
-
-            if (!loginResp.isSuccessful) {
-                val msg =
-                    when (loginResp.code) {
-                        401 -> UiText.res(R.string.connect_error_401)
-                        403 -> UiText.res(R.string.connect_error_403)
-                        else -> UiText.res(R.string.connect_error_http_code, loginResp.code)
-                    }
-                _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
-                return null
-            }
-            // The session cookie is now captured in the shared CookieManager.cookieJar
-            // (issue #470). The ws-ticket request below uses the same jar, so the
-            // authenticated session carries over automatically.
-
-            return mintTicket(endpoint)
-        } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    errorMessage = UiText.res(R.string.connect_error_connection_failed, e.message ?: ""),
-                )
-            }
+        // The session cookie lands in the shared cookie jar, which the ticket request uses too.
+        val loginFailure = passwordLoginClient.login(endpoint, username, password, provider ?: "basic").failureText()
+        if (loginFailure != null) {
+            _uiState.update { it.copy(isLoading = false, errorMessage = loginFailure) }
             return null
         }
+        return mintTicket(endpoint)
     }
 
     /** Mint a WebSocket ticket from the session cookie already in the shared jar. */
     private suspend fun mintTicket(endpoint: ServerEndpoint): ConnectResult? {
-        val ticketReq =
-            Request
-                .Builder()
-                .url(endpoint.resolve("api/auth/ws-ticket").toString())
-                .post("{}".toRequestBody())
-                .build()
-        OkHttpProvider.probe.newCall(ticketReq).await().use { ticketResp ->
-            if (!ticketResp.isSuccessful) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = UiText.res(R.string.connect_error_http_code, ticketResp.code),
-                    )
-                }
-                return null
-            }
-            val ticketMatch = Regex(""""ticket":"([^"]+)"""").find(ticketResp.body.string())
-            val ticket = ticketMatch?.groupValues?.getOrNull(1)
-            if (ticket.isNullOrBlank()) {
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = UiText.res(R.string.auth_login_msg_ws_ticket_failed))
-                }
-                return null
-            }
-            return ConnectResult(wsCredential = ticket)
-        }
+        val result = passwordLoginClient.mintTicket(endpoint)
+        if (result is WsTicketResult.Success) return ConnectResult(wsCredential = result.ticket)
+        _uiState.update { it.copy(isLoading = false, errorMessage = result.failureText()) }
+        return null
     }
 
     /**
@@ -809,21 +755,7 @@ class AuthLoginViewModel(
         return when (result) {
             is NativeTokenResult.Success -> {
                 CookieManager.installNativeSession(result.tokens, endpoint)
-                val ticket =
-                    try {
-                        mintTicket(endpoint)
-                    } catch (e: IOException) {
-                        _uiState.update {
-                            it.copy(
-                                errorMessage =
-                                    UiText.res(
-                                        R.string.connect_error_connection_failed,
-                                        e.message ?: "",
-                                    ),
-                            )
-                        }
-                        null
-                    }
+                val ticket = mintTicket(endpoint)
                 if (ticket == null) {
                     CookieManager.setSessionCookie(null, endpoint)
                     BrowserOutcome()

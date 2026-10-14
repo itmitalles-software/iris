@@ -36,7 +36,7 @@ session token and no password.
 
 ### 2. Connect the app
 
-Tap **Auth Login** on the landing screen and enter the server address (for
+Tap **Sign in** on the landing screen and enter the server address (for
 example `https://<machine>.<tailnet>.ts.net`). Apollo probes the server and
 shows the fields it needs:
 

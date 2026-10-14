@@ -130,7 +130,7 @@ Options: `--generate-password`, `--port`, `--public-url`, `--no-service` (prints
 the command to run Hermes yourself, e.g. on systems without systemd) and
 `--uninstall`. See `--help`.
 
-Then, in Apollo: tap **Auth Login**, enter `https://<machine>.<tailnet>.ts.net` and
+Then, in Apollo: tap **Sign in**, enter `https://<machine>.<tailnet>.ts.net` and
 log in. Apollo detects the auth mode, stores the session in encrypted storage
 and reconnects automatically.
 
@@ -182,6 +182,9 @@ and multiple servers. Plain `http://` works for trusted networks only.
   command before you allow it.
 - Apollo runs no backend, cloud relay or push service of its own.
   Notifications come from the app's own connection to your server.
+- An optional app lock (Settings > Behavior > App lock, off by default) asks
+  for your fingerprint, face or screen lock when Apollo opens and after it was
+  in the background for a set time. Notification actions are not covered by it.
 
 ## Development
 

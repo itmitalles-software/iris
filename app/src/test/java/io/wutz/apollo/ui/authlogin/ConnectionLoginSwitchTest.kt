@@ -9,6 +9,7 @@ import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.wutz.apollo.data.config.ConnectionProfile
 import io.wutz.apollo.data.local.AuthManager
+import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,6 +18,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -42,6 +44,10 @@ class ConnectionLoginSwitchTest {
         every { AuthManager.getConnectionProfiles() } answers { savedProfiles }
         every { AuthManager.getProfileToken(any()) } returns null
         coEvery { ProfileSwitchCoordinator.switchConnectionProfile(any()) } returns Unit
+        // The view model reads the shared probe client on construction; without this stub the test
+        // only passed when an earlier test in the same JVM had already built the real client.
+        mockkObject(OkHttpProvider)
+        every { OkHttpProvider.probe } returns mockk<OkHttpClient>(relaxed = true)
         viewModel = AuthLoginViewModel(app)
     }
 

@@ -19,6 +19,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import io.wutz.apollo.applock.AppLock
+import io.wutz.apollo.applock.AppLockGate
+import io.wutz.apollo.applock.AppLockPrompt
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.update.UpdateNoticeManager
 import io.wutz.apollo.data.ws.HermesWsClient
@@ -74,6 +77,9 @@ class MainActivity : ComponentActivity() {
 
     private var baseContextLanguageCode: String = LocaleContextWrapper.SYSTEM_LANGUAGE
 
+    // Registers its activity-result launcher, so it must exist before the activity starts.
+    private val appLockPrompt = AppLockPrompt(this)
+
     /**
      * Apply the user-selected display language before any view is inflated.
      * Reads the persisted code from [AuthManager]; an uninitialized store
@@ -110,6 +116,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        appLockPrompt.observe()
         enableEdgeToEdge()
         setContent {
             val themePreference by AuthManager.themePreferenceFlow.collectAsState()
@@ -143,7 +150,12 @@ class MainActivity : ComponentActivity() {
                                 }
                                 LoadingState()
                             } else {
-                                MainNavigation()
+                                AppLockGate(
+                                    onUnlock = appLockPrompt::authenticate,
+                                    onBackWhileLocked = { moveTaskToBack(true) },
+                                ) {
+                                    MainNavigation()
+                                }
                             }
                         }
 
@@ -159,6 +171,31 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        StartupDrawGate(isReady = ::isReadyForFirstFrame).install(findViewById(android.R.id.content))
+    }
+
+    /**
+     * The first frame waits for the stored settings, and for the recreation that applies a saved
+     * display language, so a cold start shows no loading spinner between the splash and the content.
+     */
+    private fun isReadyForFirstFrame(): Boolean =
+        when (AuthManager.initializationState.value) {
+            AuthManager.InitializationState.Loading -> {
+                false
+            }
+
+            AuthManager.InitializationState.Failed -> {
+                true
+            }
+
+            AuthManager.InitializationState.Ready -> {
+                runCatching { AuthManager.getAppLanguage() == baseContextLanguageCode }.getOrDefault(true)
+            }
+        }
+
+    override fun onStart() {
+        super.onStart()
+        AppLock.onForeground()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -191,7 +228,10 @@ class MainActivity : ComponentActivity() {
         // isChangingConfigurations is reliable here, not during onPause.
         // Keep the shared socket alive across recreation, but still release an
         // idle connection when the user really leaves the app or locks the phone.
-        if (!isChangingConfigurations) NotificationHelper.setAppForeground(this, false)
+        if (!isChangingConfigurations) {
+            NotificationHelper.setAppForeground(this, false)
+            AppLock.onBackground()
+        }
         super.onStop()
     }
 

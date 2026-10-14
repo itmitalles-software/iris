@@ -804,11 +804,7 @@ class ChatViewModel(
             ioDispatcher = ioDispatcher,
         )
 
-    private val reloginAuthenticator =
-        io.wutz.apollo.data.remote.ChatReloginAuthenticator(
-            ioDispatcher = ioDispatcher,
-            mainDispatcher = Dispatchers.Main,
-        )
+    private val reloginAuthenticator = ChatReloginAuthenticator(ioDispatcher = ioDispatcher)
 
     private val modelSwitchDelegate =
         ChatModelSwitchDelegate(
@@ -7238,20 +7234,12 @@ class ChatViewModel(
     fun relogin(
         username: String,
         password: String,
-        onResult: (Boolean, String?) -> Unit,
+        onResult: (Boolean, UiText?) -> Unit,
     ) {
         viewModelScope.launch {
-            reloginAuthenticator.relogin(
-                username = username,
-                password = password,
-                onSuccess = {
-                    onResult(true, null)
-                    reconnect()
-                },
-                onFailure = { msg ->
-                    onResult(false, msg)
-                },
-            )
+            val error = reloginAuthenticator.relogin(username, password)
+            onResult(error == null, error)
+            if (error == null) reconnect()
         }
     }
 
