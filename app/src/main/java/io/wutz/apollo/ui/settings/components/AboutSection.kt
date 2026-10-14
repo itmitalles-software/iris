@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -21,7 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.BuildConfig
 import io.wutz.apollo.R
@@ -45,6 +50,9 @@ internal fun AboutSection(
     onOpenInstallSettings: () -> Unit = {},
     selfUpdateAvailable: Boolean = UpdateNoticeManager.selfUpdateAvailable,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val websiteUrl = stringResource(R.string.brand_website)
+    val openLinkLabel = stringResource(R.string.a11y_open_link)
     SectionCard {
         if (apolloArtEnabled()) {
             ApolloIllustration(
@@ -65,7 +73,8 @@ internal fun AboutSection(
 
         InfoRow(
             label = stringResource(R.string.settings_about_developer),
-            value = stringResource(R.string.brand_website),
+            value = websiteUrl,
+            modifier = Modifier.linkTarget(openLinkLabel) { uriHandler.openUri(websiteUrl) },
         )
         InfoRow(
             label = stringResource(R.string.settings_about_version),
@@ -105,17 +114,18 @@ internal fun AboutSection(
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        // The 48dp link targets supply the vertical spacing the fixed spacers used to provide.
         Text(
-            text = "https://github.com/wutz-io/apollo-hermes-android",
+            text = REPOSITORY_URL,
+            modifier = Modifier.linkTarget(openLinkLabel) { uriHandler.openUri(REPOSITORY_URL) },
             style =
                 MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.primary,
                 ),
         )
-        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.settings_about_upstream_credit),
+            modifier = Modifier.linkTarget(openLinkLabel) { uriHandler.openUri(UPSTREAM_URL) },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -278,7 +288,15 @@ private fun ReleaseCandidateRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
+                ).padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -297,8 +315,21 @@ private fun ReleaseCandidateRow(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = null,
             enabled = enabled,
         )
     }
 }
+
+private const val REPOSITORY_URL = "https://github.com/wutz-io/apollo-hermes-android"
+private const val UPSTREAM_URL = "https://github.com/Hy4ri/hermes-mobile"
+
+/** A tappable link line with a 48dp minimum height and a TalkBack action label. */
+private fun Modifier.linkTarget(
+    label: String,
+    onOpen: () -> Unit,
+): Modifier =
+    fillMaxWidth()
+        .heightIn(min = 48.dp)
+        .clickable(onClickLabel = label, role = Role.Button, onClick = onOpen)
+        .wrapContentHeight(Alignment.CenterVertically)

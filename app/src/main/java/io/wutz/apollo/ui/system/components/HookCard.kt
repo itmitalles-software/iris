@@ -112,7 +112,11 @@ internal fun HookCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.action_delete),
+                    contentDescription =
+                        stringResource(
+                            R.string.a11y_delete_named,
+                            hook.command ?: hook.event.orEmpty(),
+                        ),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp),
                 )

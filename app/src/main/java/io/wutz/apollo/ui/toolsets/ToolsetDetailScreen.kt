@@ -72,6 +72,8 @@ import io.wutz.apollo.ui.common.StatusBadge
 import io.wutz.apollo.ui.common.StatusBadgeType
 import io.wutz.apollo.ui.common.ToastEffect
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.expandToggleLabels
+import io.wutz.apollo.ui.common.expandToggleSemantics
 import io.wutz.apollo.ui.common.listContentPadding
 import io.wutz.apollo.ui.common.listItemSpacing
 
@@ -290,6 +292,7 @@ private fun ToolsetProviderCard(
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .expandToggleSemantics(expandToggleLabels(expanded))
                         .clickable(onClick = onToggleExpanded)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,

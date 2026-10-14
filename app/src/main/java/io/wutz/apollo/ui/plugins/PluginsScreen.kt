@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -507,10 +509,20 @@ private fun InstallSection(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier =
+                        Modifier
+                            .toggleable(
+                                value = state.installForce,
+                                enabled = !state.installBusy,
+                                role = Role.Switch,
+                                onValueChange = { viewModel.updateInstallForce(it) },
+                            ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Switch(
                         checked = state.installForce,
-                        onCheckedChange = { viewModel.updateInstallForce(it) },
+                        onCheckedChange = null,
                         enabled = !state.installBusy,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -519,10 +531,20 @@ private fun InstallSection(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier =
+                        Modifier
+                            .toggleable(
+                                value = state.installEnable,
+                                enabled = !state.installBusy,
+                                role = Role.Switch,
+                                onValueChange = { viewModel.updateInstallEnable(it) },
+                            ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Switch(
                         checked = state.installEnable,
-                        onCheckedChange = { viewModel.updateInstallEnable(it) },
+                        onCheckedChange = null,
                         enabled = !state.installBusy,
                     )
                     Spacer(modifier = Modifier.width(8.dp))

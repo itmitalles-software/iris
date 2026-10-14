@@ -136,7 +136,7 @@ internal fun TelegramOnboardingDialog(
                                 IconButton(onClick = { onRemoveAllowedId(id) }) {
                                     Icon(
                                         imageVector = Icons.Filled.Close,
-                                        contentDescription = stringResource(R.string.action_remove),
+                                        contentDescription = stringResource(R.string.a11y_remove_named, id),
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }

@@ -52,6 +52,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,6 +71,7 @@ import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.common.DisableDrawerGestures
 import io.wutz.apollo.ui.common.DrawerGestureController
 import io.wutz.apollo.ui.common.LocalDrawerGestureController
+import io.wutz.apollo.ui.common.LocalPersistentSidebarVisible
 import io.wutz.apollo.ui.plugins.MemoryProviderDetailScreen
 import io.wutz.apollo.ui.settings.ClientCertificatesPage
 import io.wutz.apollo.ui.settings.SettingsAboutPage
@@ -316,11 +320,26 @@ fun MainNavigation(sessionId: String? = null) {
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.width(8.dp))
+            val statusDescription =
+                stringResource(
+                    R.string.a11y_connection_status,
+                    stringResource(
+                        when (connectionStatus) {
+                            ConnectionStatus.CONNECTED -> R.string.a11y_connection_connected
+                            ConnectionStatus.CONNECTING -> R.string.chat_status_connecting
+                            ConnectionStatus.RECONNECTING -> R.string.chat_status_reconnecting
+                            ConnectionStatus.DISCONNECTED -> R.string.chat_status_disconnected
+                            ConnectionStatus.NO_NETWORK -> R.string.chat_status_no_network
+                            ConnectionStatus.AUTH_EXPIRED -> R.string.chat_status_auth_expired
+                        },
+                    ),
+                )
             Box(
                 modifier =
                     Modifier
                         .size(10.dp)
-                        .background(color = statusColor, shape = CircleShape),
+                        .background(color = statusColor, shape = CircleShape)
+                        .semantics { contentDescription = statusDescription },
             )
         }
         Text(
@@ -335,12 +354,13 @@ fun MainNavigation(sessionId: String? = null) {
             Text(
                 text = stringResource(section.titleRes).uppercase(),
                 modifier =
-                    Modifier.padding(
-                        start = 16.dp,
-                        top = 8.dp,
-                        bottom = 4.dp,
-                        end = 16.dp,
-                    ),
+                    Modifier
+                        .padding(
+                            start = 16.dp,
+                            top = 8.dp,
+                            bottom = 4.dp,
+                            end = 16.dp,
+                        ).semantics { heading() },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold,
@@ -395,7 +415,10 @@ fun MainNavigation(sessionId: String? = null) {
         if (isExpandedWidth) drawerState.snapTo(DrawerValue.Closed)
     }
 
-    CompositionLocalProvider(LocalDrawerGestureController provides gestureController) {
+    CompositionLocalProvider(
+        LocalDrawerGestureController provides gestureController,
+        LocalPersistentSidebarVisible provides if (isExpandedWidth) sidebarVisible else null,
+    ) {
         // One layout for every width: NavDisplay keeps the same composition position, so
         // crossing the threshold (rotation, unfolding) keeps drafts and scroll state.
         ModalNavigationDrawer(
