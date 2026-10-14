@@ -130,6 +130,24 @@ class VoiceActivityDetectorTest {
         assertTrue(vad.feed(SPEECH, 2_000).isEmpty())
     }
 
+    @Test
+    fun `the noise floor is the median of the most recent quiet frames`() {
+        // A huge multiplier keeps every frame below the trigger, so each one is a floor sample.
+        val cap = 7
+        val multiplier = 1e9
+        val vad =
+            VoiceActivityDetector(VadConfig(minTriggerRms = 0.0, floorMultiplier = multiplier, floorSampleCap = cap))
+        val random = java.util.Random(42)
+        val samples = mutableListOf<Double>()
+        repeat(60) {
+            val rms = random.nextInt(2_000).toDouble()
+            samples += rms
+            vad.onFrame(rms, playing = false)
+            val recent = samples.takeLast(cap).sorted()
+            assertEquals(recent[recent.size / 2] * multiplier, vad.trigger(playing = false), 1e-3)
+        }
+    }
+
     private companion object {
         const val QUIET = 120.0
         const val BLEED = 1_200.0

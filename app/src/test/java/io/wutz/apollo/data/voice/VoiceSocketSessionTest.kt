@@ -295,6 +295,7 @@ class VoiceSocketSessionTest {
             session.push(byteArrayOf(1, 2))
             Thread.sleep(500)
             assertTrue(session.hasFailed)
+            assertTrue(session.wasRejected)
             assertNull(session.finish(1_000))
         }
 
@@ -306,6 +307,8 @@ class VoiceSocketSessionTest {
             session.open()
             Thread.sleep(300)
             assertNull(session.finish(300))
+            // A slow or dropped socket is not a refusal: the next utterance tries live STT again.
+            assertFalse(session.wasRejected)
         }
 
     @Test
@@ -314,6 +317,7 @@ class VoiceSocketSessionTest {
             val session = TranscribeStreamSession(scope, 96_000, {}, { _, _ -> error("must not open") })
             session.open()
             assertTrue(session.hasFailed)
+            assertTrue(session.wasRejected)
             assertNull(session.finish(100))
         }
 }

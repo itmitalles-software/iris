@@ -40,7 +40,7 @@ class ReplySpeechTest {
     private class FakeSink(
         val rate: Int,
         val channels: Int,
-        private val onDrained: () -> Unit,
+        private val onDrained: (Boolean) -> Unit,
     ) : PcmSink {
         val written = mutableListOf<ByteArray>()
         var finished = false
@@ -54,7 +54,7 @@ class ReplySpeechTest {
             finished = true
         }
 
-        fun drain() = onDrained()
+        fun drain(played: Boolean = true) = onDrained(played)
 
         override fun stop() {
             stopped = true
@@ -169,7 +169,7 @@ class ReplySpeechTest {
         }
 
     @Test
-    fun `socket failure after audio keeps what played`() =
+    fun `socket failure after audio plays out what arrived, then reports the reply unspoken`() =
         runTest {
             val speech = speech()
             speech.append("Long reply.")
@@ -177,10 +177,45 @@ class ReplySpeechTest {
             stream.callbacks.onPcm(byteArrayOf(1, 2))
             stream.callbacks.onFailure()
             speech.finish()
-            sinks.single().drain()
+            val sink = sinks.single()
+            assertTrue(sink.finished)
+            runCurrent()
+            assertEquals(listOf("audio"), listener.events)
+
+            sink.drain()
             advanceUntilIdle()
             assertTrue(relayed.isEmpty())
-            assertEquals(listOf("audio", "finished"), listener.events)
+            assertEquals(listOf("audio", "failed"), listener.events)
+        }
+
+    @Test
+    fun `a stall after audio started reports the reply unspoken`() =
+        runTest {
+            val speech = speech(stallMs = 5_000L)
+            speech.append("Long reply.")
+            stream.callbacks.onPcm(byteArrayOf(1, 2))
+            speech.finish()
+            advanceTimeBy(6_000L)
+            runCurrent()
+            val sink = sinks.single()
+            assertTrue(sink.finished)
+            sink.drain()
+            advanceUntilIdle()
+            assertTrue(relayed.isEmpty())
+            assertEquals(listOf("audio", "failed"), listener.events)
+        }
+
+    @Test
+    fun `a playback failure is reported, not taken for the end of the audio`() =
+        runTest {
+            val speech = speech()
+            speech.append("Hello.")
+            stream.callbacks.onPcm(byteArrayOf(1, 2))
+            speech.finish()
+            stream.callbacks.onEnd()
+            sinks.single().drain(played = false)
+            advanceUntilIdle()
+            assertEquals(listOf("audio", "failed"), listener.events)
         }
 
     @Test
@@ -192,6 +227,34 @@ class ReplySpeechTest {
             stream.callbacks.onEnd()
             advanceUntilIdle()
             assertEquals(listOf("finished"), listener.events)
+        }
+
+    @Test
+    fun `an announced format without audio never opens a player`() =
+        runTest {
+            val speech = speech()
+            speech.append("```code only```")
+            stream.callbacks.onFormat(24_000, 1)
+            speech.finish()
+            stream.callbacks.onEnd()
+            advanceUntilIdle()
+            assertTrue(sinks.isEmpty())
+            assertEquals(listOf("finished"), listener.events)
+        }
+
+    @Test
+    fun `the player uses the announced format once audio arrives`() =
+        runTest {
+            val speech = speech()
+            speech.append("Hi.")
+            stream.callbacks.onFormat(48_000, 2)
+            assertTrue(sinks.isEmpty())
+            stream.callbacks.onPcm(byteArrayOf(1, 2, 3, 4))
+            val sink = sinks.single()
+            assertEquals(48_000, sink.rate)
+            assertEquals(2, sink.channels)
+            speech.cancel()
+            advanceUntilIdle()
         }
 
     @Test

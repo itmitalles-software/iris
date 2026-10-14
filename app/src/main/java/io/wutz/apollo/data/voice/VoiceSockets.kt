@@ -233,8 +233,18 @@ class TranscribeStreamSession(
     /** True once live STT can no longer deliver a transcript. */
     val hasFailed: Boolean get() = failed
 
+    @Volatile
+    private var rejected = false
+
+    /**
+     * True when the server refused live STT (an `error` frame) or the rate is unsupported: retrying
+     * with the next utterance would fail the same way, so the caller should go straight to upload.
+     */
+    val wasRejected: Boolean get() = rejected
+
     fun open() {
         if (sampleRate !in TRANSCRIBE_STREAM_SAMPLE_RATES) {
+            rejected = true
             fail()
             return
         }
@@ -317,6 +327,7 @@ class TranscribeStreamSession(
                     }
 
                     is TranscribeStreamServerFrame.Error -> {
+                        if (!result.isCompleted) rejected = true
                         fail()
                     }
 

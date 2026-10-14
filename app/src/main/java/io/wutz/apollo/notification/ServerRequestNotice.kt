@@ -49,3 +49,40 @@ internal fun serverRequestNotice(
         }
     }
 }
+
+/** Notification extra naming the server request a background notification announces. */
+internal const val EXTRA_SERVER_REQUEST_ID = "apollo_server_request_id"
+
+/**
+ * Server requests the notification service has seen. The gateway re-sends still-open requests
+ * (`open_requests`, `replayed = true`) on every resume, so only a request's first sighting alerts;
+ * a request the gateway withdrew is no longer open and must not be announced late.
+ */
+internal class ServerRequestSightings(
+    private val capacity: Int = 64,
+) {
+    /** Request id → still open. Oldest ids are forgotten beyond [capacity]. */
+    private val requests = LinkedHashMap<String, Boolean>()
+
+    /** Records [id]; true on its first sighting, false for a replay of a known request. */
+    @Synchronized
+    fun onRequest(id: String): Boolean {
+        if (requests.containsKey(id)) return false
+        remember(id, open = true)
+        return true
+    }
+
+    @Synchronized
+    fun onCancelled(id: String) = remember(id, open = false)
+
+    @Synchronized
+    fun isOpen(id: String): Boolean = requests[id] == true
+
+    private fun remember(
+        id: String,
+        open: Boolean,
+    ) {
+        requests[id] = open
+        while (requests.size > capacity) requests.remove(requests.keys.first())
+    }
+}

@@ -164,7 +164,14 @@ effects against a per-conversation `VoiceEngine` (`AndroidVoiceEngine`: mic +
 streamed reply). The audio sockets (`data/voice/`) authenticate like `/api/ws`
 (a fresh `mintWsTicket()` credential per socket) and carry `?profile=`
 explicitly because the OkHttp WebSocket client has no `ProfileScopeInterceptor`.
-`ChatScreen` stops the mode on ON_STOP, disposal and session switches.
+`ChatScreen` stops the mode on ON_STOP, disposal and session switches; losing
+the audio focus (call, navigation) ends it too.
+
+Reply events carry no turn id. Transcripts are therefore sent as plain text
+(no attachments, no slash commands) with `INTERRUPT` (after a barge-in) or
+`QUEUE`, never steered/redirected into a running turn. When a turn was still
+running at send time, the machine (`ReplyTurn.BEHIND_RUNNING_TURN`) ignores
+that turn's `message.complete` and adopts only the next `message.start`.
 
 ### Shared Components
 

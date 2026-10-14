@@ -33,7 +33,7 @@ internal fun voiceReplyAudioAttributes(): AudioAttributes =
 class AudioTrackPcmSink(
     private val sampleRate: Int,
     channels: Int,
-    private val onDrained: () -> Unit,
+    private val onDrained: (played: Boolean) -> Unit,
 ) : PcmSink {
     private val frameBytes = PcmAudio.BYTES_PER_SAMPLE * channels
     private val aligner = PcmFrameAligner(frameBytes)
@@ -103,8 +103,10 @@ class AudioTrackPcmSink(
     }
 
     private fun writeLoop() {
-        var drainedNormally = false
+        // Null: stopped (no callback); false: playback failed; true: everything played.
+        var played: Boolean? = null
         try {
+            var writeFailed = false
             while (!stopped) {
                 val chunk = queue.take()
                 if (chunk === END) break
@@ -114,18 +116,21 @@ class AudioTrackPcmSink(
                     track.play()
                     playing = true
                 }
-                if (!writeFully(aligned)) break
+                if (!writeFully(aligned)) {
+                    writeFailed = !stopped
+                    break
+                }
                 framesWritten += aligned.size / frameBytes
             }
             if (!stopped) {
-                drain()
-                drainedNormally = !stopped
+                val complete = !writeFailed && drain()
+                if (!stopped) played = complete
             }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         } catch (e: IllegalStateException) {
             Log.w(TAG, "Reply playback failed", e)
-            drainedNormally = !stopped
+            if (!stopped) played = false
         } finally {
             released = true
             runCatching {
@@ -134,29 +139,37 @@ class AudioTrackPcmSink(
             }
             track.release()
         }
-        if (drainedNormally) onDrained()
+        played?.let(onDrained)
     }
 
+    /** False when the track refused the data (e.g. `ERROR_DEAD_OBJECT`) or playback was stopped. */
     private fun writeFully(bytes: ByteArray): Boolean {
         var offset = 0
         while (offset < bytes.size && !stopped) {
             val written = track.write(bytes, offset, bytes.size - offset)
-            if (written <= 0) return false
+            if (written <= 0) {
+                if (!stopped) Log.w(TAG, "Reply playback write failed: $written")
+                return false
+            }
             offset += written
         }
         return !stopped
     }
 
-    /** Plays out the buffered tail: pad with silence so short audio passes the start threshold. */
-    private fun drain() {
-        if (!playing || framesWritten == 0L) return
-        writeFully(ByteArray(bufferBytes - bufferBytes % frameBytes))
+    /**
+     * Plays out the buffered tail: pad with silence so short audio passes the start threshold.
+     * False when the track failed while doing so.
+     */
+    private fun drain(): Boolean {
+        if (!playing || framesWritten == 0L) return true
+        if (!writeFully(ByteArray(bufferBytes - bufferBytes % frameBytes))) return false
         val target = framesWritten
         val remainingMs = (target - track.playbackHeadPosition.toLong()).coerceAtLeast(0) * 1_000 / sampleRate
         val deadline = SystemClock.elapsedRealtime() + remainingMs + DRAIN_SLACK_MS
         while (!stopped && track.playbackHeadPosition.toLong() < target && SystemClock.elapsedRealtime() < deadline) {
             Thread.sleep(DRAIN_POLL_MS)
         }
+        return true
     }
 
     private companion object {
