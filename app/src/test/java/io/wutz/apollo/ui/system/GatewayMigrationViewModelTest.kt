@@ -140,7 +140,7 @@ class GatewayMigrationViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(ActionProgressPhase.FAILED, viewModel.migrationProgress.state.value.phase)
-        assertEquals("rejected (resolved)", viewModel.migrationProgress.state.value.error)
+        assertEquals(UiText.raw("rejected (resolved)"), viewModel.migrationProgress.state.value.error)
         coVerify { mockApi.startGatewayMigration() }
     }
 

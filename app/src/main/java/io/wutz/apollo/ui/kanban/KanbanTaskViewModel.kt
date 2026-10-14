@@ -21,6 +21,7 @@ import io.wutz.apollo.data.repository.KanbanRepositoryImpl
 import io.wutz.apollo.data.ws.KanbanEventsClient
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -170,7 +171,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UiText.res(R.string.kanban_msg_load_task_failed, result.error.message),
+                            errorMessage = UiText.res(R.string.kanban_msg_load_task_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -359,7 +360,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isSavingDescription = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_save_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.kanban_msg_save_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -398,7 +399,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isReassigning = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_reassign_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.kanban_msg_reassign_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -428,7 +429,11 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isUpdatingModel = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_model_update_failed, res.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.kanban_msg_model_update_failed,
+                                    res.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -458,7 +463,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isEstimating = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_estimate_failed, res.error.message),
+                            toastMessage = UiText.failure(R.string.kanban_msg_estimate_failed, res.error.toUiText()),
                         )
                     }
                 }
@@ -492,7 +497,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isDeleting = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_task_delete_failed, res.error.message),
+                            toastMessage = UiText.failure(R.string.kanban_msg_task_delete_failed, res.error.toUiText()),
                         )
                     }
                 }
@@ -523,7 +528,11 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isSubmittingComment = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_comment_add_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.kanban_msg_comment_add_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -544,7 +553,11 @@ class KanbanTaskViewModel(
                 _uiState.update {
                     it.copy(
                         isSubmittingComment = false,
-                        toastMessage = UiText.res(R.string.kanban_msg_note_post_failed, commentRes.error.message),
+                        toastMessage =
+                            UiText.failure(
+                                R.string.kanban_msg_note_post_failed,
+                                commentRes.error.toUiText(),
+                            ),
                     )
                 }
                 return@launch
@@ -567,9 +580,9 @@ class KanbanTaskViewModel(
                         it.copy(
                             isSubmittingComment = false,
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.kanban_msg_note_posted_reclaim_failed,
-                                    reclaimRes.error.message,
+                                    reclaimRes.error.toUiText(),
                                 ),
                         )
                     }
@@ -600,7 +613,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isReclaiming = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_reclaim_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.kanban_msg_reclaim_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -633,7 +646,7 @@ class KanbanTaskViewModel(
                     _uiState.update {
                         it.copy(
                             isUploadingAttachment = false,
-                            toastMessage = UiText.res(R.string.kanban_msg_upload_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.kanban_msg_upload_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -658,7 +671,7 @@ class KanbanTaskViewModel(
                 }
 
                 is NetworkResult.Failure -> {
-                    _uiState.update { it.copy(toastMessage = UiText.raw(result.error.message)) }
+                    _uiState.update { it.copy(toastMessage = UiText.Failure(result.error.toUiText())) }
                 }
             }
         }
@@ -690,7 +703,7 @@ class KanbanTaskViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(isDeletingAttachment = false, toastMessage = UiText.raw(result.error.message))
+                        it.copy(isDeletingAttachment = false, toastMessage = UiText.Failure(result.error.toUiText()))
                     }
                 }
             }
@@ -728,9 +741,9 @@ class KanbanTaskViewModel(
                     runInspection = (inspection as? NetworkResult.Success)?.data,
                     toastMessage =
                         (
-                            (run as? NetworkResult.Failure)?.error?.message
-                                ?: (inspection as? NetworkResult.Failure)?.error?.message
-                        )?.let { UiText.raw(it) },
+                            (run as? NetworkResult.Failure)?.error
+                                ?: (inspection as? NetworkResult.Failure)?.error
+                        )?.let { UiText.Failure(it.toUiText()) },
                 )
             }
         }
@@ -772,7 +785,7 @@ class KanbanTaskViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(isTerminatingRun = false, toastMessage = UiText.raw(result.error.message))
+                        it.copy(isTerminatingRun = false, toastMessage = UiText.Failure(result.error.toUiText()))
                     }
                 }
             }
@@ -809,7 +822,7 @@ class KanbanTaskViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(isSpecifying = false, toastMessage = UiText.raw(result.error.message))
+                        it.copy(isSpecifying = false, toastMessage = UiText.Failure(result.error.toUiText()))
                     }
                 }
             }
@@ -848,7 +861,7 @@ class KanbanTaskViewModel(
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(isLinking = false, toastMessage = UiText.raw(result.error.message))
+                        it.copy(isLinking = false, toastMessage = UiText.Failure(result.error.toUiText()))
                     }
                 }
             }

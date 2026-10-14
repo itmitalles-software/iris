@@ -99,6 +99,7 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.toUiText
 import io.wutz.apollo.ui.kanban.components.KanbanModelOverrideEditor
 import io.wutz.apollo.util.StreamingUriRequestBody
 import kotlinx.coroutines.CancellationException
@@ -1380,7 +1381,7 @@ private fun TaskFilesTab(
                         }
 
                         is NetworkResult.Failure -> {
-                            viewModel.showToast(UiText.raw(result.error.message))
+                            viewModel.showToast(UiText.Failure(result.error.toUiText()))
                         }
                     }
                 }

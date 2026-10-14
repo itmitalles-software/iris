@@ -19,6 +19,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -234,7 +235,7 @@ class MemoryProviderDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.plugins_msg_settings_save_failed, mapHttpError(500).message),
+            UiText.failure(R.string.plugins_msg_settings_save_failed, mapHttpError(500).toUiText()),
             vm.uiState.value.toastMessage,
         )
     }
@@ -267,7 +268,7 @@ class MemoryProviderDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(
-            UiText.res(R.string.plugins_msg_setup_failed, mapHttpError(400).message),
+            UiText.failure(R.string.plugins_msg_setup_failed, mapHttpError(400).toUiText()),
             vm.uiState.value.toastMessage,
         )
     }
@@ -283,7 +284,7 @@ class MemoryProviderDetailViewModelTest {
 
         assertNull(vm.uiState.value.config)
         assertEquals(
-            UiText.raw("Not Found (HTTP 404): The requested resource could not be found."),
+            UiText.res(R.string.network_error_http_404),
             vm.uiState.value.errorMessage,
         )
     }

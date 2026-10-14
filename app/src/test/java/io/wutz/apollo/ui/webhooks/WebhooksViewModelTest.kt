@@ -14,6 +14,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -81,7 +82,7 @@ class WebhooksViewModelTest {
 
         assertFalse(vm.uiState.value.isLoading)
         assertEquals(
-            UiText.res(R.string.webhooks_msg_load_failed, mapHttpError(403).message),
+            UiText.res(R.string.webhooks_msg_load_failed, mapHttpError(403).toUiText()),
             vm.uiState.value.errorMessage,
         )
     }
@@ -99,7 +100,7 @@ class WebhooksViewModelTest {
 
         assertTrue(vm.uiState.value.enabled)
         assertEquals(
-            UiText.res(R.string.webhooks_msg_toggle_global_failed, mapHttpError(403).message),
+            UiText.failure(R.string.webhooks_msg_toggle_global_failed, mapHttpError(403).toUiText()),
             vm.uiState.value.toastMessage,
         )
     }

@@ -15,6 +15,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -156,7 +157,7 @@ class KeysViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.keys_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.keys_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -235,7 +236,7 @@ class KeysViewModel :
                     _uiState.update {
                         it.copy(
                             isAddingKey = false,
-                            toastMessage = UiText.res(R.string.keys_msg_add_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.keys_msg_add_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -282,7 +283,7 @@ class KeysViewModel :
                     _uiState.update {
                         it.copy(
                             deletingKeys = it.deletingKeys - key,
-                            toastMessage = UiText.res(R.string.keys_msg_delete_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.keys_msg_delete_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -311,7 +312,7 @@ class KeysViewModel :
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.keys_msg_reveal_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.keys_msg_reveal_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -352,7 +353,7 @@ class KeysViewModel :
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.keys_msg_update_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.keys_msg_update_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -388,7 +389,11 @@ class KeysViewModel :
                     _uiState.update {
                         it.copy(
                             isRestartingGateway = false,
-                            toastMessage = UiText.res(R.string.keys_msg_gateway_restart_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.keys_msg_gateway_restart_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }

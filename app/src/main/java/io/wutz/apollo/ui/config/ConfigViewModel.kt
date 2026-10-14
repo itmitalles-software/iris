@@ -15,6 +15,7 @@ import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -184,7 +185,7 @@ class ConfigViewModel(
                         }
                     } else if (!hasCachedData) {
                         val errorMsg =
-                            (configResult as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                            (configResult as? NetworkResult.Failure)?.error?.toUiText()
                                 ?: UiText.res(R.string.error_unknown)
                         _uiState.update {
                             it.copy(
@@ -279,7 +280,11 @@ class ConfigViewModel(
                         _uiState.update {
                             it.copy(
                                 yamlIsLoading = false,
-                                toastMessage = UiText.res(R.string.config_msg_load_yaml_failed, result.error.message),
+                                toastMessage =
+                                    UiText.failure(
+                                        R.string.config_msg_load_yaml_failed,
+                                        result.error.toUiText(),
+                                    ),
                             )
                         }
                     }
@@ -333,7 +338,7 @@ class ConfigViewModel(
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            toastMessage = UiText.res(R.string.config_msg_save_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.config_msg_save_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -381,7 +386,11 @@ class ConfigViewModel(
                     _uiState.update {
                         it.copy(
                             yamlIsSaving = false,
-                            toastMessage = UiText.res(R.string.config_msg_save_yaml_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.config_msg_save_yaml_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }

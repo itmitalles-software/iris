@@ -18,6 +18,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -171,9 +172,9 @@ class ChannelsViewModelTest {
         coVerify(exactly = 0) { mockApi.configurePlatform(any(), any()) }
         assertEquals(null, viewModel.uiState.value.removingId)
         assertEquals(
-            UiText.res(
+            UiText.failure(
                 R.string.channels_msg_disconnect_failed,
-                "An unexpected error occurred: Connection or profile changed; retry disconnect",
+                UiText.res(R.string.network_error_unexpected, "Connection or profile changed; retry disconnect"),
             ),
             viewModel.uiState.value.toastMessage,
         )
@@ -191,7 +192,7 @@ class ChannelsViewModelTest {
         coVerify(exactly = 0) { mockApi.configurePlatform(any(), any()) }
         assertEquals(null, viewModel.uiState.value.removingId)
         assertEquals(
-            UiText.res(R.string.channels_msg_disconnect_failed, mapHttpError(403, "Forbidden").message),
+            UiText.failure(R.string.channels_msg_disconnect_failed, mapHttpError(403, "Forbidden").toUiText()),
             viewModel.uiState.value.toastMessage,
         )
     }
@@ -223,9 +224,9 @@ class ChannelsViewModelTest {
 
         coVerify(exactly = 0) { mockApi.configurePlatform(any(), any()) }
         assertEquals(
-            UiText.res(
+            UiText.failure(
                 R.string.channels_msg_disconnect_failed,
-                "An unexpected error occurred: Platform credential metadata is unavailable",
+                UiText.res(R.string.network_error_unexpected, "Platform credential metadata is unavailable"),
             ),
             viewModel.uiState.value.toastMessage,
         )
@@ -250,7 +251,7 @@ class ChannelsViewModelTest {
         )
         assertEquals(null, viewModel.uiState.value.removingId)
         assertEquals(
-            UiText.res(R.string.channels_msg_disconnect_failed, mapHttpError(409, "Conflict").message),
+            UiText.failure(R.string.channels_msg_disconnect_failed, mapHttpError(409, "Conflict").toUiText()),
             viewModel.uiState.value.toastMessage,
         )
         assertFalse(viewModel.uiState.value.restartNeeded)

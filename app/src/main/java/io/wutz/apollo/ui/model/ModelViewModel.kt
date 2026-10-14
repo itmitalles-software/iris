@@ -22,6 +22,7 @@ import io.wutz.apollo.data.ws.ModelCatalogStore
 import io.wutz.apollo.data.ws.ModelOptionsRepository
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -212,7 +213,7 @@ class ModelViewModel(
                             catalogLoading = false,
                             errorMessage =
                                 if (it.providers.isEmpty() && it.mainModelProvider.isEmpty()) {
-                                    UiText.res(R.string.model_msg_load_options_failed, optionsResult.error.message)
+                                    UiText.res(R.string.model_msg_load_options_failed, optionsResult.error.toUiText())
                                 } else {
                                     null
                                 },
@@ -385,7 +386,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.model_msg_main_set_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.model_msg_main_set_failed, result.error.toUiText()),
                             modelPickerBusy = false,
                         )
                     }
@@ -427,7 +428,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.model_msg_main_set_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.model_msg_main_set_failed, result.error.toUiText()),
                             modelPickerBusy = false,
                         )
                     }
@@ -503,7 +504,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.model_msg_aux_set_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.model_msg_aux_set_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -539,7 +540,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.model_msg_aux_reset_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.model_msg_aux_reset_failed, result.error.toUiText()),
                             modelPickerBusy = false,
                         )
                     }
@@ -582,7 +583,7 @@ class ModelViewModel(
                 is NetworkResult.Failure -> {
                     _uiState.update {
                         it.copy(
-                            toastMessage = UiText.res(R.string.model_msg_moa_save_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.model_msg_moa_save_failed, result.error.toUiText()),
                             modelPickerBusy = false,
                         )
                     }
@@ -612,9 +613,9 @@ class ModelViewModel(
                             _uiState.update {
                                 it.copy(
                                     toastMessage =
-                                        UiText.res(
+                                        UiText.failure(
                                             R.string.model_msg_active_profile_failed,
-                                            activeProfileNameResResult.error.message,
+                                            activeProfileNameResResult.error.toUiText(),
                                         ),
                                 )
                             }
@@ -650,9 +651,9 @@ class ModelViewModel(
                     _uiState.update {
                         it.copy(
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.model_msg_profile_model_set_failed,
-                                    updateResResult.error.message,
+                                    updateResResult.error.toUiText(),
                                 ),
                         )
                     }

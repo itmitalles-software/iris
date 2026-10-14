@@ -248,7 +248,7 @@ class CacheScopeIsolationTest {
             val cache = SwrCache<String, String>()
             cache.put(scopeA.inMemoryKey("default"), "pre-mutation")
 
-            var error: String? = null
+            var error: NetworkError? = null
             var cacheHit: String? = null
 
             vm.safeLaunchSwrLoad(
@@ -282,7 +282,7 @@ class CacheScopeIsolationTest {
 
             var cacheHit: String? = null
             var success: String? = null
-            var error: String? = null
+            var error: NetworkError? = null
 
             // Request dispatched while scope A was active; the scope flips to B before it returns.
             var scopeIsCurrent = true

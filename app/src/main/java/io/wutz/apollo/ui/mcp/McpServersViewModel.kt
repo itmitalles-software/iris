@@ -24,6 +24,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -138,7 +139,7 @@ class McpServersViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.mcp_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.mcp_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -231,7 +232,7 @@ class McpServersViewModel(
                         state.copy(
                             serverTestResults = state.serverTestResults + (name to errResp),
                             testingServers = state.testingServers - name,
-                            toastMessage = UiText.res(R.string.mcp_msg_test_failed, name, result.error.message),
+                            toastMessage = UiText.failure(R.string.mcp_msg_test_failed, name, result.error.toUiText()),
                         )
                     }
                 }
@@ -599,7 +600,7 @@ class McpServersViewModel(
                     _uiState.update {
                         it.copy(
                             catalogLoading = false,
-                            catalogError = UiText.res(R.string.mcp_msg_catalog_load_failed, result.error.message),
+                            catalogError = UiText.res(R.string.mcp_msg_catalog_load_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -656,7 +657,11 @@ class McpServersViewModel(
                     _uiState.update {
                         it.copy(
                             installingCatalogEntry = null,
-                            toastMessage = UiText.res(R.string.mcp_msg_catalog_install_failed, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.mcp_msg_catalog_install_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -802,9 +807,9 @@ class McpServersViewModel(
         @StringRes prefixRes: Int,
     ): UiText =
         if (error is NetworkError.Http && error.code == 409) {
-            UiText.raw(error.message)
+            UiText.Failure(error.toUiText())
         } else {
-            UiText.res(prefixRes, error.message)
+            UiText.failure(prefixRes, error.toUiText())
         }
 
     /** Like [mutationError], but a server/profile switch during the edit gets its own localized message. */

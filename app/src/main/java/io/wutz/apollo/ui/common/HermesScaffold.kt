@@ -172,7 +172,11 @@ fun HermesScaffold(
      * Narrower windows are unaffected.
      */
     maxContentWidth: Dp = HermesScaffoldMaxContentWidth,
-    snackbarHost: @Composable () -> Unit = {},
+    /**
+     * A screen-specific snackbar host. Null (the default) uses the shared host that shows the
+     * messages of [ToastEffect]; a screen that passes its own host shows its messages itself.
+     */
+    snackbarHost: (@Composable () -> Unit)? = null,
     actions: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -191,7 +195,9 @@ fun HermesScaffold(
         // targetSdk 35+ enforces edge-to-edge, so adjustResize no longer shrinks the window for the
         // keyboard. Pad the content by the IME as well so bottom fields and Save buttons stay visible.
         contentWindowInsets = WindowInsets.navigationBars.union(WindowInsets.ime),
-        snackbarHost = { snackbarHost() },
+        snackbarHost = {
+            if (snackbarHost != null) snackbarHost() else HermesScreenSnackbarHost()
+        },
         topBar = {
             TopAppBar(
                 // One merged heading node so TalkBack heading navigation lands on the screen title.

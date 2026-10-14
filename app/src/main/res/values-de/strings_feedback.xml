@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Snackbar actions of screen messages -->
+    <string name="feedback_action_undo">Rückgängig</string>
+    <string name="feedback_action_copy">Kopieren</string>
+
+    <!-- Request failures (NetworkError); server details are shown verbatim as %1$s -->
+    <string name="network_error_auth_expired">Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.</string>
+    <string name="network_error_http_400">Ungültige Anfrage (HTTP 400): Der Server konnte die Anfrage nicht verstehen.</string>
+    <string name="network_error_http_403">Zugriff verweigert (HTTP 403): Du hast keine Berechtigung für diese Ressource.</string>
+    <string name="network_error_http_404">Nicht gefunden (HTTP 404): Die angeforderte Ressource wurde nicht gefunden.</string>
+    <string name="network_error_http_405">Methode nicht erlaubt (HTTP 405).</string>
+    <string name="network_error_http_408">Zeitüberschreitung (HTTP 408): Der Server hat zu lange auf die Anfrage gewartet.</string>
+    <string name="network_error_http_409">Konflikt (HTTP 409): Die Anfrage steht im Widerspruch zum aktuellen Stand auf dem Server.</string>
+    <string name="network_error_http_429">Zu viele Anfragen (HTTP 429): Ratenlimit überschritten.</string>
+    <string name="network_error_http_server">Serverfehler (HTTP %1$d): Auf dem Server ist ein Fehler aufgetreten.</string>
+    <string name="network_error_http_other">HTTP-Fehler %1$d: Unerwartete Antwort vom Server.</string>
+    <string name="network_error_connection">Netzwerkverbindung fehlgeschlagen.</string>
+    <string name="network_error_connection_detail">Netzwerkverbindung fehlgeschlagen: %1$s</string>
+    <string name="network_error_unexpected">Ein unerwarteter Fehler ist aufgetreten: %1$s</string>
+
+    <!-- Undoable actions -->
+    <string name="projects_msg_archived">Projekt archiviert</string>
+    <string name="projects_msg_restored">Projekt wiederhergestellt</string>
+</resources>

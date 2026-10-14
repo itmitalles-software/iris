@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Snackbar actions of screen messages -->
+    <string name="feedback_action_undo">Undo</string>
+    <string name="feedback_action_copy">Copy</string>
+
+    <!-- Request failures (NetworkError); server details are shown verbatim as %1$s -->
+    <string name="network_error_auth_expired">Your sign-in has expired. Please sign in again.</string>
+    <string name="network_error_http_400">Bad Request (HTTP 400): The server could not understand the request.</string>
+    <string name="network_error_http_403">Forbidden (HTTP 403): You do not have permission to access this resource.</string>
+    <string name="network_error_http_404">Not Found (HTTP 404): The requested resource could not be found.</string>
+    <string name="network_error_http_405">Method Not Allowed (HTTP 405).</string>
+    <string name="network_error_http_408">Request Timeout (HTTP 408): The server timed out waiting for the request.</string>
+    <string name="network_error_http_409">Conflict (HTTP 409): The request conflicts with current server state.</string>
+    <string name="network_error_http_429">Too Many Requests (HTTP 429): Rate limit exceeded.</string>
+    <string name="network_error_http_server">Server Error (HTTP %1$d): The server encountered an error.</string>
+    <string name="network_error_http_other">HTTP Error %1$d: Unexpected server response.</string>
+    <string name="network_error_connection">Network connection failure.</string>
+    <string name="network_error_connection_detail">Network connection failure: %1$s</string>
+    <string name="network_error_unexpected">An unexpected error occurred: %1$s</string>
+
+    <!-- Undoable actions -->
+    <string name="projects_msg_archived">Project archived</string>
+    <string name="projects_msg_restored">Project restored</string>
+</resources>

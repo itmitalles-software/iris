@@ -20,6 +20,7 @@ import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -140,7 +141,7 @@ class MemoryViewModel :
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        errorMessage = UiText.raw(memoryResult.error.message),
+                                        errorMessage = memoryResult.error.toUiText(),
                                     )
                                 }
                             }
@@ -174,7 +175,7 @@ class MemoryViewModel :
                     _uiState.update {
                         it.copy(
                             resetting = null,
-                            toastMessage = UiText.res(R.string.memory_msg_reset_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.memory_msg_reset_failed, result.error.toUiText()),
                         )
                     }
                 }

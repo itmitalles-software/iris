@@ -149,8 +149,29 @@ class ProjectsViewModelTest {
             advanceUntilIdle()
             vm.setArchived(app, true)
             advanceUntilIdle()
-            assertEquals(UiText.raw("no such project"), vm.uiState.value.toastMessage)
+            assertEquals(UiText.Failure(UiText.raw("no such project")), vm.uiState.value.toastMessage)
+            assertNull(vm.uiState.value.toastUndo)
             assertNull(vm.uiState.value.busyId)
+        }
+
+    @Test
+    fun archiveOffersUndoThatRestoresTheProject() =
+        runTest(dispatcher) {
+            coEvery { repo.setArchived("p_1", any()) } returns ProjectsResult.Ok(Unit)
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.setArchived(app, true)
+            advanceUntilIdle()
+            assertEquals(UiText.res(R.string.projects_msg_archived), vm.uiState.value.toastMessage)
+            val undo = vm.uiState.value.toastUndo
+            assertEquals(ProjectArchiveUndo("p_1", archived = false), undo)
+
+            vm.clearToast()
+            vm.undoArchive(undo!!)
+            advanceUntilIdle()
+            coVerify { repo.setArchived("p_1", false) }
+            assertEquals(UiText.res(R.string.projects_msg_restored), vm.uiState.value.toastMessage)
+            assertNull(vm.uiState.value.toastUndo)
         }
 
     @Test

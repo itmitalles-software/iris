@@ -112,6 +112,11 @@ class GatewayViewModelTest {
     ) {
         val error = viewModel.uiState.value.errorMessage as UiText.Resource
         assertEquals(R.string.gateway_msg_load_status_failed, error.id)
-        assertTrue((error.args.single() as String).contains(expectedDetail))
+        assertTrue(
+            error.args
+                .single()
+                .toString()
+                .contains(expectedDetail),
+        )
     }
 }

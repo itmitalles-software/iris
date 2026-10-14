@@ -15,6 +15,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,7 +109,11 @@ class ToolsetDetailViewModel :
                     is NetworkResult.Failure -> {
                         state.copy(
                             isLoading = false,
-                            errorMessage = UiText.res(R.string.toolsets_msg_config_load_failed, result.error.message),
+                            errorMessage =
+                                UiText.res(
+                                    R.string.toolsets_msg_config_load_failed,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -159,9 +164,9 @@ class ToolsetDetailViewModel :
                         state.copy(
                             selectingProvider = null,
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.toolsets_msg_backend_select_failed,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -197,7 +202,12 @@ class ToolsetDetailViewModel :
                     is NetworkResult.Failure -> {
                         state.copy(
                             savingEnvKey = null,
-                            toastMessage = UiText.res(R.string.toolsets_msg_env_save_failed, key, result.error.message),
+                            toastMessage =
+                                UiText.failure(
+                                    R.string.toolsets_msg_env_save_failed,
+                                    key,
+                                    result.error.toUiText(),
+                                ),
                         )
                     }
                 }
@@ -224,10 +234,10 @@ class ToolsetDetailViewModel :
                         state.copy(
                             deletingEnvKey = null,
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.toolsets_msg_env_clear_failed,
                                     key,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -248,10 +258,10 @@ class ToolsetDetailViewModel :
                     is NetworkResult.Failure -> {
                         state.copy(
                             toastMessage =
-                                UiText.res(
+                                UiText.failure(
                                     R.string.toolsets_msg_env_reveal_failed,
                                     key,
-                                    result.error.message,
+                                    result.error.toUiText(),
                                 ),
                         )
                     }
@@ -291,9 +301,9 @@ class ToolsetDetailViewModel :
                             it.copy(
                                 postSetup = null,
                                 toastMessage =
-                                    UiText.res(
+                                    UiText.failure(
                                         R.string.toolsets_msg_setup_start_failed,
-                                        spawn.error.message,
+                                        spawn.error.toUiText(),
                                     ),
                             )
                         }

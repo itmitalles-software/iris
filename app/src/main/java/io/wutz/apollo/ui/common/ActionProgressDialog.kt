@@ -169,7 +169,7 @@ fun ActionProgressDialog(
 
                 state.error?.let { error ->
                     Text(
-                        text = error,
+                        text = error.asString(),
                         style = MaterialTheme.typography.bodySmall,
                         color = statusColors.error,
                     )

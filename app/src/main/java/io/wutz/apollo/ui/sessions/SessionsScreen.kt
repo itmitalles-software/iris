@@ -298,6 +298,7 @@ fun SessionsScreen(
     ToastEffect(
         toastMessage = state.toastMessage,
         onClearToast = { viewModel.clearToast() },
+        onUndo = state.toastUndo?.let { undo -> { viewModel.undo(undo) } },
     )
 
     SessionsScreenContent(

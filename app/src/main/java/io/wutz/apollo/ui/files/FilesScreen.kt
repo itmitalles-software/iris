@@ -69,6 +69,7 @@ import io.wutz.apollo.ui.common.SkeletonListState
 import io.wutz.apollo.ui.common.ToastEffect
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.toUiText
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -533,7 +534,7 @@ private fun openManagedFile(
             }
 
             is io.wutz.apollo.data.remote.NetworkResult.Failure -> {
-                viewModel.showToast(UiText.res(R.string.files_open_failed, result.error.message))
+                viewModel.showToast(UiText.failure(R.string.files_open_failed, result.error.toUiText()))
             }
         }
     }

@@ -19,6 +19,7 @@ import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
 import io.wutz.apollo.data.remote.mapHttpError
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -125,7 +126,7 @@ class ToolsetDetailViewModelTest {
         val state = vm.uiState.value
         assertNull(state.config)
         assertEquals(
-            UiText.res(R.string.toolsets_msg_config_load_failed, mapHttpError(400).message),
+            UiText.res(R.string.toolsets_msg_config_load_failed, mapHttpError(400).toUiText()),
             state.errorMessage,
         )
         assertFalse(state.isLoading)
@@ -158,7 +159,7 @@ class ToolsetDetailViewModelTest {
         val state = vm.uiState.value
         assertEquals("prov-b", state.config?.activeProvider)
         assertEquals(
-            UiText.res(R.string.toolsets_msg_backend_select_failed, mapHttpError(400).message),
+            UiText.failure(R.string.toolsets_msg_backend_select_failed, mapHttpError(400).toUiText()),
             state.toastMessage,
         )
         assertNull(state.selectingProvider)
