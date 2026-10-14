@@ -1,0 +1,48 @@
+name: Website
+
+# Publishes website/ (static, no build step) to GitHub Pages at apollo.wutz.io.
+# Manual only until the owner decides to take the site live (2026-10-14); then
+# enable Pages (build type "workflow"), add the apollo CNAME in Cloudflare and
+# add a push trigger for website/** on main.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check that every referenced asset exists
+        run: |
+          missing=0
+          for ref in $(grep -oE '(src|href)="assets/[^"]+"' website/index.html | sed -E 's/^(src|href)="//; s/"$//' | sort -u); do
+            [ -f "website/$ref" ] || { echo "::error::missing website/$ref"; missing=1; }
+          done
+          exit $missing
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: website
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
