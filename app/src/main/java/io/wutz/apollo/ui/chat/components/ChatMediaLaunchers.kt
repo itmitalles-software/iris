@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -27,6 +28,7 @@ import androidx.core.content.FileProvider
 import io.wutz.apollo.ExternalActivityLifecycleGuard
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.Attachment
+import io.wutz.apollo.ui.chat.CAMERA_PHOTO_PREFIX
 import io.wutz.apollo.ui.chat.SpeechInputHelper
 import io.wutz.apollo.ui.chat.VoiceNoteRecorder
 import kotlinx.coroutines.delay
@@ -64,7 +66,10 @@ fun rememberChatMediaLaunchers(
     context: Context = LocalContext.current,
 ): ChatMediaLaunchers {
     var isListening by remember { mutableStateOf(false) }
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    // Saveable: the system may recreate the activity while the camera app is in front;
+    // the result callback still needs the target Uri (Parcelable) and its cache file.
+    var pendingCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var pendingCameraPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val currentInputState by rememberUpdatedState(inputState)
     val currentOnAddAttachment by rememberUpdatedState(onAddAttachment)
@@ -220,7 +225,13 @@ fun rememberChatMediaLaunchers(
         ) { success ->
             ExternalActivityLifecycleGuard.externalActivityReturned()
             val uri = pendingCameraUri
+            val photoPath = pendingCameraPath
             pendingCameraUri = null
+            pendingCameraPath = null
+            if (!success) {
+                // Cancelled capture: the empty temp file is never referenced again.
+                photoPath?.let { runCatching { File(it).delete() } }
+            }
             if (success && uri != null) {
                 try {
                     val fileName =
@@ -349,7 +360,7 @@ fun rememberChatMediaLaunchers(
             val timeStamp =
                 SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val photoFile =
-                File.createTempFile("camera_${timeStamp}_", ".jpg", context.cacheDir)
+                File.createTempFile("$CAMERA_PHOTO_PREFIX${timeStamp}_", ".jpg", context.cacheDir)
             val uri =
                 FileProvider.getUriForFile(
                     context,
@@ -357,6 +368,7 @@ fun rememberChatMediaLaunchers(
                     photoFile,
                 )
             pendingCameraUri = uri
+            pendingCameraPath = photoFile.absolutePath
             currentLaunchExternalActivity {
                 cameraLauncher.launch(uri)
             }

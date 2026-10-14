@@ -261,7 +261,7 @@ fun ChatInputBar(
                     val hiddenSlashDisplay = CommandBlocklist.UNSUPPORTED
                     val commandNames =
                         (
-                            commandCatalog.pairs.map { it[0] } +
+                            ChatInputPolicy.catalogCommandNames(commandCatalog.pairs) +
                                 listOf("/btw", "/queue", "/fork", "/model", "/new", "/stop")
                         ).distinct()
                             .filter { it.lowercase() !in hiddenSlashDisplay }

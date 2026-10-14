@@ -27,7 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,10 +56,12 @@ fun ClarifyBubble(
     val questions = clarifyRequest.resolvedQuestions
     val isBatch = questions.size > 1
 
-    var selectedChoicesByQid by remember(clarifyRequest) {
+    // Saveable: the bubble is a LazyColumn item, so plain remember lost the user's picks
+    // and typed answer whenever it scrolled out of view. Kotlin maps/sets are Serializable.
+    var selectedChoicesByQid by rememberSaveable(clarifyRequest) {
         mutableStateOf<Map<String, Set<String>>>(emptyMap())
     }
-    var customTextByQid by remember(clarifyRequest) {
+    var customTextByQid by rememberSaveable(clarifyRequest) {
         mutableStateOf<Map<String, String>>(emptyMap())
     }
 

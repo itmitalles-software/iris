@@ -392,7 +392,10 @@ fun ChatScreen(
             }
         }
     }
-    var viewingImage by rememberSaveable { mutableStateOf<ImageViewerModel?>(null) }
+    // Plain remember: ImageViewerModel is not Parcelable and data: models can exceed the
+    // Binder limit, so saving it would crash onSaveInstanceState. The open viewer is
+    // simply dropped on activity recreation.
+    var viewingImage by remember { mutableStateOf<ImageViewerModel?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val imagePaste =
         rememberChatImagePaste(viewModel) { message ->

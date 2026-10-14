@@ -37,6 +37,28 @@ internal fun cleanStalePastedImages(
     }
 }
 
+/** File name prefix of camera captures written directly into the cache root. */
+internal const val CAMERA_PHOTO_PREFIX = "camera_"
+
+/**
+ * Startup-only sweep for camera captures. A taken photo stays referenced by the
+ * transcript preview and retries after sending, so only files older than the
+ * pasted-image retention are removed; cancelled captures are deleted right away.
+ */
+internal fun cleanStaleCameraPhotos(
+    cacheDir: File,
+    nowMs: Long = System.currentTimeMillis(),
+) {
+    val files =
+        runCatching {
+            cacheDir.listFiles { file -> file.isFile && file.name.startsWith(CAMERA_PHOTO_PREFIX) }
+        }.getOrNull() ?: return
+    val cutoff = nowMs - PASTED_IMAGE_MAX_AGE_MS
+    for (file in files) {
+        runCatching { if (file.name.endsWith(".jpg") && file.lastModified() < cutoff) file.delete() }
+    }
+}
+
 internal class PastedImageTooLargeException : IOException("Pasted image exceeds attachment limit")
 
 /** A private cache file owned by the caller after [ChatPastedImageStore.importImage] returns. */

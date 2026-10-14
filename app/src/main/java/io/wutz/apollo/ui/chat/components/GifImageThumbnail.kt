@@ -51,6 +51,47 @@ import kotlinx.coroutines.withContext
 
 private enum class ThumbnailState { LOADING, SUCCESS, ERROR }
 
+/**
+ * Stand-in for a markdown image hosted outside the configured server. Nothing is fetched
+ * until the user taps "Load image"; styled like the thumbnail's error/retry state.
+ */
+@Composable
+fun ExternalImagePlaceholder(
+    host: String,
+    name: String,
+    onLoad: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.fillMaxWidth().testTag("chat_image_external_placeholder"),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.chat_image_external_not_loaded, host),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            name.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    modifier = Modifier.padding(top = 6.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TextButton(onClick = onLoad) {
+                Text(stringResource(R.string.chat_image_external_load))
+            }
+        }
+    }
+}
+
 @Composable
 fun GifImageThumbnail(
     model: Any,

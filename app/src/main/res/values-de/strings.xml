@@ -31,6 +31,8 @@
     <!-- Actions -->
     <string name="action_retry">Erneut versuchen</string>
     <string name="chat_image_load_failed">Bild konnte nicht geladen werden</string>
+    <string name="chat_image_external_not_loaded">Externes Bild von %1$s nicht geladen</string>
+    <string name="chat_image_external_load">Bild laden</string>
     <string name="action_copy_error">Fehler kopieren</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_confirm">Bestätigen</string>

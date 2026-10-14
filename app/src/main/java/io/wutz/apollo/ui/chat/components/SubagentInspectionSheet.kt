@@ -204,7 +204,7 @@ fun SubagentInspectionSheet(
                         }
                         items(
                             items = displayRows,
-                            key = { row -> "todo-${row.todo.id}_${row.depth}" },
+                            key = { row -> row.key },
                         ) { row ->
                             TodoInspectionCard(
                                 row = row,
@@ -406,6 +406,8 @@ data class TodoDisplayRow(
     val isExpanded: Boolean,
     val completedSubtasksCount: Int,
     val totalSubtasksCount: Int,
+    /** Unique LazyColumn key; todo ids come from model output and may repeat. */
+    val key: String = "todo-${todo.id}_$depth",
 )
 
 /**
@@ -425,11 +427,20 @@ fun buildTodoTree(todos: List<TodoItem>): List<TodoNode> {
         }
     }
 
+    // Model-supplied ids may repeat, which can turn parent links into a cycle reachable from
+    // a root. Expand each id only once so the recursion always terminates.
+    val expandedIds = mutableSetOf<String>()
+
     fun buildNode(
         item: TodoItem,
         depth: Int,
     ): TodoNode {
-        val children = childrenByParent[item.id]?.map { buildNode(it, depth + 1) } ?: emptyList()
+        val children =
+            if (expandedIds.add(item.id)) {
+                childrenByParent[item.id]?.map { buildNode(it, depth + 1) } ?: emptyList()
+            } else {
+                emptyList()
+            }
         return TodoNode(item = item, children = children, depth = depth)
     }
 
@@ -450,12 +461,16 @@ fun flattenTodoTree(
     collapsedParentIds: Set<String>,
 ): List<TodoDisplayRow> {
     val result = mutableListOf<TodoDisplayRow>()
+    val keyCounts = mutableMapOf<String, Int>()
 
     fun traverse(node: TodoNode) {
         val isExpanded = node.item.id !in collapsedParentIds
         val descendants = getAllDescendantTodos(node)
         val completedCount = descendants.count { it.isCompleted }
         val totalCount = descendants.size
+        val baseKey = "todo-${node.item.id}_${node.depth}"
+        val occurrence = keyCounts.getOrDefault(baseKey, 0)
+        keyCounts[baseKey] = occurrence + 1
 
         result.add(
             TodoDisplayRow(
@@ -465,6 +480,7 @@ fun flattenTodoTree(
                 isExpanded = isExpanded,
                 completedSubtasksCount = completedCount,
                 totalSubtasksCount = totalCount,
+                key = if (occurrence == 0) baseKey else "$baseKey#$occurrence",
             ),
         )
         if (node.children.isNotEmpty() && isExpanded) {

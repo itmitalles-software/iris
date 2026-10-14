@@ -73,6 +73,13 @@ object ChatInputPolicy {
     ): List<String> = commands.sortedByDescending { usageCounts[it.lowercase()] ?: 0 }
 
     /**
+     * Command names from `commands.catalog` pairs (`[name, description]`). Malformed
+     * server rows (empty pair or blank name) are skipped instead of crashing the composer.
+     */
+    fun catalogCommandNames(pairs: List<List<String>>): List<String> =
+        pairs.mapNotNull { pair -> pair.firstOrNull()?.takeIf { it.isNotBlank() } }
+
+    /**
      * Extracts the active mention query (without the '@') if the cursor is currently
      * positioned within an '@' mention token (e.g. "hello @res" -> "res").
      * Returns null if not in a mention context.

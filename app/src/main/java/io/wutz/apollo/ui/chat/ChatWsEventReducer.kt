@@ -145,17 +145,25 @@ object ChatWsEventReducer {
             return ReducerResult(state = state, streamingState = streamingState)
         }
         val result = reduceInternal(state, streamingState, event)
-        val hydratedTodos =
-            if (result.state.todos.isEmpty() && result.state.messages.isNotEmpty()) {
-                hydrateTodosFromMessages(result.state.messages)
-            } else {
-                result.state.todos
+        val reduced = result.state
+        // Resume hydration runs once per session load (not per token): after that, live todo
+        // events own the list, so an explicit clear stays cleared.
+        if (reduced.todosHydrated) return result
+        val resolved =
+            when {
+                reduced.todos.isNotEmpty() -> {
+                    reduced.copy(todosHydrated = true)
+                }
+
+                reduced.messages.isNotEmpty() -> {
+                    reduced.copy(todos = hydrateTodosFromMessages(reduced.messages), todosHydrated = true)
+                }
+
+                else -> {
+                    return result
+                }
             }
-        return if (hydratedTodos !== result.state.todos) {
-            result.copy(state = result.state.copy(todos = hydratedTodos))
-        } else {
-            result
-        }
+        return result.copy(state = resolved)
     }
 
     private fun reduceInternal(
@@ -927,6 +935,8 @@ object ChatWsEventReducer {
                         ),
                     isAgentTyping = false,
                 ),
+            // The turn resumes after the answer: keep its sealed orphans and usage baseline.
+            streamingState = streamingState,
         )
     }
 
@@ -1352,7 +1362,8 @@ object ChatWsEventReducer {
             return ReducerResult(state = state, streamingState = streamingState)
         }
         return ReducerResult(
-            state = state.copy(todos = event.todos),
+            // Server-pushed list is authoritative (also when empty): no transcript re-hydration.
+            state = state.copy(todos = event.todos, todosHydrated = true),
             streamingState = streamingState,
         )
     }
@@ -1433,6 +1444,8 @@ fun extractTodosFromMap(data: Map<String, Any?>?): List<TodoItem>? {
             ?: ((data["result"] as? Map<String, Any?>)?.get("todos") as? List<*>)
             ?: return null
 
+    // An explicit empty list clears the plan; a non-empty list without any valid item is ignored.
+    if (rawList.isEmpty()) return emptyList()
     val items = mutableListOf<TodoItem>()
     for (elem in rawList) {
         val map = elem as? Map<String, Any?> ?: continue
@@ -1456,6 +1469,7 @@ fun extractTodosFromJson(content: String): List<TodoItem>? {
                 ?: ((obj["result"] as? JsonObject)?.get("todos") as? JsonArray)
                 ?: ((obj["parameters"] as? JsonObject)?.get("todos") as? JsonArray)
                 ?: return null
+        if (todosArray.isEmpty()) return emptyList()
 
         todosArray
             .mapNotNull { item ->
@@ -1476,8 +1490,9 @@ fun extractTodosFromJson(content: String): List<TodoItem>? {
 fun hydrateTodosFromMessages(messages: List<ChatMessage>): List<TodoItem> {
     for (msg in messages.asReversed()) {
         if (msg.role == MessageRole.TOOL && (msg.toolName == "todo" || msg.content.contains("\"todos\""))) {
+            // The newest todo tool message is authoritative, including an explicit empty list.
             val todos = extractTodosFromJson(msg.content)
-            if (!todos.isNullOrEmpty()) {
+            if (todos != null && (todos.isNotEmpty() || msg.toolName == "todo")) {
                 return todos
             }
         }

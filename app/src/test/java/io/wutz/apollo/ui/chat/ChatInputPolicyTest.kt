@@ -190,4 +190,14 @@ class ChatInputPolicyTest {
         assertEquals("ask @scout ", updated.text)
         assertEquals(11, updated.selection.end)
     }
+
+    @Test
+    fun catalogCommandNames_skipsEmptyPairsAndBlankNames() {
+        val names =
+            ChatInputPolicy.catalogCommandNames(
+                listOf(listOf("/help", "Show help"), emptyList(), listOf(""), listOf("/model")),
+            )
+
+        assertEquals(listOf("/help", "/model"), names)
+    }
 }

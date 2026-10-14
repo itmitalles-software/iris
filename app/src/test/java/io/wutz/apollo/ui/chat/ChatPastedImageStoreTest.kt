@@ -53,6 +53,26 @@ class ChatPastedImageStoreTest {
     }
 
     @Test
+    fun cameraSweepDeletesOnlyStaleCameraCapturesInTheCacheRoot() {
+        val cacheDir = temp.newFolder("camera-cache")
+        val now = 2_000_000_000_000L
+        val cutoff = now - TimeUnit.DAYS.toMillis(7)
+        val stale = cacheDir.resolve("camera_20260101_120000_1.jpg").apply { writeText("x") }
+        assertTrue(stale.setLastModified(cutoff - 1000))
+        val recent = cacheDir.resolve("camera_20261014_120000_2.jpg").apply { writeText("keep") }
+        assertTrue(recent.setLastModified(now))
+        val unrelated = cacheDir.resolve("voice_1.m4a").apply { writeText("keep") }
+        assertTrue(unrelated.setLastModified(cutoff - 1000))
+        val otherExtension = cacheDir.resolve("camera_notes.txt").apply { writeText("keep") }
+        assertTrue(otherExtension.setLastModified(cutoff - 1000))
+
+        cleanStaleCameraPhotos(cacheDir, now)
+
+        assertFalse(stale.exists())
+        listOf(recent, unrelated, otherExtension).forEach { assertEquals("keep", it.readText()) }
+    }
+
+    @Test
     fun startupSweepDoesNotCreateAMissingCacheDirectory() {
         val cacheDir = temp.newFolder("empty-cache")
 

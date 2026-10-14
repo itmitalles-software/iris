@@ -113,7 +113,7 @@ object MarkdownInlineStyler {
 
                     // Combined / nested emphasis delimiters.
                     src.startsWith("***", i) -> {
-                        val end = src.indexOf("***", i + 3)
+                        val end = if (opensAt(src, i, 3)) findCloser(src, "***", i + 3) else -1
                         if (end >= 0) {
                             val raw = src.substring(i + 3, end)
                             val content = if (isRtl) BidiUtils.wrapLtrIsolate(raw) else raw
@@ -128,7 +128,7 @@ object MarkdownInlineStyler {
                     }
 
                     src.startsWith("**", i) -> {
-                        var end = src.indexOf("**", i + 2)
+                        var end = if (opensAt(src, i, 2)) findCloser(src, "**", i + 2) else -1
                         if (end >= 0 && src.startsWith("***", end) &&
                             src.substring(i + 2, end).count { it == '*' } % 2 == 1
                         ) {
@@ -156,7 +156,7 @@ object MarkdownInlineStyler {
 
                     // ~~strike~~
                     src.startsWith("~~", i) -> {
-                        val end = src.indexOf("~~", i + 2)
+                        val end = if (opensAt(src, i, 2)) findCloser(src, "~~", i + 2) else -1
                         if (end != -1) {
                             val raw = src.substring(i + 2, end)
                             val toAppend = if (isRtl) BidiUtils.wrapLtrIsolate(raw) else raw
@@ -172,7 +172,7 @@ object MarkdownInlineStyler {
 
                     // *italic*; bold spans keep their styles while nested text is appended.
                     src.startsWith("*", i) -> {
-                        val close = src.indexOf('*', i + 1)
+                        val close = if (opensAt(src, i, 1)) findCloser(src, "*", i + 1) else -1
                         if (close > i + 1) {
                             val raw = src.substring(i + 1, close)
                             val italic = SpanStyle(fontStyle = FontStyle.Italic)
@@ -196,7 +196,7 @@ object MarkdownInlineStyler {
 
                     // ==highlight==
                     src.startsWith("==", i) -> {
-                        val end = src.indexOf("==", i + 2)
+                        val end = if (opensAt(src, i, 2)) findCloser(src, "==", i + 2) else -1
                         if (end != -1) {
                             val raw = src.substring(i + 2, end)
                             val toAppend = if (isRtl) BidiUtils.wrapLtrIsolate(raw) else raw
@@ -213,7 +213,7 @@ object MarkdownInlineStyler {
                     // ^superscript^
                     src.startsWith("^", i) -> {
                         val end = src.indexOf('^', i + 1)
-                        if (end != -1 && end > i + 1) {
+                        if (end > i + 1 && src.substring(i + 1, end).none { it.isWhitespace() }) {
                             withStyle(SpanStyle(baselineShift = BaselineShift.Superscript)) {
                                 appendSearchable(src.substring(i + 1, end), searchQuery, searchHighlightColor)
                             }
@@ -227,7 +227,7 @@ object MarkdownInlineStyler {
                     // ~subscript~ (single tilde; ~~ handled above)
                     src.startsWith("~", i) -> {
                         val end = src.indexOf('~', i + 1)
-                        if (end != -1 && end > i + 1) {
+                        if (end > i + 1 && src.substring(i + 1, end).none { it.isWhitespace() }) {
                             withStyle(SpanStyle(baselineShift = BaselineShift.Subscript)) {
                                 appendSearchable(src.substring(i + 1, end), searchQuery, searchHighlightColor)
                             }
@@ -288,7 +288,6 @@ object MarkdownInlineStyler {
                             if (urlEnd != -1) {
                                 val label = src.substring(i + 1, close)
                                 val url = src.substring(close + 2, urlEnd)
-                                pushLink(LinkAnnotation.Url(url))
                                 val labelText =
                                     parseInlineSource(
                                         label,
@@ -299,10 +298,18 @@ object MarkdownInlineStyler {
                                         highlights,
                                         isRtl,
                                     )
-                                withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
+                                if (isClickableLinkUrl(url)) {
+                                    pushLink(LinkAnnotation.Url(url))
+                                    withStyle(
+                                        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                                    ) {
+                                        append(labelText)
+                                    }
+                                    pop()
+                                } else {
+                                    // Agent output must not launch file:, intent:, tel:, market: ... targets.
                                     append(labelText)
                                 }
-                                pop()
                                 i = urlEnd + 1
                             } else {
                                 append(src[i])
@@ -382,6 +389,40 @@ object MarkdownInlineStyler {
     }
 
     private fun isRtr(isRtl: Boolean): Boolean = isRtl
+
+    private val CLICKABLE_LINK_SCHEMES = setOf("http", "https", "mailto")
+
+    /**
+     * Only web and mail links become tappable. Other schemes (file:, intent:, tel:, market:,
+     * content:, relative paths) would hand agent-controlled targets to the system or crash
+     * the default UriHandler, so their label renders as plain text.
+     */
+    internal fun isClickableLinkUrl(url: String): Boolean {
+        val trimmed = url.trim()
+        val colon = trimmed.indexOf(':')
+        if (colon <= 0 || trimmed.length == colon + 1) return false
+        return trimmed.substring(0, colon).lowercase() in CLICKABLE_LINK_SCHEMES
+    }
+
+    /** CommonMark-style left flanking: an opening delimiter run must be followed by non-whitespace. */
+    private fun opensAt(
+        src: String,
+        start: Int,
+        length: Int,
+    ): Boolean = start + length < src.length && !src[start + length].isWhitespace()
+
+    /** First [delimiter] at or after [from] that is right-flanking (preceded by non-whitespace), or -1. */
+    private fun findCloser(
+        src: String,
+        delimiter: String,
+        from: Int,
+    ): Int {
+        var index = src.indexOf(delimiter, from)
+        while (index > 0 && src[index - 1].isWhitespace()) {
+            index = src.indexOf(delimiter, index + 1)
+        }
+        return index
+    }
 
     /** Append [text], highlighting every [query] hit so styled spans (inline code, sub/sup, ...) stay searchable. */
     private fun AnnotatedString.Builder.appendSearchable(
