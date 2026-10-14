@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Freihändige Sprachunterhaltung im Chat (Issue #9) -->
+    <string name="voice_conversation_start">Sprachunterhaltung starten</string>
+    <string name="voice_conversation_end">Sprachunterhaltung beenden</string>
+    <string name="voice_conversation_status_starting">Sprachmodus wird vorbereitet…</string>
+    <string name="voice_conversation_status_listening">Hört zu…</string>
+    <string name="voice_conversation_status_hearing">Hört zu… Pause zum Senden</string>
+    <string name="voice_conversation_status_transcribing">Wird transkribiert…</string>
+    <string name="voice_conversation_status_thinking">Wartet auf die Antwort…</string>
+    <string name="voice_conversation_status_speaking">Spricht… sprich oder tippe zum Unterbrechen</string>
+    <string name="voice_conversation_action_send">Jetzt senden</string>
+    <string name="voice_conversation_action_interrupt">Unterbrechen</string>
+    <string name="voice_conversation_level_desc">Mikrofonpegel</string>
+    <string name="voice_conversation_permission_denied">Für die Sprachunterhaltung wird die Mikrofonberechtigung benötigt</string>
+    <string name="voice_conversation_err_not_connected">Die Sprachunterhaltung braucht einen verbundenen Chat</string>
+    <string name="voice_conversation_err_stt_disabled">Spracherkennung ist auf diesem Hermes-Server ausgeschaltet</string>
+    <string name="voice_conversation_err_microphone">Das Mikrofon ist nicht verfügbar</string>
+    <string name="voice_conversation_err_nothing_heard">Sprachunterhaltung beendet: nichts gehört</string>
+    <string name="voice_conversation_err_connection_lost">Sprachunterhaltung beendet: Verbindung verloren</string>
+    <string name="voice_conversation_err_speech">Sprachausgabe fehlgeschlagen; Antworten bleiben als Text</string>
+    <string name="voice_conversation_err_unsent">Sprachunterhaltung beendet: Transkript bleibt im Eingabefeld</string>
+    <string name="voice_conversation_err_transcription">Transkription fehlgeschlagen: %1$s</string>
+    <string name="voice_conversation_err_transcription_unknown">Transkription fehlgeschlagen</string>
+</resources>

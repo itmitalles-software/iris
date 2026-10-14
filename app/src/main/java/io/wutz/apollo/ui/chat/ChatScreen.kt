@@ -134,6 +134,10 @@ import io.wutz.apollo.ui.chat.components.shouldShowProgressChip
 import io.wutz.apollo.ui.chat.components.tailContentKey
 import io.wutz.apollo.ui.chat.fullbleed.FullBleedChatList
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptActions
+import io.wutz.apollo.ui.chat.voice.VoiceConversationButton
+import io.wutz.apollo.ui.chat.voice.VoiceConversationLifecycle
+import io.wutz.apollo.ui.chat.voice.VoiceConversationPanel
+import io.wutz.apollo.ui.chat.voice.rememberVoiceConversationStarter
 import io.wutz.apollo.ui.common.ActionProgressDialog
 import io.wutz.apollo.ui.common.AutoScrollingTitleText
 import io.wutz.apollo.ui.common.CredentialWarningBanner
@@ -248,6 +252,8 @@ fun ChatScreen(
     val browserEvent = connectorsState.browserLaunchEvent
     val speechController = rememberChatSpeech()
     val speakingMessageId by speechController.speakingId.collectAsStateWithLifecycle()
+    val voiceState by viewModel.voiceConversationState.collectAsStateWithLifecycle()
+    VoiceConversationLifecycle(sessionId = state.currentSessionId, onStop = viewModel::stopVoiceConversation)
     val dataScope by AuthManager.dataScopeFlow.collectAsStateWithLifecycle()
     val activeSessionId by ActiveSessionHolder.activeSessionId.collectAsStateWithLifecycle()
     val listState = rememberLazyListState(prefetchStrategy = ChatTimelineNoPrefetchStrategy)
@@ -402,6 +408,18 @@ fun ChatScreen(
         )
     }
 
+    val voicePermissionDeniedMsg = stringResource(R.string.voice_conversation_permission_denied)
+    val startVoiceConversation =
+        rememberVoiceConversationStarter(
+            onStart = {
+                // One audio owner at a time: stop a running read-aloud first.
+                speechController.stop()
+                viewModel.startVoiceConversation()
+            },
+            onPermissionDenied = { scrollScope.launch { snackbarHostState.showSnackbar(voicePermissionDeniedMsg) } },
+            launchExternalActivity = launchExternalActivity,
+        )
+
     val invalidResponseError = stringResource(R.string.session_integrations_err_invalid_response)
     val browserLaunchError = stringResource(R.string.session_integrations_err_browser_launch)
 
@@ -553,6 +571,13 @@ fun ChatScreen(
             }
         },
         actions = {
+            VoiceConversationButton(
+                active = voiceState.isActive,
+                enabled = state.isConnected && state.isSessionReady && !timelineState.isHistorical,
+                onStart = startVoiceConversation,
+                onEnd = viewModel::stopVoiceConversation,
+            )
+
             IconButton(onClick = { viewModel.createNewSession() }) {
                 Icon(
                     imageVector = Icons.Filled.Add,
@@ -911,64 +936,72 @@ fun ChatScreen(
                 )
             }
 
-            ChatInputBar(
-                inputState = inputState,
-                receiveContentListener = imagePaste,
-                isReceivingContent = imagePaste.isReceiving,
-                onSend = {
-                    if (!imagePaste.isReceiving && viewModel.sendMessage(inputState.text.toString())) {
-                        inputState.clearText()
-                        // Jump only after an accepted send. A readiness race keeps the draft intact.
-                        scrollController.jumpToBottom(animated = true)
-                    }
-                },
-                onMicTap = mediaLaunchers.onMicTap,
-                onMicHoldStart = mediaLaunchers.onMicHoldStart,
-                onMicHoldEnd = mediaLaunchers.onMicHoldEnd,
-                onMicHoldCancel = mediaLaunchers.onMicHoldCancel,
-                onMicLock = mediaLaunchers.onMicLock,
-                isListening = mediaLaunchers.isListening || state.isTranscribingVoiceNote,
-                isRecordingVoice = mediaLaunchers.isRecordingVoice,
-                isVoiceNoteLocked = mediaLaunchers.isVoiceNoteLocked,
-                amplitudeProvider = mediaLaunchers.amplitudeProvider,
-                onStopGeneration = { viewModel.interruptSession() },
-                isAgentTyping = state.isAgentTyping,
-                canInterrupt = state.canInterrupt,
-                isConnected = state.isConnected,
-                isSessionReady = state.isSessionReady && !timelineState.isHistorical,
-                sessionPreparationFailed = state.resumeError != null,
-                commandCatalog = state.commandCatalog,
-                slashUsageCounts = state.slashUsageCounts,
-                pendingAttachments = state.pendingAttachments,
-                onCameraTap = mediaLaunchers.onCameraTap,
-                onImageTap = mediaLaunchers.onImageTap,
-                onFileTap = mediaLaunchers.onFileTap,
-                onRemoveAttachment = viewModel::removeAttachment,
-                onPreviewAttachment = { attachment ->
-                    if (attachment.isImage) {
-                        viewingImage =
-                            ImageViewerModel(
-                                model = attachment.uri,
-                                name = attachment.name,
-                                mimeType = attachment.mimeType,
-                            )
-                    }
-                },
-                // Composer toolbar wiring (PR 1)
-                currentSessionModel = state.currentSessionModel,
-                showModelProvider = state.showModelProvider,
-                reasoningLevel = state.reasoningLevel,
-                reasoningWireLevel = state.reasoningWireLevel,
-                pendingReasoningLevel = state.pendingReasoningLevel,
-                onModelTap = { viewModel.openModelPicker() },
-                onReasoningTap = { level -> viewModel.setReasoningLevel(level) },
-                canDisableReasoning = state.currentModelCapabilities?.can_disable_reasoning,
-                supportsReasoning = state.currentModelCapabilities?.reasoningSupport,
-                fastMode = state.fastMode,
-                fastSupported = state.currentModelCapabilities?.fast == true,
-                isFastModeChanging = state.isFastModeChanging,
-                onToggleFastMode = { viewModel.toggleFastMode() },
-            )
+            if (voiceState.isActive) {
+                VoiceConversationPanel(
+                    state = voiceState,
+                    onTap = viewModel::voiceConversationAction,
+                    onEnd = viewModel::stopVoiceConversation,
+                )
+            } else {
+                ChatInputBar(
+                    inputState = inputState,
+                    receiveContentListener = imagePaste,
+                    isReceivingContent = imagePaste.isReceiving,
+                    onSend = {
+                        if (!imagePaste.isReceiving && viewModel.sendMessage(inputState.text.toString())) {
+                            inputState.clearText()
+                            // Jump only after an accepted send. A readiness race keeps the draft intact.
+                            scrollController.jumpToBottom(animated = true)
+                        }
+                    },
+                    onMicTap = mediaLaunchers.onMicTap,
+                    onMicHoldStart = mediaLaunchers.onMicHoldStart,
+                    onMicHoldEnd = mediaLaunchers.onMicHoldEnd,
+                    onMicHoldCancel = mediaLaunchers.onMicHoldCancel,
+                    onMicLock = mediaLaunchers.onMicLock,
+                    isListening = mediaLaunchers.isListening || state.isTranscribingVoiceNote,
+                    isRecordingVoice = mediaLaunchers.isRecordingVoice,
+                    isVoiceNoteLocked = mediaLaunchers.isVoiceNoteLocked,
+                    amplitudeProvider = mediaLaunchers.amplitudeProvider,
+                    onStopGeneration = { viewModel.interruptSession() },
+                    isAgentTyping = state.isAgentTyping,
+                    canInterrupt = state.canInterrupt,
+                    isConnected = state.isConnected,
+                    isSessionReady = state.isSessionReady && !timelineState.isHistorical,
+                    sessionPreparationFailed = state.resumeError != null,
+                    commandCatalog = state.commandCatalog,
+                    slashUsageCounts = state.slashUsageCounts,
+                    pendingAttachments = state.pendingAttachments,
+                    onCameraTap = mediaLaunchers.onCameraTap,
+                    onImageTap = mediaLaunchers.onImageTap,
+                    onFileTap = mediaLaunchers.onFileTap,
+                    onRemoveAttachment = viewModel::removeAttachment,
+                    onPreviewAttachment = { attachment ->
+                        if (attachment.isImage) {
+                            viewingImage =
+                                ImageViewerModel(
+                                    model = attachment.uri,
+                                    name = attachment.name,
+                                    mimeType = attachment.mimeType,
+                                )
+                        }
+                    },
+                    // Composer toolbar wiring (PR 1)
+                    currentSessionModel = state.currentSessionModel,
+                    showModelProvider = state.showModelProvider,
+                    reasoningLevel = state.reasoningLevel,
+                    reasoningWireLevel = state.reasoningWireLevel,
+                    pendingReasoningLevel = state.pendingReasoningLevel,
+                    onModelTap = { viewModel.openModelPicker() },
+                    onReasoningTap = { level -> viewModel.setReasoningLevel(level) },
+                    canDisableReasoning = state.currentModelCapabilities?.can_disable_reasoning,
+                    supportsReasoning = state.currentModelCapabilities?.reasoningSupport,
+                    fastMode = state.fastMode,
+                    fastSupported = state.currentModelCapabilities?.fast == true,
+                    isFastModeChanging = state.isFastModeChanging,
+                    onToggleFastMode = { viewModel.toggleFastMode() },
+                )
+            }
         }
 
         ChatTimelineSheet(

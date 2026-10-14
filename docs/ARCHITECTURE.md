@@ -154,6 +154,18 @@ typed descriptor: `HermesWsClient.call(RpcMethods.X, params)` (suspending), `req
   `WsProfileParams.decorate` injects it for profile-scoped methods.
 - `RawRpcParamsRatchetTest.BASELINE` must stay empty.
 
+### Voice conversation
+
+The hands-free voice mode (`ui/chat/voice/`) is owned by `ChatViewModel`.
+`VoiceConversationMachine` is a pure state machine (listen → transcribe → send →
+speak → listen, barge-in, shutdown); `VoiceConversationController` runs its
+effects against a per-conversation `VoiceEngine` (`AndroidVoiceEngine`: mic +
+`VoiceActivityDetector`, live STT with upload fallback, `ReplySpeech` for the
+streamed reply). The audio sockets (`data/voice/`) authenticate like `/api/ws`
+(a fresh `mintWsTicket()` credential per socket) and carry `?profile=`
+explicitly because the OkHttp WebSocket client has no `ProfileScopeInterceptor`.
+`ChatScreen` stops the mode on ON_STOP, disposal and session switches.
+
 ### Shared Components
 
 - **`HermesScaffold`** — drawer-aware Scaffold + TopAppBar with refresh slot,
@@ -306,6 +318,7 @@ io.wutz.apollo/
 │   ├── repository/ KanbanRepository, KanbanSyncCoordinator, VoiceNoteRepository
 │   ├── session/    ActiveSessionHolder
 │   ├── update/     AppUpdateChecker, AppUpdateCache, AppUpdateState
+│   ├── voice/      speak-stream / transcribe-stream socket protocol and clients
 │   └── ws/         HermesWsClient, JSON-RPC models, WsEvent, BillingRepository
 ├── notification/   ChatNotificationService, NotificationReplyReceiver
 ├── theme/          Color, Theme, Motion, Spacing, Shapes, Type, HermesStatusColors

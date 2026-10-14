@@ -7,6 +7,7 @@ import io.wutz.apollo.data.model.ActiveProfileResponse
 import io.wutz.apollo.data.model.AddMcpServerRequest
 import io.wutz.apollo.data.model.AgentPluginInstallBody
 import io.wutz.apollo.data.model.AnalyticsResponse
+import io.wutz.apollo.data.model.AudioLeaseRequest
 import io.wutz.apollo.data.model.AudioTranscriptionRequest
 import io.wutz.apollo.data.model.AudioTranscriptionResponse
 import io.wutz.apollo.data.model.AuxiliaryModelsResponse
@@ -148,6 +149,7 @@ import io.wutz.apollo.data.model.UpdateProfileModelRequest
 import io.wutz.apollo.data.model.UpdateProfileSoulRequest
 import io.wutz.apollo.data.model.UpdateRawConfigRequest
 import io.wutz.apollo.data.model.UpdateReceiptResponse
+import io.wutz.apollo.data.model.VoiceConfigResponse
 import io.wutz.apollo.data.model.WebhookSubscription
 import io.wutz.apollo.data.model.WebhookToggleSubscriptionRequest
 import io.wutz.apollo.data.model.WebhooksResponse
@@ -1058,4 +1060,19 @@ interface HermesApiService : KanbanApiService {
         @Body request: TtsSpeakRequest,
         @Query("profile") profile: String? = null,
     ): Response<TtsSpeakResponse>
+
+    // Voice conversation (hermes_cli/web_routers/audio.py). Profile-scoped by
+    // ProfileScopeInterceptor like the rest of /api/audio.
+    @GET("api/audio/voice-config")
+    suspend fun getVoiceConfig(): Response<VoiceConfigResponse>
+
+    @POST("api/audio/stt-lease")
+    suspend fun setSttLease(
+        @Body body: AudioLeaseRequest,
+    ): Response<ResponseBody>
+
+    @POST("api/audio/tts-lease")
+    suspend fun setTtsLease(
+        @Body body: AudioLeaseRequest,
+    ): Response<ResponseBody>
 }
