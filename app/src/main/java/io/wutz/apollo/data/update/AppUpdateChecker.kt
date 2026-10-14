@@ -161,7 +161,7 @@ fun isReleaseCandidateVersion(tag: String): Boolean =
  * tests.
  */
 open class AppUpdateChecker(
-    private val client: OkHttpClient = OkHttpProvider.base,
+    private val client: OkHttpClient = OkHttpProvider.external,
     private val apiBaseUrl: String = "https://api.github.com/repos/wutz-io/apollo-hermes-android",
 ) {
     /**

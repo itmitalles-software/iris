@@ -56,6 +56,15 @@ object OkHttpProvider {
             .build()
     }
 
+    // Variant for third-party hosts (GitHub releases): no cookies, so the
+    // dashboard session can never be sent to another host.
+    val external: OkHttpClient by lazy {
+        base
+            .newBuilder()
+            .cookieJar(okhttp3.CookieJar.NO_COOKIES)
+            .build()
+    }
+
     // Short-timeout variant for probes and ticket minting
     val probe: OkHttpClient by lazy {
         base

@@ -3,6 +3,23 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
+## Unreleased
+
+### Security
+
+- The dashboard session cookie is no longer sent to other hosts. Every HTTP
+  client shares one cookie jar, and host-agnostic session cookies were attached
+  to any URL, including images from tool output and the GitHub update check.
+  They now go only to the configured server, other hosts can no longer plant
+  them, and Secure cookies are never sent over plain HTTP. The update check uses
+  a client without cookies.
+- Each approval card answers its own request. With several pending approvals,
+  every card's buttons answered the newest one, so "Always" on an older card
+  approved a command the user had not seen.
+- Installing an MCP server from the catalog sends only the variables that entry
+  declares. Values typed for other entries (for example a GitHub token) were
+  sent along, and typed values are now cleared when the server or profile changes.
+
 ## 0.1.4 — 2026-10-14
 
 ### Added

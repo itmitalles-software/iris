@@ -99,6 +99,8 @@ class McpServersViewModel(
                 isTestingAll = false,
                 errorMessage = null,
                 activeOAuthFlow = null,
+                // Typed env values are secrets for the previous server; never carry them over.
+                catalogInstallEnv = emptyMap(),
             )
         }
     }
@@ -621,10 +623,17 @@ class McpServersViewModel(
         val state = _uiState.value
         _uiState.update { it.copy(installingCatalogEntry = entry.name) }
         viewModelScope.launch {
+            // The form state holds values typed for every catalog entry; send only the
+            // variables this entry declares, so one server's secrets never reach another.
+            val declared =
+                entry.env
+                    .orEmpty()
+                    .map { it.key }
+                    .toSet()
             val request =
                 McpCatalogInstallRequest(
                     name = entry.name,
-                    env = state.catalogInstallEnv.ifEmpty { null },
+                    env = state.catalogInstallEnv.filterKeys { it in declared }.ifEmpty { null },
                 )
             val result =
                 withContext(ioDispatcher) {

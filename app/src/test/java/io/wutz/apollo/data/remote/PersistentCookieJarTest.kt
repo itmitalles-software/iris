@@ -23,10 +23,11 @@ import org.junit.Test
  * - pruning of expired (but not session) cookies
  */
 class PersistentCookieJarTest {
-    private fun makeJar(): PersistentCookieJar =
+    private fun makeJar(serverHosts: Set<String> = emptySet()): PersistentCookieJar =
         PersistentCookieJar(
             store = FakeEncryptedCookieStore(),
             storeScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+            isServerUrl = { it.host in serverHosts },
         )
 
     private fun sessionCookie(
@@ -58,21 +59,68 @@ class PersistentCookieJarTest {
         }
 
     @Test
-    fun sessionCookie_isUsableAcrossHostsWithinServer() =
+    fun sessionCookie_isUsableOnEveryAddressOfTheActiveServer() =
         runTest {
-            val jar = makeJar()
+            // The dashboard was signed in over its LAN address; the base URL now
+            // points at its tailnet address (WiFi/Tailscale switch).
+            val jar = makeJar(serverHosts = setOf("tailnet.example"))
+            jar.useStore("server-a")
+            jar.saveFromResponse(
+                "http://tailnet.example/".toHttpUrl(),
+                listOf(sessionCookie("dashboard.local", "abc123")),
+            )
+
+            val loaded = jar.loadForRequest("http://tailnet.example/api/status".toHttpUrl())
+            assertEquals(1, loaded.size)
+            assertEquals("abc123", loaded[0].value)
+        }
+
+    @Test
+    fun sessionCookie_isNeverSentToAnotherHost() =
+        runTest {
+            val jar = makeJar(serverHosts = setOf("dashboard.local"))
             jar.useStore("server-a")
             jar.saveFromResponse(
                 "http://dashboard.local/".toHttpUrl(),
                 listOf(sessionCookie("dashboard.local", "abc123")),
             )
 
-            // Session cookies mirror to the WILDCARD bucket (host-agnostic)
-            // so the authenticated session survives WiFi/Tailscale host
-            // switches — but only within the same server scope.
-            val loaded = jar.loadForRequest("http://evil.local/".toHttpUrl())
-            assertEquals(1, loaded.size)
-            assertEquals("abc123", loaded[0].value)
+            // Image loads of tool output and the update check share this jar.
+            assertTrue(jar.loadForRequest("https://cdn.example/img.png".toHttpUrl()).isEmpty())
+            assertTrue(jar.loadForRequest("https://api.github.com/repos/x".toHttpUrl()).isEmpty())
+        }
+
+    @Test
+    fun anotherHost_cannotPlantAHostAgnosticSessionCookie() =
+        runTest {
+            val jar = makeJar(serverHosts = setOf("dashboard.local"))
+            jar.useStore("server-a")
+            jar.saveFromResponse(
+                "https://evil.example/pixel.png".toHttpUrl(),
+                listOf(sessionCookie("evil.example", "attacker")),
+            )
+
+            assertTrue(jar.loadForRequest("http://dashboard.local/api/status".toHttpUrl()).isEmpty())
+        }
+
+    @Test
+    fun secureCookie_isNotSentOverPlainHttp() =
+        runTest {
+            val jar = makeJar(serverHosts = setOf("dash.local"))
+            jar.useStore("server-a")
+            val secure =
+                Cookie
+                    .Builder()
+                    .name(SESSION_COOKIE_NAME)
+                    .value("tls-only")
+                    .hostOnlyDomain("dash.local")
+                    .path("/")
+                    .secure()
+                    .build()
+            jar.saveFromResponse("https://dash.local/".toHttpUrl(), listOf(secure))
+
+            assertTrue(jar.loadForRequest("http://dash.local/api/status".toHttpUrl()).isEmpty())
+            assertEquals("tls-only", jar.loadForRequest("https://dash.local/api/status".toHttpUrl()).single().value)
         }
 
     @Test
