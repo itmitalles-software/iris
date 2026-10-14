@@ -33,11 +33,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +51,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.wutz.apollo.MemoryProviderDetailKey
 import io.wutz.apollo.NavigationController
 import io.wutz.apollo.R
+import io.wutz.apollo.data.model.LearningGraphNode
 import io.wutz.apollo.data.model.LearningGraphResponse
 import io.wutz.apollo.data.model.MemoryProviderStatusRow
 import io.wutz.apollo.ui.common.EmptyState
@@ -86,6 +91,15 @@ fun MemoryScreen(
     }
 
     ToastEffect(toastMessage = state.toastMessage, onClearToast = viewModel::clearToast)
+
+    state.node?.let { node ->
+        MemoryNodeSheet(
+            node = node,
+            onSave = viewModel::saveNode,
+            onForget = viewModel::forgetNode,
+            onDismiss = viewModel::closeNode,
+        )
+    }
 
     resetTarget?.let { target ->
         AlertDialog(
@@ -154,6 +168,7 @@ fun MemoryScreen(
                     learningGraph = state.learningGraph,
                     resetting = state.resetting,
                     onResetRequest = { resetTarget = it },
+                    onOpenNode = viewModel::openNode,
                     modifier = Modifier,
                 )
             }
@@ -167,6 +182,7 @@ private fun MemoryContent(
     learningGraph: LearningGraphResponse?,
     resetting: String?,
     onResetRequest: (String) -> Unit,
+    onOpenNode: (LearningGraphNode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -278,13 +294,18 @@ private fun MemoryContent(
 
         // Self-Improvement & learning activity (moved from System tab)
         item {
-            SelfImprovementSection(graph = learningGraph)
+            SelfImprovementSection(graph = learningGraph, onOpenNode = onOpenNode)
         }
     }
 }
 
 @Composable
-private fun SelfImprovementSection(graph: LearningGraphResponse?) {
+private fun SelfImprovementSection(
+    graph: LearningGraphResponse?,
+    onOpenNode: (LearningGraphNode) -> Unit,
+) {
+    // The recent list shows 8 entries; "Show all" lists every node so any memory can be edited.
+    var showAll by rememberSaveable { mutableStateOf(false) }
     SectionHeader(title = stringResource(R.string.memory_sec_self_improvement))
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -336,18 +357,25 @@ private fun SelfImprovementSection(graph: LearningGraphResponse?) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
+                val allNodes = graph.nodes.sortedByDescending { it.timestamp ?: 0L }
                 val sortedNodes =
-                    graph.nodes
-                        .filter { it.timestamp != null || it.kind == "skill" }
-                        .sortedByDescending { it.timestamp ?: 0L }
-                        .take(8)
+                    if (showAll) {
+                        allNodes
+                    } else {
+                        allNodes
+                            .filter { it.timestamp != null || it.kind == "skill" }
+                            .take(RECENT_NODE_COUNT)
+                    }
+                val openLabel = stringResource(R.string.memory_node_open)
 
                 sortedNodes.forEach { node ->
                     Surface(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(onClickLabel = openLabel, role = Role.Button) { onOpenNode(node) },
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ) {
@@ -386,10 +414,26 @@ private fun SelfImprovementSection(graph: LearningGraphResponse?) {
                         }
                     }
                 }
+                if (allNodes.size > RECENT_NODE_COUNT || showAll) {
+                    TextButton(
+                        onClick = { showAll = !showAll },
+                        modifier = Modifier.testTag("memory_nodes_show_all"),
+                    ) {
+                        Text(
+                            if (showAll) {
+                                stringResource(R.string.memory_nodes_show_recent)
+                            } else {
+                                pluralStringResource(R.plurals.memory_nodes_show_all, allNodes.size, allNodes.size)
+                            },
+                        )
+                    }
+                }
             }
         }
     }
 }
+
+private const val RECENT_NODE_COUNT = 8
 
 @Composable
 private fun MemoryProviderRow(

@@ -38,6 +38,18 @@ object NavigationController {
         private set
 
     /**
+     * A screen requested from outside the UI (launcher shortcut). MainNavigation opens it once the
+     * signed-in stack exists, so a cold start does not lose the request.
+     */
+    var pendingScreenRequest: NavKey? by mutableStateOf(null)
+        private set
+
+    /** Request id of a voice conversation to start in the chat (voice shortcut); null when none. */
+    var pendingVoiceStart: Long? by mutableStateOf(null)
+        private set
+    private var nextVoiceStartRequestId = 0L
+
+    /**
      * The list screen a chat was opened from (History, Bots). Back out of that
      * chat returns here instead of exiting the app (Telegram chat-list parity).
      * Consumed by MainNavigation's root-chat back handler; cleared by any other
@@ -152,6 +164,20 @@ object NavigationController {
         pendingNewChatNavigation.also { pendingNewChatNavigation = null }
 
     fun consumePendingSessionId(): String? = consumePendingChatNavigation()?.sessionId
+
+    fun requestScreen(key: NavKey) {
+        pendingScreenRequest = key
+    }
+
+    fun consumePendingScreenRequest(): NavKey? = pendingScreenRequest.also { pendingScreenRequest = null }
+
+    /** Opens a new chat and asks the chat screen to start the hands-free voice conversation in it. */
+    fun openNewVoiceChat() {
+        pendingVoiceStart = ++nextVoiceStartRequestId
+        openNewChat()
+    }
+
+    fun consumePendingVoiceStart(): Long? = pendingVoiceStart.also { pendingVoiceStart = null }
 
     /** Clear the stack and navigate to the given screen atomically. */
     fun resetTo(screen: NavKey) {

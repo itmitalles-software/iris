@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static launcher shortcuts and the direct-share target of the dynamic conversation shortcuts
+     (shortcuts/SessionShortcuts.kt). The debug build has its own copy in src/debug/res/xml because
+     targetPackage must be the application id (".dev" suffix); ShortcutsXmlTest keeps both in sync. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_chat"
+        android:shortcutId="new_chat"
+        android:shortcutLongLabel="@string/shortcut_new_chat_long"
+        android:shortcutShortLabel="@string/shortcut_new_chat_short">
+        <intent
+            android:action="io.wutz.apollo.action.NEW_CHAT"
+            android:targetClass="io.wutz.apollo.ShortcutEntryAlias"
+            android:targetPackage="io.wutz.apollo" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_voice"
+        android:shortcutId="voice_chat"
+        android:shortcutLongLabel="@string/shortcut_voice_long"
+        android:shortcutShortLabel="@string/shortcut_voice_short">
+        <intent
+            android:action="io.wutz.apollo.action.VOICE_CHAT"
+            android:targetClass="io.wutz.apollo.ShortcutEntryAlias"
+            android:targetPackage="io.wutz.apollo" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_history"
+        android:shortcutId="history"
+        android:shortcutLongLabel="@string/shortcut_history_long"
+        android:shortcutShortLabel="@string/shortcut_history_short">
+        <intent
+            android:action="io.wutz.apollo.action.HISTORY"
+            android:targetClass="io.wutz.apollo.ShortcutEntryAlias"
+            android:targetPackage="io.wutz.apollo" />
+    </shortcut>
+    <share-target android:targetClass="io.wutz.apollo.share.ShareTargetActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="io.wutz.apollo.category.SESSION_SHARE_TARGET" />
+    </share-target>
+</shortcuts>

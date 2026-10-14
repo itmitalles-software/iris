@@ -38,7 +38,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Launcher shortcuts and the share-sheet target of conversation shortcuts. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- Launcher shortcut / Quick Settings tile entry. Not exported: launchers start shortcuts
+             with Apollo's identity, other apps cannot reach these actions. -->
+        <activity-alias
+            android:name=".ShortcutEntryAlias"
+            android:exported="false"
+            android:targetActivity=".MainActivity" />
 
         <!-- Notification "open chat" entry. Not exported, so only Apollo's own
              PendingIntents can deliver a session id to MainActivity (issue #832). -->
@@ -92,6 +103,17 @@
             android:name=".notification.ChatNotificationService"
             android:foregroundServiceType="remoteMessaging"
             android:exported="false" />
+
+        <service
+            android:name=".shortcuts.NewChatTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_new_chat"
+            android:label="@string/shortcut_new_chat_short"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <receiver
             android:name=".notification.NotificationReplyReceiver"

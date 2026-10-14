@@ -6,6 +6,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,6 +34,8 @@ fun SessionActionMenu(
     onSelect: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onShare: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
 ) {
     val statusColors = LocalHermesStatusColors.current
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
@@ -89,6 +93,20 @@ fun SessionActionMenu(
             leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
             onClick = onRename,
         )
+        if (onShare != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.session_transfer_action_share)) },
+                leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                onClick = onShare,
+            )
+        }
+        if (onExport != null) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.session_transfer_action_export)) },
+                leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
+                onClick = onExport,
+            )
+        }
         DropdownMenuItem(
             text = {
                 Text(
@@ -110,7 +128,7 @@ fun SessionActionMenu(
 }
 
 /**
- * TalkBack custom actions that mirror [SessionActionMenu], so pin, archive, select, rename and delete are
+ * TalkBack custom actions that mirror [SessionActionMenu], so pin, archive, select, rename, share, export and delete are
  * reachable without the long-press gesture. Returns an empty list while selecting (the menu is off then).
  */
 @Composable
@@ -124,6 +142,8 @@ internal fun sessionCustomActions(
     onSelect: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onShare: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
 ): List<CustomAccessibilityAction> {
     val pinLabel = stringResource(if (isPinned) R.string.sessions_action_unpin else R.string.sessions_action_pin)
     val archiveLabel =
@@ -131,6 +151,8 @@ internal fun sessionCustomActions(
     val selectLabel = stringResource(R.string.sessions_action_select)
     val renameLabel = stringResource(R.string.sessions_action_rename)
     val deleteLabel = stringResource(R.string.action_delete)
+    val shareLabel = stringResource(R.string.session_transfer_action_share)
+    val exportLabel = stringResource(R.string.session_transfer_action_export)
     if (!enabled) return emptyList()
     return buildList {
         fun action(
@@ -146,6 +168,8 @@ internal fun sessionCustomActions(
         onToggleArchive?.let { action(archiveLabel, it) }
         action(selectLabel, onSelect)
         action(renameLabel, onRename)
+        onShare?.let { action(shareLabel, it) }
+        onExport?.let { action(exportLabel, it) }
         if (!isDeleting) action(deleteLabel, onDelete)
     }
 }

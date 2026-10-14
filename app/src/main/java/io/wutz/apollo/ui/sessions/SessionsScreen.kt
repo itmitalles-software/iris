@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PushPin
@@ -133,6 +134,7 @@ import io.wutz.apollo.ui.sessions.components.SessionsDialogs
 import io.wutz.apollo.ui.sessions.components.SessionsStatsRow
 import io.wutz.apollo.ui.sessions.components.automationGroups
 import io.wutz.apollo.ui.sessions.components.localizedSourceLabel
+import io.wutz.apollo.ui.sessions.transfer.rememberSessionTransfer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
@@ -470,6 +472,8 @@ fun SessionsScreen(
         )
     }
 
+    val sessionTransfer = rememberSessionTransfer(onImported = { viewModel.loadSessions(forceRefresh = true) })
+
     HermesScaffold(
         title = { Text(stringResource(R.string.screen_history)) },
         navigationIcon = onOpenDrawer?.let { NavIcon.Menu(it) },
@@ -483,6 +487,16 @@ fun SessionsScreen(
                 Icon(
                     imageVector = Icons.Filled.Add,
                     contentDescription = stringResource(R.string.content_desc_new_chat),
+                )
+            }
+            IconButton(
+                onClick = sessionTransfer.importFile,
+                enabled = !sessionTransfer.isBusy,
+                modifier = Modifier.testTag("sessions_action_import"),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.FileOpen,
+                    contentDescription = stringResource(R.string.session_transfer_action_import),
                 )
             }
             IconButton(
@@ -752,6 +766,8 @@ fun SessionsScreen(
                                                         )
                                                     },
                                                     onDelete = { viewModel.requestDeleteSession(session.id) },
+                                                    onShare = { sessionTransfer.share(session.id) },
+                                                    onExport = { sessionTransfer.export(session.id, session.title) },
                                                 )
                                             }
                                             if (state.searchHasMore) {
@@ -991,6 +1007,8 @@ fun SessionsScreen(
                                         onTogglePin = { viewModel.togglePin(session.id) },
                                         onToggleArchive = { viewModel.toggleArchive(session.id) },
                                         onDelete = { viewModel.requestDeleteSession(session.id) },
+                                        onShare = { sessionTransfer.share(session.id) },
+                                        onExport = { sessionTransfer.export(session.id, item.displayTitle) },
                                     )
                                 }
                             }

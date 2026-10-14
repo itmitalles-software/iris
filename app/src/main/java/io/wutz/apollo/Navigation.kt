@@ -79,6 +79,7 @@ import io.wutz.apollo.ui.common.LocalDrawerGestureController
 import io.wutz.apollo.ui.common.LocalPersistentSidebarVisible
 import io.wutz.apollo.ui.plugins.MemoryProviderDetailScreen
 import io.wutz.apollo.ui.settings.ClientCertificatesPage
+import io.wutz.apollo.ui.settings.OpenSourceLicensesPage
 import io.wutz.apollo.ui.settings.SettingsAboutPage
 import io.wutz.apollo.ui.settings.SettingsAppearancePage
 import io.wutz.apollo.ui.settings.SettingsBehaviorPage
@@ -179,6 +180,9 @@ private fun appEntryProvider(
             onBack = { NavigationController.goBack() },
         )
     }
+    entry<OpenSourceLicensesScreen> {
+        OpenSourceLicensesPage(onBack = { NavigationController.goBack() })
+    }
 
     // ── Toolset detail drill-down (issue #782) ────────────────────────
     entry<ToolsetDetailKey> { key ->
@@ -231,6 +235,13 @@ fun MainNavigation(sessionId: String? = null) {
     NavigationController.backStack = backStack
 
     val currentScreen = backStack.lastOrNull() ?: startScreen
+    // Launcher shortcuts (History) wait here until the signed-in stack exists.
+    val pendingScreenRequest = NavigationController.pendingScreenRequest
+    LaunchedEffect(pendingScreenRequest, startScreen) {
+        if (pendingScreenRequest != null && startScreen == ChatScreen) {
+            NavigationController.consumePendingScreenRequest()?.let(NavigationController::navigateTo)
+        }
+    }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 

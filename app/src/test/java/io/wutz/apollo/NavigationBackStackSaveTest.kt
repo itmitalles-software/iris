@@ -24,6 +24,7 @@ class NavigationBackStackSaveTest {
                 listOf(
                     SettingsConnection,
                     SettingsAbout,
+                    OpenSourceLicensesScreen,
                     GroupChatKey(groupName = "Dream Team"),
                     ToolsetDetailKey(name = "web", label = "Web"),
                     MemoryProviderDetailKey(name = "honcho"),

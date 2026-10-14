@@ -80,6 +80,8 @@ fun ChatLifecycleEffects(
         val target = request?.sessionId ?: sessionId
         if (!target.isNullOrBlank()) {
             viewModel.switchSession(target)
+            // Share-sheet content sent straight to this conversation's shortcut.
+            ShareInbox.consumeFor(target)?.let(viewModel::stageSharedContent)
         }
         if (request?.scrollToBottom == true) {
             scrollController.jumpToBottom(animated = false)

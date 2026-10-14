@@ -27,6 +27,7 @@ import io.wutz.apollo.data.ws.HermesSessionLiveStatusSource
 import io.wutz.apollo.data.ws.ProjectsSource
 import io.wutz.apollo.data.ws.SessionLiveStatusSource
 import io.wutz.apollo.data.ws.WsEvent
+import io.wutz.apollo.shortcuts.SessionShortcuts
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
@@ -512,6 +513,10 @@ class SessionsViewModel(
                     if (persistentKey != null) SessionListCacheStore.put(persistentKey, data)
                     rawPaginationOffset = data.nextOffset(0)
                     val sessionsList = data.sessions.orEmpty()
+                    // Launcher and share-sheet shortcuts follow the first page of active conversations.
+                    if (section == HistorySection.CONVERSATIONS && archivedQuery == null) {
+                        SessionShortcuts.publish(requestScope, sessionsList)
+                    }
                     val paging =
                         SessionsPaging.resolveInitialPaging(
                             receivedCount = minOf(data.sessions.size, PAGE_SIZE),

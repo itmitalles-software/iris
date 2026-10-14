@@ -42,6 +42,9 @@ object ProfileScopeInterceptor : Interceptor {
             "/api/cron",
             "/api/env",
             "/api/gateway",
+            // Learning graph and node edit/delete are per profile; an unscoped node
+            // delete on a shared backend archives the launch profile's same-named skill.
+            "/api/learning",
             "/api/mcp",
             "/api/memory",
             "/api/messaging/platforms",

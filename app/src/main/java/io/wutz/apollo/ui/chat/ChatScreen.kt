@@ -421,6 +421,16 @@ fun ChatScreen(
             onPermissionDenied = { scrollScope.launch { snackbarHostState.showSnackbar(voicePermissionDeniedMsg) } },
             launchExternalActivity = launchExternalActivity,
         )
+    // Voice launcher shortcut: start the conversation once its new chat exists and the socket is up.
+    val pendingVoiceStart = NavigationController.pendingVoiceStart
+    val pendingNewChat = NavigationController.pendingNewChatNavigation
+    LaunchedEffect(pendingVoiceStart, pendingNewChat, state.connectionStatus) {
+        val connected = state.connectionStatus == ConnectionStatus.CONNECTED
+        if (pendingVoiceStart != null && pendingNewChat == null && connected) {
+            NavigationController.consumePendingVoiceStart()
+            startVoiceConversation()
+        }
+    }
 
     val invalidResponseError = stringResource(R.string.session_integrations_err_invalid_response)
     val browserLaunchError = stringResource(R.string.session_integrations_err_browser_launch)

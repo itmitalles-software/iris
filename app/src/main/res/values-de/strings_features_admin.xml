@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Memory: edit or forget a learned skill or memory -->
+    <string name="memory_node_open">Details öffnen</string>
+    <plurals name="memory_nodes_show_all">
+        <item quantity="one">Alle anzeigen (%d)</item>
+        <item quantity="other">Alle anzeigen (%d)</item>
+    </plurals>
+    <string name="memory_nodes_show_recent">Nur neueste anzeigen</string>
+    <string name="memory_node_kind_skill">Skill</string>
+    <string name="memory_node_kind_memory">Erinnerung</string>
+    <string name="memory_node_skill_hint">Die SKILL.md des Skills auf dem Server. Speichern ersetzt sie.</string>
+    <string name="memory_node_memory_hint">Ein Eintrag im Gedächtnis des Agenten. Speichern ersetzt diesen Eintrag.</string>
+    <string name="memory_node_content_label">Inhalt</string>
+    <string name="memory_node_forget">Vergessen</string>
+    <string name="memory_node_forget_title">Diesen Eintrag vergessen?</string>
+    <string name="memory_node_forget_skill_message">Der Skill „%1$s“ wird archiviert. Auf dem Server lässt er sich wiederherstellen mit: hermes curator restore %1$s</string>
+    <string name="memory_node_forget_memory_message">Dieser Eintrag wird aus dem Gedächtnis des Agenten entfernt. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="memory_node_load_failed">Eintrag konnte nicht geladen werden: %1$s</string>
+    <string name="memory_node_empty_content">Der Inhalt darf nicht leer sein. Zum Entfernen „Vergessen“ verwenden.</string>
+    <string name="memory_node_saved">„%1$s“ gespeichert</string>
+    <string name="memory_node_save_failed">Speichern fehlgeschlagen: %1$s</string>
+    <string name="memory_node_forgot_skill">Skill „%1$s“ archiviert</string>
+    <string name="memory_node_forgot_memory">Eintrag vergessen</string>
+    <string name="memory_node_forget_failed">Eintrag konnte nicht vergessen werden: %1$s</string>
+
+    <!-- Cron job detail: run history -->
+    <string name="cron_runs_title">Läufe</string>
+    <string name="cron_runs_empty">Noch keine Läufe.</string>
+    <string name="cron_runs_load_failed">Läufe konnten nicht geladen werden: %1$s</string>
+    <string name="cron_runs_running">Läuft</string>
+    <string name="cron_runs_agent_run">Agent-Lauf</string>
+    <string name="cron_runs_script_run">Skript-Lauf</string>
+    <string name="cron_runs_kind_agent">Agent</string>
+    <string name="cron_runs_kind_script">Skript</string>
+    <plurals name="cron_runs_tokens">
+        <item quantity="one">%1$d Token</item>
+        <item quantity="other">%1$d Tokens</item>
+    </plurals>
+    <string name="cron_runs_open_session">Unterhaltung öffnen</string>
+    <string name="cron_runs_toggle_output">Ausgabe ein- oder ausblenden</string>
+
+    <!-- History: share, export and import conversations -->
+    <string name="session_transfer_action_share">Als Text teilen</string>
+    <string name="session_transfer_action_export">Exportieren (JSON)</string>
+    <string name="session_transfer_action_import">Unterhaltung importieren</string>
+    <string name="session_transfer_share_chooser">Unterhaltung teilen</string>
+    <string name="session_transfer_role_user">Du</string>
+    <string name="session_transfer_role_assistant">Assistent</string>
+    <string name="session_transfer_image">Bild</string>
+    <string name="session_transfer_truncated">Gekürzt. Für den vollständigen Text die Unterhaltung als JSON exportieren.</string>
+    <string name="session_transfer_share_failed">Unterhaltung konnte nicht vorbereitet werden: %1$s</string>
+    <string name="session_transfer_export_done">Unterhaltung exportiert</string>
+    <string name="session_transfer_export_failed">Export fehlgeschlagen: %1$s</string>
+    <string name="session_transfer_import_failed">Import fehlgeschlagen: %1$s</string>
+    <string name="session_transfer_import_too_large">Die Datei ist zu groß für den Import (max. 25 MB).</string>
+    <string name="session_transfer_import_not_json">Die Datei ist kein Hermes-Unterhaltungsexport (JSON).</string>
+    <string name="session_transfer_import_no_sessions">Die Datei enthält keine Unterhaltungen.</string>
+    <plurals name="session_transfer_imported">
+        <item quantity="one">%d Unterhaltung importiert</item>
+        <item quantity="other">%d Unterhaltungen importiert</item>
+    </plurals>
+    <plurals name="session_transfer_imported_with_skipped">
+        <item quantity="one">%1$d Unterhaltung importiert, %2$d schon vorhanden</item>
+        <item quantity="other">%1$d Unterhaltungen importiert, %2$d schon vorhanden</item>
+    </plurals>
+    <plurals name="session_transfer_import_all_present">
+        <item quantity="one">Die Unterhaltung ist schon vorhanden</item>
+        <item quantity="other">Alle %d Unterhaltungen sind schon vorhanden</item>
+    </plurals>
+
+    <!-- Launcher shortcuts and Quick Settings tile -->
+    <string name="shortcut_new_chat_short">Neuer Chat</string>
+    <string name="shortcut_new_chat_long">Neuen Chat starten</string>
+    <string name="shortcut_voice_short">Sprache</string>
+    <string name="shortcut_voice_long">Sprachunterhaltung starten</string>
+    <string name="shortcut_history_short">Verlauf</string>
+    <string name="shortcut_history_long">Verlauf der Unterhaltungen öffnen</string>
+    <string name="shortcut_session_other_scope">Diese Unterhaltung gehört zu einer anderen Verbindung oder einem anderen Profil.</string>
+
+    <!-- Settings → About: open-source licenses -->
+    <string name="licenses_title">Open-Source-Lizenzen</string>
+    <string name="licenses_about_value">Apollo, Cinzel-Schrift, Bibliotheken</string>
+    <string name="licenses_open">Lizenzen öffnen</string>
+    <string name="licenses_expand">Lizenztext anzeigen</string>
+    <string name="licenses_collapse">Lizenztext ausblenden</string>
+    <string name="licenses_apollo_title">Apollo</string>
+    <string name="licenses_apollo_summary">Apache License 2.0</string>
+    <string name="licenses_notice_title">Hinweis (NOTICE)</string>
+    <string name="licenses_notice_summary">Herkunft, Urheber und gebündelte Werke</string>
+    <string name="licenses_cinzel_title">Schrift Cinzel</string>
+    <string name="licenses_cinzel_summary">SIL Open Font License 1.1</string>
+    <string name="licenses_libraries_title">Bibliotheken von Drittanbietern</string>
+    <string name="licenses_libraries_summary">AndroidX, Kotlin, OkHttp, Coil, SQLCipher und weitere</string>
+</resources>
