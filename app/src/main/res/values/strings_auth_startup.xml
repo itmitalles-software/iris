@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Password login and in-chat re-login errors -->
+    <string name="auth_error_invalid_credentials">Wrong username or password (401)</string>
+    <string name="auth_error_ws_ticket_http">Could not get a WebSocket ticket (HTTP %1$d)</string>
+
+    <!-- Landing screen -->
+    <string name="landing_setup_help">How do I set up my server?</string>
+
+    <!-- App lock -->
+    <string name="app_lock_title">App lock</string>
+    <string name="app_lock_desc">Ask for your fingerprint, face or screen lock when you open Apollo.</string>
+    <string name="app_lock_needs_screen_lock">Set up a screen lock in the Android settings first.</string>
+    <string name="app_lock_timeout_title">Lock after</string>
+    <string name="app_lock_timeout_desc">How long Apollo may stay in the background before it asks again.</string>
+    <string name="app_lock_timeout_30s">30 seconds</string>
+    <string name="app_lock_timeout_1m">1 minute</string>
+    <string name="app_lock_timeout_5m">5 minutes</string>
+    <string name="app_lock_timeout_15m">15 minutes</string>
+    <string name="app_lock_locked_title">Apollo is locked</string>
+    <string name="app_lock_unlock">Unlock</string>
+    <string name="app_lock_prompt_title">Unlock Apollo</string>
+    <string name="app_lock_use_screen_lock">Use screen lock</string>
+</resources>

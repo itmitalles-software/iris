@@ -37,6 +37,7 @@ import io.wutz.apollo.ui.common.HermesScaffold
 import io.wutz.apollo.ui.common.NavIcon
 import io.wutz.apollo.ui.common.resolve
 import io.wutz.apollo.ui.settings.components.AboutSection
+import io.wutz.apollo.ui.settings.components.AppLockSection
 import io.wutz.apollo.ui.settings.components.AppearanceSection
 import io.wutz.apollo.ui.settings.components.BehaviorSection
 import io.wutz.apollo.ui.settings.components.ChatSection
@@ -263,6 +264,7 @@ internal fun SettingsBehaviorPage(
                 restoreLastSession = state.restoreLastSession,
                 onRestoreLastSessionChange = viewModel::onRestoreLastSessionChange,
             )
+            AppLockSection()
         }
     }
 }

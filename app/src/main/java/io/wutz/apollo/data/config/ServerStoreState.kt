@@ -55,4 +55,8 @@ data class ServerStoreState(
     val lastUpdateCheckTimestamp: Long = 0L,
     // Tag the user explicitly dismissed from the update banner / dialog (e.g. "v1.24.2").
     val dismissedUpdateTag: String? = null,
+    // Optional app lock (off by default) and how long the app may stay in the background before
+    // it asks again.
+    val appLockEnabled: Boolean = false,
+    val appLockTimeoutSeconds: Int = 60,
 )

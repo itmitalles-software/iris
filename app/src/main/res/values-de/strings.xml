@@ -1448,7 +1448,7 @@
     <string name="auth_login_use_profile">Als %1$s fortfahren</string>
 
     <!-- Landing Screen -->
-    <string name="landing_action_auth_login">Auth-Login</string>
+    <string name="landing_action_auth_login">Anmelden</string>
 
     <!-- Loading / Startup State (issue #1171) -->
     <string name="auth_init_failed">App-Einstellungen konnten nicht initialisiert werden</string>

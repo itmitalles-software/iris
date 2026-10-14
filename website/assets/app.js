@@ -40,7 +40,7 @@
     s3Title: "Im Tailnet veröffentlichen",
     s3Text: "Tailscale Serve ergänzt HTTPS mit gültigem Zertifikat, erreichbar nur in deinem Tailnet.",
     s4Title: "Mit Apollo anmelden",
-    s4Text: "Installiere die APK, tippe auf „Auth-Login“, gib die Tailnet-Adresse deines Rechners ein (https://<rechner>.<tailnet>.ts.net) und melde dich an.",
+    s4Text: "Installiere die APK, tippe auf „Anmelden“, gib die Tailnet-Adresse deines Rechners ein (https://<rechner>.<tailnet>.ts.net) und melde dich an.",
     setupMore: "Manuelle Einrichtung und Systeme ohne systemd:",
     copy: "Kopieren",
     copied: "Kopiert",
