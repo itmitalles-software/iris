@@ -95,8 +95,18 @@ The SHA-256 digest must be
 f6ff6e51356e8aa37eb23a518dee62691fad0a1eebb9c68298a0d0bc9880fb3e
 ```
 
-(`CN=Apollo, O=wutz.io, C=DE`). Android also refuses an update signed with a
-different key.
+(`CN=Apollo, O=wutz.io, C=DE`, also in
+[`.github/release-cert.sha256`](.github/release-cert.sha256)). Android also
+refuses an update signed with a different key.
+
+Each release also lists the APK's SHA-256 checksum in `SHA256SUMS` and carries
+a build provenance attestation, which proves the APK was built by the release
+workflow of this repository:
+
+```bash
+sha256sum -c SHA256SUMS
+gh attestation verify apollo-v<version>.apk -R wutz-io/apollo-hermes-android
+```
 
 ## Connect over Tailscale (recommended)
 
