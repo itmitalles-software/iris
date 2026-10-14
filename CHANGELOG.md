@@ -3,6 +3,15 @@
 All notable Apollo changes. Apollo follows Semantic Versioning; upstream
 Hermes Mobile changes merged into Apollo are summarized per sync.
 
+## Unreleased
+
+### Fixed
+
+- Approvals, clarifications and other prompts that arrive while Apollo is in
+  the background show a notification again. They come as server requests,
+  which the notification service ignored (#3).
+- The approval card shows its heading in bold instead of literal `**`.
+
 ## 0.1.3 — 2026-10-14
 
 ### Added

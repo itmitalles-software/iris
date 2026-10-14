@@ -37,8 +37,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
 import io.wutz.apollo.ui.common.resolve
@@ -119,7 +122,18 @@ internal fun SystemBubble(
     val resources = LocalResources.current
     val displayText =
         remember(message.content, resources) {
-            SystemNotice.displayText(message.content) { it.resolve(resources) }
+            val shown = SystemNotice.displayText(message.content) { it.resolve(resources) }
+            buildAnnotatedString {
+                for ((segment, bold) in SystemNotice.boldSegments(shown)) {
+                    if (bold) {
+                        withStyle(
+                            SpanStyle(fontWeight = FontWeight.SemiBold),
+                        ) { append(segment) }
+                    } else {
+                        append(segment)
+                    }
+                }
+            }
         }
 
     Column(

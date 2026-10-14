@@ -71,6 +71,17 @@ class SystemNoticeTest {
     }
 
     @Test
+    fun boldMarkersBecomeBoldSegments() {
+        assertEquals(
+            listOf("Freigabe erforderlich" to true, "\ndelete in root path" to false),
+            SystemNotice.boldSegments("**Freigabe erforderlich**\ndelete in root path"),
+        )
+        assertEquals(listOf("a ** b" to false), SystemNotice.boldSegments("a ** b"))
+        assertEquals(listOf("plain" to false), SystemNotice.boldSegments("plain"))
+        assertEquals(emptyList<Pair<String, Boolean>>(), SystemNotice.boldSegments(""))
+    }
+
+    @Test
     fun parameterizedRowsKeepTheirStoredEnglishText() {
         // Old app versions wrote exactly these strings; the parser below depends on them.
         assertEquals("Stopped 1 background process.", SystemNotice.stoppedBackgroundProcesses(1))
