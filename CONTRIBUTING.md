@@ -111,7 +111,7 @@ We enforce Kotlin coding conventions and Jetpack Compose best practices.
 
 ### Kotlin Formatting
 
-- Code formatting is checked and enforced by **ktlint 1.8.0** in CI. Use the Gradle tasks; they run the `ktlint` binary, which must be on `PATH` (see [BUILD.md](BUILD.md#requirements)):
+- Code formatting is checked and enforced by **ktlint 1.8.0** in CI. Use the Gradle tasks; they resolve ktlint 1.8.0 through Gradle, so no separate install is needed:
   ```bash
   ./gradlew ktlintCheck        # check (CI-equivalent)
   ./gradlew ktlintFormat       # auto-fix, then re-check with ktlintCheck

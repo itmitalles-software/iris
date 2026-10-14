@@ -26,8 +26,8 @@ HTTPS through Tailscale Serve; plain HTTP is for trusted networks only.
 
 ## Build & Test Commands
 
-Requirements and setup (JDK 21, Android SDK 37, ktlint 1.8.0 on `PATH`, or
-`nix develop`) are in [BUILD.md](../BUILD.md). The local gate is one task:
+Requirements and setup (JDK 21 and Android SDK 37, or `nix develop`; ktlint
+1.8.0 is resolved by Gradle) are in [BUILD.md](../BUILD.md). The local gate is one task:
 
 ```bash
 ./gradlew gate        # run before every commit and PR
