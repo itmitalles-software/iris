@@ -468,16 +468,13 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Probe the active connection as it is persisted right now. It must not call [save]: that would write back
+     * the snapshot loaded when this Activity-scoped ViewModel was created (an old token after a re-login, a
+     * stale background-connection switch) and rebuild the client with it. Cookie logins have no token, so a
+     * blank token is not an error here either.
+     */
     fun testConnection() {
-        val state = _uiState.value
-        if (state.token.isBlank()) {
-            _uiState.update { it.copy(testResult = "❌ Token is required") }
-            return
-        }
-
-        // Save first so ApiClient uses updated settings
-        save()
-
         _uiState.update { it.copy(isTesting = true, testResult = null) }
 
         viewModelScope.launch {

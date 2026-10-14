@@ -3,6 +3,7 @@ package io.wutz.apollo.ui.kanban
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import io.wutz.apollo.R
 import io.wutz.apollo.data.model.AttachmentListResponse
 import io.wutz.apollo.data.model.DeleteAttachmentResponse
@@ -24,6 +25,7 @@ import io.wutz.apollo.data.remote.NetworkResult
 import io.wutz.apollo.data.repository.KanbanRepository
 import io.wutz.apollo.data.ws.KanbanEventsClient
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -35,7 +37,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -494,5 +498,163 @@ class KanbanTaskViewModelTest {
             assertEquals(UiText.raw("run 7 already ended"), vm.uiState.value.toastMessage)
             assertTrue(!vm.uiState.value.isTerminatingRun)
             coVerify(exactly = 0) { mockRepository.getRun(7L, "dev") }
+        }
+
+    private fun detailOf(taskId: String): NetworkResult<KanbanTaskDetailResponse> =
+        NetworkResult.Success(
+            KanbanTaskDetailResponse(task = KanbanTaskFull(id = taskId, title = "T", status = "todo")),
+        )
+
+    @Test
+    fun testInspectRunForLeftTaskResetsInspectingFlag() =
+        runTest(testDispatcher) {
+            val runResult = CompletableDeferred<NetworkResult<KanbanRunResponse>>()
+            coEvery { mockRepository.getTask(any(), "dev") } answers { detailOf(firstArg()) }
+            coEvery { mockRepository.getRun(7L, "dev") } coAnswers { runResult.await() }
+
+            val vm = createViewModel()
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            vm.inspectRun("dev", "t_1", 7L)
+            testDispatcher.scheduler.runCurrent()
+            assertTrue(vm.uiState.value.isInspectingRun)
+
+            // The user opens another task while the inspection is in flight.
+            vm.loadTask("dev", "t_2")
+            testDispatcher.scheduler.runCurrent()
+            runResult.complete(NetworkResult.Success(KanbanRunResponse(KanbanRun(id = 7L, status = "done"))))
+            testDispatcher.scheduler.runCurrent()
+
+            assertFalse(vm.uiState.value.isInspectingRun)
+            assertNull(vm.uiState.value.selectedRun)
+            vm.onCleared()
+        }
+
+    @Test
+    fun testLateLogOfPreviousTaskIsDropped() =
+        runTest(testDispatcher) {
+            val staleLog = CompletableDeferred<NetworkResult<WorkerLog>>()
+            coEvery { mockRepository.getTask(any(), "dev") } answers { detailOf(firstArg()) }
+            coEvery { mockRepository.getTaskLog("t_1", "dev", any()) } coAnswers { staleLog.await() }
+            coEvery { mockRepository.getTaskLog("t_2", "dev", any()) } returns
+                NetworkResult.Success(WorkerLog(taskId = "t_2", content = "log of t_2", exists = true))
+
+            val vm = createViewModel()
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            vm.loadTask("dev", "t_2")
+            testDispatcher.scheduler.runCurrent()
+            staleLog.complete(NetworkResult.Success(WorkerLog(taskId = "t_1", content = "log of t_1", exists = true)))
+            testDispatcher.scheduler.runCurrent()
+
+            assertEquals(
+                "log of t_2",
+                vm.uiState.value.workerLog
+                    ?.content,
+            )
+            vm.onCleared()
+        }
+
+    @Test
+    fun testDeleteTaskDoesNotNavigateBackAfterUserLeft() =
+        runTest(testDispatcher) {
+            val deleteResult = CompletableDeferred<NetworkResult<Unit>>()
+            coEvery { mockRepository.getTask(any(), "dev") } answers { detailOf(firstArg()) }
+            coEvery { mockRepository.deleteTask("t_1", "dev") } coAnswers { deleteResult.await() }
+
+            val vm = createViewModel()
+            vm.attachScreen()
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            var backCalls = 0
+            vm.deleteTask("dev", "t_1") { backCalls++ }
+            testDispatcher.scheduler.runCurrent()
+
+            // The user already went back: the screen left composition before the delete answered.
+            vm.detachScreen()
+            deleteResult.complete(NetworkResult.Success(Unit))
+            testDispatcher.scheduler.runCurrent()
+
+            assertEquals(0, backCalls)
+            assertEquals(UiText.res(R.string.kanban_msg_task_deleted), vm.uiState.value.toastMessage)
+            vm.onCleared()
+        }
+
+    @Test
+    fun testDeleteTaskDoesNotNavigateBackFromAnotherTask() =
+        runTest(testDispatcher) {
+            val deleteResult = CompletableDeferred<NetworkResult<Unit>>()
+            coEvery { mockRepository.getTask(any(), "dev") } answers { detailOf(firstArg()) }
+            coEvery { mockRepository.deleteTask("t_1", "dev") } coAnswers { deleteResult.await() }
+
+            val vm = createViewModel()
+            vm.attachScreen()
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            var backCalls = 0
+            vm.deleteTask("dev", "t_1") { backCalls++ }
+            testDispatcher.scheduler.runCurrent()
+            vm.loadTask("dev", "t_2")
+            testDispatcher.scheduler.runCurrent()
+            deleteResult.complete(NetworkResult.Success(Unit))
+            testDispatcher.scheduler.runCurrent()
+
+            assertEquals(0, backCalls)
+            vm.onCleared()
+        }
+
+    @Test
+    fun testDetachScreenStopsPollingAndEventsUntilReattached() =
+        runTest(testDispatcher) {
+            val task = KanbanTaskFull(id = "t_1", title = "Running", status = "running")
+            coEvery { mockRepository.getTask("t_1", "dev", any(), any()) } returns
+                NetworkResult.Success(KanbanTaskDetailResponse(task = task))
+            coEvery { mockRepository.getTaskLog("t_1", "dev", any()) } returns
+                NetworkResult.Success(WorkerLog(taskId = "t_1", content = "log", exists = true))
+
+            val vm = createViewModel(enableFallbackPolling = true)
+            vm.attachScreen()
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            verify(exactly = 1) { mockEventsClient.connect(any(), "dev", any(), any(), any()) }
+
+            vm.detachScreen()
+            verify(exactly = 1) { mockEventsClient.disconnect() }
+            testDispatcher.scheduler.advanceTimeBy(120_000L)
+            testDispatcher.scheduler.runCurrent()
+            // Only the initial detail fetch and the initial log fetch ran; no poll after leaving the screen.
+            coVerify(exactly = 1) { mockRepository.getTask("t_1", "dev", any(), any()) }
+            coVerify(exactly = 1) { mockRepository.getTaskLog("t_1", "dev", any()) }
+
+            // A mutation-triggered reload while detached must not restart the socket.
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            verify(exactly = 1) { mockEventsClient.connect(any(), "dev", any(), any(), any()) }
+
+            // Re-entering the screen restarts live updates.
+            vm.attachScreen()
+            vm.loadTask("dev", "t_1")
+            testDispatcher.scheduler.runCurrent()
+            verify(exactly = 2) { mockEventsClient.connect(any(), "dev", any(), any(), any()) }
+            vm.onCleared()
+        }
+
+    @Test
+    fun testOverlappingScreensKeepLiveUpdatesUntilTheLastOneLeaves() =
+        runTest(testDispatcher) {
+            coEvery { mockRepository.getTask(any(), "dev") } answers { detailOf(firstArg()) }
+            val vm = createViewModel()
+            // Task A is open, task B is pushed on top; A's entry leaves composition after B entered.
+            vm.attachScreen()
+            vm.loadTask("dev", "t_a")
+            vm.attachScreen()
+            vm.loadTask("dev", "t_b")
+            testDispatcher.scheduler.runCurrent()
+            vm.detachScreen()
+
+            verify(exactly = 0) { mockEventsClient.disconnect() }
+            vm.detachScreen()
+            verify(exactly = 1) { mockEventsClient.disconnect() }
+            vm.onCleared()
         }
 }

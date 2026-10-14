@@ -23,6 +23,7 @@ import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.toJsonElement
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -32,10 +33,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 
 enum class BotsTab {
@@ -320,8 +323,14 @@ class BotsViewModel(
         _uiState.update { it.copy(showHidden = !it.showHidden) }
     }
 
+    /** Switches the server-side profile; on failure shows the reason and returns false (caller must not navigate). */
     suspend fun selectBot(bot: ProfileInfo): Boolean {
         val result = ProfileSwitchCoordinator.switchProfile(bot.name)
+        if (result is NetworkResult.Failure) {
+            _uiState.update {
+                it.copy(toastMessage = UiText.res(R.string.profiles_msg_switch_failed, result.error.message))
+            }
+        }
         return result is NetworkResult.Success
     }
 
@@ -362,20 +371,20 @@ class BotsViewModel(
                             ),
                     )
                 val botSoul = composeBotSoul(name, title, description)
-                // Fire-and-forget as before: the metadata write never gated the reload or onSuccess.
+                // Fire-and-forget as before: the metadata write never gated the reload or onSuccess,
+                // but a failed write is reported instead of silently dropped.
                 launch {
-                    try {
-                        wsClientConfigureBot(name, botMeta, soul = botSoul)
-                    } catch (_: Exception) {
-                    }
+                    wsClientConfigureBot(name, botMeta, soul = botSoul)?.let(::showMetaSaveFailed)
                 }
                 loadBots()
                 onSuccess()
             } else {
+                // The error state is only rendered for an empty list, so report this as a toast.
                 val err =
-                    (result as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                    (result as? NetworkResult.Failure)
+                        ?.let { UiText.res(R.string.bots_msg_create_failed_reason, it.error.message) }
                         ?: UiText.res(R.string.bots_msg_create_failed)
-                _uiState.update { it.copy(errorMessage = err) }
+                _uiState.update { it.copy(toastMessage = err) }
             }
         }
     }
@@ -401,12 +410,14 @@ class BotsViewModel(
                             color = color,
                         ),
                 )
-            try {
-                wsClientConfigureBot(name, updatedMeta)
-            } catch (_: Exception) {
-            }
+            val failure = wsClientConfigureBot(name, updatedMeta)
             loadBots()
-            onSuccess()
+            if (failure != null) {
+                // Keep the editor open so the user can retry.
+                showMetaSaveFailed(failure)
+            } else {
+                onSuccess()
+            }
         }
     }
 
@@ -421,9 +432,10 @@ class BotsViewModel(
                 onSuccess()
             } else {
                 val err =
-                    (result as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                    (result as? NetworkResult.Failure)
+                        ?.let { UiText.res(R.string.bots_msg_delete_failed_reason, it.error.message) }
                         ?: UiText.res(R.string.bots_msg_delete_failed)
-                _uiState.update { it.copy(errorMessage = err) }
+                _uiState.update { it.copy(toastMessage = err) }
             }
         }
     }
@@ -435,6 +447,7 @@ class BotsViewModel(
     ) {
         viewModelScope.launch(ioDispatcher) {
             val currentProfiles = _uiState.value.profiles
+            var failure: UiText? = null
             // 1. Update bot metadata on each member bot
             for (name in botNames) {
                 val bot = currentProfiles.find { it.name == name } ?: continue
@@ -445,15 +458,12 @@ class BotsViewModel(
                             groups = existingGroups + groupName,
                             group = existingGroups.firstOrNull() ?: groupName,
                         )
-                    try {
-                        wsClientConfigureBot(name, updatedMeta)
-                    } catch (_: Exception) {
-                    }
+                    failure = wsClientConfigureBot(name, updatedMeta) ?: failure
                 }
             }
 
             // 2. Also register room in hermes-bots-groups sync snapshot on default profile
-            try {
+            run {
                 val defaultProfile =
                     currentProfiles.find { it.is_default == true || it.name == "default" }
                         ?: currentProfiles.firstOrNull()
@@ -481,19 +491,16 @@ class BotsViewModel(
                             rooms = updatedRooms,
                             deleted = updatedDeleted,
                         )
-                    HermesWsClient.call(
-                        RpcMethods.PROFILES_CONFIGURE,
-                        ProfilesConfigureParams(
-                            name = defaultProfile.name,
-                            uiMeta = mapOf("hermes-bots-groups" to newSnapshot.toMap()).toJsonObject(),
-                        ),
-                    )
+                    failure =
+                        configureUiMeta(
+                            defaultProfile.name,
+                            mapOf("hermes-bots-groups" to newSnapshot.toMap()).toJsonObject(),
+                        ) ?: failure
                 }
-            } catch (_: Exception) {
             }
 
             loadBots()
-            onSuccess()
+            if (failure != null) showGroupSaveFailed(failure) else onSuccess()
         }
     }
 
@@ -503,6 +510,7 @@ class BotsViewModel(
     ) {
         viewModelScope.launch(ioDispatcher) {
             val currentProfiles = _uiState.value.profiles
+            var failure: UiText? = null
             // 1. Remove from all member bots' metadata
             for (bot in currentProfiles) {
                 val existingGroups = bot.botMeta()?.allGroups.orEmpty()
@@ -513,15 +521,12 @@ class BotsViewModel(
                             groups = filtered,
                             group = filtered.firstOrNull(),
                         )
-                    try {
-                        wsClientConfigureBot(bot.name, updatedMeta)
-                    } catch (_: Exception) {
-                    }
+                    failure = wsClientConfigureBot(bot.name, updatedMeta) ?: failure
                 }
             }
 
             // 2. Remove room from hermes-bots-groups snapshot and register tombstone in deleted map
-            try {
+            run {
                 val defaultProfile =
                     currentProfiles.find { it.is_default == true || it.name == "default" }
                         ?: currentProfiles.firstOrNull()
@@ -545,20 +550,17 @@ class BotsViewModel(
                                 rooms = updatedRooms,
                                 deleted = deletedMap,
                             )
-                        HermesWsClient.call(
-                            RpcMethods.PROFILES_CONFIGURE,
-                            ProfilesConfigureParams(
-                                name = defaultProfile.name,
-                                uiMeta = mapOf("hermes-bots-groups" to newSnapshot.toMap()).toJsonObject(),
-                            ),
-                        )
+                        failure =
+                            configureUiMeta(
+                                defaultProfile.name,
+                                mapOf("hermes-bots-groups" to newSnapshot.toMap()).toJsonObject(),
+                            ) ?: failure
                     }
                 }
-            } catch (_: Exception) {
             }
 
             loadBots()
-            onSuccess()
+            if (failure != null) showGroupSaveFailed(failure) else onSuccess()
         }
     }
 
@@ -579,39 +581,92 @@ class BotsViewModel(
         return lines.joinToString("\n")
     }
 
+    /**
+     * Writes [meta] into the bot's `hermes-bots` ui_meta. The gateway replaces each ui_meta key as a whole
+     * (`_configure_ui_meta` in hermes-agent), so the edited fields are merged into the stored object instead of
+     * rebuilding it: fields this client does not edit (hidden, created, avatar.image_url, unknown keys) survive.
+     * Returns the failure reason, or null when the write was applied.
+     */
     private suspend fun wsClientConfigureBot(
         name: String,
         meta: BotRosterMeta,
         soul: String? = null,
-    ) {
-        val metaMap =
-            buildMap<String, Any> {
-                meta.title?.let { put("title", it) }
-                meta.description?.let { put("description", it) }
-                meta.avatar?.let { av ->
-                    put(
-                        "avatar",
-                        buildMap<String, Any> {
-                            av.shape?.let { put("shape", it) }
-                            av.color?.let { put("color", it) }
-                            av.icon?.let { put("icon", it) }
-                        },
-                    )
-                }
-                if (!meta.groups.isNullOrEmpty()) {
-                    put("groups", meta.groups)
-                }
-            }
-
-        HermesWsClient.call(
-            RpcMethods.PROFILES_CONFIGURE,
-            ProfilesConfigureParams(
-                name = name,
-                uiMeta = mapOf("hermes-bots" to metaMap).toJsonObject(),
-                soul = soul,
-            ),
+    ): UiText? {
+        val stored =
+            _uiState.value.profiles
+                .find { it.name == name }
+                ?.ui_meta
+                ?.get(BOT_META_KEY)
+        return configureUiMeta(
+            name = name,
+            uiMeta = JsonObject(mapOf(BOT_META_KEY to mergeBotRosterMeta(stored, meta))),
+            soul = soul,
         )
     }
 
+    /** Sends one `profiles.configure` ui_meta write; returns the failure reason, or null when it was applied. */
+    private suspend fun configureUiMeta(
+        name: String,
+        uiMeta: JsonObject,
+        soul: String? = null,
+    ): UiText? =
+        try {
+            val result =
+                HermesWsClient.call(
+                    RpcMethods.PROFILES_CONFIGURE,
+                    ProfilesConfigureParams(name = name, uiMeta = uiMeta, soul = soul),
+                )
+            val applied = ((result as? JsonObject)?.get("applied") as? JsonObject)?.get("ui_meta") as? JsonPrimitive
+            if (applied?.booleanOrNull == false) UiText.res(R.string.bots_msg_meta_not_applied) else null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            UiText.raw(e.message ?: e.javaClass.simpleName)
+        }
+
+    private fun showMetaSaveFailed(reason: UiText) {
+        _uiState.update { it.copy(toastMessage = UiText.res(R.string.bots_msg_meta_save_failed, reason)) }
+    }
+
+    private fun showGroupSaveFailed(reason: UiText) {
+        _uiState.update { it.copy(toastMessage = UiText.res(R.string.bots_msg_group_save_failed, reason)) }
+    }
+
     private fun Map<String, Any?>.toJsonObject(): JsonObject = toJsonElement() as JsonObject
+
+    private companion object {
+        const val BOT_META_KEY = "hermes-bots"
+    }
+}
+
+/**
+ * Overlays the fields Apollo edits (title, description, avatar shape/color/icon, groups and the legacy `group`
+ * scalar) onto the stored `hermes-bots` object. Everything else is kept, and avatar sub-fields are only
+ * overwritten when [meta] sets them, so an uploaded avatar image or a Desktop-only field is not lost.
+ */
+internal fun mergeBotRosterMeta(
+    stored: JsonElement?,
+    meta: BotRosterMeta,
+): JsonObject {
+    val merged = (stored as? JsonObject)?.toMutableMap() ?: mutableMapOf()
+
+    fun put(
+        key: String,
+        value: JsonElement?,
+    ) {
+        if (value == null) merged.remove(key) else merged[key] = value
+    }
+    put("title", meta.title?.let(::JsonPrimitive))
+    put("description", meta.description?.let(::JsonPrimitive))
+    put("groups", meta.groups?.takeIf { it.isNotEmpty() }?.let { groups -> JsonArray(groups.map(::JsonPrimitive)) })
+    put("group", meta.group?.let(::JsonPrimitive))
+    meta.avatar?.let { avatar ->
+        val mergedAvatar = (merged["avatar"] as? JsonObject)?.toMutableMap() ?: mutableMapOf()
+        avatar.shape?.let { mergedAvatar["shape"] = JsonPrimitive(it) }
+        avatar.color?.let { mergedAvatar["color"] = JsonPrimitive(it) }
+        avatar.icon?.let { mergedAvatar["icon"] = JsonPrimitive(it) }
+        avatar.image_url?.let { mergedAvatar["image_url"] = JsonPrimitive(it) }
+        merged["avatar"] = JsonObject(mergedAvatar)
+    }
+    return JsonObject(merged)
 }

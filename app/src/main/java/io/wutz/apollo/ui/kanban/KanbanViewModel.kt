@@ -188,6 +188,28 @@ class KanbanViewModel(
     private var currentLoadGen: Int = 0
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
+    // This ViewModel is Activity-scoped (docs/ARCHITECTURE.md), so it outlives the screen. The events socket
+    // runs only while the board screen is composed.
+    private var attachedScreens = 0
+    private var liveUpdatesPaused = false
+
+    /** Called when the board screen enters composition. */
+    fun attachScreen() {
+        attachedScreens++
+        liveUpdatesPaused = false
+    }
+
+    /** Called when the board screen leaves composition; the last one closes the events socket. */
+    fun detachScreen() {
+        attachedScreens = (attachedScreens - 1).coerceAtLeast(0)
+        if (attachedScreens > 0) return
+        liveUpdatesPaused = true
+        reloadJob?.cancel()
+        eventsClient?.disconnect()
+        eventsBoard = null
+        _uiState.update { it.copy(isLive = false) }
+    }
+
     fun loadBoards() {
         val endpoint = endpointProvider()
         val savedSlug = preferences.getSelectedBoard(endpoint)
@@ -261,6 +283,9 @@ class KanbanViewModel(
                                         ),
                                 )
                             }
+                        } else {
+                            // A board create/rename/archive may have raised the spinner before this reload.
+                            _uiState.update { it.copy(isLoading = false) }
                         }
                     }
                 }
@@ -547,22 +572,37 @@ class KanbanViewModel(
             when (result) {
                 is NetworkResult.Success -> {
                     val createdTask = result.data.task
-                    if (createdTask != null &&
-                        targetStatus.isNotBlank() &&
-                        !createdTask.status.equals(targetStatus, ignoreCase = true)
-                    ) {
-                        repository.updateTask(
-                            taskId = createdTask.id,
-                            board = board.id,
-                            body = UpdateTaskBody(status = targetStatus),
-                        )
-                    }
+                    val moveResult =
+                        if (createdTask != null &&
+                            targetStatus.isNotBlank() &&
+                            !createdTask.status.equals(targetStatus, ignoreCase = true)
+                        ) {
+                            repository.updateTask(
+                                taskId = createdTask.id,
+                                board = board.id,
+                                body = UpdateTaskBody(status = targetStatus),
+                            )
+                        } else {
+                            null
+                        }
                     val warning = result.data.warning
                     val msg =
-                        if (!warning.isNullOrBlank()) {
-                            UiText.res(R.string.kanban_msg_task_created_warning, warning)
-                        } else {
-                            UiText.res(R.string.kanban_msg_task_created)
+                        when {
+                            moveResult is NetworkResult.Failure -> {
+                                UiText.res(
+                                    R.string.kanban_msg_task_created_move_failed,
+                                    targetStatus,
+                                    moveResult.error.message,
+                                )
+                            }
+
+                            !warning.isNullOrBlank() -> {
+                                UiText.res(R.string.kanban_msg_task_created_warning, warning)
+                            }
+
+                            else -> {
+                                UiText.res(R.string.kanban_msg_task_created)
+                            }
                         }
                     _uiState.update { it.copy(isCreatingTask = false, toastMessage = msg) }
                     reloadBoardSilently()
@@ -713,7 +753,9 @@ class KanbanViewModel(
             _uiState.update { it.copy(isLoading = true) }
             when (val res = repository.deleteTask(taskId = taskId, board = board.id)) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(toastMessage = UiText.res(R.string.kanban_msg_task_deleted)) }
+                    _uiState.update {
+                        it.copy(isLoading = false, toastMessage = UiText.res(R.string.kanban_msg_task_deleted))
+                    }
                     reloadBoardSilently()
                 }
 
@@ -781,7 +823,7 @@ class KanbanViewModel(
                                 )
                             }
                         }
-                    _uiState.update { it.copy(toastMessage = msg) }
+                    _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
                     reloadBoardSilently()
                     onComplete?.invoke(failed)
                 }
@@ -831,7 +873,7 @@ class KanbanViewModel(
                                 )
                             }
                         }
-                    _uiState.update { it.copy(toastMessage = msg) }
+                    _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
                     reloadBoardSilently()
                     onComplete?.invoke(failed)
                 }
@@ -900,7 +942,7 @@ class KanbanViewModel(
                                 )
                             }
                         }
-                    _uiState.update { it.copy(toastMessage = msg) }
+                    _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
                     reloadBoardSilently()
                     onComplete?.invoke(failed)
                 }
@@ -956,7 +998,7 @@ class KanbanViewModel(
                         bulkPartial(R.plurals.kanban_msg_bulk_deleted_partial, succeeded.size, failed.size, firstError)
                     }
                 }
-            _uiState.update { it.copy(toastMessage = msg) }
+            _uiState.update { it.copy(isLoading = false, toastMessage = msg) }
             reloadBoardSilently()
             onComplete?.invoke(failed)
         }
@@ -1106,6 +1148,7 @@ class KanbanViewModel(
      * the already-live board is a no-op (the REST load already refreshed it).
      */
     private fun connectEvents(board: KanbanBoard) {
+        if (liveUpdatesPaused) return
         if (eventsBoard == board.id && _uiState.value.isLive) return
         eventsBoard = board.id
         val client = eventsClient ?: eventsClientProvider().also { eventsClient = it }

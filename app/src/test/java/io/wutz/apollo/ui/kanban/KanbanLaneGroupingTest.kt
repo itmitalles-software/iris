@@ -47,4 +47,23 @@ class KanbanLaneGroupingTest {
         val groups = KanbanLaneGrouping.groupRunningTasks(emptyList())
         assertEquals(0, groups.size)
     }
+
+    @Test
+    fun testProfileNamedUnassignedDoesNotCollideWithUnassignedGroupKey() {
+        val tasks =
+            listOf(
+                KanbanTask(id = "t1", title = "Task 1", status = "running", assignee = "unassigned"),
+                KanbanTask(id = "t2", title = "Task 2", status = "running", assignee = null),
+            )
+        val keys = KanbanLaneGrouping.groupRunningTasks(tasks).map { it.lazyKey }
+        assertEquals(2, keys.size)
+        assertEquals(keys.size, keys.toSet().size)
+    }
+
+    @Test
+    fun testPruneSelectionKeepsOnlyVisibleTasks() {
+        val visible = listOf(KanbanTask(id = "t1", title = "Visible", status = "todo"))
+        assertEquals(setOf("t1"), pruneKanbanSelection(setOf("t1", "hidden"), visible))
+        assertEquals(emptySet<String>(), pruneKanbanSelection(setOf("hidden"), visible))
+    }
 }

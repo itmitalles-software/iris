@@ -397,7 +397,8 @@ fun BotsScreen(
                                                     activeBots = state.activeNowBots,
                                                     onSelectBot = { bot ->
                                                         scope.launch {
-                                                            viewModel.selectBot(bot)
+                                                            // Failed switch: toast shown, no chat.
+                                                            if (!viewModel.selectBot(bot)) return@launch
                                                             val canonicalId =
                                                                 bot.canonical_session?.resolved_id
                                                                     ?: bot.canonical_session?.id
@@ -423,7 +424,8 @@ fun BotsScreen(
                                                 isActiveProfile = profile.name == state.activeProfileName,
                                                 onClick = {
                                                     scope.launch {
-                                                        viewModel.selectBot(profile)
+                                                        // Failed switch: toast shown, no chat.
+                                                        if (!viewModel.selectBot(profile)) return@launch
                                                         val canonicalId =
                                                             profile.canonical_session?.resolved_id
                                                                 ?: profile.canonical_session?.id

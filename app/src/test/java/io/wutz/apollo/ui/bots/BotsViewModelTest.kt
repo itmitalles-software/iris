@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.wutz.apollo.R
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.model.ActiveProfileResponse
 import io.wutz.apollo.data.model.BotAvatarMeta
@@ -18,7 +19,12 @@ import io.wutz.apollo.data.model.ProfileWorkerSummary
 import io.wutz.apollo.data.model.ProfilesResponse
 import io.wutz.apollo.data.remote.ApiClient
 import io.wutz.apollo.data.remote.HermesApiService
+import io.wutz.apollo.data.remote.NetworkError
+import io.wutz.apollo.data.remote.NetworkResult
+import io.wutz.apollo.data.session.ProfileSwitchCoordinator
 import io.wutz.apollo.data.ws.HermesWsClient
+import io.wutz.apollo.ui.common.UiText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -27,8 +33,16 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -354,5 +368,190 @@ class BotsViewModelTest {
 
             assertEquals("Local Only Group", groups[1].name)
             assertEquals(1, groups[1].members.size)
+        }
+
+    private val storedBotMeta =
+        buildJsonObject {
+            put("title", "Old title")
+            put("hidden", true)
+            put("created", 1.7e9)
+            put("group", "Legacy Team")
+            put("desktop_only", "keep me")
+            putJsonObject("avatar") {
+                put("shape", "circle")
+                put("color", "#000000")
+                put("icon", "science")
+                put("image_url", "https://example.invalid/a.png")
+            }
+        }
+
+    private suspend fun loadedViewModel(vararg profiles: ProfileInfo): BotsViewModel {
+        coEvery { mockApi.getProfiles() } returns Response.success(ProfilesResponse(profiles.toList()))
+        coEvery { mockApi.getActiveProfile() } returns Response.success(ActiveProfileResponse(active = "default"))
+        val viewModel = BotsViewModel(ioDispatcher = testDispatcher, autoLoad = false)
+        viewModel.loadBots()
+        testDispatcher.scheduler.advanceUntilIdle()
+        return viewModel
+    }
+
+    @Test
+    fun testMergeBotRosterMeta_keepsFieldsTheEditorDoesNotOwn() {
+        val merged =
+            mergeBotRosterMeta(
+                storedBotMeta,
+                BotRosterMeta(
+                    title = "New title",
+                    description = "New description",
+                    avatar = BotAvatarMeta(shape = "square", color = "#FFFFFF"),
+                    group = "Legacy Team",
+                ),
+            )
+
+        assertEquals(JsonPrimitive("New title"), merged["title"])
+        assertEquals(JsonPrimitive("New description"), merged["description"])
+        assertEquals(JsonPrimitive(true), merged["hidden"])
+        assertEquals(JsonPrimitive(1.7e9), merged["created"])
+        assertEquals(JsonPrimitive("Legacy Team"), merged["group"])
+        assertEquals(JsonPrimitive("keep me"), merged["desktop_only"])
+        val avatar = merged["avatar"]!!.jsonObject
+        assertEquals(JsonPrimitive("square"), avatar["shape"])
+        assertEquals(JsonPrimitive("#FFFFFF"), avatar["color"])
+        assertEquals(JsonPrimitive("science"), avatar["icon"])
+        assertEquals(JsonPrimitive("https://example.invalid/a.png"), avatar["image_url"])
+    }
+
+    @Test
+    fun testMergeBotRosterMeta_removesGroupsWhenTheLastGroupIsDisbanded() {
+        val stored = buildJsonObject { put("groups", JsonArray(listOf(JsonPrimitive("Team")))) }
+        val merged = mergeBotRosterMeta(stored, BotRosterMeta(groups = emptyList(), group = null))
+        assertFalse(merged.containsKey("groups"))
+        assertFalse(merged.containsKey("group"))
+    }
+
+    @Test
+    fun testUpdateBotMeta_sendsMergedUiMeta() =
+        runTest {
+            val sent = mutableListOf<Map<String, Any>>()
+            val ok = CompletableDeferred<Any?>().apply { complete(null) }
+            every { HermesWsClient.request("profiles.configure", capture(sent), any()) } returns ok
+            val viewModel =
+                loadedViewModel(ProfileInfo(name = "scout", ui_meta = mapOf("hermes-bots" to storedBotMeta)))
+
+            var success = false
+            viewModel.updateBotMeta("scout", "Scout Lead", "", "square", "#2563EB") { success = true }
+            advanceUntilIdle()
+
+            assertTrue(success)
+            val bots = (sent.single()["ui_meta"] as JsonObject)["hermes-bots"]!!.jsonObject
+            assertEquals(JsonPrimitive("Scout Lead"), bots["title"])
+            assertEquals(JsonPrimitive(true), bots["hidden"])
+            assertEquals(JsonPrimitive("Legacy Team"), bots["group"])
+            assertEquals(JsonPrimitive("https://example.invalid/a.png"), bots["avatar"]!!.jsonObject["image_url"])
+        }
+
+    @Test
+    fun testUpdateBotMeta_failureKeepsEditorOpenAndShowsToast() =
+        runTest {
+            val failed =
+                CompletableDeferred<Any?>().apply {
+                    completeExceptionally(HermesWsClient.HermesRpcException("socket closed"))
+                }
+            every { HermesWsClient.request("profiles.configure", any(), any()) } returns failed
+            val viewModel = loadedViewModel(ProfileInfo(name = "scout"))
+
+            var success = false
+            viewModel.updateBotMeta("scout", "Scout Lead", "", "square", "#2563EB") { success = true }
+            advanceUntilIdle()
+
+            assertFalse(success)
+            assertEquals(
+                UiText.res(R.string.bots_msg_meta_save_failed, UiText.raw("socket closed")),
+                viewModel.uiState.value.toastMessage,
+            )
+        }
+
+    @Test
+    fun testCreateGroupChat_notAppliedIsReportedInsteadOfSuccess() =
+        runTest {
+            val notApplied =
+                CompletableDeferred<Any?>().apply {
+                    complete(
+                        buildJsonObject {
+                            put("ok", true)
+                            putJsonObject("applied") { put("ui_meta", false) }
+                        },
+                    )
+                }
+            every { HermesWsClient.request("profiles.configure", any(), any()) } returns notApplied
+            val viewModel = loadedViewModel(ProfileInfo(name = "default"), ProfileInfo(name = "botA"))
+
+            var success = false
+            viewModel.createGroupChat("Dream Team", listOf("botA")) { success = true }
+            advanceUntilIdle()
+
+            assertFalse(success)
+            assertEquals(
+                UiText.res(R.string.bots_msg_group_save_failed, UiText.res(R.string.bots_msg_meta_not_applied)),
+                viewModel.uiState.value.toastMessage,
+            )
+        }
+
+    @Test
+    fun testDisbandGroupChat_rpcFailureIsReported() =
+        runTest {
+            val failed =
+                CompletableDeferred<Any?>().apply {
+                    completeExceptionally(HermesWsClient.HermesRpcException("timeout"))
+                }
+            every { HermesWsClient.request("profiles.configure", any(), any()) } returns failed
+            val meta = mapOf("hermes-bots" to json.encodeToJsonElement(BotRosterMeta(groups = listOf("Dream Team"))))
+            val viewModel = loadedViewModel(ProfileInfo(name = "botA", ui_meta = meta))
+
+            var success = false
+            viewModel.disbandGroupChat("Dream Team") { success = true }
+            advanceUntilIdle()
+
+            assertFalse(success)
+            assertEquals(
+                UiText.res(R.string.bots_msg_group_save_failed, UiText.raw("timeout")),
+                viewModel.uiState.value.toastMessage,
+            )
+        }
+
+    @Test
+    fun testDeleteBot_failureIsShownAsToast() =
+        runTest {
+            coEvery { mockApi.deleteProfile("scout") } returns
+                Response.error(500, "boom".toResponseBody("text/plain".toMediaType()))
+            val viewModel = BotsViewModel(ioDispatcher = testDispatcher, autoLoad = false)
+
+            var success = false
+            viewModel.deleteBot("scout") { success = true }
+            advanceUntilIdle()
+
+            assertFalse(success)
+            assertEquals(
+                R.string.bots_msg_delete_failed_reason,
+                (viewModel.uiState.value.toastMessage as UiText.Resource).id,
+            )
+        }
+
+    @Test
+    fun testSelectBot_failedSwitchReturnsFalseAndShowsToast() =
+        runTest {
+            mockkObject(ProfileSwitchCoordinator)
+            try {
+                coEvery { ProfileSwitchCoordinator.switchProfile("scout") } returns
+                    NetworkResult.Failure(NetworkError.Http(503, "gateway down"))
+                val viewModel = BotsViewModel(ioDispatcher = testDispatcher, autoLoad = false)
+
+                assertFalse(viewModel.selectBot(ProfileInfo(name = "scout")))
+                assertEquals(
+                    UiText.res(R.string.profiles_msg_switch_failed, "gateway down"),
+                    viewModel.uiState.value.toastMessage,
+                )
+            } finally {
+                unmockkObject(ProfileSwitchCoordinator)
+            }
         }
 }

@@ -498,4 +498,27 @@ class KanbanViewModelTest {
             )
         }
     }
+
+    @Test
+    fun `leaving the board screen closes the events stream until it is shown again`() {
+        val vm = createViewModel()
+        vm.attachScreen()
+        vm.loadBoards()
+        settle()
+        verify(exactly = 1) { mockEventsClient.connect(any(), eq("work"), any(), any(), any()) }
+
+        vm.detachScreen()
+        verify(exactly = 1) { mockEventsClient.disconnect() }
+        assertFalse(vm.uiState.value.isLive)
+
+        // A late board switch (e.g. reconciliation) while the screen is gone must not reopen the socket.
+        vm.selectBoard(KanbanBoard(id = "ops", name = "Ops"))
+        settle()
+        verify(exactly = 0) { mockEventsClient.connect(any(), eq("ops"), any(), any(), any()) }
+
+        vm.attachScreen()
+        vm.loadBoards()
+        settle()
+        verify(exactly = 2) { mockEventsClient.connect(any(), any(), any(), any(), any()) }
+    }
 }

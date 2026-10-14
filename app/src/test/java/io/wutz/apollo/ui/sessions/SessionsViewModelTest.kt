@@ -930,6 +930,33 @@ class SessionsViewModelTest {
     }
 
     @Test
+    fun `toggleShowArchived during an active load shows only archived sessions`() {
+        val vm = createViewModel()
+        val activePage = CompletableDeferred<Response<SessionListResponse>>()
+        coEvery { mockApi.getSessions(any(), any(), any(), null, "cron", null) } coAnswers { activePage.await() }
+        coEvery { mockApi.getSessions(any(), any(), any(), null, "cron", "only") } returns
+            Response.success(SessionListResponse(sessions = listOf(SessionInfo("archived-1")), total = 1))
+
+        vm.loadSessions()
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.toggleShowArchived()
+        testDispatcher.scheduler.advanceUntilIdle()
+        // The superseded active-list request answers late; it must not replace the archived view.
+        activePage.complete(
+            Response.success(SessionListResponse(sessions = listOf(SessionInfo("active-1")), total = 1)),
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { mockApi.getSessions(any(), any(), any(), null, "cron", "only") }
+        assertTrue(vm.uiState.value.showArchived)
+        assertEquals(
+            listOf("archived-1"),
+            vm.uiState.value.sessions
+                .map { it.id },
+        )
+    }
+
+    @Test
     fun `stitchMissingParents fetches missing parent sessions up to cap`() {
         val vm = createViewModel()
         coEvery { mockApi.getSessions(any(), any(), any(), null, "cron") } returns

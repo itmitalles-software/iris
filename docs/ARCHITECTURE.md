@@ -83,6 +83,9 @@ Requires `permissions: contents: write` on the `build-release` job.
 ### Navigation (Navigation3 — NOT Navigation Compose)
 
 Uses `androidx.navigation3` (`NavKey`, `NavBackStack`, `NavDisplay`, `entry<T>`).
+The back stack is created with `rememberNavBackStack`, so it survives configuration
+changes (the manifest declares no `configChanges`); every `NavKey` must therefore stay
+`@Serializable` (`NavigationBackStackSaveTest`).
 
 **⚠ Always route navigation through `NavigationController.navigateTo()`.** Never call
 `backStack.add(ScreenKey)` directly from UI callbacks — the controller has a
@@ -125,6 +128,13 @@ DisposableEffect(Unit) {
 
 The cleanup function should reset self-transitioning flags (`connectionSuccess`,
 `isLoading`, `errorMessage`) so the screen can re-enter cleanly.
+
+NavDisplay has no per-entry ViewModel store, so polling loops and sockets owned by such
+a ViewModel keep running after the screen is gone unless the screen stops them. Screens
+with live updates (Kanban board and task detail) call `attachScreen()` /
+`detachScreen()` from a `DisposableEffect`; the ViewModel counts attached screens (two
+entries of the same screen can overlap during a transition) and stops polling and its
+socket when the count drops to zero.
 
 ### WebSocket Lifecycle
 
