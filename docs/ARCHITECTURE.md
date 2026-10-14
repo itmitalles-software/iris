@@ -168,6 +168,18 @@ typed descriptor: `HermesWsClient.call(RpcMethods.X, params)` (suspending), `req
   `WsProfileParams.decorate` injects it for profile-scoped methods.
 - `RawRpcParamsRatchetTest.BASELINE` must stay empty.
 
+### ChatViewModel delegates
+
+`ChatViewModel` coordinates session state, history and the send pipeline; cohesive
+features live in delegates in `ui/chat/` that get `uiState`, the scope, dispatchers
+and narrow lambdas: request tracking (`ChatRequestTracker`), timeline and history
+windows (`ChatTimelineDelegate`), the context meter (`ChatContextUsageDelegate`),
+`/compress` (`ChatCompressionDelegate`) with the ordered local transcript writes
+(`ChatLocalTranscriptWriter`), slash commands (`ChatSlashCommandsDelegate`), plus
+approvals, clarify, credential prompts, model switch, streaming, search, media,
+subagents and processes. Keep the VM's public API as thin forwarders and add new
+features as delegates rather than growing the VM.
+
 ### Voice conversation
 
 The hands-free voice mode (`ui/chat/voice/`) is owned by `ChatViewModel`.
@@ -342,10 +354,17 @@ JVM-global singletons (`AuthManager`, `HermesWsClient`, `ApiClient`,
 `ActiveSessionHolder`, `SwrCache`). Leaks between test classes turn into
 load-dependent flakes, so:
 
-- **Virtual time, no sleeps.** Use `runTest` with a `StandardTestDispatcher`,
-  `Dispatchers.setMain(...)` in setup and `Dispatchers.resetMain()` in teardown, and
-  advance with `advanceUntilIdle()`/`advanceTimeBy()`. Replace `Thread.sleep` with
-  virtual time or a latch.
+- **Virtual time, no sleeps.** Use `runTest` with a `StandardTestDispatcher`
+  installed as Main (`test:testutil/MainDispatcherRule.kt`, or `Dispatchers.setMain`/
+  `resetMain` by hand), and advance with `advanceUntilIdle()`/`advanceTimeBy()`.
+  Replace `Thread.sleep` with virtual time or a latch.
+- **ChatViewModel tests use `ChatViewModelHarness`** (`test:ui/chat/`), a JUnit rule
+  that stubs the singletons and creates view models on the test scheduler. The
+  per-feature classes (`ChatViewModelSendTest`, `...HistoryTest`, `...SlashTest`, ...)
+  extend `ChatViewModelTestBase`. Production timers come from an injected
+  `ChatTimingConfig`: tests get `ChatTimingConfig.TEST` (no timers, unthrottled
+  streaming) and enable single timers to test them (`ChatViewModelTimingTest`); there
+  is no hidden test mode in production code.
 - **Never mock `Dispatchers` statically** (`mockkStatic(Dispatchers::class)`). The mock
   bleeds JVM-wide into later test classes, and singleton scopes created while it is
   active stay bound to a dispatcher nobody advances. Inject an `ioDispatcher`

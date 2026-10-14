@@ -74,6 +74,8 @@ import io.wutz.apollo.notification.ReplyNotificationTracker
 import io.wutz.apollo.notification.captureTurnBoundary
 import io.wutz.apollo.notification.correlationScopeId
 import io.wutz.apollo.share.SharedContent
+import io.wutz.apollo.ui.chat.ChatRequestTracker.PendingBranchRequest
+import io.wutz.apollo.ui.chat.ChatRequestTracker.SessionRequest
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
 import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
@@ -120,42 +122,14 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 private const val TAG = "ChatViewModel"
+
+/** Title of a chat that has no session title (yet). */
+internal const val DEFAULT_CHAT_TITLE = "Hermes"
 private const val MESSAGE_PAGE_SIZE = 150
-private const val TIMELINE_PAGE_SIZE = 500
-private const val HISTORY_WINDOW_SIZE = 120
 private const val MAX_PENDING_RECEIPT_LOOKUPS = 8
 private const val MAX_BACKGROUND_HISTORY_MERGES = 3
 
-private val REASONING_EFFORT_LEVELS =
-    setOf("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")
-
-private data class ReasoningSlashArgs(
-    val value: String,
-    val scopeName: String?,
-)
-
-/** Mirrors Desktop's reasoningSlashParams(): flags may appear in any order. */
-private fun parseReasoningSlashArgs(arg: String): ReasoningSlashArgs? {
-    var scopeName: String? = null
-    val values = mutableListOf<String>()
-
-    arg
-        .trim()
-        .split(Regex("\\s+"))
-        .filter { it.isNotBlank() }
-        .forEach { part ->
-            when (part.lowercase()) {
-                "--global", "-g", "global" -> scopeName = "global"
-                "--session", "-s", "session" -> scopeName = "session"
-                else -> values += part
-            }
-        }
-
-    if (values.isEmpty()) return null
-    return ReasoningSlashArgs(values.joinToString(" "), scopeName)
-}
-
-private fun rpcResultMap(result: Any?): Map<*, *>? =
+internal fun rpcResultMap(result: Any?): Map<*, *>? =
     when (result) {
         is JsonElement -> result.toAny() as? Map<*, *>
         is Map<*, *> -> result
@@ -185,7 +159,7 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val currentSessionId: String? = null,
     val sessions: List<SessionUi> = emptyList(),
-    val chatTitle: String = "Hermes",
+    val chatTitle: String = DEFAULT_CHAT_TITLE,
     val connectionStatus: ConnectionStatus = ConnectionStatus.DISCONNECTED,
     val isAgentTyping: Boolean = false,
     val isMainTurnBusy: Boolean = false,
@@ -506,6 +480,7 @@ class ChatViewModel(
     private val voiceNoteRepository: VoiceNoteRepository = VoiceNoteRepository(),
     internal val onCompressionHistoryReplacedForTest: (() -> Unit)? = null,
     private val projectsSource: ProjectsSource = HermesProjectsSource(),
+    private val timing: ChatTimingConfig = ChatTimingConfig.DEFAULT,
 ) : AndroidViewModel(application) {
     constructor(application: Application) : this(application, startCleanup = true)
 
@@ -559,11 +534,15 @@ class ChatViewModel(
 
     // ── Internal state ───────────────────────────────────────────────────
     private val _uiState = MutableStateFlow(ChatUiState())
-    private val localTranscriptAppendLock = Any()
-    private var localTranscriptPersistenceTail: Job? = null
-
-    /** Guarded by localTranscriptAppendLock; advanced only after the RPC replacement commits. */
-    private val compressedHistoryEpochs = mutableMapOf<String, Pair<Long, Long>>()
+    private val transcriptWriter: ChatLocalTranscriptWriter =
+        ChatLocalTranscriptWriter(
+            scope = viewModelScope,
+            ioDispatcher = ioDispatcher,
+            uiState = _uiState,
+            repo = repo,
+            isCurrent = { sessionId, generation -> isCurrentSessionRequest(sessionId, generation) },
+            onHistoryReplacedForTest = onCompressionHistoryReplacedForTest,
+        )
     val connectionOperationState: StateFlow<ConnectionOperationUiState> = connectionOperationDelegate.state
     private val connectionBrowserReturnTracker = BrowserReturnTracker()
 
@@ -580,16 +559,13 @@ class ChatViewModel(
     private val _streamingState = MutableStateFlow(StreamingState())
 
     /** Maps an in-flight RPC id to its method for UI error labeling. */
-    private val idToMethod = ConcurrentHashMap<String, String>()
-
-    private data class SessionRequest(
-        val generation: Long,
-        val resumeSequence: Long = 0L,
-        val sessionId: String? = null,
-        val connectionCheckpoint: ConnectionResumeCheckpoint? = null,
-        val receiptScope: String? = null,
-        val receiptAttempt: Int? = null,
-    )
+    private val requestTracker =
+        ChatRequestTracker(
+            sessionGeneration = { sessionGeneration },
+            currentSessionId = { _uiState.value.currentSessionId },
+            sendScope = { sendScope() },
+            activeResumeSequence = { activeResumeRequestSequence },
+        )
 
     private data class SendOwner(
         val scope: String,
@@ -616,13 +592,6 @@ class ChatViewModel(
         val originalPending: PendingSend? = null,
     )
 
-    private data class PendingBranchRequest(
-        val generation: Long,
-        val params: SessionBranchWholeParams,
-    )
-
-    private val sessionRequestById = ConcurrentHashMap<String, SessionRequest>()
-    private val branchWholeRequests = ConcurrentHashMap<String, PendingBranchRequest>()
     private val outgoingRequestById = ConcurrentHashMap<String, String>()
     private val acceptedTurnEpochById = ConcurrentHashMap<String, Long>()
     private val hardInterruptRequestById = ConcurrentHashMap<String, HardInterruptRequest>()
@@ -715,13 +684,6 @@ class ChatViewModel(
     private var receiptLookupJob: Job? = null
     private var receiptLookupCursor = 0L
     private val historyFetchMutex = Mutex()
-    private var timelineJob: Job? = null
-    private var historyWindowJob: Job? = null
-    private var timelineRequestSequence = 0L
-    private var activeTimelineRequestSequence = 0L
-    private var historyWindowRequestSequence = 0L
-    private var activeHistoryWindowRequestSequence = 0L
-    private val _timelineState = MutableStateFlow(ChatTimelineState())
 
     // ── Session resume recovery (desktop parity) ────────────────────────
     // Bounded auto-retry with exponential backoff, mirroring the desktop's
@@ -732,22 +694,58 @@ class ChatViewModel(
     private var resumeRetryAttempt = 0
     private var resumeRetryJob: Job? = null
     val streamingState: StateFlow<StreamingState> = _streamingState.asStateFlow()
-    val timelineState: StateFlow<ChatTimelineState> = _timelineState.asStateFlow()
+    private val timelineDelegate: ChatTimelineDelegate =
+        ChatTimelineDelegate(
+            scope = viewModelScope,
+            ioDispatcher = ioDispatcher,
+            historyDispatcher = historyDispatcher,
+            currentSessionId = { _uiState.value.currentSessionId },
+            sessionGeneration = { sessionGeneration },
+            liveMessages = { _uiState.value.messages },
+            activeReplyTarget = { ReplyNotificationTracker.getActiveTarget(getApplication()) },
+            mediaUrl = ::gatewayMediaUrl,
+            onOpen = { searchDelegate.clearSearch() },
+        )
+    val timelineState: StateFlow<ChatTimelineState> = timelineDelegate.state
 
     /** Tracks the auto-clear coroutine for reaction animations. */
     private var reactionClearJob: Job? = null
 
-    /** Last confirmed model label pushed by SessionInfo or SessionResume from backend (issue #1103). */
-    private var lastConfirmedSessionModel: String? = null
+    private val compressionDelegate: ChatCompressionDelegate =
+        ChatCompressionDelegate(
+            scope = viewModelScope,
+            ioDispatcher = ioDispatcher,
+            historyDispatcher = historyDispatcher,
+            uiState = _uiState,
+            transcriptWriter = transcriptWriter,
+            runtimeSessionId = { runtimeSessionId },
+            sessionGeneration = { sessionGeneration },
+            latestPaging = { latestPaging },
+            isCurrent = { sessionId, generation -> isCurrentSessionRequest(sessionId, generation) },
+            activeReplyTarget = { ReplyNotificationTracker.getActiveTarget(getApplication()) },
+            mediaUrl = ::gatewayMediaUrl,
+            localized = ::localized,
+            addAssistantMessage = ::addAssistantMessage,
+            reloadHistory = { sessionId, generation ->
+                hydratedGeneration = -1L
+                loadSessionMessages(sessionId, generation).join()
+            },
+            fetchContextUsage = { fetchContextUsage() },
+            loadSessions = ::loadSessions,
+            handleSessionInfo = ::handleSessionInfo,
+            onServerPresenceConfirmed = { sessionHasServerPresence = true },
+        )
 
-    /** Model generation counter to prevent stale context writes across switches (issue #1103). */
-    private var modelGeneration: Long = 0L
-
-    /** Request sequence counter for fetchContextUsage calls. */
-    private var contextFetchSequence: Long = 0L
-
-    /** Tracks the latest context-usage poll or refetch job. */
-    private var contextUsageJob: Job? = null
+    private val contextUsageDelegate: ChatContextUsageDelegate =
+        ChatContextUsageDelegate(
+            scope = viewModelScope,
+            ioDispatcher = ioDispatcher,
+            uiState = _uiState,
+            sessionGeneration = { sessionGeneration },
+            runtimeSessionId = { runtimeSessionId },
+            isModelSwitchPending = { modelSwitchDelegate.isSwitchPending() },
+            applyModelInfo = { info -> modelSwitchDelegate.applyModelInfo(info, AuthManager.currentDataScope()) },
+        )
 
     private val wsClient = HermesWsClient
 
@@ -774,7 +772,6 @@ class ChatViewModel(
                 }
             }
         }
-    private val slashDispatcher = SlashCommandDispatcher()
 
     /**
      * Progress popup for `/update` from chat (issue #862). The backend `/update`
@@ -783,6 +780,33 @@ class ChatViewModel(
      * routed through the same REST action + shared popup as the System screen.
      */
     val actionProgress = ActionProgressController(scope = viewModelScope)
+    private val slashCommandsDelegate: ChatSlashCommandsDelegate =
+        ChatSlashCommandsDelegate(
+            scope = viewModelScope,
+            ioDispatcher = ioDispatcher,
+            uiState = _uiState,
+            slashUsageStore = slashUsageStore,
+            actionProgress = actionProgress,
+            runtimeSessionId = { runtimeSessionId },
+            sessionGeneration = { sessionGeneration },
+            appendLocalTranscriptEvent = { message, persist -> appendLocalTranscriptEvent(message, persist) },
+            addAssistantMessage = { text -> addAssistantMessage(text) },
+            localized = ::localized,
+            interruptSession = ::interruptSession,
+            stopSessionAndProcesses = ::stopSessionAndProcesses,
+            createNewSession = { createNewSession() },
+            handleModelSwitch = { command -> modelSwitchDelegate.handleModelSwitch(command) },
+            setReasoningLevel = { level, scopeName, enforceCapabilities ->
+                modelSwitchDelegate.setReasoningLevel(level, scopeName, enforceCapabilities)
+            },
+            compressSession = { focusTopic -> compressionDelegate.compressSession(focusTopic) },
+            handleQueueCommand = ::handleQueueCommand,
+            handleDispatchResult = ::handleDispatchResult,
+            trackBranchWhole = { id, generation, params ->
+                requestTracker.trackBranchWhole(id, PendingBranchRequest(generation, params))
+                trackSessionRequest(id, WsMethods.SESSION_BRANCH_WHOLE, generation)
+            },
+        )
     private val searchDelegate =
         ChatSearchDelegate(
             scope = viewModelScope,
@@ -819,7 +843,7 @@ class ChatViewModel(
             wsSend = { params, onSent -> wsClient.send(RpcMethods.CONFIG_SET, params, onSent) },
             trackRequest = { id, method -> trackRequest(id, method) },
             addAssistantMessage = { text -> addAssistantMessage(text) },
-            handleSlashCommand = { cmd -> handleSlashCommand(cmd) },
+            handleSlashCommand = { cmd -> slashCommandsDelegate.handleSlashCommand(cmd) },
             fetchContextUsage = { fetchContextUsage() },
             onModelSwitchInitiated = { onModelSwitchInitiated() },
             wsRequest = { params -> wsClient.call(RpcMethods.CONFIG_SET, params) },
@@ -890,7 +914,7 @@ class ChatViewModel(
             uiState = _uiState,
             streamingState = _streamingState,
             isCurrentSession = { sessionId -> isCurrentSession(sessionId) },
-            isTestEnvironment = { isTestEnvironment() },
+            throttle = timing.throttleStreaming,
         )
 
     // ── Public state ─────────────────────────────────────────────────────
@@ -917,7 +941,7 @@ class ChatViewModel(
         }.stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            TranscriptUiState.resolve(_uiState.value, _timelineState.value, _streamingState.value, null, null),
+            TranscriptUiState.resolve(_uiState.value, timelineDelegate.state.value, _streamingState.value, null, null),
         )
 
     init {
@@ -1037,7 +1061,7 @@ class ChatViewModel(
                 .collect { _ ->
                     pendingGoneSessionNotice = false
                     sessionHasServerPresence = false
-                    resetSessionState(sessionId = null, title = "Hermes", isLoading = true)
+                    resetSessionState(sessionId = null, title = DEFAULT_CHAT_TITLE, isLoading = true)
                 }
         }
         // Same wipe when the CONNECTION profile changes (different server):
@@ -1049,7 +1073,7 @@ class ChatViewModel(
                 .collect { _ ->
                     pendingGoneSessionNotice = false
                     sessionHasServerPresence = false
-                    resetSessionState(sessionId = null, title = "Hermes", isLoading = true)
+                    resetSessionState(sessionId = null, title = DEFAULT_CHAT_TITLE, isLoading = true)
                 }
         }
         // Slash-command usage ranking (issue #865): mirror the local usage
@@ -1105,9 +1129,9 @@ class ChatViewModel(
         }
 
         // B7 (Jun 30 2026, kanban t_connection_loading): safety timeout to clear spinner if connection hangs
-        if (!isTestEnvironment()) {
+        timing.connectSpinnerTimeoutMs?.let { timeoutMs ->
             viewModelScope.launch {
-                delay(10_000L)
+                delay(timeoutMs)
                 if (_uiState.value.isLoading) {
                     _uiState.update { it.copy(isLoading = false) }
                 }
@@ -1719,7 +1743,7 @@ class ChatViewModel(
             // so optimistic model updates in sendSlashModel don't defeat swap detection.
             val optimisticPrevious = modelSwitchDelegate.consumeOptimisticPreviousModel()
             val previousModel =
-                lastConfirmedSessionModel
+                contextUsageDelegate.lastConfirmedSessionModel
                     ?: optimisticPrevious
                     ?: _uiState.value.currentSessionModel
             val modelSwapped =
@@ -1728,7 +1752,7 @@ class ChatViewModel(
                     !newModelLabel.equals(previousModel, ignoreCase = true)
             val initialHydration = previousModel == null && newModelLabel != null
             val meterEmpty = _uiState.value.fullContextTokens == null
-            lastConfirmedSessionModel = newModelLabel ?: lastConfirmedSessionModel
+            newModelLabel?.let { contextUsageDelegate.lastConfirmedSessionModel = it }
             if (newModelLabel != null) {
                 modelSwitchDelegate.onModelConfirmed(newModelLabel)
             }
@@ -1759,9 +1783,7 @@ class ChatViewModel(
             }
             modelSwitchDelegate.syncCurrentModelCapabilities()
             if (modelSwapped) {
-                modelGeneration++
-                contextUsageJob?.cancel()
-                contextUsageJob = null
+                contextUsageDelegate.invalidate()
                 // Issue #817 & #1103: after a swap the REST model/info window is
                 // PROFILE-scoped and may describe the old model (e.g. a
                 // session-scoped swap) — the meter must not fall back to
@@ -1770,7 +1792,7 @@ class ChatViewModel(
                 viewModelScope.launch { fetchContextUsage(skipRestFallback = true) }
             } else if ((initialHydration || meterEmpty) &&
                 newModelLabel != null &&
-                contextUsageJob?.isActive != true
+                !contextUsageDelegate.isFetchActive
             ) {
                 viewModelScope.launch { fetchContextUsage() }
             }
@@ -1891,7 +1913,7 @@ class ChatViewModel(
 
     private fun ownsTrackedResponseReceipt(id: String): Boolean {
         val messageId = outgoingRequestById[id] ?: hardInterruptRequestById[id]?.messageId ?: return true
-        val request = sessionRequestById[id] ?: return false
+        val request = requestTracker.sessionRequest(id) ?: return false
         return ownsOutgoingReceipt(request, messageId)
     }
 
@@ -2005,9 +2027,9 @@ class ChatViewModel(
             forgetRequest(id)
             return
         }
-        val method = idToMethod.remove(id) ?: return
-        val request = sessionRequestById.remove(id)
-        branchWholeRequests.remove(id)
+        val completed = requestTracker.complete(id) ?: return
+        val method = completed.method
+        val request = completed.request
         if (request != null && isStaleSessionRequest(request)) {
             settleStaleOutgoingResult(id, method, result, request)
             hardInterruptRequestById.remove(id)?.let { tracked ->
@@ -2050,7 +2072,7 @@ class ChatViewModel(
                         isSessionReady = true,
                         isLoading = false,
                         messages = if (pendingInitialPrompt != null) it.messages else emptyList(),
-                        chatTitle = "Hermes",
+                        chatTitle = DEFAULT_CHAT_TITLE,
                         usedContextTokens = null,
                         fullContextTokens = null,
                         contextBreakdown = null,
@@ -2119,7 +2141,7 @@ class ChatViewModel(
                 val generation =
                     resetSessionState(
                         sessionId = storageId,
-                        title = (resultMap["title"] as? String)?.takeIf { it.isNotBlank() } ?: "Hermes",
+                        title = (resultMap["title"] as? String)?.takeIf { it.isNotBlank() } ?: DEFAULT_CHAT_TITLE,
                         isLoading = false,
                     )
                 runtimeSessionId = runtimeId
@@ -2232,15 +2254,13 @@ class ChatViewModel(
                         model
                     }
                 if (resumedModelLabel != null) {
-                    if (lastConfirmedSessionModel != null &&
-                        !resumedModelLabel.equals(lastConfirmedSessionModel, ignoreCase = true)
+                    if (contextUsageDelegate.lastConfirmedSessionModel != null &&
+                        !resumedModelLabel.equals(contextUsageDelegate.lastConfirmedSessionModel, ignoreCase = true)
                     ) {
-                        modelGeneration++
-                        contextUsageJob?.cancel()
-                        contextUsageJob = null
+                        contextUsageDelegate.invalidate()
                         _uiState.update { it.copy(fullContextTokens = null) }
                     }
-                    lastConfirmedSessionModel = resumedModelLabel
+                    contextUsageDelegate.lastConfirmedSessionModel = resumedModelLabel
                 }
                 modelSwitchDelegate.syncCurrentModelCapabilities()
                 // Mirror the active runtime session id app-wide (issue #532).
@@ -2441,7 +2461,7 @@ class ChatViewModel(
 
             "alias" -> {
                 val target = map["target"] as? String ?: return
-                handleSlashCommand(target)
+                slashCommandsDelegate.handleSlashCommand(target)
             }
 
             "prefill" -> {
@@ -2467,9 +2487,10 @@ class ChatViewModel(
             forgetRequest(id)
             return
         }
-        val method = idToMethod.remove(id) ?: return
-        val request = sessionRequestById.remove(id)
-        val pendingBranch = branchWholeRequests.remove(id)
+        val completed = requestTracker.complete(id) ?: return
+        val method = completed.method
+        val request = completed.request
+        val pendingBranch = completed.pendingBranch
         if (request != null && isStaleSessionRequest(request)) {
             outgoingRequestById.remove(id)?.let { messageId ->
                 if (ownsOutgoingReceipt(request, messageId) &&
@@ -2885,11 +2906,14 @@ class ChatViewModel(
             receiptScope = receipt?.scope,
             receiptAttempt = receipt?.attempts,
         )
-        if (!isTestEnvironment()) {
-            viewModelScope.launch {
-                delay(30_000L)
-                expireOutgoingRequest(requestId)
-            }
+        scheduleOutgoingRequestExpiry(requestId)
+    }
+
+    private fun scheduleOutgoingRequestExpiry(requestId: String) {
+        val expiryMs = timing.outgoingRequestExpiryMs ?: return
+        viewModelScope.launch {
+            delay(expiryMs)
+            expireOutgoingRequest(requestId)
         }
     }
 
@@ -2898,7 +2922,7 @@ class ChatViewModel(
             outgoingRequestById[requestId]
                 ?: hardInterruptRequestById[requestId]?.messageId
                 ?: return
-        val request = sessionRequestById[requestId] ?: return
+        val request = requestTracker.sessionRequest(requestId) ?: return
         if (!ownsOutgoingReceipt(request, messageId)) return
         if (sendStore.all().any { it.id == messageId && it.state == PendingSendState.SENDING }) {
             markPendingSend(messageId, PendingSendState.UNKNOWN)
@@ -2922,12 +2946,7 @@ class ChatViewModel(
             receiptScope = receipt?.scope,
             receiptAttempt = receipt?.attempts,
         )
-        if (!isTestEnvironment()) {
-            viewModelScope.launch {
-                delay(30_000L)
-                expireOutgoingRequest(requestId)
-            }
-        }
+        scheduleOutgoingRequestExpiry(requestId)
     }
 
     private fun markPendingSend(
@@ -3362,7 +3381,7 @@ class ChatViewModel(
                 openModelPicker()
                 return true
             }
-            handleSlashCommand(trimmed)
+            slashCommandsDelegate.handleSlashCommand(trimmed)
             return true
         }
 
@@ -3744,10 +3763,7 @@ class ChatViewModel(
                     (
                         _uiState.value.currentSessionId == null &&
                             pendingInitialPrompt == null &&
-                            idToMethod.any { (id, method) ->
-                                method == WsMethods.SESSION_CREATE &&
-                                    sessionRequestById[id]?.let { !isStaleSessionRequest(it) } == true
-                            }
+                            requestTracker.hasLiveSessionCreate()
                     )
             )
 
@@ -4157,7 +4173,7 @@ class ChatViewModel(
         val sessionId = state.currentSessionId ?: return null
         // Connection status is combined into public uiState, not written to _uiState.
         if (wsClient.connectionStatus.value != ConnectionStatus.CONNECTED ||
-            !state.isSessionReady || _timelineState.value.isHistorical
+            !state.isSessionReady || timelineDelegate.state.value.isHistorical
         ) {
             return null
         }
@@ -4199,136 +4215,6 @@ class ChatViewModel(
     fun gatewayPathFor(attachment: Attachment): String = mediaDelegate.gatewayPathFor(attachment)
 
     fun clearAttachments() = attachmentsDelegate.clearAttachments()
-
-    private fun handleSlashCommand(command: String) {
-        // Classify FIRST (pure logic) — /queue's optimistic bubble must show
-        // the queued TEXT (prefix stripped, see QueuePrompt.displayContent) so
-        // it matches the server echo and the transcript sync dedupes instead
-        // of rendering a duplicate below its answer.
-        val result = slashDispatcher.dispatch(command)
-
-        if (result is SlashResult.SideQuestion) {
-            handleSideQuestionCommand(result.question)
-            return
-        }
-
-        val displayContent =
-            if (result is SlashResult.QueuePrompt) result.displayContent else command
-        val userMsg =
-            appendLocalTranscriptEvent(
-                message =
-                    ChatMessage(
-                        role = MessageRole.USER,
-                        content = displayContent,
-                        tokenCount = TokenEstimator.estimate(displayContent).takeIf { it > 0 },
-                        // Follow-up to #1253: stripped /queue text is an unconfirmed prompt,
-                        // not a permanently-local command or an ambiguous legacy cache row.
-                        messageProvenance =
-                            if (result is SlashResult.QueuePrompt && displayContent != command) {
-                                MessageProvenance.LOCAL_PENDING
-                            } else {
-                                MessageProvenance.UNKNOWN
-                            },
-                    ),
-                // Fix #1437 follow-up: an empty /queue is local feedback, not a staged prompt.
-                // Only stripped, nonempty queue prompts defer persistence to the send pipeline.
-                persist = result !is SlashResult.QueuePrompt || displayContent == command,
-            )
-
-        if (result is SlashResult.Undo) {
-            handleUndoCommand(result.count)
-            return
-        }
-
-        // Block desktop/CLI-only + TUI-only commands that don't function on
-        // mobile (issue #576, deliverable #3). These are also hidden from the
-        // suggestion menu, but a user can still type one — intercept it here
-        // (before any RPC fires) with a clear message instead of a doomed call.
-        if (CommandBlocklist.contains(command)) {
-            addAssistantMessage(
-                UiText.res(R.string.chat_msg_command_not_supported_mobile, command.split(" ", limit = 2)[0]),
-            )
-            return
-        }
-
-        // Track per-command usage for the slash-autocomplete ranking (issue
-        // #865). Counted here, AFTER the blocklist guard, so commands that
-        // can never dispatch don't climb the ranking. Best-effort — a store
-        // failure must never block the dispatch itself.
-        val commandName = command.split(" ", limit = 2)[0].lowercase()
-        viewModelScope.launch {
-            slashUsageStore.recordUse(commandName)
-        }
-
-        when (result) {
-            is SlashResult.Interrupt -> {
-                interruptSession()
-            }
-
-            is SlashResult.Stop -> {
-                stopSessionAndProcesses()
-            }
-
-            is SlashResult.NewSession -> {
-                val currentTitle = _uiState.value.chatTitle
-                if (currentTitle.equals("Bot Chat", ignoreCase = true)) {
-                    // Bot Chat is a canonical forever-conversation — compact instead of creating an orphan
-                    val sessionId = _uiState.value.currentSessionId
-                    if (!sessionId.isNullOrBlank()) {
-                        addAssistantMessage(UiText.res(R.string.chat_msg_bot_chat_compacting))
-                        dispatchViaRpc("/compact")
-                    } else {
-                        createNewSession()
-                    }
-                } else {
-                    createNewSession()
-                }
-            }
-
-            is SlashResult.SessionBranch -> {
-                branchSession(command)
-            }
-
-            is SlashResult.ModelSwitch -> {
-                modelSwitchDelegate.handleModelSwitch(command)
-            }
-
-            is SlashResult.ReasoningSwitch -> {
-                handleReasoningSlashCommand(result.level)
-            }
-
-            is SlashResult.Update -> {
-                openUpdateConfirm()
-            }
-
-            is SlashResult.OpenHistory -> {
-                // Client-side: open the session history tab so the user can
-                // pick a past session to resume (issue #864) — no gateway
-                // round-trip (the backend slash worker can't answer /resume).
-                _uiState.update { it.copy(openHistoryRequested = true) }
-            }
-
-            is SlashResult.QueuePrompt -> {
-                handleQueueCommand(command, userMsg)
-            }
-
-            is SlashResult.SideQuestion -> {
-                handleSideQuestionCommand(result.question)
-            }
-
-            is SlashResult.Undo -> {
-                handleUndoCommand(result.count)
-            }
-
-            is SlashResult.Compress -> {
-                compressSession(result.focusTopic)
-            }
-
-            is SlashResult.RpcDispatch -> {
-                dispatchViaRpc(command)
-            }
-        }
-    }
 
     /**
      * Queue a prompt to run after the current turn (backend contract
@@ -4388,288 +4274,18 @@ class ChatViewModel(
         }
     }
 
-    private fun handleReasoningSlashCommand(arg: String) {
-        val sessionId = runtimeSessionId
-        if (sessionId.isNullOrBlank()) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_requires_session))
-            return
-        }
+    // ── Side Questions via /btw (issue #1015) and update from chat (issue #862) ──
 
-        val parsed = parseReasoningSlashArgs(arg)
+    fun dismissBtw() = slashCommandsDelegate.dismissBtw()
 
-        // Bare `/reasoning` is a status query, matching Desktop/TUI semantics.
-        if (parsed == null) {
-            viewModelScope.launch(ioDispatcher) {
-                try {
-                    val result =
-                        wsClient.call(
-                            RpcMethods.CONFIG_GET,
-                            ConfigGetParams(key = "reasoning", sessionId = sessionId),
-                        )
-                    val map = rpcResultMap(result) ?: error("Invalid reasoning config.get response")
-                    val value = (map["value"] as? String)?.takeIf { it.isNotBlank() } ?: "unknown"
-                    val display = (map["display"] as? String)?.takeIf { it.isNotBlank() } ?: "unknown"
-                    addAssistantMessage("reasoning: $value · display $display")
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    addAssistantMessage(
-                        UiText.res(R.string.chat_msg_reasoning_status_failed, e.message ?: e.toString()),
-                    )
-                }
-            }
-            return
-        }
+    fun submitSideQuestion(question: String) = slashCommandsDelegate.submitSideQuestion(question)
 
-        val value = parsed.value.trim().lowercase()
+    fun openUpdateConfirm() = slashCommandsDelegate.openUpdateConfirm()
 
-        // Effort changes use the acknowledged delegate so the composer shows
-        // pending state and prompt submission remains gated until config.set
-        // succeeds. A global preference may target a future model, so do not
-        // reject it based on only the current model's capabilities.
-        if (value in REASONING_EFFORT_LEVELS) {
-            if (parsed.scopeName != "global") {
-                val caps = _uiState.value.currentModelCapabilities
-                if (caps?.reasoningSupport == false) {
-                    addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_not_supported))
-                    return
-                }
-                if (value == "none" && caps?.can_disable_reasoning == false) {
-                    addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_always_on))
-                    return
-                }
-            }
-            modelSwitchDelegate.setReasoningLevel(
-                value,
-                scopeName = parsed.scopeName ?: "session",
-                enforceCapabilities = parsed.scopeName != "global",
-            )
-            return
-        }
+    fun closeUpdateConfirm() = slashCommandsDelegate.closeUpdateConfirm()
 
-        // Display controls (`show`/`hide`/`full`/`clamp` and backend aliases)
-        // and future config.set reasoning values go through the canonical
-        // backend parser instead of a client-maintained allowlist. Invalid
-        // values therefore surface the real 4002 error instead of being eaten
-        // locally. Scope flags are forwarded exactly like Desktop.
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                val params =
-                    ConfigSetParams(
-                        key = "reasoning",
-                        value = parsed.value,
-                        sessionId = sessionId,
-                        scope = parsed.scopeName,
-                    )
-                val result = wsClient.call(RpcMethods.CONFIG_SET, params)
-                val map = rpcResultMap(result) ?: error("Invalid reasoning config.set response")
-                val responseKey = map["key"] as? String
-                val responseValue = map["value"] as? String
-                if (responseKey != "reasoning" || responseValue.isNullOrBlank()) {
-                    error("Invalid reasoning config.set response")
-                }
-                addAssistantMessage("reasoning: $responseValue")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                addAssistantMessage(UiText.res(R.string.chat_msg_reasoning_change_failed, e.message ?: e.toString()))
-            }
-        }
-    }
-
-    // ── Side Questions via /btw (issue #1015) ─────────────────────────────
-
-    fun dismissBtw() {
-        _uiState.update { it.copy(btwState = null) }
-    }
-
-    fun submitSideQuestion(question: String) {
-        val trimmed = question.trim()
-        if (trimmed.isBlank()) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_btw_usage))
-            return
-        }
-        val sessionId = runtimeSessionId ?: _uiState.value.currentSessionId
-        if (sessionId.isNullOrBlank()) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_btw_no_session))
-            return
-        }
-
-        _uiState.update {
-            it.copy(
-                btwState =
-                    BtwUiState(
-                        question = trimmed,
-                        isLoading = true,
-                    ),
-            )
-        }
-
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                val taskId =
-                    wsClient
-                        .call(
-                            RpcMethods.PROMPT_BTW,
-                            PromptBtwParams(sessionId = sessionId, text = trimmed),
-                        ).taskId
-                if (!taskId.isNullOrBlank()) {
-                    _uiState.update { state ->
-                        state.btwState?.let { current ->
-                            state.copy(btwState = current.copy(taskId = taskId))
-                        } ?: state
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update { state ->
-                    state.btwState?.let { current ->
-                        state.copy(
-                            btwState =
-                                current.copy(
-                                    isLoading = false,
-                                    error = e.message ?: localized(UiText.res(R.string.chat_msg_btw_dispatch_failed)),
-                                ),
-                        )
-                    } ?: state
-                }
-            }
-        }
-    }
-
-    private fun handleSideQuestionCommand(question: String) {
-        viewModelScope.launch {
-            slashUsageStore.recordUse("btw")
-        }
-        submitSideQuestion(question)
-    }
-
-    // ── Update from chat (issue #862) ────────────────────────────────────
-    // `/update` can't travel via the slash worker (the backend handler is
-    // interactive + session-exiting → guaranteed 45s timeout). Intercept it
-    // client-side: confirm, then trigger the same REST action the System
-    // screen uses and track it in the shared ActionProgressDialog.
-
-    fun openUpdateConfirm() {
-        _uiState.update { it.copy(updateConfirmOpen = true) }
-    }
-
-    fun closeUpdateConfirm() {
-        _uiState.update { it.copy(updateConfirmOpen = false) }
-    }
-
-    /**
-     * Run the backend update: `POST /api/hermes/update` returns immediately
-     * (`{ok, name}`) while `hermes update` runs in the background, so
-     * [actionProgress] polls its status log until it exits and the popup shows
-     * the live tail + final state.
-     */
-    fun applyUpdate() {
-        actionProgress.open()
-        viewModelScope.launch(ioDispatcher) {
-            val result = safeApiCall { ApiClient.hermesApi.updateHermes() }
-            when (result) {
-                is NetworkResult.Success -> {
-                    val name = result.data.name
-                    if (name != null) {
-                        actionProgress.markStarted(name)
-                    } else {
-                        actionProgress.fail(localized(UiText.res(R.string.chat_msg_update_no_action_name)))
-                    }
-                }
-
-                is NetworkResult.Failure -> {
-                    actionProgress.fail(
-                        localized(UiText.res(R.string.chat_msg_update_start_failed, result.error.message)),
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Fork the active conversation via the lightweight session.branch_whole WS RPC (issue #1289).
-     * Falls back to session.branch if the gateway answers -32601 (unknown method).
-     * The optional arg becomes the new branch's title.
-     */
-    private fun branchSession(command: String) {
-        val sessionId = runtimeSessionId
-        if (sessionId == null) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_no_active_session))
-            return
-        }
-        val arg = command.split(" ", limit = 2).getOrElse(1) { "" }.trim()
-        val params = SessionBranchWholeParams(sessionId = sessionId, name = arg.takeIf { it.isNotBlank() })
-        val generation = sessionGeneration
-        viewModelScope.launch(ioDispatcher) {
-            wsClient.send(
-                RpcMethods.SESSION_BRANCH_WHOLE,
-                params,
-                onSent = { id ->
-                    branchWholeRequests[id] = PendingBranchRequest(generation, params)
-                    trackSessionRequest(id, WsMethods.SESSION_BRANCH_WHOLE, generation)
-                },
-            )
-        }
-    }
-
-    private fun dispatchViaRpc(command: String) {
-        val sessionId = runtimeSessionId
-        if (sessionId == null) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_no_active_session))
-            return
-        }
-        val parts = command.split(" ", limit = 2)
-        val name = parts[0].lowercase().removePrefix("/")
-        val arg = parts.getOrElse(1) { "" }
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                // Desktop parity: slash.exec owns generic commands. Handle errors here,
-                // not again through the shared RpcError banner (/usage regression).
-                val result =
-                    wsClient.call(
-                        RpcMethods.SLASH_EXEC,
-                        SlashExecParams(sessionId = sessionId, command = command.removePrefix("/")),
-                        suppressErrorEvent = true,
-                    )
-                val map = result.toAny() as? Map<*, *>
-                if (map?.get("type") is String) {
-                    handleDispatchResult(map)
-                } else {
-                    val output =
-                        (map?.get("output") as? String).orEmpty().ifBlank {
-                            localized(UiText.res(R.string.chat_msg_command_no_output, name))
-                        }
-                    val warning = (map?.get("warning") as? String).orEmpty()
-                    addAssistantMessage(if (warning.isBlank()) output else "warning: $warning\n$output")
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                try {
-                    val result =
-                        wsClient.call(
-                            RpcMethods.COMMAND_DISPATCH,
-                            CommandDispatchParams(name = name, arg = arg, sessionId = sessionId),
-                            suppressErrorEvent = true,
-                        )
-                    val map = result.toAny() as? Map<*, *>
-                    if (map?.get("type") is String) {
-                        handleDispatchResult(map)
-                    } else {
-                        addAssistantMessage("/$name: invalid response: command.dispatch")
-                    }
-                } catch (fallback: CancellationException) {
-                    throw fallback
-                } catch (fallback: Exception) {
-                    val registryMiss =
-                        Regex("not a quick/plugin/(?:bundle/)?skill command", RegexOption.IGNORE_CASE)
-                            .containsMatchIn(fallback.message.orEmpty())
-                    val failure = if (registryMiss) e else fallback
-                    addAssistantMessage("/$name: ${failure.message}")
-                }
-            }
-        }
-    }
+    /** Runs the backend update; see [ChatSlashCommandsDelegate.applyUpdate]. */
+    fun applyUpdate() = slashCommandsDelegate.applyUpdate()
 
     /**
      * Submits [text] as a prompt to the current session via WS, without
@@ -4704,71 +4320,7 @@ class ChatViewModel(
     private fun appendLocalTranscriptEvent(
         message: ChatMessage,
         persist: Boolean = true,
-    ): ChatMessage {
-        val (placed, persistenceJob) =
-            synchronized(localTranscriptAppendLock) {
-                var placed = message
-                var sessionId: String? = null
-                _uiState.update { state ->
-                    placed = message.withLocalTranscriptAnchor(state.messages)
-                    sessionId = state.currentSessionId
-                    state.copy(messages = state.messages + placed)
-                }
-                val capturedMessage = placed
-                val capturedSessionId = sessionId
-                val previousWrite = localTranscriptPersistenceTail
-                val capturedEpoch = capturedSessionId?.let { compressedHistoryEpochs[it]?.first } ?: 0L
-                val job =
-                    if (persist && capturedSessionId != null) {
-                        viewModelScope
-                            .launch(ioDispatcher, start = CoroutineStart.LAZY) {
-                                previousWrite?.join()
-                                val reanchor =
-                                    synchronized(localTranscriptAppendLock) {
-                                        compressedHistoryEpochs[capturedSessionId]
-                                            ?.takeIf { it.first != capturedEpoch }
-                                            ?.second
-                                    }
-                                val persisted =
-                                    if (reanchor != null && capturedMessage.isPermanentlyLocal() &&
-                                        !capturedMessage.isSessionStartMarker()
-                                    ) {
-                                        capturedMessage.copy(localAnchorOrder = reanchor, localPredecessorId = null)
-                                    } else {
-                                        capturedMessage
-                                    }
-                                repo.persistMessage(persisted, capturedSessionId)
-                                if (reanchor != null && persisted !== capturedMessage) {
-                                    _uiState.update { state ->
-                                        if (state.currentSessionId != capturedSessionId) {
-                                            state
-                                        } else {
-                                            state.copy(
-                                                messages =
-                                                    state.messages.map { current ->
-                                                        if (current.id == capturedMessage.id) {
-                                                            current.copy(
-                                                                localAnchorOrder = reanchor,
-                                                                localPredecessorId = null,
-                                                            )
-                                                        } else {
-                                                            current
-                                                        }
-                                                    },
-                                            )
-                                        }
-                                    }
-                                }
-                            }.also { localTranscriptPersistenceTail = it }
-                    } else {
-                        null
-                    }
-                placed to job
-            }
-        // No database access inside the StateFlow transform or append lock.
-        persistenceJob?.start()
-        return placed
-    }
+    ): ChatMessage = transcriptWriter.append(message, persist)
 
     /** Tool-display texts in the app's current language, for search and cache prewarming off the UI. */
     private fun toolText(): ToolText = ToolText.of(getApplication<Application>().resources)
@@ -4786,194 +4338,6 @@ class ChatViewModel(
                 displayKind = DisplayKind.LOCAL_FEEDBACK,
             ),
         )
-    }
-
-    private fun handleUndoCommand(count: String) {
-        val sessionId = runtimeSessionId
-        if (sessionId == null) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_undo_no_session))
-            return
-        }
-        viewModelScope.launch {
-            slashUsageStore.recordUse("/undo")
-        }
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                val result =
-                    wsClient.call(
-                        RpcMethods.COMMAND_DISPATCH,
-                        CommandDispatchParams(name = "undo", arg = count, sessionId = sessionId),
-                    )
-                handleDispatchResult(result.toAny())
-            } catch (e: HermesWsClient.HermesRpcException) {
-                addAssistantMessage(e.message ?: localized(UiText.res(R.string.chat_msg_undo_failed)))
-            } catch (e: Exception) {
-                addAssistantMessage(e.message ?: localized(UiText.res(R.string.chat_msg_undo_failed)))
-            }
-        }
-    }
-
-    private fun compressSession(focusTopic: String) {
-        val sessionId = _uiState.value.currentSessionId
-        // Fix #1437: session.compress resolves a runtime ID, not the persisted history key.
-        // Keep the stored ID below for generation guards and transcript persistence.
-        val rpcSessionId = runtimeSessionId
-        if (sessionId == null || rpcSessionId == null) {
-            addAssistantMessage(UiText.res(R.string.chat_msg_compress_no_session))
-            return
-        }
-        if (_uiState.value.isCompressing) return
-        val generation = sessionGeneration
-        val current = { isCurrentSessionRequest(sessionId, generation) }
-        _uiState.update { it.copy(isCompressing = true, compressionStatus = SystemNotice.COMPRESSING_CONTEXT) }
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                val result =
-                    wsClient.call(
-                        RpcMethods.SESSION_COMPRESS,
-                        SessionCompressParams(
-                            sessionId = rpcSessionId,
-                            focusTopic = focusTopic.takeIf { it.isNotBlank() },
-                        ),
-                        timeoutMs = 300_000L,
-                    )
-                if (current()) handleCompressionResult(result, sessionId, generation)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (current()) addAssistantMessage("/compress: ${e.message ?: "compression failed"}")
-            } finally {
-                if (current()) _uiState.update { it.copy(isCompressing = false, compressionStatus = null) }
-            }
-        }
-    }
-
-    /** Serialize authoritative RPC replacement with local append writes. */
-    private suspend fun applyCompressedHistory(
-        sessionId: String,
-        generation: Long,
-        replacement: List<ChatMessage>,
-    ): Boolean {
-        if (!isCurrentSessionRequest(sessionId, generation)) return false
-        val replacementTail =
-            replacement
-                .mapNotNull { it.canonicalRestId?.substringAfterLast('-')?.toLongOrNull() }
-                .maxOrNull() ?: -1L
-        val barrier =
-            synchronized(localTranscriptAppendLock) {
-                val predecessor = localTranscriptPersistenceTail
-                viewModelScope
-                    .async(ioDispatcher, start = CoroutineStart.LAZY) {
-                        predecessor?.join()
-                        if (!isCurrentSessionRequest(sessionId, generation)) return@async false
-                        val retained = repo.replaceCanonicalHistory(sessionId, replacement)
-                        onCompressionHistoryReplacedForTest?.invoke()
-                        if (!isCurrentSessionRequest(sessionId, generation)) return@async false
-                        val retainedById = retained.associateBy { it.id }
-                        synchronized(localTranscriptAppendLock) {
-                            val nextEpoch = (compressedHistoryEpochs[sessionId]?.first ?: 0L) + 1L
-                            compressedHistoryEpochs[sessionId] = nextEpoch to replacementTail
-                            _uiState.update { state ->
-                                if (!isCurrentSessionRequest(sessionId, generation)) {
-                                    state
-                                } else {
-                                    val visible = state.messages.filter { it.canonicalRestId == null }
-                                    val visibleLocals =
-                                        visible.map { message ->
-                                            retainedById[message.id]?.let { row ->
-                                                message.copy(
-                                                    localAnchorOrder = row.localAnchorOrder,
-                                                    localPredecessorId = row.localPredecessorId,
-                                                )
-                                            } ?: if (message.isPermanentlyLocal() && !message.isSessionStartMarker()) {
-                                                message.copy(
-                                                    localAnchorOrder = replacementTail,
-                                                    localPredecessorId = null,
-                                                )
-                                            } else {
-                                                message
-                                            }
-                                        }
-                                    state.copy(messages = replacement + (visibleLocals + retained).distinctBy { it.id })
-                                }
-                            }
-                        }
-                        true
-                    }.also { localTranscriptPersistenceTail = it }
-            }
-        barrier.start()
-        return barrier.await()
-    }
-
-    private suspend fun handleCompressionResult(
-        result: Any?,
-        sessionId: String,
-        generation: Long,
-    ) {
-        val response =
-            try {
-                OkHttpProvider.json.decodeFromJsonElement<SessionCompressResponse>(result.toJsonElement())
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to decode session.compress response", e)
-                null
-            }
-        if (!isCurrentSessionRequest(sessionId, generation)) return
-        if (response == null ||
-            (response.status != null && response.status !in setOf("ok", "compressed")) ||
-            (
-                response.status == null && response.messages == null && response.summary == null &&
-                    response.message == null && response.compressed == null
-            )
-        ) {
-            throw IllegalStateException("Unrecognized session.compress response; history was not reconciled")
-        }
-        val incompleteFallback = response.messages != null && latestPaging && response.messages.any { it.id == null }
-        if (response.messages != null && !incompleteFallback) {
-            val replacement =
-                withContext(historyDispatcher) {
-                    mapServerMessages(
-                        sessionId = sessionId,
-                        messages = response.messages,
-                        offset = 0,
-                        latestPaging = latestPaging,
-                        liveMessages = emptyList(),
-                        activeReplyTarget = ReplyNotificationTracker.getActiveTarget(getApplication()),
-                        mediaUrl = ::gatewayMediaUrl,
-                    )
-                }
-            if (!applyCompressedHistory(sessionId, generation, replacement)) return
-        } else if (incompleteFallback) {
-            // An id-less latest-page response needs the REST protocol's paging negotiation.
-            // loadSessionMessages starts a child job; joining it is essential before feedback.
-            hydratedGeneration = -1L
-            loadSessionMessages(sessionId, generation).join()
-            if (!isCurrentSessionRequest(sessionId, generation)) return
-        }
-        if (!isCurrentSessionRequest(sessionId, generation)) return
-        val summary = response?.summary
-        val feedback =
-            listOfNotNull(
-                summary?.headline?.takeIf { it.isNotBlank() },
-                summary?.token_line?.takeIf { it.isNotBlank() },
-                summary?.note?.takeIf { it.isNotBlank() },
-            ).takeIf { it.isNotEmpty() }?.joinToString("\n") ?: response?.message
-                ?: localized(UiText.res(R.string.chat_msg_context_compressed))
-        addAssistantMessage(
-            if (incompleteFallback) {
-                localized(UiText.res(R.string.chat_msg_compressed_history_incomplete, feedback))
-            } else {
-                feedback
-            },
-        )
-        if (!isCurrentSessionRequest(sessionId, generation)) return
-        fetchContextUsage()
-        loadSessions()
-        if (!isCurrentSessionRequest(sessionId, generation)) return
-        response?.info?.let { infoElement ->
-            val infoMap = (infoElement.toAny() as? Map<*, *>)?.filterKeys { it is String } as? Map<String, Any?>
-            handleSessionInfo(infoMap)
-        }
-        if (isCurrentSessionRequest(sessionId, generation)) sessionHasServerPresence = true
     }
 
     private fun handlePrefillResult(
@@ -5217,7 +4581,7 @@ class ChatViewModel(
     ) {
         // A fresh create has no persisted row until the first prompt.
         sessionHasServerPresence = false
-        val generation = resetSessionState(sessionId = null, title = "Hermes", isLoading = setLoading)
+        val generation = resetSessionState(sessionId = null, title = DEFAULT_CHAT_TITLE, isLoading = setLoading)
         val cwd = project?.launchCwd
         _uiState.update { it.copy(stagedProject = project.takeIf { cwd != null }) }
         viewModelScope.launch(ioDispatcher) {
@@ -5232,9 +4596,10 @@ class ChatViewModel(
             )
         }
         // B7 safety timeout: clear loading state if RPC response never arrives
-        if (setLoading && !isTestEnvironment()) {
+        val loadingTimeoutMs = timing.sessionCreateLoadingTimeoutMs
+        if (setLoading && loadingTimeoutMs != null) {
             viewModelScope.launch {
-                delay(10_000L)
+                delay(loadingTimeoutMs)
                 // Only clear if no newer session creation has started — prevents a
                 // stale timeout from wiping the loading flag of a subsequent request.
                 if (generation == sessionGeneration && _uiState.value.isLoading) {
@@ -5357,264 +4722,17 @@ class ChatViewModel(
 
     fun getCurrentModelCapabilities(): ModelCapabilities? = modelSwitchDelegate.getCurrentModelCapabilities()
 
-    fun openTimeline() {
-        if (_uiState.value.currentSessionId == null || _timelineState.value.isOpen) return
-        searchDelegate.clearSearch()
-        _timelineState.update {
-            it.copy(
-                isOpen = true,
-                entries = emptyList(),
-                isLoading = false,
-                hasMore = false,
-                nextCursor = null,
-                errorMessage = null,
-                windowErrorMessage = null,
-            )
-        }
-        loadTimelinePage(reset = true)
-    }
+    fun openTimeline() = timelineDelegate.openTimeline()
 
-    fun closeTimeline() {
-        timelineJob?.cancel()
-        historyWindowJob?.cancel()
-        activeTimelineRequestSequence = ++timelineRequestSequence
-        activeHistoryWindowRequestSequence = ++historyWindowRequestSequence
-        _timelineState.update {
-            it.copy(
-                isOpen = false,
-                isLoading = false,
-                jumpingRowId = null,
-            )
-        }
-    }
+    fun closeTimeline() = timelineDelegate.closeTimeline()
 
-    fun retryTimeline() {
-        if (!_timelineState.value.isOpen) return
-        _timelineState.update { it.copy(windowErrorMessage = null) }
-        loadTimelinePage(reset = true)
-    }
+    fun retryTimeline() = timelineDelegate.retryTimeline()
 
-    fun loadMoreTimeline() {
-        val state = _timelineState.value
-        if (!state.isOpen || state.isLoading || !state.hasMore || state.nextCursor == null) return
-        loadTimelinePage(reset = false)
-    }
+    fun loadMoreTimeline() = timelineDelegate.loadMoreTimeline()
 
-    private fun loadTimelinePage(reset: Boolean) {
-        val sessionId = _uiState.value.currentSessionId ?: return
-        val generation = sessionGeneration
-        val profile = AuthManager.activeProfileId.value
-        val cursor = if (reset) 0 else _timelineState.value.nextCursor ?: return
-        val requestSequence = ++timelineRequestSequence
-        activeTimelineRequestSequence = requestSequence
-        timelineJob?.cancel()
-        _timelineState.update {
-            it.copy(
-                isLoading = true,
-                errorMessage = null,
-                entries = if (reset) emptyList() else it.entries,
-                hasMore = if (reset) false else it.hasMore,
-                nextCursor = if (reset) null else it.nextCursor,
-            )
-        }
-        val valid = {
-            generation == sessionGeneration &&
-                sessionId == _uiState.value.currentSessionId &&
-                profile == AuthManager.activeProfileId.value &&
-                requestSequence == activeTimelineRequestSequence
-        }
-        timelineJob =
-            viewModelScope.launch {
-                try {
-                    val result =
-                        withContext(ioDispatcher) {
-                            safeApiCall {
-                                ApiClient.hermesApi.getSessionTimeline(
-                                    sessionId = sessionId,
-                                    profile = profile,
-                                    limit = TIMELINE_PAGE_SIZE,
-                                    afterRowId = cursor,
-                                )
-                            }
-                        }
-                    if (!valid()) return@launch
-                    when (result) {
-                        is NetworkResult.Success -> {
-                            val page = result.data
-                            val nextCursor = page.pagination.next_cursor
-                            _timelineState.update { current ->
-                                if (!valid()) {
-                                    current
-                                } else {
-                                    val entries =
-                                        (if (reset) page.entries else current.entries + page.entries)
-                                            .distinctBy { it.row_id }
-                                    current.copy(
-                                        entries = entries,
-                                        hasMore = page.pagination.has_more && nextCursor != null,
-                                        nextCursor = nextCursor,
-                                        errorMessage = null,
-                                    )
-                                }
-                            }
-                        }
+    fun jumpToTimelineEntry(rowId: Int) = timelineDelegate.jumpToTimelineEntry(rowId)
 
-                        is NetworkResult.Failure -> {
-                            _timelineState.update {
-                                if (valid()) {
-                                    it.copy(
-                                        errorMessage =
-                                            UiText.res(
-                                                R.string.chat_msg_load_timeline_failed,
-                                                result.error.message,
-                                            ),
-                                    )
-                                } else {
-                                    it
-                                }
-                            }
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    if (valid()) {
-                        _timelineState.update {
-                            it.copy(
-                                errorMessage =
-                                    UiText.res(R.string.chat_msg_load_timeline_failed, e.message ?: e.toString()),
-                            )
-                        }
-                    }
-                } finally {
-                    if (valid()) _timelineState.update { it.copy(isLoading = false) }
-                }
-            }
-    }
-
-    fun jumpToTimelineEntry(rowId: Int) {
-        if (rowId <= 0) return
-        val sessionId = _uiState.value.currentSessionId ?: return
-        val generation = sessionGeneration
-        val profile = AuthManager.activeProfileId.value
-        val requestSequence = ++historyWindowRequestSequence
-        activeHistoryWindowRequestSequence = requestSequence
-        historyWindowJob?.cancel()
-        _timelineState.update {
-            it.copy(
-                jumpingRowId = rowId,
-                windowErrorMessage = null,
-            )
-        }
-        val valid = {
-            generation == sessionGeneration &&
-                sessionId == _uiState.value.currentSessionId &&
-                profile == AuthManager.activeProfileId.value &&
-                requestSequence == activeHistoryWindowRequestSequence
-        }
-        historyWindowJob =
-            viewModelScope.launch {
-                try {
-                    val result =
-                        withContext(ioDispatcher) {
-                            safeApiCall {
-                                ApiClient.hermesApi.getSessionMessagesAround(
-                                    sessionId = sessionId,
-                                    rowId = rowId,
-                                    profile = profile,
-                                    limit = HISTORY_WINDOW_SIZE,
-                                )
-                            }
-                        }
-                    if (!valid()) return@launch
-                    when (result) {
-                        is NetworkResult.Success -> {
-                            val response = result.data
-                            if (response.messages.size > HISTORY_WINDOW_SIZE) {
-                                _timelineState.update {
-                                    it.copy(windowErrorMessage = UiText.res(R.string.chat_msg_history_page_limit))
-                                }
-                                return@launch
-                            }
-                            val page =
-                                withContext(historyDispatcher) {
-                                    mapServerMessages(
-                                        sessionId = sessionId,
-                                        messages = response.messages,
-                                        offset = response.pagination.offset,
-                                        latestPaging = false,
-                                        liveMessages = _uiState.value.messages,
-                                        isPagingOlder = true,
-                                        stableRowIds = true,
-                                        activeReplyTarget = ReplyNotificationTracker.getActiveTarget(getApplication()),
-                                        mediaUrl = ::gatewayMediaUrl,
-                                    )
-                                }
-                            if (!valid()) return@launch
-                            val targetId = RestMessageId.of(sessionId, rowId)
-                            if (page.none { it.id == targetId || it.canonicalRestId == targetId }) {
-                                _timelineState.update {
-                                    it.copy(windowErrorMessage = UiText.res(R.string.chat_msg_prompt_unavailable))
-                                }
-                                return@launch
-                            }
-                            if (!valid()) return@launch
-                            _timelineState.update {
-                                it.copy(
-                                    isOpen = false,
-                                    historyMessages = page,
-                                    historyAnchorRowId = rowId,
-                                    historyHasOlder = response.pagination.has_older,
-                                    historyHasNewer = response.pagination.has_newer,
-                                    windowErrorMessage = null,
-                                )
-                            }
-                        }
-
-                        is NetworkResult.Failure -> {
-                            _timelineState.update {
-                                if (valid()) {
-                                    it.copy(
-                                        windowErrorMessage =
-                                            UiText.res(R.string.chat_msg_load_message_failed, result.error.message),
-                                    )
-                                } else {
-                                    it
-                                }
-                            }
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    if (valid()) {
-                        _timelineState.update {
-                            it.copy(
-                                windowErrorMessage =
-                                    UiText.res(R.string.chat_msg_load_message_failed, e.message ?: e.toString()),
-                            )
-                        }
-                    }
-                } finally {
-                    if (valid()) _timelineState.update { it.copy(jumpingRowId = null) }
-                }
-            }
-    }
-
-    fun returnToLatestMessages() {
-        historyWindowJob?.cancel()
-        activeHistoryWindowRequestSequence = ++historyWindowRequestSequence
-        _timelineState.update {
-            it.copy(
-                jumpingRowId = null,
-                windowErrorMessage = null,
-                historyMessages = null,
-                historyAnchorRowId = null,
-                historyHasOlder = false,
-                historyHasNewer = false,
-            )
-        }
-    }
+    fun returnToLatestMessages() = timelineDelegate.returnToLatestMessages()
 
     fun switchSession(sessionId: String) {
         if (sessionId == _uiState.value.currentSessionId) return
@@ -5630,7 +4748,7 @@ class ChatViewModel(
         val title =
             _uiState.value.sessions
                 .find { it.id == sessionId }
-                ?.title ?: "Hermes"
+                ?.title ?: DEFAULT_CHAT_TITLE
         val generation = resetSessionState(sessionId, title, isLoading = true)
         AuthManager.setLastOpenedSessionId(sessionId)
         viewModelScope.launch {
@@ -5844,14 +4962,10 @@ class ChatViewModel(
     }
 
     private fun resetTimelineState() {
-        timelineJob?.cancel()
-        historyWindowJob?.cancel()
+        timelineDelegate.reset()
         receiptLookupJob?.cancel()
         receiptLookupJob = null
         receiptLookupCursor = 0L
-        activeTimelineRequestSequence = ++timelineRequestSequence
-        activeHistoryWindowRequestSequence = ++historyWindowRequestSequence
-        _timelineState.value = ChatTimelineState()
     }
 
     private suspend fun readCachedPage(
@@ -6163,10 +5277,7 @@ class ChatViewModel(
         mainTurnBusy = false
         lastMainCompletionAt = 0L
         cancelResumeRetry()
-        contextUsageJob?.cancel()
-        contextUsageJob = null
-        modelGeneration++
-        lastConfirmedSessionModel = null
+        contextUsageDelegate.reset()
         modelSwitchDelegate.reset()
         resumedGeneration = -1L
         hydratedGeneration = -1L
@@ -6732,287 +5843,22 @@ class ChatViewModel(
     }
 
     internal fun onModelSwitchInitiated() {
-        modelGeneration++
-        contextUsageJob?.cancel()
-        contextUsageJob = null
-        _uiState.update { it.copy(fullContextTokens = null) }
+        contextUsageDelegate.onModelSwitchInitiated()
     }
-
-    private fun isCurrentContextFetch(
-        sessionId: String,
-        targetSessionGeneration: Long,
-        targetModelGeneration: Long,
-        targetRequestSequence: Long,
-    ): Boolean =
-        targetSessionGeneration == sessionGeneration &&
-            targetModelGeneration == modelGeneration &&
-            targetRequestSequence == contextFetchSequence &&
-            _uiState.value.currentSessionId == sessionId
 
     internal fun isMatchingModel(
         currentModel: String?,
         info: io.wutz.apollo.data.model.ModelInfoResponse?,
-    ): Boolean {
-        if (currentModel.isNullOrBlank() || info == null || info.model.isNullOrBlank()) {
-            return false
-        }
-        val restModel = info.model
-        val restProvider = info.provider
-        return if (currentModel.contains('/')) {
-            val curProvider = currentModel.substringBefore('/')
-            val curModel = currentModel.substringAfter('/')
-            if (!restProvider.isNullOrBlank()) {
-                curProvider.equals(restProvider, ignoreCase = true) &&
-                    curModel.equals(restModel, ignoreCase = true)
-            } else {
-                curModel.equals(restModel, ignoreCase = true)
-            }
-        } else {
-            currentModel.equals(restModel, ignoreCase = true)
-        }
-    }
+    ): Boolean = contextUsageDelegate.isMatchingModel(currentModel, info)
 
     internal fun isMatchingRpcModel(
         currentModel: String?,
         rpcModel: String?,
-    ): Boolean {
-        if (currentModel.isNullOrBlank() || rpcModel.isNullOrBlank()) return false
-        if (currentModel.equals(rpcModel, ignoreCase = true)) return true
-        return currentModel.contains('/') &&
-            currentModel.substringAfter('/').equals(rpcModel, ignoreCase = true)
-    }
+    ): Boolean = contextUsageDelegate.isMatchingRpcModel(currentModel, rpcModel)
 
-    /**
-     * Refresh the context meter: used / full tokens for the current session.
-     *
-     * The numerator comes from the `session.context_breakdown` WS RPC — the
-     * same RPC the Hermes desktop app's status-bar meter uses. It reports the
-     * live agent's actual prompt occupancy (compressor `last_prompt_tokens`,
-     * falling back to an estimate of the live system prompt + tools +
-     * history), so it DROPS after context compression. The previous numerator,
-     * `GET /api/sessions/{id}` `input_tokens`, is a cumulative lifetime
-     * counter that never resets on compression (issue #756).
-     *
-     * The denominator comes from the RPC's `context_max` (the compressor's
-     * real context window) when present, else `GET /api/model/info`
-     * `effective_context_length`. The REST session-detail call is kept only to
-     * feed the detail sheet's cumulative token accounting.
-     *
-     * Both calls are independent and best-effort: a failure on one must not
-     * wipe the other's already-shown value, and neither blocks the chat. The
-     * two fetches are launched separately so a slow/erroring one can't starve
-     * the other. Polled from [syncCurrentSession] via the 30s loop and re-fired
-     * on model switch (the denominator changes).
-     */
+    /** Refresh the context meter; see [ChatContextUsageDelegate.fetchContextUsage]. */
     fun fetchContextUsage(skipRestFallback: Boolean = false) {
-        val sessionId = _uiState.value.currentSessionId ?: return
-        val profile = AuthManager.activeProfileId.value
-        val targetSessionGeneration = sessionGeneration
-        val targetModelGeneration = modelGeneration
-        val targetRequestSequence = ++contextFetchSequence
-        val isSwitchPending = modelSwitchDelegate.isSwitchPending()
-
-        contextUsageJob?.cancel()
-        contextUsageJob =
-            viewModelScope.launch(ioDispatcher) {
-                // Denominator fallback: full context window (cheap, public, rarely
-                // changes). The RPC's context_max below overrides it when present.
-                // Kept as a local (not a state write) so both sources resolve
-                // before ONE atomic update below (issue #817 — two independent
-                // writes let a stale pre-swap value override a fresh one mid-swap).
-                val fullResult =
-                    safeApiCall { ApiClient.hermesApi.getModelInfo() }
-                coroutineContext.ensureActive()
-                if (!isCurrentContextFetch(
-                        sessionId,
-                        targetSessionGeneration,
-                        targetModelGeneration,
-                        targetRequestSequence,
-                    )
-                ) {
-                    return@launch
-                }
-                val restFull =
-                    if (fullResult is NetworkResult.Success && !isSwitchPending) {
-                        val info = fullResult.data
-                        val currentModel = _uiState.value.currentSessionModel
-                        // Issue #1103: only use profile REST model/info as fallback if it
-                        // matches the current session model identity. If the session was switched to
-                        // another model (e.g. Solar, Gemini), the profile-level model/info describes
-                        // a different model and must never poison the session's context window.
-                        if (isMatchingModel(currentModel, info)) {
-                            modelSwitchDelegate.applyModelInfo(info, AuthManager.currentDataScope())
-                            info.effective_context_length
-                                ?: info.auto_context_length
-                                ?: info.config_context_length
-                        } else {
-                            null
-                        }
-                    } else {
-                        null
-                    }
-                // Numerator: live context occupancy from the gateway's live agent,
-                // via the same RPC the desktop meter uses. `context_used` is the
-                // real current prompt size (drops after compression); `context_max`
-                // is the compressor's actual window. Any failure keeps the last
-                // known values — never blank the meter over a transient RPC error.
-                //
-                // These RPCs resolve the session against the gateway's LIVE runtime
-                // registry (_sess_nowait) — the storage session id 4001s "session
-                // not found" until session.resume has registered it. ChatScreen's
-                // sync effect fires this immediately on session switch, before the
-                // resume result lands, so skip the RPCs until resume confirms the
-                // runtime id. The REST parts below stay live (they key on the
-                // storage id).
-                var rpcUsed: Long? = null
-                var rpcMax: Long? = null
-                val rpcSessionId = runtimeSessionId
-                if (rpcSessionId != null) {
-                    try {
-                        val result =
-                            wsClient.call(
-                                RpcMethods.SESSION_CONTEXT_BREAKDOWN,
-                                SessionIdParams(rpcSessionId),
-                            )
-                        coroutineContext.ensureActive()
-                        val ctx = parseContextBreakdown(result)
-                        if (ctx != null) {
-                            val currentModel = _uiState.value.currentSessionModel
-                            val modelMatches =
-                                if (ctx.model != null) {
-                                    isMatchingRpcModel(currentModel, ctx.model)
-                                } else {
-                                    !isSwitchPending
-                                }
-                            if (modelMatches) {
-                                rpcUsed = ctx.contextUsed?.takeIf { it > 0L }
-                                rpcMax = ctx.contextMax?.takeIf { it > 0L }
-                            }
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        // Best-effort: RPC error/timeout/disconnect — keep last values.
-                    }
-                    if (!isCurrentContextFetch(
-                            sessionId,
-                            targetSessionGeneration,
-                            targetModelGeneration,
-                            targetRequestSequence,
-                        )
-                    ) {
-                        return@launch
-                    }
-                    // Compression count: how many times this session has been compacted
-                    // (session.usage → compressions). Feeds the "compressed ×N" badge —
-                    // the same usage snapshot the desktop status bar reads.
-                    if (!isSwitchPending) {
-                        try {
-                            val usage =
-                                wsClient.call(
-                                    RpcMethods.SESSION_USAGE,
-                                    SessionIdParams(rpcSessionId),
-                                )
-                            coroutineContext.ensureActive()
-                            val snapshot = parseUsageSnapshot(usage)
-                            if (snapshot != null) {
-                                _uiState.update { current ->
-                                    if (!isCurrentContextFetch(
-                                            sessionId,
-                                            targetSessionGeneration,
-                                            targetModelGeneration,
-                                            targetRequestSequence,
-                                        )
-                                    ) {
-                                        current
-                                    } else {
-                                        applyUsageSnapshot(current, snapshot)
-                                    }
-                                }
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                            // Best-effort: keep the last known badge value.
-                        }
-                    }
-                }
-                coroutineContext.ensureActive()
-                if (!isCurrentContextFetch(
-                        sessionId,
-                        targetSessionGeneration,
-                        targetModelGeneration,
-                        targetRequestSequence,
-                    )
-                ) {
-                    return@launch
-                }
-                // Issue #817 & #1103: single atomic denominator write. The RPC's live
-                // context_max wins, REST model/info is the fallback, and a stale
-                // value from a pre-swap fetch can never overwrite a fresh one —
-                // the meter always shows ONE coherent window.
-                _uiState.update { current ->
-                    if (!isCurrentContextFetch(
-                            sessionId,
-                            targetSessionGeneration,
-                            targetModelGeneration,
-                            targetRequestSequence,
-                        )
-                    ) {
-                        current
-                    } else {
-                        val fallbackFull =
-                            if (skipRestFallback) current.fullContextTokens else restFull ?: current.fullContextTokens
-                        current.copy(
-                            usedContextTokens = rpcUsed ?: current.usedContextTokens,
-                            fullContextTokens = rpcMax ?: fallbackFull,
-                        )
-                    }
-                }
-                // Detail-sheet accounting (cumulative REST counters, informational).
-                coroutineContext.ensureActive()
-                if (!isCurrentContextFetch(
-                        sessionId,
-                        targetSessionGeneration,
-                        targetModelGeneration,
-                        targetRequestSequence,
-                    )
-                ) {
-                    return@launch
-                }
-                val usedResult =
-                    safeApiCall { ApiClient.hermesApi.getSessionDetail(sessionId, profile) }
-                coroutineContext.ensureActive()
-                if (usedResult is NetworkResult.Success) {
-                    val d = usedResult.data
-                    val used = d.input_tokens
-                    if (used != null) {
-                        _uiState.update { current ->
-                            if (!isCurrentContextFetch(
-                                    sessionId,
-                                    targetSessionGeneration,
-                                    targetModelGeneration,
-                                    targetRequestSequence,
-                                )
-                            ) {
-                                current
-                            } else {
-                                current.copy(
-                                    contextBreakdown =
-                                        ContextBreakdown(
-                                            inputTokens = used,
-                                            outputTokens = d.output_tokens ?: 0L,
-                                            cacheReadTokens = d.cache_read_tokens ?: 0L,
-                                            cacheWriteTokens = d.cache_write_tokens ?: 0L,
-                                            reasoningTokens = d.reasoning_tokens ?: 0L,
-                                            messageCount = d.message_count ?: 0,
-                                        ),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+        contextUsageDelegate.fetchContextUsage(skipRestFallback)
     }
 
     private suspend fun fetchServerMessageCount(
@@ -7277,9 +6123,7 @@ class ChatViewModel(
     private fun trackRequest(
         id: String,
         method: String,
-    ) {
-        idToMethod[id] = method
-    }
+    ) = requestTracker.track(id, method)
 
     private fun trackSessionRequest(
         id: String,
@@ -7290,23 +6134,21 @@ class ChatViewModel(
         connectionCheckpoint: ConnectionResumeCheckpoint? = null,
         receiptScope: String? = null,
         receiptAttempt: Int? = null,
-    ) {
-        sessionRequestById[id] =
-            SessionRequest(
-                generation = generation,
-                resumeSequence = resumeSequence,
-                sessionId = sessionId,
-                connectionCheckpoint = connectionCheckpoint,
-                receiptScope = receiptScope,
-                receiptAttempt = receiptAttempt,
-            )
-        trackRequest(id, method)
-    }
+    ) = requestTracker.trackSession(
+        id,
+        method,
+        generation,
+        resumeSequence,
+        sessionId,
+        connectionCheckpoint,
+        receiptScope,
+        receiptAttempt,
+    )
 
     private fun isCurrentSessionRequest(
         sessionId: String,
         generation: Long,
-    ): Boolean = generation == sessionGeneration && sessionId == _uiState.value.currentSessionId
+    ): Boolean = requestTracker.isCurrentSessionRequest(sessionId, generation)
 
     private fun isCurrentHydration(
         sessionId: String,
@@ -7314,20 +6156,11 @@ class ChatViewModel(
         requestSequence: Long,
     ): Boolean = requestSequence == activeHydrationRequestSequence && isCurrentSessionRequest(sessionId, generation)
 
-    private fun isStaleSessionRequest(id: String): Boolean =
-        sessionRequestById[id]?.let(::isStaleSessionRequest) == true
+    private fun isStaleSessionRequest(id: String): Boolean = requestTracker.isStale(id)
 
-    private fun isStaleSessionRequest(request: SessionRequest): Boolean =
-        request.generation != sessionGeneration ||
-            (request.receiptScope != null && request.receiptScope != sendScope()) ||
-            (request.sessionId != null && request.sessionId != _uiState.value.currentSessionId) ||
-            (request.resumeSequence != 0L && request.resumeSequence != activeResumeRequestSequence)
+    private fun isStaleSessionRequest(request: SessionRequest): Boolean = requestTracker.isStale(request)
 
-    private fun forgetRequest(id: String) {
-        idToMethod.remove(id)
-        sessionRequestById.remove(id)
-        branchWholeRequests.remove(id)
-    }
+    private fun forgetRequest(id: String) = requestTracker.forget(id)
 
     // ── Search ────────────────────────────────────────────────────────────
     // Compatibility façade: stable public API around ChatSearchDelegate.
@@ -7342,21 +6175,6 @@ class ChatViewModel(
     fun navigateSearchMatch(direction: Int) = searchDelegate.navigateSearchMatch(direction)
 
     fun clearSearch() = searchDelegate.clearSearch()
-
-    private var isTestEnv: Boolean? = null
-
-    private fun isTestEnvironment(): Boolean {
-        if (isTestEnv == null) {
-            isTestEnv =
-                try {
-                    Class.forName("org.junit.Test")
-                    true
-                } catch (e: ClassNotFoundException) {
-                    false
-                }
-        }
-        return isTestEnv == true
-    }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 

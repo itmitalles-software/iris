@@ -38,6 +38,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 /**
@@ -47,104 +48,18 @@ import org.junit.Test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatSessionScopingTest {
-    private val testDispatcher = StandardTestDispatcher()
-    private val mockEventsFlow = MutableSharedFlow<WsEvent>(extraBufferCapacity = 64)
-    private val mockConnectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
-    private lateinit var app: Application
-    private lateinit var fakeRepo: FakeChatPersistenceRepository
-    private lateinit var mockApi: HermesApiService
-    private var reqCount = 0
+    @get:Rule
+    val harness = ChatViewModelHarness()
+    private val testDispatcher get() = harness.testDispatcher
+    private val mockEventsFlow get() = harness.mockEventsFlow
+    private val mockConnectionStatus get() = harness.mockConnectionStatus
+    private val app get() = harness.app
+    private val fakeRepo get() = harness.fakeRepo
+    private val mockApi get() = harness.mockApi
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-        reqCount = 0
-
-        mockkStatic(android.util.Log::class)
-        every { android.util.Log.d(any(), any()) } returns 0
-        every { android.util.Log.i(any(), any()) } returns 0
-        every { android.util.Log.w(any(), any<String>()) } returns 0
-        every { android.util.Log.e(any(), any(), any()) } returns 0
-
-        mockkObject(AuthManager)
-        // ChatModelSwitchDelegate.preloadModelOptions() reads pinned models
-        // when the catalog load succeeds; without this stub the spy falls
-        // through to the real AuthManager and throws "not initialized".
-        every { AuthManager.getPinnedModels() } returns emptyList()
-        // The delegate and the shared catalog store both collect this flow;
-        // park them on a never-emitting state so a later real-AuthManager
-        // emission cannot resume a stale Main-dispatched collector.
-        every { AuthManager.dataScopeFlow } returns MutableStateFlow<DataScope?>(null)
-        mockkObject(HermesWsClient)
-        mockkObject(ApiClient)
-        mockkObject(HermesDatabase)
-
-        app = mockk(relaxed = true)
-        EnglishTestResources.install(app)
-        fakeRepo = FakeChatPersistenceRepository()
-        mockApi = mockk(relaxed = true)
-
-        mockConnectionStatus.value = ConnectionStatus.DISCONNECTED
-
-        every { AuthManager.getToken() } returns "test-token"
-        every { AuthManager.getPinnedModels() } returns emptyList()
-        every { AuthManager.getBaseUrl() } returns "http://test.local/"
-        every { AuthManager.getSelectedProfileId() } returns null
-        every { AuthManager.getBusySendMode() } returns io.wutz.apollo.data.model.BusySendMode.CORRECT
-        every { AuthManager.isTypingEffectEnabled() } returns true
-        every { AuthManager.getTypingEffectDelayMs() } returns 30
-        every { AuthManager.isMessageStatsEnabled() } returns false
-        every { AuthManager.isUserMessageTokensEnabled() } returns true
-        every { AuthManager.isAssistantMessageTokensEnabled() } returns true
-        every { AuthManager.isTokensPerSecondEnabled() } returns true
-        every { AuthManager.isModelProviderShown() } returns false
-        every { AuthManager.isAutoReconnect() } returns false
-        every { AuthManager.isRestoreLastSession() } returns false
-        every { AuthManager.getLastOpenedSessionId() } returns null
-        every { AuthManager.setLastOpenedSessionId(any()) } returns Unit
-        every { AuthManager.clearLastOpenedSessionId() } returns Unit
-        every { HermesWsClient.events } returns mockEventsFlow
-        every { HermesWsClient.connectionStatus } returns mockConnectionStatus
-        every { HermesWsClient.connect() } answers {
-            mockConnectionStatus.value = ConnectionStatus.CONNECTING
-        }
-        every { HermesWsClient.disconnect() } returns Unit
-
-        // ChatViewModel's init subscribes to ProfileSwitchCoordinator.switched
-        // on viewModelScope. Without mocking the singleton, every VM created
-        // here parks a collector on the REAL flow — when a later test class
-        // (e.g. ProfileSwitchCoordinatorTest) emits on it, the stale-Main
-        // resumption crashes with DispatchException (CI flakes). Mirror
-        // ChatViewModelTest: stub the flow with a never-emitting mock so the
-        // collectors park harmlessly.
-        mockkObject(ProfileSwitchCoordinator)
-        every { ProfileSwitchCoordinator.switched } returns MutableSharedFlow<String>()
-        every { ProfileSwitchCoordinator.connectionSwitched } returns MutableSharedFlow<String>()
-
-        every { HermesWsClient.send(any(), any(), any()) } answers {
-            reqCount++
-            val id = "req-id-$reqCount"
-            arg<((String) -> Unit)?>(2)?.invoke(id)
-            id
-        }
-        every { HermesWsClient.sendMessage(any(), any(), any(), any()) } answers {
-            reqCount++
-            val id = "req-msg-$reqCount"
-            arg<((String) -> Unit)?>(2)?.invoke(id)
-            id
-        }
-        // Catch-all: mirror send() but complete immediately (no 120s timer).
-        every { HermesWsClient.request(any(), any(), any(), any()) } answers {
-            HermesWsClient.send(arg(0), arg(1)) {}
-            CompletableDeferred<Any?>(Unit)
-        }
-        every { ApiClient.hermesApi } returns mockApi
-    }
-
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
-        unmockkAll()
+        // The harness default stubs cover everything this class needs.
     }
 
     private suspend fun TestScope.createViewModelWithSession(
@@ -158,6 +73,7 @@ class ChatSessionScopingTest {
                 FakeSlashUsageStore(),
                 ioDispatcher = testDispatcher,
                 sendStore = ChatSendStore(),
+                timing = ChatTimingConfig.TEST,
             )
         advanceUntilIdle()
         mockConnectionStatus.value = ConnectionStatus.CONNECTED
