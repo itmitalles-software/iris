@@ -1,4 +1,4 @@
-# Path-based PR auto-labels (used by .github/workflows/pr-labeler.yml).
+# Path-based PR auto-labels (used by the labeler step in .github/workflows/pr-template.yml).
 # Additive only — labels added by hand or Dependabot are never removed.
 # All labels referenced here must already exist in the repo.
 

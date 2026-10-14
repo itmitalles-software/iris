@@ -1,4 +1,5 @@
 import com.android.build.api.artifact.SingleArtifact
+import com.android.build.api.variant.BuildConfigField
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -27,14 +28,7 @@ android {
         // Falls back to defaults for local development.
         versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("versionName") as? String) ?: "1.0-dev"
-
-        // Use a fixed prefix: git --short varies with the checkout's object graph
-        // (shallow GitHub Actions vs. full F-Droid clone), breaking reproducible APKs.
-        val gitSha =
-            providers.exec {
-                commandLine("git", "rev-parse", "HEAD")
-            }.standardOutput.asText.get().trim().take(7)
-        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
+        // GIT_SHA is added lazily per variant in androidComponents below.
     }
 
     // All four variables are needed to sign release builds (see BUILD.md).
@@ -99,7 +93,6 @@ android {
 
             buildConfigField("boolean", "ALLOW_CLEARTEXT", "true")
             buildConfigField("boolean", "SELF_UPDATE_ENABLED", "true")
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
 
         release {
@@ -114,7 +107,6 @@ android {
             // GitHub distribution: the in-app updater checks GitHub releases
             // and installs the APK (needs REQUEST_INSTALL_PACKAGES).
             buildConfigField("boolean", "SELF_UPDATE_ENABLED", "true")
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
 
         // Google Play distribution (issue #7): the release build without the
@@ -172,9 +164,28 @@ tasks.matching { it.name.endsWith("VersionControlInfo") }.configureEach {
     }
 }
 
-// Fails the Play build if the merged manifest still requests the permission
-// the GitHub self-updater needs (issue #7). bundlePlay/assemblePlay depend on it.
+// Use a fixed prefix: git --short varies with the checkout's object graph
+// (shallow GitHub Actions vs. full F-Droid clone), breaking reproducible APKs.
+// Lazy, so the commit is not a configuration-cache input, and empty outside a
+// git checkout (source tarball); the About screen hides a blank SHA.
+val gitShaProvider =
+    providers
+        .exec {
+            commandLine("git", "rev-parse", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText
+        .map { it.trim().take(7) }
+
 androidComponents {
+    onVariants { variant ->
+        variant.buildConfigFields?.put(
+            "GIT_SHA",
+            gitShaProvider.map { BuildConfigField("String", "\"$it\"", null) },
+        )
+    }
+
+    // Fails the Play build if the merged manifest still requests the permission
+    // the GitHub self-updater needs (issue #7). bundlePlay/assemblePlay depend on it.
     onVariants(selector().withBuildType("play")) { variant ->
         val mergedManifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
         val check =
@@ -288,17 +299,54 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 }
 
-tasks.register<Exec>("ktlintCheck") {
+// ── ktlint (pinned, resolved by Gradle) ────────────────────────────────────
+//
+// Runs ktlint-cli from Maven Central instead of whatever `ktlint` is on PATH
+// (approach from the ktlint docs, no plugin). Sources and .editorconfig are
+// inputs and the checkstyle report is the output, so an unchanged tree is
+// up to date.
+val ktlint: Configuration = configurations.create("ktlint")
+
+dependencies {
+    ktlint(libs.ktlint.cli) {
+        attributes {
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.EXTERNAL))
+        }
+    }
+}
+
+val ktlintSources =
+    fileTree("src") {
+        include("**/*.kt")
+    }
+val ktlintEditorConfig = rootProject.layout.projectDirectory.file(".editorconfig")
+
+tasks.register<JavaExec>("ktlintCheck") {
     group = "verification"
     description = "Runs ktlint check."
+    val report = layout.buildDirectory.file("reports/ktlint/ktlint-check.xml")
+    inputs.files(ktlintSources).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(ktlintEditorConfig).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(report)
+    classpath = ktlint
+    mainClass.set("com.pinterest.ktlint.Main")
     workingDir = rootProject.projectDir
-    commandLine("sh", "-c", "ktlint \"app/src/**/*.kt\"")
+    args(
+        "--reporter=plain",
+        "--reporter=checkstyle,output=${report.get().asFile.absolutePath}",
+        "app/src/**/*.kt",
+    )
 }
-tasks.register<Exec>("ktlintFormat") {
+
+tasks.register<JavaExec>("ktlintFormat") {
     group = "formatting"
     description = "Runs ktlint format."
+    classpath = ktlint
+    mainClass.set("com.pinterest.ktlint.Main")
     workingDir = rootProject.projectDir
-    commandLine("sh", "-c", "ktlint -F \"app/src/**/*.kt\"")
+    // See https://github.com/pinterest/ktlint/issues/1195
+    jvmArgs("--add-opens=java.base/java.lang=ALL-UNNAMED")
+    args("-F", "app/src/**/*.kt")
 }
 
 // ── Hardcoded Color Guard (issue #622) ────────────────────────────────────
@@ -367,15 +415,99 @@ tasks.register("checkColorLiterals") {
     }
 }
 
+// ── German string parity (EN+DE rule, see AGENTS.md) ───────────────────────
+//
+// Every translatable string, plurals and string-array in values/ must also
+// exist in values-de/. Lint's MissingTranslation is disabled because the
+// other locales are unmaintained, so this guards German only.
+val germanStringsBaseDir = layout.projectDirectory.dir("src/main/res/values")
+val germanStringsDeDir = layout.projectDirectory.dir("src/main/res/values-de")
+
+tasks.register("checkGermanStrings") {
+    group = "verification"
+    description = "Fails if a translatable string in values/ is missing from values-de/."
+
+    val baseDir = germanStringsBaseDir
+    val deDir = germanStringsDeDir
+    val marker = layout.buildDirectory.file("reports/checkGermanStrings.txt")
+    inputs.files(fileTree(baseDir) { include("*.xml") }).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree(deDir) { include("*.xml") }).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(marker)
+
+    doLast {
+        val kinds = setOf("string", "plurals", "string-array")
+
+        fun keys(dir: File): Map<String, String> {
+            val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+            val result = sortedMapOf<String, String>()
+            dir
+                .listFiles { f -> f.isFile && f.extension == "xml" }
+                .orEmpty()
+                .sortedBy { it.name }
+                .forEach { file ->
+                    val children = factory.newDocumentBuilder().parse(file).documentElement.childNodes
+                    for (i in 0 until children.length) {
+                        val node = children.item(i) as? org.w3c.dom.Element ?: continue
+                        if (node.tagName !in kinds) continue
+                        if (node.getAttribute("translatable") == "false") continue
+                        result["${node.tagName}/${node.getAttribute("name")}"] = file.name
+                    }
+                }
+            return result
+        }
+
+        val base = keys(baseDir.asFile)
+        val german = keys(deDir.asFile)
+        val missing = base.filterKeys { it !in german }
+        if (missing.isNotEmpty()) {
+            val report = missing.entries.joinToString("\n") { (key, file) -> "  - $key (values/$file)" }
+            throw GradleException(
+                "${missing.size} translatable resource(s) in values/ are missing from values-de/:\n$report\n\n" +
+                    "Add the German text to values-de/ (or mark a non-translatable value translatable=\"false\").",
+            )
+        }
+        val summary = "checkGermanStrings: all ${base.size} translatable resources exist in values-de/."
+        marker.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(summary + "\n")
+        }
+        logger.lifecycle(summary)
+    }
+}
+
 tasks.named("check") {
-    dependsOn("checkColorLiterals")
+    dependsOn("checkColorLiterals", "checkGermanStrings")
+}
+
+// The local gate: everything CI checks except the emulator tests.
+tasks.register("gate") {
+    group = "verification"
+    description = "Runs the local pre-commit gate (style, guards, unit tests, lint, debug/release/androidTest builds)."
+    dependsOn(
+        "ktlintCheck",
+        "checkColorLiterals",
+        "checkGermanStrings",
+        "testDebugUnitTest",
+        "lintDebug",
+        "assembleDebug",
+        "compileDebugAndroidTestKotlin",
+        "compileReleaseKotlin",
+        "checkPlayPermissions",
+    )
 }
 
 val includeBenchmarks = providers.gradleProperty("includeBenchmarks").isPresent
+val testForks =
+    providers
+        .gradleProperty("testForks")
+        .orNull
+        ?.toIntOrNull()
+        ?.coerceAtLeast(1) ?: 2
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
-    maxParallelForks = 2
+    // Two forks protect a developer machine's RAM; CI passes -PtestForks=4.
+    maxParallelForks = testForks
     // Assertion-free timing probes are opt-in: ./gradlew testDebugUnitTest -PincludeBenchmarks
     if (!includeBenchmarks) {
         filter { excludeTestsMatching("*Benchmark") }
