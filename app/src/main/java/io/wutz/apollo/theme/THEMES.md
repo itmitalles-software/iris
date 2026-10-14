@@ -18,8 +18,11 @@ app/src/main/java/io/wutz/apollo/theme/
 ├── Color.kt                       # shared tokens for non-theme code (status fallbacks, code blocks, …)
 ├── HermesStatusColors.kt          # semantic status color model (success/warning/error/info + on*)
 ├── Type.kt / Shapes.kt            # typography + shape tokens
+├── ApolloType.kt                  # Cinzel display styles + wordmark (Apollo preset only)
 ├── Spacing.kt / Motion.kt         # spacing + motion tokens
+├── SystemBars.kt                  # system bar icons/scrims follow the in-app light/dark choice
 └── presets/                       # one file per ThemePreset — same skeleton everywhere
+    ├── ApolloScheme.kt            # the default preset (docs/BRANDING.md)
     ├── DefaultScheme.kt
     ├── MonochromeScheme.kt
     ├── GruvboxScheme.kt
@@ -96,7 +99,7 @@ Enabled Material components also have a component-state contract:
 
 `ThemeComponentContrastTest` checks the pinned Material role combinations in every
 resolved preset/mode. `ThemeComponentGalleryTest` reads the installed Compose
-public color defaults and verifies rendered pixels for all fourteen preset/mode
+public color defaults and verifies rendered pixels for all sixteen preset/mode
 combinations, including focused/error fields. Disabled controls are deliberately
 excluded from the enabled contrast contract; Material uses opacity to mute them.
 Settings switches use Material defaults (`primary` track / `onPrimary` thumb),
@@ -105,6 +108,16 @@ not the reversed `primaryContainer` track / `primary` thumb combination.
 Outlines must contrast against both surface and the unchecked switch track
 (`surfaceContainerHighest`). Named palettes may need documented derived primary
 or error tones for direct text; fixed roles still preserve their upstream accents.
+
+## Apollo
+
+Apollo is the default preset (`ThemePreset.APOLLO`) and the app's brand
+identity: true-black and anthracite surfaces with antique gold in dark mode,
+warm marble with a deepened gold in light mode. Only while it is active, the
+app also uses the Cinzel display styles (`ApolloTypography`) and the Apollo
+component accents (bronze user bubbles with a gold hairline, gold tool edge).
+The palette, typography and accents are documented in
+[docs/BRANDING.md](../../../../../../../../docs/BRANDING.md).
 
 ## Garnet
 
@@ -121,10 +134,10 @@ A theme declares which modes it ships via the factory you build it with:
 | Factory | Mode | Meaning |
 |---------|------|---------|
 | `buildTheme(...)` | `FULL` | bespoke dark + light palettes |
-| `buildThemeDarkOnly(...)` | `DARK_ONLY` | dark only; light mode falls back to the default theme (AMOLED) |
-| `buildThemeLightOnly(...)` | `LIGHT_ONLY` | light only; dark mode falls back to the default theme |
+| `buildThemeDarkOnly(...)` | `DARK_ONLY` | dark only; light mode falls back to the `Default` palette (AMOLED) |
+| `buildThemeLightOnly(...)` | `LIGHT_ONLY` | light only; dark mode falls back to the `Default` palette |
 
-The dispatcher falls back to the brand **default** theme for any mode a preset
+The dispatcher falls back to the `Default` (Slate) palette for any mode a preset
 doesn't ship — never to a sibling preset.
 
 ## The dispatcher
@@ -159,7 +172,8 @@ and explains that it controls status colors while Material You supplies app colo
 
 ## Conventions
 
-- ktlint 1.8.0 is enforced in CI. Run `./gradlew ktlintCheck` before committing
-  (the gradle task is the gate, not the standalone `ktlint` binary).
+- ktlint 1.8.0 is enforced in CI. `./gradlew ktlintCheck` runs the `ktlint`
+  binary, so it must be on `PATH`; `./gradlew gate` runs it together with the
+  rest of the local gate (see [BUILD.md](../../../../../../../../BUILD.md)).
 - Import order is ASCII-lexicographic (uppercase before lowercase).
-- Every change goes through a PR targeting `dev` — never push directly to `main` or `dev`.
+- Every change goes through a PR targeting `main`.

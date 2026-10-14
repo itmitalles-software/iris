@@ -3,6 +3,12 @@ description: Report a bug or unexpected behaviour
 title: '[bug] '
 labels: ['bug']
 body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security problems:** do not report them here; use [private vulnerability reporting](https://github.com/wutz-io/apollo-hermes-android/security/advisories/new) (see SECURITY.md).
+
+        **Before you paste logs or screenshots, remove** host names (including tailnet names such as `<machine>.<tailnet>.ts.net`), IP addresses, tokens, cookies, passwords and certificates. This issue is public.
   - type: textarea
     id: description
     attributes:
@@ -21,29 +27,68 @@ body:
         3. See error
     validations:
       required: true
-  - type: textarea
-    id: environment
+  - type: input
+    id: app-version
     attributes:
-      label: Environment
-      description: Device, Android version, app version.
-      placeholder: |
-        - Device: Pixel 8
-        - Android version: Android 15
-        - App version: v1.2.3
+      label: Apollo version
+      description: Settings → About → Version (and Commit for debug builds).
+      placeholder: '0.1.6'
     validations:
       required: true
-  - type: textarea
-    id: gateway
+  - type: dropdown
+    id: build
     attributes:
-      label: Gateway version & commit
-      description: Version and git commit of the Hermes gateway the app is connected to. Find the version in the app (Gateway screen, or System screen → Hermes version). The commit is the short SHA on the gateway host (`git rev-parse --short HEAD` in the hermes-agent checkout).
-      placeholder: |
-        - Gateway version: v0.8.3
-        - Gateway commit: 8f2712725
+      label: Build
+      options:
+        - GitHub release APK
+        - Google Play
+        - Debug build (Apollo Dev)
+        - Built from source (release)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: 'Pixel 8, Android 16'
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection
+      options:
+        - Tailscale Serve (HTTPS)
+        - Other HTTPS reverse proxy or tunnel (e.g. Cloudflare Access)
+        - Plain HTTP on a local network
+        - Loopback / emulator (adb reverse)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Login
+      multiple: true
+      options:
+        - Username and password
+        - Browser sign-in (OAuth)
+        - Token
+        - mTLS client certificate
+        - Custom headers
+    validations:
+      required: false
+  - type: input
+    id: hermes-version
+    attributes:
+      label: Hermes Agent version
+      description: In Apollo under System → Hermes, or `hermes --version` on the server.
+      placeholder: 'v0.21.6'
     validations:
       required: false
   - type: textarea
     id: additional
     attributes:
       label: Additional context
-      description: Logs, screenshots, or anything else relevant.
+      description: |
+        Logs, screenshots, or anything else relevant (redacted, see above). For image problems, the filtered debug log from [docs/image-attachment-diagnostics.md](https://github.com/wutz-io/apollo-hermes-android/blob/main/docs/image-attachment-diagnostics.md) helps.

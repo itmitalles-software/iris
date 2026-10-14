@@ -5,7 +5,8 @@ and tested.
 
 ## Read first
 
-- `.agent/STATE.md`: current verified state and next steps
+- `.agent/STATE.md`: current verified state and the live-server test recipe;
+  `.agent/DECISIONS.md`: durable owner decisions
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): navigation, ViewModel scope,
   drawer gestures, WebSocket/RPC conventions (inherited from Hermes Mobile, binding)
 - [DESIGN.md](DESIGN.md) for UI work
@@ -40,8 +41,12 @@ and tested.
 ## Before committing
 
 ```bash
-./gradlew ktlintCheck checkColorLiterals testDebugUnitTest lintDebug assembleDebug
+./gradlew gate
 ```
+
+`gate` runs ktlintCheck, checkColorLiterals, checkGermanStrings,
+testDebugUnitTest, lintDebug, assembleDebug, compileDebugAndroidTestKotlin,
+compileReleaseKotlin and checkPlayPermissions (see [BUILD.md](BUILD.md)).
 
 If you touch shell scripts, run `shellcheck scripts/**/*.sh`; the server
 setup script (`scripts/server/setup-hermes-for-apollo.sh`) must also be tried

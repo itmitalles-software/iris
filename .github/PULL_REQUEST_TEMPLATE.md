@@ -36,9 +36,7 @@ Fixes #
 - [ ] I searched open/closed PRs and issues for duplicates
 - [ ] PR is focused on one feature or one fix (no unrelated changes)
 - [ ] Branch rebased onto `main` (`git rebase origin/main`)
-- [ ] `./gradlew ktlintCheck` passes (ran `ktlintFormat` first)
-- [ ] `./gradlew testDebugUnitTest` green (or CI unit-tests job)
-- [ ] `checkColorLiterals` passes (no hardcoded Color outside theme/)
+- [ ] `./gradlew gate` passes (ran `ktlintFormat` first; no hardcoded Color outside theme/)
 - [ ] No unused imports, unused parameters, or dead code
 - [ ] Navigation goes through `NavigationController.navigateTo()` (not `backStack.add`)
 - [ ] Icon-only actions and meaningful images have localized accessible labels (decorative ones use `contentDescription = null`)
