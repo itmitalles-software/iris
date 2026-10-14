@@ -270,14 +270,13 @@ fun ComposerToolbar(
             modelScrollState.scrollTo(0)
         }
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            // Both halves take touches on the full 48dp row height; only the 36dp pill is drawn.
-            val modelInteraction = remember { MutableInteractionSource() }
-            val reasoningInteraction = remember { MutableInteractionSource() }
             Row(
                 modifier =
                     Modifier
                         .width(IntrinsicSize.Max)
-                        .height(TouchTargetSize),
+                        .height(ControlSize)
+                        .clip(CircleShape)
+                        .background(palette.control),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -285,19 +284,13 @@ fun ComposerToolbar(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
+                            .clipToBounds()
+                            .horizontalScroll(modelScrollState)
                             .clickable(
-                                interactionSource = modelInteraction,
-                                indication = null,
                                 onClickLabel = stringResource(R.string.a11y_change_model),
                                 role = Role.Button,
                                 onClick = onModelTap,
-                            ).padding(vertical = PillInset)
-                            .clip(PillStartShape)
-                            .background(palette.control)
-                            .indication(modelInteraction, ripple())
-                            .clipToBounds()
-                            .horizontalScroll(modelScrollState)
-                            .testTag("model_chip"),
+                            ).testTag("model_chip"),
                 ) {
                     Text(
                         text = modelLabel,
@@ -321,16 +314,10 @@ fun ComposerToolbar(
                             Modifier
                                 .fillMaxHeight()
                                 .clickable(
-                                    interactionSource = reasoningInteraction,
-                                    indication = null,
                                     enabled = reasoningInteractive,
                                     onClickLabel = stringResource(R.string.a11y_reasoning_options),
                                     role = Role.Button,
                                 ) { showReasoningMenu = true }
-                                .padding(vertical = PillInset)
-                                .clip(PillEndShape)
-                                .background(palette.control)
-                                .indication(reasoningInteraction, ripple())
                                 .padding(start = 6.dp, end = 12.dp)
                                 .testTag("reasoning_chip"),
                         verticalAlignment = Alignment.CenterVertically,
@@ -750,12 +737,6 @@ private val TouchTargetSize = 48.dp
 
 /** Transparent margin between a 48dp touch box and its drawn 36dp control. */
 private val TouchInset = (TouchTargetSize - ControlSize) / 2
-
-/** Vertical inset of the 36dp model pill inside its 48dp touch row. */
-private val PillInset = TouchInset
-
-private val PillStartShape = RoundedCornerShape(topStartPercent = 50, bottomStartPercent = 50)
-private val PillEndShape = RoundedCornerShape(topEndPercent = 50, bottomEndPercent = 50)
 
 /**
  * A flat composer control: a 48dp touch box around a drawn [ControlSize] circle. The ripple

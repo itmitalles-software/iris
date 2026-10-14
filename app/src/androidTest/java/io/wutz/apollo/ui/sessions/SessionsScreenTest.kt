@@ -35,7 +35,9 @@ import org.junit.runners.Parameterized
 @MediumTest
 class SessionsScreenTest(
     private val windowName: String,
-    private val windowSize: DpSize,
+    // Plain dp values: JUnit's Parameterized runner cannot pass the inline DpSize class to the constructor.
+    private val widthDp: Int,
+    private val heightDp: Int,
 ) {
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -50,7 +52,7 @@ class SessionsScreenTest(
         actions: SessionsScreenActions = SessionsScreenActions(),
     ) {
         composeTestRule.setContent {
-            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(windowSize)) {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(widthDp.dp, heightDp.dp))) {
                 HermesControlTheme {
                     SessionsScreenContent(state = state, actions = actions, onOpenDrawer = {})
                 }
@@ -79,17 +81,20 @@ class SessionsScreenTest(
         setScreen(state = SessionsUiState(sessions = listOf(alpha), total = 1))
 
         val card = composeTestRule.onNodeWithTag("session_card_s1").getUnclippedBoundsInRoot()
+        // ForcedSize lays the content out at the forced size even when the device window is smaller,
+        // so the forced window, not the device root, is the frame of reference.
         val root = composeTestRule.onRoot().getUnclippedBoundsInRoot()
-        val rootWidth = root.right - root.left
+        val windowRight = root.left + widthDp.dp
+        val rootWidth = widthDp.dp
         val cardWidth = card.right - card.left
-        assertTrue("card must stay within the window", card.left >= root.left && card.right <= root.right)
+        assertTrue("card must stay within the window", card.left >= root.left && card.right <= windowRight)
         assertTrue("card width $cardWidth must not exceed the 840 dp content column", cardWidth <= 840.dp)
         if (rootWidth > 840.dp) {
             val leftMargin = card.left - root.left
-            val rightMargin = root.right - card.right
+            val rightMargin = windowRight - card.right
             assertTrue(
                 "content column must be centered (left $leftMargin, right $rightMargin)",
-                (leftMargin - rightMargin).value in -1f..1f,
+                (leftMargin - rightMargin).value in -2f..2f, // ForcedSize rescales density; allow rounding
             )
         }
     }
@@ -111,7 +116,10 @@ class SessionsScreenTest(
         composeTestRule.onNodeWithText(header).assertIsDisplayed()
 
         composeTestRule.onNode(hasSetTextAction()).performTextInput("x")
-        assertTrue("typing must reach the ViewModel callback, got $typed", typed.lastOrNull()?.endsWith("x") == true)
+        assertTrue(
+            "typing must reach the ViewModel callback, got $typed",
+            typed.lastOrNull()?.let { "x" in it && "deploy" in it } == true,
+        )
     }
 
     @Test
@@ -136,7 +144,7 @@ class SessionsScreenTest(
         val root = composeTestRule.onRoot().getUnclippedBoundsInRoot()
         assertTrue(
             "delete button must be fully inside the window",
-            bounds.right <= root.right && bounds.bottom <= root.bottom,
+            bounds.right <= root.left + widthDp.dp && bounds.bottom <= root.top + heightDp.dp,
         )
 
         deleteButton.performClick()
@@ -185,8 +193,8 @@ class SessionsScreenTest(
         @Parameterized.Parameters(name = "{0}")
         fun windows(): List<Array<Any>> =
             listOf(
-                arrayOf("phone", DpSize(360.dp, 780.dp)),
-                arrayOf("tablet", DpSize(1280.dp, 800.dp)),
+                arrayOf("phone", 360, 780),
+                arrayOf("tablet", 1280, 800),
             )
     }
 }

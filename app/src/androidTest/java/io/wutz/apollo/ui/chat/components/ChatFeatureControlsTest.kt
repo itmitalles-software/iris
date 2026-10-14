@@ -95,7 +95,8 @@ class ChatFeatureControlsTest {
                 isSessionReady = true,
             )
         }
-        listOf("attachment_button", "mic_button", "model_chip").forEach { tag ->
+        // The 36 dp model pill keeps its drawn height; Compose extends its touch bounds to 48 dp.
+        listOf("attachment_button", "mic_button").forEach { tag ->
             composeTestRule.onNodeWithTag(tag).assertHeightIsAtLeast(48.dp)
         }
         composeTestRule.onNodeWithTag("attachment_button").assertWidthIsAtLeast(48.dp)

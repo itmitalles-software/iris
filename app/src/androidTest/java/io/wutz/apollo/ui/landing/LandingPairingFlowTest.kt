@@ -49,7 +49,9 @@ import org.junit.runners.Parameterized
 @MediumTest
 class LandingPairingFlowTest(
     private val windowName: String,
-    private val windowSize: DpSize,
+    // Plain dp values: JUnit's Parameterized runner cannot pass the inline DpSize class to the constructor.
+    private val widthDp: Int,
+    private val heightDp: Int,
 ) {
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -64,7 +66,7 @@ class LandingPairingFlowTest(
 
     private fun setFlow() {
         composeTestRule.setContent {
-            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(windowSize)) {
+            DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(widthDp.dp, heightDp.dp))) {
                 HermesControlTheme {
                     val stack = rememberNavBackStack(LandingScreen)
                     SideEffect {
@@ -170,8 +172,8 @@ class LandingPairingFlowTest(
         @Parameterized.Parameters(name = "{0}")
         fun windows(): List<Array<Any>> =
             listOf(
-                arrayOf("phone", DpSize(360.dp, 780.dp)),
-                arrayOf("tablet", DpSize(1280.dp, 800.dp)),
+                arrayOf("phone", 360, 780),
+                arrayOf("tablet", 1280, 800),
             )
     }
 }
