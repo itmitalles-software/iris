@@ -122,9 +122,7 @@ class WsTransportDeviceTest {
                     scope = scope,
                     json = json,
                     outboundLock = lock,
-                    sendRequest = { method, params, onSent ->
-                        transport.send(rpc.createRequest(method, params), onSent)
-                    },
+                    sendRequest = { request, onSent -> transport.send(request, onSent) },
                     sendFrame = { transport.sendDirectFrame(it) },
                     removeQueuedMessage = { transport.removeQueuedMessage(it) },
                     onIdleCheck = { transport.disconnectIfIdleInBackground() },
