@@ -33,6 +33,7 @@ from fontTools.varLib.instancer import instantiateVariableFont
 ROOT = Path(__file__).resolve().parents[2]
 DRAWABLE = ROOT / "app/src/main/res/drawable"
 BRAND = ROOT / "docs/brand"
+WEBSITE = ROOT / "website/assets"
 FONT = ROOT / "app/src/main/res/font/cinzel.ttf"
 
 # Palette (mirrors theme/presets/ApolloScheme.kt).
@@ -137,7 +138,35 @@ def ring() -> str:
     return f"M{54 - r},54 A{r},{r} 0 1,1 {54 + r},54 A{r},{r} 0 1,1 {54 - r},54"
 
 
+def sunburst(count: int = 144) -> str:
+    """Fine radiating lines behind the crown (the "trippy" layer since 2026-10-13)."""
+    cx, cy = 54.0, 63.0
+    lines = []
+    for i in range(count):
+        t = math.radians(-180 + i * 360 / count)
+        if math.sin(t) > -0.02:  # rays only above the horizon, like the crown
+            continue
+        r0 = 24.5
+        r1 = 31.5 if i % 4 == 0 else (29.5 if i % 2 == 0 else 27.5)
+        lines.append(
+            f"M{cx + r0 * math.cos(t):.2f},{cy + r0 * math.sin(t):.2f} "
+            f"L{cx + r1 * math.cos(t):.2f},{cy + r1 * math.sin(t):.2f}",
+        )
+    return " ".join(lines)
+
+
+def wave_ring(r: float, amplitude: float, waves: int, steps: int = 180) -> str:
+    """Closed ring whose radius undulates: a subtle op-art halo."""
+    pts = []
+    for i in range(steps):
+        t = 2 * math.pi * i / steps
+        rr = r + amplitude * math.sin(waves * t)
+        pts.append((54 + rr * math.cos(t), 54 + rr * math.sin(t)))
+    return poly(pts)
+
+
 SPIKES, DIADEM, LETTER_A, TICKS, RING = crown_spikes(), diadem(), roman_a(), dial_ticks(), ring()
+BURST, HALO_A, HALO_B = sunburst(), wave_ring(28.6, 0.55, 18), wave_ring(29.8, 0.45, 24)
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +264,9 @@ def emblem_layers(knockout: str, tech: bool) -> str:
     if tech:
         body += path_xml(RING, stroke=GOLD, width=0.5, alpha=0.22)
         body += path_xml(TICKS, stroke=GOLD, width=0.6, alpha=0.35)
+        body += path_xml(HALO_A, stroke=GOLD, width=0.3, alpha=0.30)
+        body += path_xml(HALO_B, stroke=GOLD_LIGHT, width=0.25, alpha=0.20)
+        body += path_xml(BURST, stroke=GOLD, width=0.28, alpha=0.55)
     body += path_xml(SPIKES, gradient=gold_gradient_xml("android:fillColor", 54, 26, 63))
     body += path_xml(DIADEM, gradient=gold_gradient_xml("android:strokeColor", 54, 40, 63), extra='android:strokeWidth="1.6"')
     body += path_xml(LETTER_A, fill=knockout, stroke=knockout, width=3.6, extra='android:strokeLineJoin="miter"')
@@ -314,14 +346,17 @@ def svg_gold_defs(prefix: str = "") -> str:
             f'<stop offset="1" stop-color="{INK}"/></radialGradient>')
 
 
-def svg_emblem(prefix: str = "", tech: bool = True) -> str:
+def svg_emblem(prefix: str = "", tech: bool = True, knockout: str = INK) -> str:
     s = ""
     if tech:
         s += f'<path d="{RING}" fill="none" stroke="{GOLD}" stroke-opacity="0.22" stroke-width="0.5"/>'
         s += f'<path d="{TICKS}" fill="none" stroke="{GOLD}" stroke-opacity="0.35" stroke-width="0.6"/>'
+        s += f'<path d="{HALO_A}" fill="none" stroke="{GOLD}" stroke-opacity="0.30" stroke-width="0.3"/>'
+        s += f'<path d="{HALO_B}" fill="none" stroke="{GOLD_LIGHT}" stroke-opacity="0.20" stroke-width="0.25"/>'
+        s += f'<path d="{BURST}" fill="none" stroke="{GOLD}" stroke-opacity="0.55" stroke-width="0.28"/>'
     s += f'<path d="{SPIKES}" fill="url(#{prefix}gold)"/>'
     s += f'<path d="{DIADEM}" fill="none" stroke="url(#{prefix}gold)" stroke-width="1.6"/>'
-    s += f'<path d="{LETTER_A}" fill="{INK}" stroke="{INK}" stroke-width="3.6" stroke-linejoin="miter"/>'
+    s += f'<path d="{LETTER_A}" fill="{knockout}" stroke="{knockout}" stroke-width="3.6" stroke-linejoin="miter"/>'
     s += f'<path d="{LETTER_A}" fill="url(#{prefix}gold)"/>'
     return s
 
@@ -391,6 +426,11 @@ def svg_assets(font: TTFont) -> None:
           f'viewBox="{b[0]} {b[1]} {w} {h}"><title>APOLLO</title><path d="{word}" fill="{GOLD}"/></svg>')
     write(BRAND / "apollo-banner.svg", banner_svg(font, 1280, 400, 300))
     write(BRAND / "apollo-feature-graphic.svg", banner_svg(font, 1024, 500, 330))
+    # Transparent emblems for the website (apollo.wutz.io) and its favicon.
+    for name, knockout in (("apollo-emblem-dark.svg", "#000000"), ("apollo-emblem-light.svg", MARBLE_LIGHT)):
+        write(WEBSITE / name,
+              f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="17 17 74 74">'
+              f"<title>Apollo</title><defs>{svg_gold_defs()}</defs>{svg_emblem(knockout=knockout)}</svg>")
 
 
 def main() -> None:
