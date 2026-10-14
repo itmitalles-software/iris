@@ -378,7 +378,13 @@ fun ChatScreen(
     LaunchedEffect(state.pendingPrefillText) {
         val prefill = state.pendingPrefillText
         if (prefill != null) {
-            inputState.replaceComposerDraft(prefill)
+            val current = inputState.text.toString()
+            // Shared content joins a draft that is already there instead of replacing it.
+            if (state.pendingPrefillAppends && current.isNotBlank() && !current.endsWith(prefill)) {
+                inputState.replaceComposerDraft("$current\n\n$prefill")
+            } else {
+                inputState.replaceComposerDraft(prefill)
+            }
             viewModel.consumePendingPrefill()
         }
     }

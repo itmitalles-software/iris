@@ -308,6 +308,8 @@ data class ChatUiState(
     val isResumeRetrying: Boolean = false,
     /** Text staged to prefill the composer (e.g. from /undo). */
     val pendingPrefillText: String? = null,
+    /** True when [pendingPrefillText] is shared content that goes after text already in the composer. */
+    val pendingPrefillAppends: Boolean = false,
 ) {
     /** Convenience — derived from [connectionStatus]. */
     val isConnected: Boolean get() = connectionStatus == ConnectionStatus.CONNECTED
@@ -4209,7 +4211,9 @@ class ChatViewModel(
     /** Stages share-sheet content in the composer; the user reviews and sends it. */
     fun stageSharedContent(content: SharedContent) {
         attachmentsDelegate.addAttachments(content.attachments)
-        content.text?.let { text -> _uiState.update { it.copy(pendingPrefillText = text) } }
+        content.text?.let { text ->
+            _uiState.update { it.copy(pendingPrefillText = text, pendingPrefillAppends = true) }
+        }
     }
 
     /** Clipboard reads are asynchronous: bind them to this exact session generation and server. */
@@ -4417,7 +4421,7 @@ class ChatViewModel(
     }
 
     fun consumePendingPrefill() {
-        _uiState.update { it.copy(pendingPrefillText = null) }
+        _uiState.update { it.copy(pendingPrefillText = null, pendingPrefillAppends = false) }
     }
 
     // ── Session management ───────────────────────────────────────────────
@@ -5402,6 +5406,7 @@ class ChatViewModel(
                 resumeError = null,
                 isResumeRetrying = false,
                 pendingPrefillText = null,
+                pendingPrefillAppends = false,
                 stagedProject = null,
             )
         }

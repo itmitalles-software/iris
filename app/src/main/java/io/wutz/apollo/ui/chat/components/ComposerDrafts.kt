@@ -75,8 +75,9 @@ internal class ComposerDraftKeyTracker {
 
 /**
  * Keeps one unsent draft per conversation, like the Hermes desktop's per-session drafts: switching chats saves the text under the chat that is left and restores the draft of
- * the chat that opens, and drafts survive the app being closed. A restored draft never replaces
- * text that is already in the composer (a share-sheet prefill, or typing that raced the load).
+ * the chat that opens, and drafts survive the app being closed. A restored draft never drops text
+ * that is already in the composer (a share-sheet prefill, or typing that raced the load); that text
+ * follows the draft.
  */
 internal class ComposerDraftSession(
     private val storage: ComposerDraftStorage,
@@ -117,7 +118,12 @@ internal class ComposerDraftSession(
                 val draft = storage.load(fullKey)
                 // The chat may have changed again while the draft loaded.
                 if (activeKey != fullKey) return
-                if (!draft.isNullOrBlank() && readText().isBlank()) replaceText(draft)
+                val current = readText()
+                if (!draft.isNullOrBlank() && current != draft) {
+                    // Text that is already there (a share into this chat, or typing that raced the load) is
+                    // kept after the draft, so neither is lost.
+                    replaceText(if (current.isBlank()) draft else "$draft\n\n$current")
+                }
                 loaded = true
             }
 

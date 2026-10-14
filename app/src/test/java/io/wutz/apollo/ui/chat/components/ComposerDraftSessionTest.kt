@@ -42,12 +42,12 @@ class ComposerDraftSessionTest {
         }
 
     @Test
-    fun aRestoredDraftNeverOverwritesExistingText() =
+    fun aRestoredDraftKeepsExistingTextAfterIt() =
         runTest {
             stored["scope|A"] = "old draft"
             composer = "shared text"
             session.onChat(1, "A", "scope")
-            assertEquals("shared text", composer)
+            assertEquals("old draft\n\nshared text", composer)
         }
 
     @Test

@@ -54,6 +54,7 @@ import io.wutz.apollo.data.ws.contract.SubagentSteerParams
 import io.wutz.apollo.data.ws.contract.SubagentSteerResult
 import io.wutz.apollo.data.ws.contract.SubagentTailParams
 import io.wutz.apollo.notification.TurnCorrelationTracker
+import io.wutz.apollo.share.SharedContent
 import io.wutz.apollo.ui.chat.fakes.FakeChatPersistenceRepository
 import io.wutz.apollo.ui.chat.fakes.FakeSlashUsageStore
 import io.wutz.apollo.ui.common.UiText
@@ -1053,6 +1054,22 @@ class ChatViewModelSlashTest : ChatViewModelTestBase() {
         }
 
     @Test
+    fun sharedTextIsStagedToAppendToAnExistingDraft() =
+        runTest {
+            val (viewModel, _) = createViewModelWithSession()
+
+            viewModel.stageSharedContent(SharedContent(text = "shared note", attachments = emptyList()))
+            advanceUntilIdle()
+
+            assertEquals("shared note", viewModel.uiState.value.pendingPrefillText)
+            assertTrue(viewModel.uiState.value.pendingPrefillAppends)
+            viewModel.consumePendingPrefill()
+            advanceUntilIdle()
+            assertNull(viewModel.uiState.value.pendingPrefillText)
+            assertFalse(viewModel.uiState.value.pendingPrefillAppends)
+        }
+
+    @Test
     fun testUndoCommand_dispatchesAndPrefillsComposer() =
         runTest {
             val (viewModel, sessionId) = createViewModelWithSession()
@@ -1081,6 +1098,8 @@ class ChatViewModelSlashTest : ChatViewModelTestBase() {
 
             // Prefill text is staged in UI state
             assertEquals("undone user message", viewModel.uiState.value.pendingPrefillText)
+            // A command prefill replaces the composer; only shared content is appended.
+            assertFalse(viewModel.uiState.value.pendingPrefillAppends)
             // Notice is displayed as system message with rewind target feedback
             assertTrue(
                 viewModel.uiState.value.messages
