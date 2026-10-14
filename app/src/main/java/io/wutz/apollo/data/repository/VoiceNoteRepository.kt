@@ -61,9 +61,20 @@ open class VoiceNoteRepository(
                     NetworkError.Unknown("Failed to read the voice note: ${e.message}", e),
                 )
             }
-        val dataUrl = "data:$VOICE_NOTE_MIME_TYPE;base64," + Base64.getEncoder().encodeToString(encoded)
+        return transcribe(encoded, VOICE_NOTE_MIME_TYPE)
+    }
+
+    /**
+     * Transcribes an in-memory recording, e.g. a voice-conversation utterance
+     * uploaded as `audio/wav` when live transcription is unavailable.
+     */
+    open suspend fun transcribe(
+        audio: ByteArray,
+        mimeType: String,
+    ): NetworkResult<String> {
+        val dataUrl = "data:$mimeType;base64," + Base64.getEncoder().encodeToString(audio)
         val service = serviceProvider(transcriptionTimeoutMs(dataUrl))
-        val result = requestTranscription(service, dataUrl)
+        val result = requestTranscription(service, dataUrl, mimeType)
         // One bounded re-attempt, and only for connection-never-established
         // failures — the one class where the request provably never reached
         // the server, so no provider work is duplicated (device follow-up,
@@ -71,7 +82,7 @@ open class VoiceNoteRepository(
         val finalResult =
             if (result is NetworkResult.Failure && isConnectNeverEstablished(result.error)) {
                 delay(CONNECT_RETRY_DELAY_MS)
-                requestTranscription(service, dataUrl)
+                requestTranscription(service, dataUrl, mimeType)
             } else {
                 result
             }
@@ -94,10 +105,11 @@ open class VoiceNoteRepository(
     private suspend fun requestTranscription(
         service: HermesApiService,
         dataUrl: String,
+        mimeType: String,
     ): NetworkResult<AudioTranscriptionResponse> =
         safeApiCall(retries = 0) {
             service.transcribeAudio(
-                AudioTranscriptionRequest(dataUrl = dataUrl, mimeType = VOICE_NOTE_MIME_TYPE),
+                AudioTranscriptionRequest(dataUrl = dataUrl, mimeType = mimeType),
             )
         }
 

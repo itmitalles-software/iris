@@ -44,8 +44,10 @@ Your agent keeps running on your own computer. Apollo is the remote control in y
   and channel status, usage and token analytics.
 - **Android integration:** notifications for finished tasks and pending
   approvals with inline reply, an optional background connection (foreground
-  service), dictation and read-aloud through Hermes' audio endpoints, and the
-  digital-assistant role.
+  service), dictation and read-aloud through Hermes' audio endpoints, a
+  hands-free **voice conversation** in the chat (it listens, sends what you
+  say, speaks the reply while it streams, and stops talking when you
+  interrupt), and the digital-assistant role.
 - **Large screens and keyboards:** wide layouts keep the chat readable on
   tablets and foldables; Ctrl+Enter sends from a hardware keyboard.
 - **Look and language:** the Apollo design system (true-black AMOLED dark by

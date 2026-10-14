@@ -12,6 +12,20 @@ Hermes Mobile changes merged into Apollo are summarized per sync.
   banner or dialog, and no `REQUEST_INSTALL_PACKAGES` permission. The GitHub
   APK (`assembleRelease`) and all existing tasks are unchanged. BUILD.md
   describes Play App Signing.
+- Hands-free voice conversation in the chat (#9, Mercury parity). The voice
+  button in the chat's top bar asks for the microphone permission and replaces
+  the composer with a voice panel: Apollo listens, ends your turn after a short
+  pause (or on "Send now"), transcribes it with the server's speech-to-text
+  (live `/api/audio/transcribe-stream`, falling back to an upload to
+  `/api/audio/transcribe`), sends it as a normal message and speaks the reply
+  over `/api/audio/speak-stream` while it streams (fallback:
+  `/api/audio/speak`). Talking over the reply or tapping "Interrupt" stops the
+  speech and listens again; a reply that was still generating is interrupted
+  by the next spoken message. The mode ends when you leave the chat, switch
+  session, put the app in the background, lose the connection, or nothing is
+  heard for a minute. Servers with speech-to-text turned off are detected
+  through `/api/audio/voice-config`; provider keys in that response are never
+  read.
 
 ### Fixed
 

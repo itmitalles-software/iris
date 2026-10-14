@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hands-free voice conversation in the chat (issue #9) -->
+    <string name="voice_conversation_start">Start voice conversation</string>
+    <string name="voice_conversation_end">End voice conversation</string>
+    <string name="voice_conversation_status_starting">Preparing voice…</string>
+    <string name="voice_conversation_status_listening">Listening…</string>
+    <string name="voice_conversation_status_hearing">Listening… pause to send</string>
+    <string name="voice_conversation_status_transcribing">Transcribing…</string>
+    <string name="voice_conversation_status_thinking">Waiting for the reply…</string>
+    <string name="voice_conversation_status_speaking">Speaking… talk or tap to interrupt</string>
+    <string name="voice_conversation_action_send">Send now</string>
+    <string name="voice_conversation_action_interrupt">Interrupt</string>
+    <string name="voice_conversation_level_desc">Microphone level</string>
+    <string name="voice_conversation_permission_denied">Voice conversation needs the microphone permission</string>
+    <string name="voice_conversation_err_not_connected">Voice conversation needs a connected chat</string>
+    <string name="voice_conversation_err_stt_disabled">Speech-to-text is turned off on this Hermes server</string>
+    <string name="voice_conversation_err_microphone">The microphone is not available</string>
+    <string name="voice_conversation_err_nothing_heard">Voice conversation ended: nothing was heard</string>
+    <string name="voice_conversation_err_connection_lost">Voice conversation ended: connection lost</string>
+    <string name="voice_conversation_err_speech">Speech output failed; replies stay as text</string>
+    <string name="voice_conversation_err_unsent">Voice conversation ended: transcript kept in the input field</string>
+    <string name="voice_conversation_err_transcription">Transcription failed: %1$s</string>
+    <string name="voice_conversation_err_transcription_unknown">Transcription failed</string>
+</resources>

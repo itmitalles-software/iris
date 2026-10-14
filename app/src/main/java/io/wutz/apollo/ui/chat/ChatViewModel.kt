@@ -75,6 +75,12 @@ import io.wutz.apollo.share.SharedContent
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
 import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
+import io.wutz.apollo.ui.chat.voice.AndroidVoiceEngine
+import io.wutz.apollo.ui.chat.voice.VoiceConversationController
+import io.wutz.apollo.ui.chat.voice.VoiceConversationHost
+import io.wutz.apollo.ui.chat.voice.VoiceConversationUiState
+import io.wutz.apollo.ui.chat.voice.VoiceNotice
+import io.wutz.apollo.ui.chat.voice.toUiText
 import io.wutz.apollo.ui.common.ActionProgressController
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.resolve
@@ -506,6 +512,31 @@ class ChatViewModel(
             }
         }
 
+    // ── Hands-free voice conversation (issue #9) ─────────────────────────
+    private val voiceConversation =
+        VoiceConversationController(
+            scope = viewModelScope,
+            engineFactory = { listener -> AndroidVoiceEngine(getApplication(), listener, voiceNoteRepository) },
+            host =
+                object : VoiceConversationHost {
+                    override fun submitTranscript(
+                        text: String,
+                        interruptRunningTurn: Boolean,
+                    ): Boolean = sendMessage(text, if (interruptRunningTurn) BusySendMode.INTERRUPT else null)
+
+                    override fun restoreTranscript(text: String) {
+                        _uiState.update { it.copy(composerTextToRestore = text) }
+                    }
+
+                    override fun showNotice(notice: VoiceNotice) {
+                        _uiState.update { it.copy(errorMessage = notice.toUiText()) }
+                    }
+                },
+        )
+
+    /** Phase, mic level and live transcript of the voice conversation. */
+    val voiceConversationState: StateFlow<VoiceConversationUiState> = voiceConversation.state
+
     // ── Internal state ───────────────────────────────────────────────────
     private val _uiState = MutableStateFlow(ChatUiState())
     private val localTranscriptAppendLock = Any()
@@ -919,6 +950,7 @@ class ChatViewModel(
                         }
                     _uiState.update { it.copy(isLoading = false) }
                     subagentsDelegate.closeSubagentTranscript()
+                    voiceConversation.abort(VoiceNotice.ConnectionLost)
                     // The runtime session id is only valid while the socket
                     // owns it — a dropped connection may mean the gateway
                     // closed/pruned the session (or restarted, wiping the
@@ -1161,6 +1193,8 @@ class ChatViewModel(
 
         // Process side-effects from the reducer
         dispatchReducerEffects(result.effects)
+
+        if (voiceConversation.isActive) forwardToVoiceConversation(event)
 
         // Handle complex events that need ViewModel-specific context
         when (event) {
@@ -3478,6 +3512,54 @@ class ChatViewModel(
                 ),
         )
         return true
+    }
+
+    /**
+     * Starts the hands-free voice conversation (issue #9). The caller has already obtained the
+     * RECORD_AUDIO permission. Replies of this session are spoken while the mode is on.
+     */
+    fun startVoiceConversation() {
+        if (!canSubmitMessage()) {
+            _uiState.update { it.copy(errorMessage = VoiceNotice.NotConnected.toUiText()) }
+            return
+        }
+        voiceConversation.start()
+    }
+
+    /** Ends the voice conversation: microphone, playback and audio sockets are closed. */
+    fun stopVoiceConversation() = voiceConversation.stop()
+
+    /** Panel action: send the utterance now, or interrupt the spoken reply and listen. */
+    fun voiceConversationAction() = voiceConversation.tap()
+
+    /** Feeds this session's reply stream to the voice conversation (raw deltas, as the desktop does). */
+    private fun forwardToVoiceConversation(event: WsEvent) {
+        when (event) {
+            is WsEvent.MessageStart -> {
+                if (isCurrentSession(event.sessionId)) voiceConversation.onReplyStarted()
+            }
+
+            is WsEvent.MessageToken -> {
+                if (isCurrentSession(event.sessionId) && _streamingState.value.interruptedMessage == null) {
+                    voiceConversation.onReplyDelta(event.token)
+                }
+            }
+
+            is WsEvent.MessageComplete -> {
+                if (isCurrentSession(event.sessionId)) {
+                    val failed =
+                        replyFailureFromPayload(event.rawPayload, event.text) != null ||
+                            GatewayNotice.isInterruptSentinel(event.text)
+                    voiceConversation.onReplyCompleted(event.text, failed)
+                }
+            }
+
+            is WsEvent.MessageDone -> {
+                if (isCurrentSession(event.sessionId)) voiceConversation.onReplyCompleted("", failed = false)
+            }
+
+            else -> {}
+        }
     }
 
     /** True while a voice-note transcription owns the mic-to-send pipeline. */
@@ -7197,6 +7279,7 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
+        voiceConversation.stop()
         super.onCleared()
         subagentsDelegate.closeSubagentTranscript()
         // PERF-16: Don't disconnect the global HermesWsClient singleton when

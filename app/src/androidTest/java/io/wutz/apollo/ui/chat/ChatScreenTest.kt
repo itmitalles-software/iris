@@ -15,6 +15,7 @@ import io.mockk.mockkStatic
 import io.wutz.apollo.data.model.Attachment
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
+import io.wutz.apollo.ui.chat.voice.VoiceConversationUiState
 import io.wutz.apollo.ui.common.ActionProgressController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,6 +74,8 @@ class ChatScreenTest {
         // A real controller (never started here) stays invisible.
         every { mockViewModel.actionProgress } returns
             ActionProgressController(scope = CoroutineScope(Dispatchers.Main))
+        every { mockViewModel.voiceConversationState } returns
+            MutableStateFlow(VoiceConversationUiState()).asStateFlow()
 
         composeTestRule.setContent {
             ChatScreen(
@@ -123,6 +126,8 @@ class ChatScreenTest {
             MutableStateFlow(ConnectionOperationUiState()).asStateFlow()
         every { mockViewModel.actionProgress } returns
             ActionProgressController(scope = CoroutineScope(Dispatchers.Main))
+        every { mockViewModel.voiceConversationState } returns
+            MutableStateFlow(VoiceConversationUiState()).asStateFlow()
 
         composeTestRule.setContent {
             ChatScreen(
