@@ -1726,7 +1726,8 @@ class ChatWsEventReducerTest {
     @Test
     fun messageReactionForUnknownRowOrOtherSessionIsIgnored() {
         val msg = ChatMessage(id = "a", role = MessageRole.USER, content = "hi", serverRowId = 7L)
-        val state = ChatUiState(currentSessionId = "s", messages = listOf(msg))
+        // todosHydrated: the one-time todo hydration is not under test and would flip the flag.
+        val state = ChatUiState(currentSessionId = "s", messages = listOf(msg), todosHydrated = true)
         val reactions = listOf(MessageReaction("\uD83D\uDC4D", "agent"))
         val unknownRow =
             ChatWsEventReducer.reduce(

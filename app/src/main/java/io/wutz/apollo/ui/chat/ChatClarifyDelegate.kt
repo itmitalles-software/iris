@@ -34,6 +34,8 @@ class ChatClarifyDelegate(
     private val wsClient: HermesWsClient = HermesWsClient,
     private val trackRequest: (String, String) -> Unit = { _, _ -> },
     private val respondToServerRequest: ((String, JsonElement) -> Unit)? = null,
+    /** Gateway runtime session (differs from the stored id after session.resume). */
+    private val runtimeSessionId: () -> String? = { null },
 ) {
     fun respondToClarify(option: String) {
         val clarify = uiState.value.clarifyRequest
@@ -58,6 +60,9 @@ class ChatClarifyDelegate(
         singleFallbackAnswer: String? = null,
     ) {
         val sessionId = uiState.value.currentSessionId ?: return
+        // Legacy clarify.respond addresses the gateway session like the other prompt RPCs;
+        // the stored id is only for local persistence.
+        val rpcSessionId = runtimeSessionId() ?: sessionId
         val clarify = uiState.value.clarifyRequest
         val clarifyId = clarify?.clarifyId
         val serverRequestId = clarify?.serverRequestId
@@ -136,7 +141,7 @@ class ChatClarifyDelegate(
                 )) {
                     val params =
                         mutableMapOf<String, Any>(
-                            "session_id" to sessionId,
+                            "session_id" to rpcSessionId,
                             "response" to ans,
                             "answer" to ans,
                             "question_id" to questionId,
@@ -157,7 +162,7 @@ class ChatClarifyDelegate(
                 val ans = answers.values.firstOrNull() ?: singleFallbackAnswer.orEmpty()
                 val params =
                     mutableMapOf<String, Any>(
-                        "session_id" to sessionId,
+                        "session_id" to rpcSessionId,
                         "response" to ans,
                         "answer" to ans,
                     )

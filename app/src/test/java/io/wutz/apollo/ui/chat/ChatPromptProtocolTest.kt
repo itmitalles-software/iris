@@ -1,5 +1,9 @@
 package io.wutz.apollo.ui.chat
 
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
+import io.wutz.apollo.data.ws.HermesWsClient
 import io.wutz.apollo.data.ws.WsEvent
 import io.wutz.apollo.data.ws.WsMethods
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,6 +66,43 @@ class ChatPromptProtocolTest {
         assertNotNull(answers)
         assertEquals("yes", answers?.get("q0")?.jsonPrimitive?.content)
         assertEquals("new answer", answers?.get("q1")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun legacyClarifyRespond_addressesTheRuntimeSession() {
+        val scope = TestScope(dispatcher)
+        val uiState =
+            MutableStateFlow(
+                ChatUiState(
+                    currentSessionId = "stored-session",
+                    clarifyRequest = ClarifyUi(text = "Pick", options = listOf("a"), clarifyId = "clarify-1"),
+                ),
+            )
+        val sent = mutableListOf<Map<String, Any>>()
+        mockkObject(HermesWsClient)
+        try {
+            every { HermesWsClient.send(WsMethods.CLARIFY_RESPOND, any(), any()) } answers {
+                sent += arg<Map<String, Any>>(1)
+                "req-1"
+            }
+            var persistedSession: String? = null
+            val delegate =
+                ChatClarifyDelegate(
+                    uiState = uiState,
+                    scope = scope,
+                    ioDispatcher = dispatcher,
+                    persistMessage = { _, sessionId -> persistedSession = sessionId },
+                    runtimeSessionId = { "runtime-session" },
+                )
+
+            delegate.respondToClarify("a")
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals("runtime-session", sent.single()["session_id"])
+            assertEquals("stored-session", persistedSession)
+        } finally {
+            unmockkAll()
+        }
     }
 
     @Test

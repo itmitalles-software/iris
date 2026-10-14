@@ -216,6 +216,35 @@ class TaskProgressChipTest {
     }
 
     @Test
+    fun `buildTodoTree terminates when duplicate ids form a reachable parent cycle`() {
+        val todos =
+            listOf(
+                TodoItem(id = "a", content = "Root a", parent = null),
+                TodoItem(id = "b", content = "Child b", parent = "a"),
+                TodoItem(id = "a", content = "Duplicate a", parent = "b"),
+            )
+
+        val rows = flattenTodoTree(buildTodoTree(todos), collapsedParentIds = emptySet())
+
+        assertEquals(listOf("a", "b", "a"), rows.map { it.todo.id })
+    }
+
+    @Test
+    fun `flattenTodoTree gives duplicate todo ids unique row keys`() {
+        val todos =
+            listOf(
+                TodoItem(id = "1", content = "First"),
+                TodoItem(id = "1", content = "Same id"),
+                TodoItem(id = "1", content = "Again"),
+            )
+
+        val keys = flattenTodoTree(buildTodoTree(todos), collapsedParentIds = emptySet()).map { it.key }
+
+        assertEquals(3, keys.toSet().size)
+        assertEquals("todo-1_0", keys.first())
+    }
+
+    @Test
     fun `running background process alone shows the chip and is counted`() {
         val running = listOf(ProcessInfo(sessionId = "p1", status = "running"))
         assertTrue(shouldShowProgressChip(emptyList(), emptyList(), running))

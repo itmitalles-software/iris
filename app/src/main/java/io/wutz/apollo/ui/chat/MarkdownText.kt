@@ -29,6 +29,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -451,6 +452,8 @@ fun MarkdownText(
 
                 is MdBlock.Image -> {
                     val model: Any = remember(block.uri) { MarkdownMediaResolver.resolveImageUrl(block.uri) }
+                    val externalHost = remember(block.uri) { MarkdownMediaResolver.externalImageHost(block.uri) }
+                    var loadExternal by rememberSaveable(block.uri) { mutableStateOf(false) }
                     val isGif =
                         remember(block.uri) {
                             block.uri.contains(".gif", ignoreCase = true) ||
@@ -462,20 +465,28 @@ fun MarkdownText(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
                     ) {
-                        io.wutz.apollo.ui.chat.components.GifImageThumbnail(
-                            model = model,
-                            contentDescription = block.alt.ifBlank { null },
-                            isGif = isGif,
-                            onClick = {
-                                onImageClick(
-                                    ImageViewerModel(
-                                        model = block.uri,
-                                        name = block.alt,
-                                        mimeType = if (isGif) "image/gif" else "image/*",
-                                    ),
-                                )
-                            },
-                        )
+                        if (externalHost != null && !loadExternal) {
+                            io.wutz.apollo.ui.chat.components.ExternalImagePlaceholder(
+                                host = externalHost,
+                                name = block.alt,
+                                onLoad = { loadExternal = true },
+                            )
+                        } else {
+                            io.wutz.apollo.ui.chat.components.GifImageThumbnail(
+                                model = model,
+                                contentDescription = block.alt.ifBlank { null },
+                                isGif = isGif,
+                                onClick = {
+                                    onImageClick(
+                                        ImageViewerModel(
+                                            model = block.uri,
+                                            name = block.alt,
+                                            mimeType = if (isGif) "image/gif" else "image/*",
+                                        ),
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
 

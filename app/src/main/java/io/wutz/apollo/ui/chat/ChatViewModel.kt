@@ -89,6 +89,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -121,6 +122,7 @@ private const val MESSAGE_PAGE_SIZE = 150
 private const val TIMELINE_PAGE_SIZE = 500
 private const val HISTORY_WINDOW_SIZE = 120
 private const val MAX_PENDING_RECEIPT_LOOKUPS = 8
+private const val MAX_BACKGROUND_HISTORY_MERGES = 3
 
 private val REASONING_EFFORT_LEVELS =
     setOf("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra")
@@ -305,6 +307,12 @@ data class ChatUiState(
     val subagentTranscript: SubagentTranscriptUiState? = null,
     /** Agent todo / plan items (issue #736). */
     val todos: List<TodoItem> = emptyList(),
+    /**
+     * True once [todos] reflect this session: hydrated from the loaded transcript or set by a
+     * live todo event. The reducer then stops re-scanning the transcript on every event, and an
+     * explicit clear is not undone by re-hydrating an older todo list.
+     */
+    val todosHydrated: Boolean = false,
     /** Running background processes of the active session, from `process.list` (issue #1503). */
     val backgroundProcesses: List<ProcessInfo> = emptyList(),
     /** Process id currently being killed (drives the in-row spinner). */
@@ -734,6 +742,26 @@ class ChatViewModel(
     // ── Session persistence ──────────────────────────────────────────────
     private val repo: ChatPersistenceRepository = repo
     private val slashUsageStore: SlashUsageStore = slashUsageStore
+
+    /**
+     * Reducer persistence runs strictly in event order: the same row is upserted repeatedly
+     * (tool RUNNING then COMPLETED), so one coroutine per effect on the IO pool could let a
+     * stale version land last in the cache.
+     */
+    private val reducerPersistQueue =
+        Channel<ReducerEffect.PersistMessage>(Channel.UNLIMITED).also { queue ->
+            viewModelScope.launch(ioDispatcher) {
+                for (effect in queue) {
+                    try {
+                        repo.persistMessage(effect.message, effect.sessionId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.util.Log.w(TAG, "Persisting message ${effect.message.id} failed", e)
+                    }
+                }
+            }
+        }
     private val slashDispatcher = SlashCommandDispatcher()
 
     /**
@@ -825,6 +853,7 @@ class ChatViewModel(
             wsClient = wsClient,
             trackRequest = { id, method -> trackRequest(id, method) },
             respondToServerRequest = { id, result -> wsClient.respondToServerRequest(id, result) },
+            runtimeSessionId = { runtimeSessionId },
         )
 
     private val subagentsDelegate =
@@ -1178,17 +1207,19 @@ class ChatViewModel(
             else -> {}
         }
 
-        // First, let the reducer compute the new state and any effects
-        val result =
-            ChatWsEventReducer.reduce(
-                _uiState.value,
-                _streamingState.value,
-                event,
-                runtimeSessionId ?: _uiState.value.currentSessionId,
-            )
-
-        // Apply the new state
-        _uiState.update { result.state }
+        // Reduce inside update{} so a concurrent off-main write (e.g. attachHostMedia on IO)
+        // is retried against instead of being overwritten by a result computed from a stale
+        // snapshot. The reducer is pure; only the result of the winning attempt is used.
+        val reducerSessionId = runtimeSessionId ?: _uiState.value.currentSessionId
+        val streamingSnapshot = _streamingState.value
+        var reduced: ReducerResult? = null
+        _uiState.update { current ->
+            ChatWsEventReducer
+                .reduce(current, streamingSnapshot, event, reducerSessionId)
+                .also { reduced = it }
+                .state
+        }
+        val result = checkNotNull(reduced)
         _streamingState.update { result.streamingState }
 
         // Process side-effects from the reducer
@@ -1261,13 +1292,17 @@ class ChatViewModel(
             }
 
             is WsEvent.ToolStart -> {
-                if (isCurrentSession(event.sessionId)) mainTurnBusy = true
                 // Issue #771: the reducer keeps the streaming message (and its
                 // reasoning) alive across the tool call so the finalized answer
                 // retains the thinking card. Only the token buffers are cleared
                 // here — resetStreaming() would wipe streamingMessage +
                 // reasoningText and re-introduce the mid-turn reasoning vanish.
-                streamingController.clearStreamingBuffers()
+                // Another session's tool.start is ignored by the reducer; clearing
+                // the buffers then would truncate this session's streaming reply.
+                if (isCurrentSession(event.sessionId)) {
+                    mainTurnBusy = true
+                    streamingController.clearStreamingBuffers()
+                }
             }
 
             is WsEvent.RpcResult -> {
@@ -1295,13 +1330,14 @@ class ChatViewModel(
             }
 
             is WsEvent.ClarifyRequest -> {
-                _uiState.update {
-                    it.copy(
-                        isAgentTyping = false,
-                    )
+                // The reducer already showed the prompt and cleared isAgentTyping for this
+                // session only. The turn resumes after the answer, so keep its bookkeeping
+                // (sealed orphans, usage baseline, the #771 kept-alive message) and only stop
+                // the live thinking/reasoning indicators.
+                if (isCurrentSession(event.sessionId)) {
+                    streamingController.flushPendingTransition()
+                    _streamingState.update { it.copy(isThinking = false, thinkingText = "", isReasoning = false) }
                 }
-                _streamingState.update { StreamingState() }
-                streamingController.resetStreaming()
             }
 
             is WsEvent.ServerRequest -> {
@@ -1312,12 +1348,14 @@ class ChatViewModel(
                 handleServerRequestCancelled(event)
             }
 
+            // Prompts of a background session must not appear in (or be answered from) the
+            // open one; its pending approval/clarify is replayed when that session resumes.
             is WsEvent.ApprovalRequest -> {
-                approvalsDelegate.handleApprovalRequest(event)
+                if (isCurrentSession(event.sessionId)) approvalsDelegate.handleApprovalRequest(event)
             }
 
             is WsEvent.SudoRequest -> {
-                credentialPromptsDelegate.handleSudoRequest(event)
+                if (isCurrentSession(event.sessionId)) credentialPromptsDelegate.handleSudoRequest(event)
             }
 
             is WsEvent.SudoExpire -> {
@@ -1325,7 +1363,7 @@ class ChatViewModel(
             }
 
             is WsEvent.SecretRequest -> {
-                credentialPromptsDelegate.handleSecretRequest(event)
+                if (isCurrentSession(event.sessionId)) credentialPromptsDelegate.handleSecretRequest(event)
             }
 
             is WsEvent.SecretExpire -> {
@@ -1333,7 +1371,7 @@ class ChatViewModel(
             }
 
             is WsEvent.VaultUnlockRequest -> {
-                credentialPromptsDelegate.handleVaultUnlockRequest(event)
+                if (isCurrentSession(event.sessionId)) credentialPromptsDelegate.handleVaultUnlockRequest(event)
             }
 
             is WsEvent.VaultUnlockExpire -> {
@@ -1341,7 +1379,7 @@ class ChatViewModel(
             }
 
             is WsEvent.VaultSaveLoginRequest -> {
-                credentialPromptsDelegate.handleVaultSaveLoginRequest(event)
+                if (isCurrentSession(event.sessionId)) credentialPromptsDelegate.handleVaultSaveLoginRequest(event)
             }
 
             is WsEvent.VaultSaveLoginExpire -> {
@@ -1349,7 +1387,7 @@ class ChatViewModel(
             }
 
             is WsEvent.VaultCodeRequest -> {
-                credentialPromptsDelegate.handleVaultCodeRequest(event)
+                if (isCurrentSession(event.sessionId)) credentialPromptsDelegate.handleVaultCodeRequest(event)
             }
 
             is WsEvent.VaultCodeExpire -> {
@@ -1583,9 +1621,7 @@ class ChatViewModel(
         for (effect in effects) {
             when (effect) {
                 is ReducerEffect.PersistMessage -> {
-                    viewModelScope.launch(ioDispatcher) {
-                        repo.persistMessage(effect.message, effect.sessionId)
-                    }
+                    reducerPersistQueue.trySend(effect)
                 }
 
                 is ReducerEffect.CreateNewSession -> {
@@ -5572,7 +5608,9 @@ class ChatViewModel(
         pageIsComplete: Boolean = false,
         mapPage: (List<ChatMessage>) -> List<ChatMessage>,
     ): List<ChatMessage>? {
+        var attempt = 0
         while (isCurrent()) {
+            attempt++
             val snapshot = _uiState.value
             // Receipt bubbles can be absent after rejection/reconnect. Offer their identities
             // to the canonical matcher without displaying unconfirmed messages again.
@@ -5632,107 +5670,111 @@ class ChatViewModel(
                     .filter { it.isRestoredUnconfirmed && it.messageProvenance == MessageProvenance.LOCAL_PENDING }
                     .map { it.id },
             )
-            val computed =
-                withContext(historyDispatcher) {
-                    val mapped = mapPage(snapshot.messages)
-                    val currentById = snapshot.messages.associateBy { it.id }
-                    // Durable provenance distinguishes new unsent prompts after process death.
-                    // Legacy UUID-only USER rows remain unconfirmed, but restored placement is
-                    // independent of delivery: UNKNOWN must not pin old prompts after fresh replies.
-                    val page =
-                        if (cached) {
-                            mapped.map { message ->
-                                val receipt = receiptsById[message.id]
-                                val coldPendingOrphan =
-                                    message.role == MessageRole.USER &&
-                                        message.messageProvenance == MessageProvenance.LOCAL_PENDING &&
-                                        message.canonicalRestId == null &&
-                                        message.localAnchorOrder == null &&
-                                        message.localPredecessorId == null &&
-                                        !message.isPermanentlyLocal() &&
-                                        (
-                                            receipt == null ||
-                                                (
-                                                    receipt.state == PendingSendState.ACCEPTED &&
-                                                        receipt.requiresExactReconciliation
-                                                )
-                                        )
-                                message.copy(
-                                    isHistoricalCache =
-                                        when {
-                                            currentById[message.id]?.isHistoricalCache == false -> false
-                                            message.isPermanentlyLocal() -> false
-                                            message.messageProvenance == MessageProvenance.LOCAL_PENDING -> false
-                                            message.canonicalRestId != null -> true
-                                            message.role == MessageRole.USER -> false
-                                            else -> true
-                                        },
-                                    isRestoredUnconfirmed =
-                                        when {
-                                            message.role != MessageRole.USER ||
-                                                message.canonicalRestId != null ||
-                                                message.isPermanentlyLocal() ||
-                                                (
-                                                    message.messageProvenance == MessageProvenance.LOCAL_PENDING &&
-                                                        !coldPendingOrphan
-                                                ) ||
-                                                (
-                                                    message.id in receiptBackedIds &&
-                                                        message.id !in restoredAcceptedReceiptIds
-                                                ) -> {
-                                                false
-                                            }
-
-                                            currentById[message.id] != null -> {
-                                                currentById.getValue(message.id).isRestoredUnconfirmed
-                                            }
-
-                                            else -> {
-                                                true
-                                            }
-                                        },
-                                )
-                            }
-                        } else {
-                            mapped
-                        }
-                    // Protect both incoming and existing candidates in every matching pass,
-                    // including cache-local deduplication when REST arrived first.
-                    val contentMatchExcludedIds =
-                        exactOnlyIds +
-                            page
-                                .filter {
-                                    it.isRestoredUnconfirmed &&
-                                        it.messageProvenance == MessageProvenance.LOCAL_PENDING
-                                }.map { it.id }
-                    val merged =
-                        if (cached) {
-                            mergeCachedTranscriptPage(
-                                page,
-                                snapshot.messages,
-                                contentMatchExcludedIds = contentMatchExcludedIds,
-                            )
-                        } else {
-                            val offered = snapshot.messages + receiptCandidates
-                            mergeTranscriptWithLive(
-                                page,
-                                offered,
-                                chronological = !prepend,
-                                preserveLiveIds = true,
-                                contentMatchExcludedIds = contentMatchExcludedIds,
-                                // #1520: a fresh server page proves which displayed row ids were re-issued;
-                                // receipt-only candidates have no bubble, so they cannot duplicate.
-                                supersededRowIds =
-                                    if (prepend) {
-                                        emptySet()
-                                    } else {
-                                        supersededUserRowIds(page, snapshot.messages, pageIsNewest, pageIsComplete)
+            val merge = {
+                val mapped = mapPage(snapshot.messages)
+                val currentById = snapshot.messages.associateBy { it.id }
+                // Durable provenance distinguishes new unsent prompts after process death.
+                // Legacy UUID-only USER rows remain unconfirmed, but restored placement is
+                // independent of delivery: UNKNOWN must not pin old prompts after fresh replies.
+                val page =
+                    if (cached) {
+                        mapped.map { message ->
+                            val receipt = receiptsById[message.id]
+                            val coldPendingOrphan =
+                                message.role == MessageRole.USER &&
+                                    message.messageProvenance == MessageProvenance.LOCAL_PENDING &&
+                                    message.canonicalRestId == null &&
+                                    message.localAnchorOrder == null &&
+                                    message.localPredecessorId == null &&
+                                    !message.isPermanentlyLocal() &&
+                                    (
+                                        receipt == null ||
+                                            (
+                                                receipt.state == PendingSendState.ACCEPTED &&
+                                                    receipt.requiresExactReconciliation
+                                            )
+                                    )
+                            message.copy(
+                                isHistoricalCache =
+                                    when {
+                                        currentById[message.id]?.isHistoricalCache == false -> false
+                                        message.isPermanentlyLocal() -> false
+                                        message.messageProvenance == MessageProvenance.LOCAL_PENDING -> false
+                                        message.canonicalRestId != null -> true
+                                        message.role == MessageRole.USER -> false
+                                        else -> true
                                     },
-                            ).filterNot { it.id in receiptCandidateIds && it.canonicalRestId == null }
+                                isRestoredUnconfirmed =
+                                    when {
+                                        message.role != MessageRole.USER ||
+                                            message.canonicalRestId != null ||
+                                            message.isPermanentlyLocal() ||
+                                            (
+                                                message.messageProvenance == MessageProvenance.LOCAL_PENDING &&
+                                                    !coldPendingOrphan
+                                            ) ||
+                                            (
+                                                message.id in receiptBackedIds &&
+                                                    message.id !in restoredAcceptedReceiptIds
+                                            ) -> {
+                                            false
+                                        }
+
+                                        currentById[message.id] != null -> {
+                                            currentById.getValue(message.id).isRestoredUnconfirmed
+                                        }
+
+                                        else -> {
+                                            true
+                                        }
+                                    },
+                            )
                         }
-                    val stableMessages = if (merged == snapshot.messages) snapshot.messages else merged
-                    Triple(page, stableMessages, hydrateTodosFromMessages(merged).ifEmpty { snapshot.todos })
-                }
+                    } else {
+                        mapped
+                    }
+                // Protect both incoming and existing candidates in every matching pass,
+                // including cache-local deduplication when REST arrived first.
+                val contentMatchExcludedIds =
+                    exactOnlyIds +
+                        page
+                            .filter {
+                                it.isRestoredUnconfirmed &&
+                                    it.messageProvenance == MessageProvenance.LOCAL_PENDING
+                            }.map { it.id }
+                val merged =
+                    if (cached) {
+                        mergeCachedTranscriptPage(
+                            page,
+                            snapshot.messages,
+                            contentMatchExcludedIds = contentMatchExcludedIds,
+                        )
+                    } else {
+                        val offered = snapshot.messages + receiptCandidates
+                        mergeTranscriptWithLive(
+                            page,
+                            offered,
+                            chronological = !prepend,
+                            preserveLiveIds = true,
+                            contentMatchExcludedIds = contentMatchExcludedIds,
+                            // #1520: a fresh server page proves which displayed row ids were re-issued;
+                            // receipt-only candidates have no bubble, so they cannot duplicate.
+                            supersededRowIds =
+                                if (prepend) {
+                                    emptySet()
+                                } else {
+                                    supersededUserRowIds(page, snapshot.messages, pageIsNewest, pageIsComplete)
+                                },
+                        ).filterNot { it.id in receiptCandidateIds && it.canonicalRestId == null }
+                    }
+                val stableMessages = if (merged == snapshot.messages) snapshot.messages else merged
+                Triple(page, stableMessages, hydrateTodosFromMessages(merged).ifEmpty { snapshot.todos })
+            }
+            // Live events (e.g. a stream of tool.progress) can invalidate every background merge.
+            // After a few tries compute on the caller's (main) thread, where WS events cannot
+            // interleave, so the page always lands instead of spinning forever.
+            val computed =
+                if (attempt <= MAX_BACKGROUND_HISTORY_MERGES) withContext(historyDispatcher) { merge() } else merge()
             if (!isCurrent()) return null
             var applied = false
             _uiState.update { current ->
@@ -6119,6 +6161,9 @@ class ChatViewModel(
                 clarifyRequest = null,
                 sudoPrompt = null,
                 secretPrompt = null,
+                vaultUnlockPrompt = null,
+                vaultSaveLoginPrompt = null,
+                vaultCodePrompt = null,
                 showSessionPicker = false,
                 showModelPicker = false,
                 modelPickerLoading = false,
@@ -6144,6 +6189,7 @@ class ChatViewModel(
                 reactionKind = null,
                 subagentIndicators = emptyList(),
                 todos = emptyList(),
+                todosHydrated = false,
                 backgroundProcesses = emptyList(),
                 killingProcessId = null,
                 resumeError = null,
@@ -7007,7 +7053,7 @@ class ChatViewModel(
      * visible in the transcript.
      */
     fun dismissClarify() {
-        val sessionId = _uiState.value.currentSessionId ?: return
+        val sessionId = runtimeSessionId ?: _uiState.value.currentSessionId ?: return
         val clarify = _uiState.value.clarifyRequest
         val clarifyId = clarify?.clarifyId
         val serverRequestId = clarify?.serverRequestId

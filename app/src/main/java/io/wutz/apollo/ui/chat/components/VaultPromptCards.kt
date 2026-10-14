@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +58,7 @@ fun VaultUnlockCard(
     modifier: Modifier = Modifier,
 ) {
     var password by remember(prompt.requestId) { mutableStateOf("") }
-    var passwordVisible by remember(prompt.requestId) { mutableStateOf(false) }
+    var passwordVisible by rememberSaveable(prompt.requestId) { mutableStateOf(false) }
 
     val displayName = prompt.displayName ?: prompt.backend ?: stringResource(R.string.vault_password_manager)
 
@@ -171,9 +172,12 @@ fun VaultSaveLoginCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var identifier by remember(prompt.requestId) { mutableStateOf("") }
+    // The identifier survives scrolling the card out of the LazyColumn. Secrets (password,
+    // one-time code) deliberately stay in plain remember so they never reach the saved
+    // instance state; they are lost when the card scrolls out and must be re-entered.
+    var identifier by rememberSaveable(prompt.requestId) { mutableStateOf("") }
     var password by remember(prompt.requestId) { mutableStateOf("") }
-    var passwordVisible by remember(prompt.requestId) { mutableStateOf(false) }
+    var passwordVisible by rememberSaveable(prompt.requestId) { mutableStateOf(false) }
 
     val siteLabel = prompt.site ?: prompt.origin ?: stringResource(R.string.vault_this_site)
 

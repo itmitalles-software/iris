@@ -18,6 +18,7 @@ import io.wutz.apollo.data.remote.OkHttpProvider
 import io.wutz.apollo.data.remote.ServerTrust
 import io.wutz.apollo.notification.TurnCorrelationTracker
 import io.wutz.apollo.ui.analytics.AnalyticsPreloader
+import io.wutz.apollo.ui.chat.cleanStaleCameraPhotos
 import io.wutz.apollo.ui.chat.cleanStalePastedImages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,7 @@ class HermesControlApp :
         val startupTimeMs = System.currentTimeMillis()
         appScope.launch(Dispatchers.IO) {
             cleanStalePastedImages(cacheDir, startupTimeMs)
+            cleanStaleCameraPhotos(cacheDir, startupTimeMs)
         }
         ServerTrust.initialize(this)
         ClientCertificates.initialize(this)
