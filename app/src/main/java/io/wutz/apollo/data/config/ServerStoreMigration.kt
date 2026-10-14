@@ -127,6 +127,9 @@ class ServerStoreMigration(
         Log.d("ServerStoreMigration", "Migration cleanup complete.")
     }
 
+    // security-crypto 1.1.0 deprecates the whole library with no drop-in replacement.
+    // Moving off it needs a Keystore + DataStore migration; until then it stays in use here.
+    @Suppress("DEPRECATION")
     private fun getPrefs(): android.content.SharedPreferences? =
         try {
             val masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)

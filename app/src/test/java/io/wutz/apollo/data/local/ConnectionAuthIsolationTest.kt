@@ -26,6 +26,7 @@ class ConnectionAuthIsolationTest {
     private lateinit var context: Context
 
     @Before
+    @Suppress("DEPRECATION") // Mocks the deprecated security-crypto API.
     fun setUp() {
         prefs = mockk(relaxed = true)
         editor = mockk(relaxed = true)

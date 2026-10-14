@@ -12,8 +12,8 @@ plugins {
 
 android {
     namespace = "io.wutz.apollo"
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/src/test/resources/tls")
+    sourceSets.getByName("androidTest").assets.directories +=
+        listOf("$projectDir/schemas", "$projectDir/src/test/resources/tls")
 
     lint {
         disable += "MissingTranslation"
@@ -273,7 +273,6 @@ dependencies {
     // Encrypted storage
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.datastore)
-    implementation("androidx.startup:startup-runtime:1.1.1")
 
     // Local database (Room 3) — message persistence
     implementation(libs.androidx.room.runtime)
