@@ -17,6 +17,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,7 +132,7 @@ class ProvidersViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.providers_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.providers_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -157,7 +158,7 @@ class ProvidersViewModel :
                 _uiState.update {
                     it.copy(
                         actingId = null,
-                        toastMessage = UiText.res(R.string.providers_msg_disconnect_failed, error),
+                        toastMessage = UiText.failure(R.string.providers_msg_disconnect_failed, error.toUiText()),
                     )
                 }
             },
@@ -237,7 +238,7 @@ class ProvidersViewModel :
                         _uiState.update {
                             it.copy(
                                 flowPhase = OAuthFlowPhase.IDLE,
-                                flowErrorMessage = UiText.raw(result.error.message),
+                                flowErrorMessage = result.error.toUiText(),
                             )
                         }
                     }
@@ -286,7 +287,7 @@ class ProvidersViewModel :
                     _uiState.update {
                         it.copy(
                             flowStatus = "error",
-                            flowErrorMessage = UiText.raw(result.error.message),
+                            flowErrorMessage = result.error.toUiText(),
                         )
                     }
                 }
@@ -343,7 +344,7 @@ class ProvidersViewModel :
                                 _uiState.update {
                                     it.copy(
                                         flowPhase = OAuthFlowPhase.ERROR,
-                                        flowErrorMessage = UiText.raw(result.error.message),
+                                        flowErrorMessage = result.error.toUiText(),
                                     )
                                 }
                                 return@launch

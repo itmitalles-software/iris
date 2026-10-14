@@ -121,7 +121,7 @@ class KanbanMutationTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             assertEquals(
-                UiText.res(R.string.kanban_msg_task_create_failed, "Validation failed"),
+                UiText.failure(R.string.kanban_msg_task_create_failed, UiText.raw("Validation failed")),
                 vm.uiState.value.toastMessage,
             )
             assertFalse(vm.uiState.value.isCreatingTask)
@@ -238,7 +238,7 @@ class KanbanMutationTest {
                     .none { it.id == "t_1" },
             )
             assertEquals(
-                UiText.res(R.string.kanban_msg_move_failed, "Parent blocked"),
+                UiText.failure(R.string.kanban_msg_move_failed, UiText.raw("Parent blocked")),
                 vm.uiState.value.toastMessage,
             )
             assertFalse(
@@ -540,7 +540,7 @@ class KanbanMutationTest {
 
             assertEquals(setOf("t_2"), reportedFailed)
             assertEquals(
-                UiText.plural(R.plurals.kanban_msg_bulk_moved_partial, 1, 1, 1, "Conflict"),
+                UiText.Failure(UiText.plural(R.plurals.kanban_msg_bulk_moved_partial, 1, 1, 1, UiText.raw("Conflict"))),
                 vm.uiState.value.toastMessage,
             )
         }
@@ -660,7 +660,7 @@ class KanbanMutationTest {
                 run(vm) { failed = it }
                 testDispatcher.scheduler.advanceUntilIdle()
                 assertEquals(name, setOf("t_1", "t_2"), failed)
-                assertEquals(name, UiText.res(messageRes, "down"), vm.uiState.value.toastMessage)
+                assertEquals(name, UiText.failure(messageRes, UiText.raw("down")), vm.uiState.value.toastMessage)
                 assertFalse(name, vm.uiState.value.isLoading)
             }
         }
@@ -684,7 +684,7 @@ class KanbanMutationTest {
             testDispatcher.scheduler.advanceUntilIdle()
             assertEquals(setOf("t_2"), failed)
             assertEquals(
-                UiText.plural(R.plurals.kanban_msg_bulk_deleted_partial, 1, 1, 1, "locked"),
+                UiText.Failure(UiText.plural(R.plurals.kanban_msg_bulk_deleted_partial, 1, 1, 1, UiText.raw("locked"))),
                 vm.uiState.value.toastMessage,
             )
 
@@ -692,7 +692,7 @@ class KanbanMutationTest {
             testDispatcher.scheduler.advanceUntilIdle()
             assertEquals(setOf("t_2"), failed)
             assertEquals(
-                UiText.res(R.string.kanban_msg_bulk_delete_failed_all, UiText.raw("locked")),
+                UiText.failure(R.string.kanban_msg_bulk_delete_failed_all, UiText.raw("locked")),
                 vm.uiState.value.toastMessage,
             )
         }
@@ -812,7 +812,7 @@ class KanbanMutationTest {
 
             coVerify { mockRepository.updateTask("t_9", "dev", match { it.status == "ready" }) }
             assertEquals(
-                UiText.res(R.string.kanban_msg_task_created_move_failed, "ready", "blocked by parent"),
+                UiText.failure(R.string.kanban_msg_task_created_move_failed, "ready", UiText.raw("blocked by parent")),
                 vm.uiState.value.toastMessage,
             )
             assertFalse(vm.uiState.value.isCreatingTask)

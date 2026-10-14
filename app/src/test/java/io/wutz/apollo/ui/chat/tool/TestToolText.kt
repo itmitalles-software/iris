@@ -82,6 +82,10 @@ internal object TestToolText {
                     val pattern = forms[if (text.count == 1) "one" else "other"] ?: forms.getValue("other")
                     pattern.format(locale, *args(text.args, ::resolve))
                 }
+
+                is UiText.Failure -> {
+                    resolve(text.text)
+                }
             }
 
         return ToolText(locale.toLanguageTag()) { resolve(it) }

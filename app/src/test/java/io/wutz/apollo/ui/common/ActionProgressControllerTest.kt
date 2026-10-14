@@ -147,7 +147,7 @@ class ActionProgressControllerTest {
         val state = controller.state.value
         assertTrue(state.visible)
         assertEquals(ActionProgressPhase.FAILED, state.phase)
-        assertEquals("Failed to start update: boom", state.error)
+        assertEquals(UiText.raw("Failed to start update: boom"), state.error)
     }
 
     @Test

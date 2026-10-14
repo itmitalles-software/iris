@@ -13,6 +13,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,7 +56,7 @@ class GatewayViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.gateway_msg_load_status_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.gateway_msg_load_status_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -103,7 +104,7 @@ class GatewayViewModel :
                     _uiState.update {
                         it.copy(
                             isActionRunning = false,
-                            toastMessage = UiText.res(failureMessage, result.error.message),
+                            toastMessage = UiText.failure(failureMessage, result.error.toUiText()),
                         )
                     }
                 }

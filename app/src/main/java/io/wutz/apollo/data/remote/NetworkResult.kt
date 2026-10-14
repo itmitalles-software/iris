@@ -20,9 +20,11 @@ sealed interface NetworkResult<out T> {
 sealed interface NetworkError {
     val message: String
 
+    /** [detail] is the server's own explanation (FastAPI `detail`), when the error body had one. */
     data class Http(
         val code: Int,
         override val message: String,
+        val detail: String? = null,
     ) : NetworkError
 
     data class Connection(
@@ -60,20 +62,25 @@ fun mapHttpError(
             null
         }
 
-    val message =
-        detail ?: when (code) {
-            400 -> "Bad Request (HTTP 400): The server could not understand the request."
-            403 -> "Forbidden (HTTP 403): You do not have permission to access this resource."
-            404 -> "Not Found (HTTP 404): The requested resource could not be found."
-            405 -> "Method Not Allowed (HTTP 405)."
-            408 -> "Request Timeout (HTTP 408): The server timed out waiting for the request."
-            409 -> "Conflict (HTTP 409): The request conflicts with current server state."
-            429 -> "Too Many Requests (HTTP 429): Rate limit exceeded."
-            in 500..599 -> "Server Error (HTTP $code): The server encountered an error."
-            else -> "HTTP Error $code: Unexpected server response."
-        }
-    return NetworkError.Http(code, message)
+    return NetworkError.Http(code, detail ?: httpStatusMessage(code), detail)
 }
+
+/**
+ * The English status text [mapHttpError] uses when the server sent no detail (for logs; the UI
+ * shows the localized equivalent).
+ */
+fun httpStatusMessage(code: Int): String =
+    when (code) {
+        400 -> "Bad Request (HTTP 400): The server could not understand the request."
+        403 -> "Forbidden (HTTP 403): You do not have permission to access this resource."
+        404 -> "Not Found (HTTP 404): The requested resource could not be found."
+        405 -> "Method Not Allowed (HTTP 405)."
+        408 -> "Request Timeout (HTTP 408): The server timed out waiting for the request."
+        409 -> "Conflict (HTTP 409): The request conflicts with current server state."
+        429 -> "Too Many Requests (HTTP 429): Rate limit exceeded."
+        in 500..599 -> "Server Error (HTTP $code): The server encountered an error."
+        else -> "HTTP Error $code: Unexpected server response."
+    }
 
 fun isRetryable(e: IOException): Boolean =
     when (e) {

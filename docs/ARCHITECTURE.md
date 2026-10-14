@@ -366,6 +366,11 @@ load-dependent flakes, so:
 - **User-visible ViewModel messages are `UiText`** (`ui/common/UiText.kt`). Assert the
   resource id and arguments (`assertEquals(UiText.res(R.string.x, "a"), state.toastMessage)`),
   not English text.
+- **Request failures go through `NetworkError.toUiText()`** (`ui/common/NetworkErrorText.kt`):
+  localized status texts, server details verbatim. The `safeLaunch*` `onError` callbacks get
+  the typed `NetworkError`. Screen messages that report a failure are `UiText.failure(...)`;
+  `ToastEffect` shows them as an error snackbar with "Copy", and offers "Undo" when the
+  screen passes `onUndo` (sessions archive/pin, projects archive).
 - **No real device storage.** Use `TemporaryFolder` or Room's in-memory builder.
 - After changing a signature used by `app/src/androidTest`, the gate's
   `compileDebugAndroidTestKotlin` must pass.

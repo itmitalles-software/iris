@@ -17,6 +17,7 @@ import io.wutz.apollo.data.ws.contract.ConfigSetParams
 import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.toAny
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -214,7 +215,7 @@ class ChatModelSwitchDelegate(
                                 modelPickerLoading = false,
                                 errorMessage =
                                     if (it.showModelPicker || refresh) {
-                                        UiText.res(R.string.chat_msg_load_models_failed, result.error.message)
+                                        UiText.res(R.string.chat_msg_load_models_failed, result.error.toUiText())
                                     } else {
                                         it.errorMessage
                                     },

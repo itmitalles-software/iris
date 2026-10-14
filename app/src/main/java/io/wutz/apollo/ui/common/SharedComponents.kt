@@ -415,21 +415,3 @@ fun InfoRow(
         )
     }
 }
-
-// ── ToastEffect — helper for one-shot toast messages ───────────────────
-
-@Composable
-fun ToastEffect(
-    toastMessage: UiText?,
-    onClearToast: () -> Unit,
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    androidx.compose.runtime.LaunchedEffect(toastMessage) {
-        toastMessage?.let { msg ->
-            android.widget.Toast
-                .makeText(context, msg.resolve(context), android.widget.Toast.LENGTH_SHORT)
-                .show()
-            onClearToast()
-        }
-    }
-}

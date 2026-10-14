@@ -126,7 +126,7 @@ class SkillsViewModelTest {
         settle()
 
         assertEquals(
-            UiText.res(R.string.skills_msg_hub_sources_failed, "Hub sources unavailable"),
+            UiText.res(R.string.skills_msg_hub_sources_failed, UiText.raw("Hub sources unavailable")),
             vm.uiState.value.hubSourcesError,
         )
         assertEquals(false, vm.uiState.value.isHubSourcesLoading)
@@ -171,7 +171,7 @@ class SkillsViewModelTest {
         assertEquals("broken:skill", vm.uiState.value.hubScanIdentifier)
         assertNull(vm.uiState.value.hubScanResult)
         assertEquals(false, vm.uiState.value.isHubScanning)
-        assertEquals("Skill not found", vm.uiState.value.hubScanError)
+        assertEquals(UiText.raw("Skill not found"), vm.uiState.value.hubScanError)
     }
 
     @Test

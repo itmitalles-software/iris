@@ -287,6 +287,7 @@ fun SessionsScreen(
     ToastEffect(
         toastMessage = state.toastMessage,
         onClearToast = { viewModel.clearToast() },
+        onUndo = state.toastUndo?.let { undo -> { viewModel.undo(undo) } },
     )
 
     // Empty-session cleanup dialog (issue #787)

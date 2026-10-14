@@ -24,10 +24,20 @@ internal object EnglishTestResources {
     private val plurals = mutableMapOf<String, Map<String, String>>()
 
     init {
-        val file =
-            listOf("src/main/res/values/strings.xml", "app/src/main/res/values/strings.xml")
+        // strings.xml plus the per-area files (strings_<area>.xml) next to it.
+        val dir =
+            listOf("src/main/res/values", "app/src/main/res/values")
                 .map(::File)
-                .first { it.isFile }
+                .first { File(it, "strings.xml").isFile }
+        val files =
+            dir
+                .listFiles { file -> file.name.startsWith("strings") && file.name.endsWith(".xml") }
+                .orEmpty()
+                .sortedBy { it.name }
+        files.forEach(::load)
+    }
+
+    private fun load(file: File) {
         val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file)
         val root = doc.documentElement
         val children = root.childNodes

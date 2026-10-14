@@ -122,7 +122,7 @@ class PairingViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.isLoading)
         assertNull(state.pairing)
-        assertEquals(UiText.res(R.string.pairing_msg_load_failed, "boom"), state.errorMessage)
+        assertEquals(UiText.res(R.string.pairing_msg_load_failed, UiText.raw("boom")), state.errorMessage)
     }
 
     @Test
@@ -191,9 +191,9 @@ class PairingViewModelTest {
         val state = vm.uiState.value
         assertNull(state.actionKey)
         assertEquals(
-            UiText.res(
+            UiText.failure(
                 R.string.pairing_msg_action_failed,
-                "Pairing request or code not found or expired for platform 'telegram'.",
+                UiText.raw("Pairing request or code not found or expired for platform 'telegram'."),
             ),
             state.toastMessage,
         )

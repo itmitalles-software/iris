@@ -31,6 +31,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,6 +76,19 @@ internal fun formatCompactCount(value: Int): String {
 
 private fun String.trimZeroes(): String = dropLastWhile { it == '0' }.trimEnd('.')
 
+/** The inverse of a pin or archive change, offered as "Undo" next to its message. */
+sealed interface SessionUndo {
+    data class Pin(
+        val sessionId: String,
+        val pinned: Boolean,
+    ) : SessionUndo
+
+    data class Archive(
+        val sessionId: String,
+        val archived: Boolean,
+    ) : SessionUndo
+}
+
 data class SessionsUiState(
     val section: HistorySection = HistorySection.CONVERSATIONS,
     val isLoading: Boolean = false,
@@ -86,7 +100,7 @@ data class SessionsUiState(
     val corruptStorageProfiles: Set<String> = emptySet(),
     val stats: SessionStats = SessionStats(),
     val isLoadingStats: Boolean = false,
-    val statsError: String? = null,
+    val statsError: UiText? = null,
     val isSelecting: Boolean = false,
     val selectedIds: Set<String> = emptySet(),
     val renamingSessionId: String? = null,
@@ -101,6 +115,8 @@ data class SessionsUiState(
     val isCleaningEmpty: Boolean = false,
     val isDeletingBulk: Boolean = false,
     val toastMessage: UiText? = null,
+    /** The inverse of the change [toastMessage] reports, offered as "Undo". */
+    val toastUndo: SessionUndo? = null,
     val sessionToDeleteConfirm: String? = null,
     val showBulkDeleteConfirm: Boolean = false,
     val searchQuery: String = "",
@@ -538,7 +554,7 @@ class SessionsViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = UiText.res(R.string.sessions_msg_load_failed, errorMsg),
+                                errorMessage = UiText.res(R.string.sessions_msg_load_failed, errorMsg.toUiText()),
                             )
                         }
                     }
@@ -618,7 +634,7 @@ class SessionsViewModel(
                                 errorMessage =
                                     UiText.res(
                                         R.string.sessions_msg_load_more_failed_reason,
-                                        result.error.message,
+                                        result.error.toUiText(),
                                     ),
                             )
                         }
@@ -735,7 +751,7 @@ class SessionsViewModel(
                     if (offset == 0) {
                         it.copy(
                             isSearching = false,
-                            searchError = UiText.res(R.string.sessions_msg_search_failed, result.error.message),
+                            searchError = UiText.res(R.string.sessions_msg_search_failed, result.error.toUiText()),
                         )
                     } else {
                         it.copy(
@@ -771,7 +787,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingStats = false,
-                            statsError = errorMsg,
+                            statsError = errorMsg.toUiText(),
                         )
                     }
                 },
@@ -893,7 +909,7 @@ class SessionsViewModel(
                         it.copy(
                             renamingSessionId = null,
                             renameDraft = "",
-                            toastMessage = UiText.res(R.string.sessions_msg_rename_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.sessions_msg_rename_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -911,13 +927,28 @@ class SessionsViewModel(
      */
     fun togglePin(sessionId: String) {
         val session = _uiState.value.sessions.find { it.id == sessionId } ?: return
-        val targetPinned = session.pinned != true
+        setPinned(sessionId, pinned = session.pinned != true, offerUndo = true)
+    }
+
+    /** Runs the inverse of the change reported by the last message ("Undo" in the snackbar). */
+    fun undo(action: SessionUndo) {
+        when (action) {
+            is SessionUndo.Pin -> setPinned(action.sessionId, action.pinned, offerUndo = false)
+            is SessionUndo.Archive -> setArchived(action.sessionId, action.archived, offerUndo = false)
+        }
+    }
+
+    private fun setPinned(
+        sessionId: String,
+        pinned: Boolean,
+        offerUndo: Boolean,
+    ) {
         viewModelScope.launch {
             val result =
                 safeApiCall {
                     ApiClient.hermesApi.setSessionPinned(
                         sessionId = sessionId,
-                        body = SessionRenameRequest(pinned = targetPinned),
+                        body = SessionRenameRequest(pinned = pinned),
                     )
                 }
             when (result) {
@@ -926,20 +957,24 @@ class SessionsViewModel(
                         it.copy(
                             sessions =
                                 it.sessions
-                                    .map { s -> if (s.id == sessionId) s.copy(pinned = targetPinned) else s },
+                                    .map { s -> if (s.id == sessionId) s.copy(pinned = pinned) else s },
                             toastMessage =
-                                if (targetPinned) {
+                                if (pinned) {
                                     UiText.res(R.string.sessions_msg_pinned)
                                 } else {
                                     UiText.res(R.string.sessions_msg_unpinned)
                                 },
+                            toastUndo = SessionUndo.Pin(sessionId, pinned = !pinned).takeIf { offerUndo },
                         )
                     }
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = UiText.res(R.string.sessions_msg_pin_failed, result.error.message))
+                        it.copy(
+                            toastMessage = UiText.failure(R.string.sessions_msg_pin_failed, result.error.toUiText()),
+                            toastUndo = null,
+                        )
                     }
                 }
             }
@@ -955,35 +990,53 @@ class SessionsViewModel(
      */
     fun toggleArchive(sessionId: String) {
         val session = _uiState.value.sessions.find { it.id == sessionId } ?: return
-        val targetArchived = session.archived != true
+        setArchived(sessionId, archived = session.archived != true, offerUndo = true)
+    }
+
+    /**
+     * A row in the current list leaves it; a row that is not listed (the undo of an archive that
+     * removed it) comes back with a reload, because only the server knows its place in the list.
+     */
+    private fun setArchived(
+        sessionId: String,
+        archived: Boolean,
+        offerUndo: Boolean,
+    ) {
         viewModelScope.launch {
             val result =
                 safeApiCall {
                     ApiClient.hermesApi.setSessionArchived(
                         sessionId = sessionId,
-                        body = SessionRenameRequest(archived = targetArchived),
+                        body = SessionRenameRequest(archived = archived),
                     )
                 }
             when (result) {
                 is NetworkResult.Success -> {
+                    val wasListed = _uiState.value.sessions.any { it.id == sessionId }
                     _uiState.update {
                         it.copy(
                             sessions = it.sessions.filterNot { s -> s.id == sessionId },
-                            total = (it.total - 1).coerceAtLeast(0),
+                            total = if (wasListed) (it.total - 1).coerceAtLeast(0) else it.total,
                             toastMessage =
-                                if (targetArchived) {
+                                if (archived) {
                                     UiText.res(R.string.sessions_msg_archived)
                                 } else {
                                     UiText.res(R.string.sessions_msg_unarchived)
                                 },
+                            toastUndo = SessionUndo.Archive(sessionId, archived = !archived).takeIf { offerUndo },
                         )
                     }
                     invalidateListCache()
+                    if (!wasListed) loadSessions(forceRefresh = true)
                 }
 
                 is NetworkResult.Failure -> {
                     _uiState.update {
-                        it.copy(toastMessage = UiText.res(R.string.sessions_msg_archive_failed, result.error.message))
+                        it.copy(
+                            toastMessage =
+                                UiText.failure(R.string.sessions_msg_archive_failed, result.error.toUiText()),
+                            toastUndo = null,
+                        )
                     }
                 }
             }
@@ -1066,7 +1119,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             deletingSessionIds = it.deletingSessionIds - sessionId,
-                            toastMessage = UiText.res(R.string.sessions_msg_delete_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.sessions_msg_delete_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -1129,7 +1182,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             isDeletingBulk = false,
-                            toastMessage = UiText.res(R.string.sessions_msg_delete_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.sessions_msg_delete_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -1199,7 +1252,7 @@ class SessionsViewModel(
                     _uiState.update {
                         it.copy(
                             isPruning = false,
-                            toastMessage = UiText.res(R.string.sessions_msg_prune_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.sessions_msg_prune_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -1262,12 +1315,12 @@ class SessionsViewModel(
 
                 else -> {
                     val message =
-                        (result as? NetworkResult.Failure)?.error?.message?.let { UiText.raw(it) }
+                        (result as? NetworkResult.Failure)?.error?.toUiText()
                             ?: UiText.res(R.string.error_unknown)
                     _uiState.update {
                         it.copy(
                             isCleaningEmpty = false,
-                            toastMessage = UiText.res(R.string.sessions_msg_cleanup_failed, message),
+                            toastMessage = UiText.failure(R.string.sessions_msg_cleanup_failed, message),
                         )
                     }
                 }
@@ -1278,7 +1331,7 @@ class SessionsViewModel(
     // ── Toast ────────────────────────────────────────────────────────────
 
     override fun clearToast() {
-        _uiState.update { it.copy(toastMessage = null) }
+        _uiState.update { it.copy(toastMessage = null, toastUndo = null) }
     }
 
     // ── Live Session Status Tracking (issue #1101) ───────────────────────

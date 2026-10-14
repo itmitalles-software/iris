@@ -35,13 +35,15 @@ import io.wutz.apollo.R
 import io.wutz.apollo.data.model.SkillScanFinding
 import io.wutz.apollo.data.model.SkillScanResponse
 import io.wutz.apollo.theme.LocalHermesStatusColors
+import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.asString
 import io.wutz.apollo.ui.skills.SkillScanPresentation
 
 @Composable
 fun SkillScanSection(
     scanResult: SkillScanResponse?,
     isScanning: Boolean,
-    scanError: String?,
+    scanError: UiText?,
     onScan: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -77,7 +79,7 @@ fun SkillScanSection(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Text(
-                        text = scanError,
+                        text = scanError.asString(),
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(12.dp),

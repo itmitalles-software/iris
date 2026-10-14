@@ -22,6 +22,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import io.wutz.apollo.util.StreamingUriRequestBody
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -170,7 +171,7 @@ class FilesViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.files_msg_list_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.files_msg_list_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -342,7 +343,7 @@ class FilesViewModel(
                     _uiState.update {
                         it.copy(
                             busyPaths = cleared,
-                            toastMessage = UiText.res(R.string.files_msg_delete_failed, result.error.message),
+                            toastMessage = UiText.failure(R.string.files_msg_delete_failed, result.error.toUiText()),
                         )
                     }
                 }
@@ -407,7 +408,7 @@ class FilesViewModel(
                     it.copy(
                         isLoading = false,
                         isUploading = false,
-                        toastMessage = UiText.res(errorMsg, result.error.message),
+                        toastMessage = UiText.failure(errorMsg, result.error.toUiText()),
                     )
                 }
             }

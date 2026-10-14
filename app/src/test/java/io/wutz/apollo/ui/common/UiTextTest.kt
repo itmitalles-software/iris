@@ -51,4 +51,12 @@ class UiTextTest {
         assertNotEquals(UiText.res(2, "a"), UiText.res(2, "b"))
         assertNotEquals(UiText.res(1), UiText.res(2))
     }
+
+    @Test
+    fun `failure reads like its text and keeps the failure marker for equality`() {
+        val failure = UiText.failure(2, "boom")
+        assertEquals(UiText.Failure(UiText.res(2, "boom")), failure)
+        assertNotEquals(UiText.res(2, "boom"), failure)
+        assertEquals("Failed: boom", failure.resolve(resources))
+    }
 }

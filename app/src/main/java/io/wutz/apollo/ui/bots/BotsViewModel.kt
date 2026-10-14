@@ -23,6 +23,7 @@ import io.wutz.apollo.data.ws.contract.RpcMethods
 import io.wutz.apollo.data.ws.toJsonElement
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -297,7 +298,7 @@ class BotsViewModel(
                     }
                 } else {
                     val err =
-                        (profilesResult as? NetworkResult.Failure)?.error?.message?.let(UiText::raw)
+                        (profilesResult as? NetworkResult.Failure)?.error?.toUiText()
                             ?: UiText.res(R.string.bots_msg_load_failed)
                     _uiState.update {
                         it.copy(
@@ -328,7 +329,7 @@ class BotsViewModel(
         val result = ProfileSwitchCoordinator.switchProfile(bot.name)
         if (result is NetworkResult.Failure) {
             _uiState.update {
-                it.copy(toastMessage = UiText.res(R.string.profiles_msg_switch_failed, result.error.message))
+                it.copy(toastMessage = UiText.failure(R.string.profiles_msg_switch_failed, result.error.toUiText()))
             }
         }
         return result is NetworkResult.Success
@@ -382,7 +383,7 @@ class BotsViewModel(
                 // The error state is only rendered for an empty list, so report this as a toast.
                 val err =
                     (result as? NetworkResult.Failure)
-                        ?.let { UiText.res(R.string.bots_msg_create_failed_reason, it.error.message) }
+                        ?.let { UiText.res(R.string.bots_msg_create_failed_reason, it.error.toUiText()) }
                         ?: UiText.res(R.string.bots_msg_create_failed)
                 _uiState.update { it.copy(toastMessage = err) }
             }
@@ -433,7 +434,7 @@ class BotsViewModel(
             } else {
                 val err =
                     (result as? NetworkResult.Failure)
-                        ?.let { UiText.res(R.string.bots_msg_delete_failed_reason, it.error.message) }
+                        ?.let { UiText.res(R.string.bots_msg_delete_failed_reason, it.error.toUiText()) }
                         ?: UiText.res(R.string.bots_msg_delete_failed)
                 _uiState.update { it.copy(toastMessage = err) }
             }

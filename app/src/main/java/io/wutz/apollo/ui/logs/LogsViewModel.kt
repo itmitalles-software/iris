@@ -10,6 +10,7 @@ import io.wutz.apollo.data.remote.safeApiCall
 import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,7 @@ class LogsViewModel :
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UiText.res(R.string.logs_msg_load_failed, errorMsg),
+                            errorMessage = UiText.res(R.string.logs_msg_load_failed, errorMsg.toUiText()),
                         )
                     }
                 },

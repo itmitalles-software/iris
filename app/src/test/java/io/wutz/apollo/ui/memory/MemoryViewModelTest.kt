@@ -135,8 +135,7 @@ class MemoryViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertNull(vm.uiState.value.memory)
-        val error = vm.uiState.value.errorMessage as UiText.Raw
-        assertTrue(error.text.isNotBlank())
+        assertEquals(UiText.res(R.string.network_error_http_server, 500), vm.uiState.value.errorMessage)
     }
 
     @Test
@@ -163,9 +162,9 @@ class MemoryViewModelTest {
         vm.resetMemory("memory")
         testDispatcher.scheduler.advanceUntilIdle()
 
-        val toast = vm.uiState.value.toastMessage as UiText.Resource
+        val toast = (vm.uiState.value.toastMessage as UiText.Failure).text as UiText.Resource
         assertEquals(R.string.memory_msg_reset_failed, toast.id)
-        assertTrue((toast.args.single() as String).isNotBlank())
+        assertTrue(toast.args.single() is UiText)
         assertNull(vm.uiState.value.resetting)
     }
 }

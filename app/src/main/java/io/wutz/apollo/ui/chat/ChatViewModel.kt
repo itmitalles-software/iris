@@ -86,6 +86,7 @@ import io.wutz.apollo.ui.chat.voice.toUiText
 import io.wutz.apollo.ui.common.ActionProgressController
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.resolve
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -3692,7 +3693,7 @@ class ChatViewModel(
                         _uiState.update {
                             it.copy(
                                 errorMessage =
-                                    UiText.res(R.string.chat_msg_voice_note_failed, result.error.message),
+                                    UiText.res(R.string.chat_msg_voice_note_failed, result.error.toUiText()),
                             )
                         }
                     }
@@ -4579,7 +4580,7 @@ class ChatViewModel(
 
                 is NetworkResult.Failure -> {
                     actionProgress.fail(
-                        localized(UiText.res(R.string.chat_msg_update_start_failed, result.error.message)),
+                        localized(UiText.res(R.string.chat_msg_update_start_failed, result.error.toUiText())),
                     )
                 }
             }
@@ -5466,7 +5467,7 @@ class ChatViewModel(
                                         errorMessage =
                                             UiText.res(
                                                 R.string.chat_msg_load_timeline_failed,
-                                                result.error.message,
+                                                result.error.toUiText(),
                                             ),
                                     )
                                 } else {
@@ -5576,7 +5577,7 @@ class ChatViewModel(
                                 if (valid()) {
                                     it.copy(
                                         windowErrorMessage =
-                                            UiText.res(R.string.chat_msg_load_message_failed, result.error.message),
+                                            UiText.res(R.string.chat_msg_load_message_failed, result.error.toUiText()),
                                     )
                                 } else {
                                     it
@@ -6584,7 +6585,7 @@ class ChatViewModel(
                                     errorMessage =
                                         UiText.res(
                                             R.string.chat_msg_load_older_failed,
-                                            result.error.message,
+                                            result.error.toUiText(),
                                         ),
                                 )
                             }

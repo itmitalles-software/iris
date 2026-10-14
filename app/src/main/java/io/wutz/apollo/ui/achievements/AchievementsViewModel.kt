@@ -13,6 +13,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.safeLaunchLoad
 import io.wutz.apollo.ui.common.safeLaunchSwrLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -131,7 +132,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.achievements_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.achievements_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -191,7 +192,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     it.copy(
                         isRescanning = false,
-                        toastMessage = UiText.res(R.string.achievements_msg_rescan_failed, errorMsg),
+                        toastMessage = UiText.failure(R.string.achievements_msg_rescan_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -218,7 +219,7 @@ class AchievementsViewModel :
                 _uiState.update {
                     it.copy(
                         isResetting = false,
-                        toastMessage = UiText.res(R.string.achievements_msg_reset_failed, errorMsg),
+                        toastMessage = UiText.failure(R.string.achievements_msg_reset_failed, errorMsg.toUiText()),
                     )
                 }
             },

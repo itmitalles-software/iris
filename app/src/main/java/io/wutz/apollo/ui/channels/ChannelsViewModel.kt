@@ -17,6 +17,7 @@ import io.wutz.apollo.ui.common.ToastHost
 import io.wutz.apollo.ui.common.UiText
 import io.wutz.apollo.ui.common.refreshOnChange
 import io.wutz.apollo.ui.common.safeLaunchLoad
+import io.wutz.apollo.ui.common.toUiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -114,7 +115,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = UiText.res(R.string.channels_msg_load_failed, errorMsg),
+                        errorMessage = UiText.res(R.string.channels_msg_load_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -173,7 +174,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         togglingId = null,
-                        toastMessage = UiText.res(R.string.channels_msg_toggle_failed, error),
+                        toastMessage = UiText.failure(R.string.channels_msg_toggle_failed, error.toUiText()),
                     )
                 }
             },
@@ -241,7 +242,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         removingId = null,
-                        toastMessage = UiText.res(R.string.channels_msg_disconnect_failed, error),
+                        toastMessage = UiText.failure(R.string.channels_msg_disconnect_failed, error.toUiText()),
                     )
                 }
             },
@@ -285,7 +286,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        toastMessage = UiText.res(R.string.channels_msg_configure_failed, errorMsg),
+                        toastMessage = UiText.failure(R.string.channels_msg_configure_failed, errorMsg.toUiText()),
                     )
                 }
             },
@@ -314,7 +315,10 @@ class ChannelsViewModel :
             },
             onError = { error ->
                 _uiState.update {
-                    it.copy(testingId = null, toastMessage = UiText.res(R.string.channels_msg_test_failed, error))
+                    it.copy(
+                        testingId = null,
+                        toastMessage = UiText.failure(R.string.channels_msg_test_failed, error.toUiText()),
+                    )
                 }
             },
         )
@@ -342,7 +346,7 @@ class ChannelsViewModel :
                 _uiState.update {
                     it.copy(
                         isRestarting = false,
-                        toastMessage = UiText.res(R.string.channels_msg_restart_failed, error),
+                        toastMessage = UiText.failure(R.string.channels_msg_restart_failed, error.toUiText()),
                     )
                 }
             },
@@ -399,7 +403,7 @@ class ChannelsViewModel :
                         is io.wutz.apollo.data.remote.NetworkResult.Failure -> {
                             it.copy(
                                 onboardingPhase = OnboardingPhase.IDLE,
-                                onboardingError = UiText.raw(result.error.message),
+                                onboardingError = result.error.toUiText(),
                             )
                         }
                     }
@@ -569,7 +573,7 @@ class ChannelsViewModel :
                     _uiState.update {
                         it.copy(
                             onboardingPhase = OnboardingPhase.READY,
-                            onboardingError = UiText.raw(result.error.message),
+                            onboardingError = result.error.toUiText(),
                         )
                     }
                 }
