@@ -109,6 +109,9 @@ _Last updated: 2026-10-14_
   phone still open (#4).
 - `HermesWsClientTest.testOpenRequestsReplayUsesTheLiveServerRequestDispatcher`
   timed out once under heavy load (passed 3/3 alone).
+- v0.1.4 released (owner review `~/reviews/apollo-0.1.4-2026-10-14/`,
+  confirmed): release commit fb84db64, APK versionCode 104, signer SHA-256
+  f6ff6e51…80fb3e verified on the downloaded asset.
 
 ## 2026-10-14: purple illustrations, trippier emblem, website
 
