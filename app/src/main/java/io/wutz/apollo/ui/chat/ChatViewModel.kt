@@ -5133,8 +5133,9 @@ class ChatViewModel(
         subagentsDelegate.hydrateSubagents(sessionId ?: runtimeSessionId ?: _uiState.value.currentSessionId)
     }
 
-    fun refreshBackgroundProcesses() {
-        processesDelegate.refresh()
+    /** Adaptive `process.list` polling while the chat is visible; returns only when cancelled. */
+    suspend fun pollBackgroundProcesses() {
+        processesDelegate.pollWhileVisible()
     }
 
     fun killBackgroundProcess(processId: String) {

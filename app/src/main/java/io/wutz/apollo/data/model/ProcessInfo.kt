@@ -4,8 +4,8 @@ package io.wutz.apollo.data.model
  * A single background process owned by a session, as returned by the gateway
  * `process.list` RPC.
  *
- * Field names match the gateway JSON exactly (Gson deserializes by name,
- * snake_case). See `tui_gateway/server.py::_session_processes` and
+ * Field names follow the gateway JSON (snake_case keys, parsed by hand in
+ * [fromMap]). See `tui_gateway/server.py::_session_processes` and
  * `tools/process_registry.list_sessions` for the canonical shape.
  *
  * @property sessionId Stable process id used by `process.kill` as `process_id`.

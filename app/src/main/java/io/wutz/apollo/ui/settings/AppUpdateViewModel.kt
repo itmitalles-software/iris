@@ -38,7 +38,7 @@ import java.util.UUID
  */
 class AppUpdateViewModel(
     application: Application,
-    private val checker: AppUpdateChecker = AppUpdateChecker(),
+    private val checker: AppUpdateChecker = AppUpdateChecker.withReleaseCache(),
     private val currentVersion: String = BuildConfig.VERSION_NAME,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val installIntentFactory: (Uri) -> Intent = ::buildInstallIntent,

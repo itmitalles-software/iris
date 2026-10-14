@@ -56,7 +56,7 @@ object UpdateNoticeManager {
 
     /** Run after preferences are ready; failed checks never suppress the next foreground retry. */
     fun checkOnLaunch(
-        checker: AppUpdateChecker = AppUpdateChecker(),
+        checker: AppUpdateChecker = AppUpdateChecker.withReleaseCache(),
         currentVersion: String = BuildConfig.VERSION_NAME,
         ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         now: Long = System.currentTimeMillis(),

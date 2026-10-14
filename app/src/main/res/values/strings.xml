@@ -3024,6 +3024,7 @@
     <string name="system_msg_backup_still_creating">Backup is still being created — try again in a moment</string>
     <string name="system_msg_import_started">Import started</string>
     <string name="system_msg_import_failed">Import failed: %1$s</string>
+    <string name="system_msg_action_status_lost">Stopped following the action: %1$s</string>
     <string name="system_msg_debug_share_created">Debug share created</string>
     <string name="system_msg_debug_share_failed">Debug share failed: %1$s</string>
     <string name="system_msg_hook_command_required">Command is required</string>
