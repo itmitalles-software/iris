@@ -12,9 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Extracted behaviour-preservingly from [ChatViewModel].
  */
 internal class ChatRequestTracker(
-    private val sessionGeneration: () -> Long,
-    private val currentSessionId: () -> String?,
-    private val sendScope: () -> String,
+    private val sessionContext: ChatSessionContext,
     private val activeResumeSequence: () -> Long,
 ) {
     data class SessionRequest(
@@ -105,13 +103,11 @@ internal class ChatRequestTracker(
     fun isCurrentSessionRequest(
         sessionId: String,
         generation: Long,
-    ): Boolean = generation == sessionGeneration() && sessionId == currentSessionId()
+    ): Boolean = sessionContext.isCurrentRequest(sessionId, generation)
 
     fun isStale(id: String): Boolean = sessionRequestById[id]?.let(::isStale) == true
 
     fun isStale(request: SessionRequest): Boolean =
-        request.generation != sessionGeneration() ||
-            (request.receiptScope != null && request.receiptScope != sendScope()) ||
-            (request.sessionId != null && request.sessionId != currentSessionId()) ||
+        !sessionContext.isCurrentRequest(request.sessionId, request.generation, request.receiptScope) ||
             (request.resumeSequence != 0L && request.resumeSequence != activeResumeSequence())
 }

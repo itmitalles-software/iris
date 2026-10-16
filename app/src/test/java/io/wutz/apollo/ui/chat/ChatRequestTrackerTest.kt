@@ -9,16 +9,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatRequestTrackerTest {
-    private var generation = 1L
     private var sessionId: String? = "session-a"
     private var scope = "scope-a"
     private var resumeSequence = 0L
+    private val sessionContext = ChatSessionContext({ sessionId }, { scope }).apply { invalidate() }
 
     private val tracker =
         ChatRequestTracker(
-            sessionGeneration = { generation },
-            currentSessionId = { sessionId },
-            sendScope = { scope },
+            sessionContext = sessionContext,
             activeResumeSequence = { resumeSequence },
         )
 
@@ -63,10 +61,6 @@ class ChatRequestTrackerTest {
         resumeSequence = 4L
         assertFalse(tracker.isStale("req-3"))
 
-        generation = 2L
-        assertTrue(tracker.isStale("req-3"))
-        generation = 1L
-
         sessionId = "session-b"
         assertTrue(tracker.isStale("req-3"))
         sessionId = "session-a"
@@ -77,6 +71,10 @@ class ChatRequestTrackerTest {
 
         resumeSequence = 5L
         assertTrue(tracker.isStale("req-3"))
+        resumeSequence = 4L
+
+        sessionContext.invalidate()
+        assertTrue(tracker.isStale("req-3"))
     }
 
     @Test
@@ -84,7 +82,7 @@ class ChatRequestTrackerTest {
         tracker.trackSession("create-1", WsMethods.SESSION_CREATE, generation = 1L)
         assertTrue(tracker.hasLiveSessionCreate())
 
-        generation = 2L
+        sessionContext.invalidate()
         assertFalse(tracker.hasLiveSessionCreate())
 
         tracker.trackSession("create-2", WsMethods.SESSION_CREATE, generation = 2L)

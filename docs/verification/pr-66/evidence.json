@@ -1,0 +1,109 @@
+{
+  "code_commit": "7405d23059544e7185b0b3815c5a93282c75fa55",
+  "captured_at": "2026-10-16T21:11:06Z",
+  "tracked_runtime_input_git_objects": {
+    "app": "b978840704dc4bd2645d1b6904fb7bbdd518aba0",
+    "gradle": "2f18c4bb50fa759294b06241fb6a71bd96eedb68",
+    "gradle.properties": "76cd1e6a00b10a6cbad2621f9dfbd81c044b1185",
+    "build.gradle.kts": "8d88dee5b0eb1a99adb5af85e8381a3736f93742",
+    "settings.gradle.kts": "1b7b8bdf186044d8ecb66862311210e76f77a21b",
+    "gradlew": "249efbb032ce46a80c687c0723eb172e85f6a136",
+    "gradlew.bat": "03754c4c3d9206f5c9ef69e41990dfe26a05251e",
+    ".github/scripts/check_pr_template.py": "cd5f371c55bea860027a529239014cbbff3acb84"
+  },
+  "build": {
+    "tasks": [
+      "assembleDebug",
+      "assembleDebugAndroidTest"
+    ],
+    "exit": 0,
+    "duration_seconds": 47,
+    "generated_git_sha": "7405d23",
+    "jdk": "Temurin 21",
+    "gradle_workers": 2,
+    "kotlin_compiler_execution_strategy": "in-process",
+    "binaries": {
+      "app/build/outputs/apk/debug/app-debug.apk": {
+        "sha256": "239de92714716170abcd9787c6f560474918d40e107922fb19010d70f0bc13b7",
+        "bytes": 42150371
+      },
+      "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk": {
+        "sha256": "dd946ccb8e7c59f89d3193ee4defeac9dba64fe79d9fadc67222b6f31be1ece8",
+        "bytes": 9414557
+      }
+    }
+  },
+  "device": {
+    "api": 37,
+    "android": "17",
+    "system_image": "system-images;android-37.0;google_apis;x86_64",
+    "image_revision": 6,
+    "fresh_userdata": true,
+    "display_pixels": [
+      720,
+      1280
+    ],
+    "density_dpi": 320,
+    "cpu_cores": 2,
+    "ram_mb": 2048,
+    "renderer": "swiftshader",
+    "wifi_enabled": false,
+    "mobile_data_enabled": false
+  },
+  "instrumentation": {
+    "class": "io.wutz.apollo.ui.chat.ChatScreenTest",
+    "methods": [
+      "chatScreen_renders_and_acceptsInput",
+      "chatScreen_sendButtonShownForAttachmentWithEmptyInput"
+    ],
+    "passed": 2,
+    "failures": 0,
+    "process_exit": 0,
+    "junit_duration_seconds": 8.524,
+    "fixture": "Existing unchanged instrumented test, mocked ChatViewModel and synthetic state; no live Hermes or real session ownership execution."
+  },
+  "prior_gate_reused": {
+    "exit": 0,
+    "tests": 3901,
+    "suites": 375,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "tasks": [
+      "ktlintCheck",
+      "checkColorLiterals",
+      "checkGermanStrings",
+      "testDebugUnitTest",
+      "lintDebug",
+      "assembleDebug",
+      "compileDebugAndroidTestKotlin",
+      "compileReleaseKotlin",
+      "checkPlayPermissions"
+    ]
+  },
+  "capture": {
+    "source": "adb shell screenrecord",
+    "recording_seconds": 9.873978,
+    "screenshot": "Full 720x1280 video frame decoded without cropping or alteration; frame 2 from ffmpeg -ss 5 -vf fps=2."
+  },
+  "media": {
+    "chat-input.png": {
+      "sha256": "12afdf69b87214d3fda2400c67e3ea2e28262ea90de4bb8b4835be91dfe2be12",
+      "bytes": 58646
+    },
+    "chat-screen-recording.mp4": {
+      "sha256": "7539714a57a2021bc672a0e3e72731348707aeb59dc1adfb73d50f234f804232",
+      "bytes": 621504
+    }
+  },
+  "limits": [
+    "No comparable before capture is available.",
+    "The isolated Compose test uses default Material styling; it is not an Apollo theme or branding review.",
+    "No live server, real session ownership runtime, voice interaction, language/theme matrix or physical-device check was performed.",
+    "The follow-up commit adds evidence only. APK BuildConfig.GIT_SHA stays 7405d23; tracked app, build inputs and checker must remain identical."
+  ],
+  "cleanup": {
+    "owned_emulator_stopped": true,
+    "private_adb_server_stopped": true
+  }
+}

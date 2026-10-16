@@ -78,6 +78,7 @@ import io.wutz.apollo.notification.correlationScopeId
 import io.wutz.apollo.share.SharedContent
 import io.wutz.apollo.ui.chat.ChatRequestTracker.PendingBranchRequest
 import io.wutz.apollo.ui.chat.ChatRequestTracker.SessionRequest
+import io.wutz.apollo.ui.chat.ChatSessionContext.SendOwner
 import io.wutz.apollo.ui.chat.fullbleed.TranscriptUiState
 import io.wutz.apollo.ui.chat.tool.ToolText
 import io.wutz.apollo.ui.chat.tool.ToolViewCache
@@ -541,6 +542,7 @@ class ChatViewModel(
 
     // ── Internal state ───────────────────────────────────────────────────
     private val _uiState = MutableStateFlow(ChatUiState())
+    private val sessionContext = ChatSessionContext({ _uiState.value.currentSessionId }, ::sendScope)
     private val transcriptWriter: ChatLocalTranscriptWriter =
         ChatLocalTranscriptWriter(
             scope = viewModelScope,
@@ -568,18 +570,9 @@ class ChatViewModel(
     /** Maps an in-flight RPC id to its method for UI error labeling. */
     private val requestTracker =
         ChatRequestTracker(
-            sessionGeneration = { sessionGeneration },
-            currentSessionId = { _uiState.value.currentSessionId },
-            sendScope = { sendScope() },
+            sessionContext = sessionContext,
             activeResumeSequence = { activeResumeRequestSequence },
         )
-
-    private data class SendOwner(
-        val scope: String,
-        val storageSessionId: String,
-        val agentSessionId: String,
-        val generation: Long,
-    )
 
     private data class HardInterruptRequest(
         val messageId: String,
@@ -618,7 +611,8 @@ class ChatViewModel(
     private var lastMainCompletionAt = 0L
     private var lastSubmissionKey: String? = null
     private var lastSubmissionAt = 0L
-    private var sessionGeneration = 0L
+    private val sessionGeneration: Long
+        get() = sessionContext.generation
     private var mainTurnEpoch = 0L
     private var lastPendingSendCreatedAt = 0L
 
@@ -629,8 +623,11 @@ class ChatViewModel(
     private var resumedGeneration = -1L
     private var hydratedGeneration = -1L
 
-    /** Runtime TUI session returned by session.resume; Desktop storage keeps the original ID. */
-    private var runtimeSessionId: String? = null
+    private var runtimeSessionId: String?
+        get() = sessionContext.runtimeSessionId
+        set(value) {
+            sessionContext.runtimeSessionId = value
+        }
 
     /** Issue #969: Prompt staged before session.create resolves. */
     private data class PendingPrompt(
@@ -915,7 +912,7 @@ class ChatViewModel(
             uiState = _uiState,
             scope = viewModelScope,
             ioDispatcher = ioDispatcher,
-            runtimeSessionId = { runtimeSessionId ?: _uiState.value.currentSessionId },
+            runtimeSessionId = { sessionContext.effectiveSessionId },
         )
 
     private val processesDelegate =
@@ -923,7 +920,7 @@ class ChatViewModel(
             uiState = _uiState,
             scope = viewModelScope,
             ioDispatcher = ioDispatcher,
-            runtimeSessionId = { runtimeSessionId ?: _uiState.value.currentSessionId },
+            runtimeSessionId = { sessionContext.effectiveSessionId },
         )
 
     private val streamingController =
@@ -1046,7 +1043,7 @@ class ChatViewModel(
                     activeResumeRequestSequence = ++resumeRequestSequence
                     activeHydrationRequestSequence = ++hydrationRequestSequence
                     // Preserve metadata so late results and errors are rejected as stale.
-                    sessionGeneration++
+                    sessionContext.invalidate()
                     queueDrainJob?.cancel()
                     queueDrainJob = null
                     // #129: invalidate and cancel paged work together, including its busy flags.
@@ -1265,7 +1262,7 @@ class ChatViewModel(
         // Reduce inside update{} so a concurrent off-main write (e.g. attachHostMedia on IO)
         // is retried against instead of being overwritten by a result computed from a stale
         // snapshot. The reducer is pure; only the result of the winning attempt is used.
-        val reducerSessionId = runtimeSessionId ?: _uiState.value.currentSessionId
+        val reducerSessionId = sessionContext.effectiveSessionId
         val streamingSnapshot = _streamingState.value
         var reduced: ReducerResult? = null
         _uiState.update { current ->
@@ -1299,7 +1296,7 @@ class ChatViewModel(
             }
 
             is WsEvent.SessionInfo -> {
-                val current = runtimeSessionId ?: _uiState.value.currentSessionId
+                val current = sessionContext.effectiveSessionId
                 // Ignore session.info events clearly tagged for a different session
                 if (event.sessionId == null || current == null || event.sessionId == current) {
                     handleSessionInfo(event.data)
@@ -1387,7 +1384,7 @@ class ChatViewModel(
             }
 
             is WsEvent.TranscriptResyncRequired -> {
-                val current = runtimeSessionId ?: _uiState.value.currentSessionId
+                val current = sessionContext.effectiveSessionId
                 if (current != null && (current == event.sessionId || event.sessionId.isEmpty())) {
                     val storageId = ActiveSessionHolder.resolveStoredSessionId(current) ?: current
                     loadSessionMessages(storageId, sessionGeneration)
@@ -1684,11 +1681,7 @@ class ChatViewModel(
     }
 
     /** Checks if an incoming WS event belongs to the currently active session. */
-    private fun isCurrentSession(eventSessionId: String?): Boolean {
-        // If the event has no session ID, process it (legacy compatibility)
-        if (eventSessionId == null) return true
-        return eventSessionId == runtimeSessionId || eventSessionId == _uiState.value.currentSessionId
-    }
+    private fun isCurrentSession(eventSessionId: String?): Boolean = sessionContext.isCurrentEvent(eventSessionId)
 
     private fun dispatchReducerEffects(effects: List<ReducerEffect>) {
         for (effect in effects) {
@@ -1741,7 +1734,7 @@ class ChatViewModel(
             ConnectionOperationParser
                 .parse(
                     pendingConnection,
-                    runtimeSessionId ?: _uiState.value.currentSessionId,
+                    sessionContext.effectiveSessionId,
                 )?.let(connectionOperationDelegate::acceptRequest)
         }
         // Session info pushed by backend when config changes
@@ -1828,7 +1821,7 @@ class ChatViewModel(
             if (pendingApproval != null) {
                 approvalsDelegate.maybeSurfacePendingApproval(
                     pendingApproval,
-                    runtimeSessionId ?: _uiState.value.currentSessionId,
+                    sessionContext.effectiveSessionId,
                 )
             }
             // Session.info can carry "pending_clarify" the same way — restore
@@ -1838,7 +1831,7 @@ class ChatViewModel(
             if (pendingClarify != null) {
                 surfacePendingClarify(
                     pendingClarify,
-                    runtimeSessionId ?: _uiState.value.currentSessionId,
+                    sessionContext.effectiveSessionId,
                 )
             }
         }
@@ -2659,26 +2652,16 @@ class ChatViewModel(
         storageSessionId: String,
         agentSessionId: String,
         generation: Long,
-    ): Boolean =
-        generation == sessionGeneration &&
-            scope == sendScope() &&
-            storageSessionId == _uiState.value.currentSessionId &&
-            agentSessionId == runtimeSessionId
+    ): Boolean = sessionContext.isCurrentSend(scope, storageSessionId, agentSessionId, generation)
 
-    private fun isCurrentSendContext(owner: SendOwner): Boolean =
-        isCurrentSendContext(
-            owner.scope,
-            owner.storageSessionId,
-            owner.agentSessionId,
-            owner.generation,
-        )
+    private fun isCurrentSendContext(owner: SendOwner): Boolean = sessionContext.isCurrentSend(owner)
 
     private fun captureSendOwner(
         storageSessionId: String,
         agentSessionId: String,
         scope: String = sendScope(),
         generation: Long = sessionGeneration,
-    ): SendOwner = SendOwner(scope, storageSessionId, agentSessionId, generation)
+    ): SendOwner = sessionContext.captureSendOwner(storageSessionId, agentSessionId, scope, generation)
 
     /** Context invalidation and synchronous WS enqueue are serialized on Main. */
     private suspend fun <T> withCurrentSendOwner(
@@ -4576,7 +4559,7 @@ class ChatViewModel(
     }
 
     fun hydrateSubagents(sessionId: String? = null) {
-        subagentsDelegate.hydrateSubagents(sessionId ?: runtimeSessionId ?: _uiState.value.currentSessionId)
+        subagentsDelegate.hydrateSubagents(sessionId ?: sessionContext.effectiveSessionId)
     }
 
     /** Adaptive `process.list` polling while the chat is visible; returns only when cancelled. */
@@ -5318,7 +5301,7 @@ class ChatViewModel(
         title: String,
         isLoading: Boolean,
     ): Long {
-        val generation = ++sessionGeneration
+        val generation = sessionContext.invalidate()
         noticesDelegate.reset()
         // A slow drain belongs to the old session and must not block the resumed queue.
         queueDrainJob?.cancel()
@@ -5559,7 +5542,7 @@ class ChatViewModel(
         hydratedGeneration = -1L
         activeResumeRequestSequence = ++resumeRequestSequence
         // Late results/errors tied to the reclaimed runtime are rejected as stale.
-        sessionGeneration++
+        sessionContext.invalidate()
         queueDrainJob?.cancel()
         queueDrainJob = null
         cancelResumeRetry()
@@ -6000,7 +5983,7 @@ class ChatViewModel(
      * visible in the transcript.
      */
     fun dismissClarify() {
-        val sessionId = runtimeSessionId ?: _uiState.value.currentSessionId ?: return
+        val sessionId = sessionContext.effectiveSessionId ?: return
         val clarify = _uiState.value.clarifyRequest
         val clarifyId = clarify?.clarifyId
         val serverRequestId = clarify?.serverRequestId

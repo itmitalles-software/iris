@@ -186,6 +186,17 @@ approvals, clarify, credential prompts, model switch, streaming, search, media,
 subagents and processes. Keep the VM's public API as thin forwarders and add new
 features as delegates rather than growing the VM.
 
+`ChatSessionContext` owns the generation and runtime session ID used by those
+delegates. It reads the stored conversation ID and server/profile scope from
+their existing owners. Its separate guards preserve three different rules:
+events accept stored/runtime aliases and legacy unscoped events; history/RPC
+results match the stored ID and generation (plus receipt scope when present);
+sends require an exact stored ID, runtime ID, scope and generation. The request
+tracker adds request-ID bookkeeping and resume-attempt sequencing to that
+shared context. Session cleanup, job cancellation and their ordering stay in
+the ViewModel; history paging and send-pipeline extraction remain follow-ups
+under #31, within the larger #65 refactoring pass.
+
 ### Voice conversation
 
 The hands-free voice mode (`ui/chat/voice/`) is owned by `ChatViewModel`.
