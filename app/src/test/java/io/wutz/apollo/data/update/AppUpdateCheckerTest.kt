@@ -150,7 +150,37 @@ class AppUpdateCheckerTest {
     }
 
     @Test
-    fun parseUpdateInfo_apolloReleaseLayout_picksApkOverChecksumsAndKeepsChangelogBody() {
+    fun parseUpdateInfo_irisReleaseLayout_picksApkOverChecksumsAndKeepsChangelogBody() {
+        // release.yml publishes SHA256SUMS next to the APK and uses the CHANGELOG
+        // section as the body; the updater must still offer the APK.
+        val json =
+            """
+            {
+              "tag_name": "v0.3.0",
+              "body": "### Fixed\n\n- Chat: replies are saved in order.",
+              "assets": [
+                {
+                  "name": "SHA256SUMS",
+                  "size": 85,
+                  "browser_download_url": "https://github.com/itmitalles-software/iris/releases/download/v0.3.0/SHA256SUMS"
+                },
+                {
+                  "name": "iris-v0.3.0.apk",
+                  "size": 14000000,
+                  "browser_download_url": "https://github.com/itmitalles-software/iris/releases/download/v0.3.0/iris-v0.3.0.apk"
+                }
+              ]
+            }
+            """.trimIndent()
+
+        val info = parseUpdateInfo(json)
+        assertNotNull(info)
+        assertEquals("iris-v0.3.0.apk", info!!.apkAsset?.name)
+        assertEquals("### Fixed\n\n- Chat: replies are saved in order.", info.body)
+    }
+
+    @Test
+    fun parseUpdateInfo_legacyApolloReleaseLayout_picksApkOverChecksumsAndKeepsChangelogBody() {
         // release.yml publishes SHA256SUMS next to the APK and uses the CHANGELOG
         // section as the body; the updater must still offer the APK.
         val json =

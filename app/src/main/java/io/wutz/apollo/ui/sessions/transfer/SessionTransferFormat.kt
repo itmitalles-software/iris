@@ -194,7 +194,7 @@ object SessionTransferFormat {
                 ?.take(60)
                 ?.takeIf { it.isNotEmpty() }
                 ?: sessionId.replace(Regex("[^A-Za-z0-9._-]+"), "-").take(60)
-        return "apollo-$base.json"
+        return "iris-$base.json"
     }
 
     private fun failure(error: ImportPayloadError): Result<JsonArray> = Result.failure(ImportPayloadException(error))

@@ -63,7 +63,7 @@ class GatewayFileClientTest {
                     .toFile()
             try {
                 val result =
-                    GatewayFileClient.fetch("/tmp/apollo-missing-${System.nanoTime()}.bin", unreachable, "", cacheDir)
+                    GatewayFileClient.fetch("/tmp/iris-missing-${System.nanoTime()}.bin", unreachable, "", cacheDir)
                 assertTrue(result is GatewayFileResult.Failure)
             } finally {
                 cacheDir.deleteRecursively()

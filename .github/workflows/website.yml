@@ -1,8 +1,8 @@
 name: Website
 
-# Publishes website/ (static, no build step) to GitHub Pages at apollo.wutz.io.
+# Publishes website/ (static, no build step) to GitHub Pages at iris.wutz.io.
 # Manual only until the owner decides to take the site live (2026-10-14); then
-# enable Pages (build type "workflow"), add the apollo CNAME in Cloudflare and
+# enable Pages (build type "workflow"), add the iris CNAME in Cloudflare and
 # add a push trigger for website/** on main.
 
 on:

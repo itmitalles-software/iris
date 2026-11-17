@@ -1,8 +1,34 @@
 # Changelog
 
-All notable Apollo changes. Apollo follows Semantic Versioning. Since
-2026-10-13 Apollo no longer merges Hermes Mobile changes (see
-[ORIGIN.md](ORIGIN.md)); fixes ported by hand are listed like any other change.
+All notable Iris changes (called Apollo before 2026-10-17). Iris follows
+Semantic Versioning. Since 2026-10-13 Iris no longer merges Hermes Mobile
+changes (see [ORIGIN.md](ORIGIN.md)); fixes ported by hand are listed like any
+other change. The entries below keep the names used at the time.
+
+## Unreleased
+
+### Changed
+
+- Apollo is now **Iris**: new app name and launcher label, brand line "IRIS —
+  For Hermes Agent — by wutz.io", renamed in-app texts (English and German),
+  About and licence screens, notification channel names, launcher shortcuts,
+  Play/F-Droid store texts and the wordmark. The developer stays wutz.io.
+- The GitHub repository is now `itmitalles-software/iris` (was
+  `wutz-io/apollo-hermes-android`; GitHub redirects the old address). The About
+  screen, the in-app update checker and all documentation use the new address.
+- Release APKs are named `iris-<tag>.apk` (was `apollo-<tag>.apk`); the release
+  title is "Iris <tag> — by wutz.io". The update checker accepts both asset
+  names, so installed Apollo builds update to Iris through the same
+  application ID (`io.wutz.apollo`) and signing key.
+- The website moves to `iris.wutz.io` (was `apollo.wutz.io`) and links the
+  imprint and privacy policy at itmitalles.de; its privacy section now states
+  what the app does and does not do with your data.
+- The server setup script is now `scripts/server/setup-hermes-for-iris.sh`. It
+  keeps using an existing `~/.config/apollo` directory and otherwise defaults to
+  `~/.config/iris`.
+- Kept for compatibility: the package and application ID `io.wutz.apollo`, the
+  `ThemePreset.APOLLO` setting value, stored preference and database names, and
+  notification channel IDs, so settings, drafts and installs carry over.
 
 ## 0.2.0 — 2026-10-14
 

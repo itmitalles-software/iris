@@ -1,8 +1,8 @@
-# Contributing to Apollo
+# Contributing to Iris
 
-Thank you for your interest in contributing to Apollo! To maintain high code quality and consistency, we ask all contributors to follow the workflow and guidelines outlined below.
+Thank you for your interest in contributing to Iris! To maintain high code quality and consistency, we ask all contributors to follow the workflow and guidelines outlined below.
 
-> Apollo started as a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile)
+> Iris started as a fork of [Hermes Mobile](https://github.com/Hy4ri/hermes-mobile)
 > and is developed independently; it does not merge upstream changes
 > (see [ORIGIN.md](ORIGIN.md)).
 > Every new user-visible string needs English and German text.
@@ -14,9 +14,9 @@ Thank you for your interest in contributing to Apollo! To maintain high code qua
 A quick duplicate check saves your time and keeps the PR queue clean:
 
 ```bash
-gh search prs --repo wutz-io/apollo-hermes-android --state open "<your feature>"
-gh search prs --repo wutz-io/apollo-hermes-android --state closed "<your feature>"
-gh search issues --repo wutz-io/apollo-hermes-android --state open "<your feature>"
+gh search prs --repo itmitalles-software/iris --state open "<your feature>"
+gh search prs --repo itmitalles-software/iris --state closed "<your feature>"
+gh search issues --repo itmitalles-software/iris --state open "<your feature>"
 ```
 
 If an open PR already covers it, review or improve that one instead of opening a competing duplicate. For larger work, comment on the issue to signal you're on it.

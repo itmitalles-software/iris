@@ -12,7 +12,7 @@ import android.util.Log
  * be valid (AOSP VoiceInteractionServiceInfo parse error otherwise), but v1
  * has no speech input — long-press Home just opens the app.
  *
- * While Apollo is the assistant app the system also uses this service as the
+ * While Iris is the assistant app the system also uses this service as the
  * default speech recognizer, so other apps call it. Every request is refused
  * at once with an error; a silent stub would leave those apps waiting forever.
  */

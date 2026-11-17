@@ -6,7 +6,7 @@ import io.wutz.apollo.ui.common.UiText
 
 /**
  * Describes a five-field cron expression in words. Returns [UiText] so the description is rendered in the
- * current locale (Apollo, issue #10); anything it cannot describe comes back unchanged as [UiText.Raw].
+ * current locale (Iris, issue #10); anything it cannot describe comes back unchanged as [UiText.Raw].
  */
 object CronExpressionFormatter {
     private val dowNames =

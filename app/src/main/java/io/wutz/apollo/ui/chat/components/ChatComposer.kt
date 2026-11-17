@@ -420,7 +420,7 @@ fun ChatInputBar(
                                         .onFocusChanged { focusState ->
                                             inputFocused = focusState.isFocused
                                         }.onPreviewKeyEvent { event ->
-                                            // Apollo: Ctrl+Enter sends from a hardware keyboard.
+                                            // Iris: Ctrl+Enter sends from a hardware keyboard.
                                             if (!event.isComposerSendShortcut()) return@onPreviewKeyEvent false
                                             if (canSend) onSend()
                                             true

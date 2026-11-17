@@ -1,11 +1,11 @@
 # Connection and authentication reference
 
-Detailed reference for Apollo's connection options. For the recommended
+Detailed reference for Iris's connection options. For the recommended
 Tailscale setup see the [README](../README.md#connect-over-tailscale-recommended).
 
 ## Authentication modes
 
-Apollo reads `GET /api/status` from your server, detects which kind of login
+Iris reads `GET /api/status` from your server, detects which kind of login
 it needs, and shows only those fields.
 
 > **Security:** Keep Hermes bound to `127.0.0.1` and reach it through
@@ -23,7 +23,7 @@ For a manual setup, set these Hermes options (environment variables or the
 
 ```yaml
 dashboard:
-  public_url: https://<machine>.<tailnet>.ts.net   # the exact address you enter in Apollo
+  public_url: https://<machine>.<tailnet>.ts.net   # the exact address you enter in Iris
   basic_auth:
     username: <your user name>
     password_hash: scrypt$16384$8$1$<salt>$<key>    # never store a plaintext password
@@ -37,24 +37,24 @@ session token and no password.
 ### 2. Connect the app
 
 Tap **Sign in** on the landing screen and enter the server address (for
-example `https://<machine>.<tailnet>.ts.net`). Apollo probes the server and
+example `https://<machine>.<tailnet>.ts.net`). Iris probes the server and
 shows the fields it needs:
 
 **Username and password** (login gate on; the recommended setup)
 
 - Enter the username and password you chose for the Hermes login.
-- Apollo logs in, stores the session cookie in encrypted storage, and requests
+- Iris logs in, stores the session cookie in encrypted storage, and requests
   WebSocket tickets automatically.
 
 **Browser sign-in** (login gate on, OAuth provider such as Nous Portal)
 
-- Apollo opens the system browser for the provider's sign-in and receives the
+- Iris opens the system browser for the provider's sign-in and receives the
   result through Hermes' native loopback flow (PKCE).
 
 **Token** (no login gate; only for a loopback address, for example an emulator
 through `adb reverse`)
 
-- Apollo reads the session token from the page Hermes serves at `/` and fills
+- Iris reads the session token from the page Hermes serves at `/` and fills
   it in for you. If it cannot read it, enter the token yourself.
 - The token changes when Hermes restarts; sign in again after a restart.
 
@@ -63,10 +63,10 @@ through `adb reverse`)
 - **401 after a correct password:** the login gate is off, so Hermes ignores
   the password and expects its local session token. This happens when
   `public_url` is missing or points to a loopback address. Set `public_url` to
-  the exact HTTPS address you use in Apollo and restart Hermes.
+  the exact HTTPS address you use in Iris and restart Hermes.
 - **400 `Invalid Host header`:** Hermes' DNS-rebinding guard rejects the host
   name of the proxied request. Set `public_url` to the HTTPS origin (scheme,
-  host and port exactly as entered in Apollo).
+  host and port exactly as entered in Iris).
 - **Certificate prompt or TLS alert on login:** the server or a proxy in front
   of it asks for a client certificate. See
   [mTLS client certificates](#manual-https-client-certificates-mtls) below.

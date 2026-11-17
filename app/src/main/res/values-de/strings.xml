@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Apollo</string>
+    <string name="app_name">Iris</string>
 
     <!-- Chat -->
     <string name="chat_send_desc">Senden</string>
@@ -199,7 +199,7 @@
     <string name="notif_clarification_needed">Hermes braucht eine Klärung</string>
     <string name="notif_input_needed">Hermes braucht deine Eingabe</string>
     <string name="notif_reply_placeholder">Antwort eingeben…</string>
-    <string name="notif_channel_service_name">Apollo-Hintergrundverbindung</string>
+    <string name="notif_channel_service_name">Iris-Hintergrundverbindung</string>
     <string name="notif_channel_service_desc">Hält die Verbindung im Hintergrund aufrecht</string>
     <string name="notif_channel_chat_name">Hermes-Chat-Antworten</string>
     <string name="notif_channel_chat_desc">Benachrichtigungen über neue Antworten von Hermes</string>
@@ -1438,7 +1438,7 @@
     <string name="auth_login_error_unreachable">Dashboard nicht erreichbar — prüfe IP und Port</string>
     <string name="auth_login_action_browser">Mit %1$s anmelden</string>
     <string name="auth_login_browser_desc">Dieses Dashboard meldet sich mit %1$s an. Für die Anmeldung öffnet sich ein Browser-Tab, danach geht es hier weiter.</string>
-    <string name="auth_login_browser_waiting">Schließe die Anmeldung im Browser ab und kehre dann zu Apollo zurück…</string>
+    <string name="auth_login_browser_waiting">Schließe die Anmeldung im Browser ab und kehre dann zu Iris zurück…</string>
     <string name="auth_login_error_browser_unsupported">Dieses Dashboard ist zu alt für die Browser-Anmeldung. Aktualisiere Hermes Agent auf dem Server.</string>
     <string name="auth_login_error_browser_no_browser">Kein Browser zum Öffnen der Anmeldeseite verfügbar.</string>
     <string name="auth_login_error_browser_denied">Die Anmeldung wurde nicht abgeschlossen (%1$s).</string>
@@ -1474,7 +1474,7 @@
     <string name="action_close">Schließen</string>
 
     <!-- Update notice banner (issue #890) -->
-    <string name="update_notice_banner_text">Apollo %1$s ist verfügbar</string>
+    <string name="update_notice_banner_text">Iris %1$s ist verfügbar</string>
     <string name="update_notice_banner_action">Aktualisieren</string>
     <string name="update_dialog_title">Auf %1$s aktualisieren</string>
     <string name="update_dialog_changelog_header">Neuerungen</string>
@@ -1929,15 +1929,15 @@
     <string name="trust_user_cas_restart_required">Starte den App-Prozess neu, um diese Änderung zu übernehmen.</string>
 
     <string name="language_german">Deutsch</string>
-    <string name="native_login_page_signed_in">Angemeldet. Du kannst diesen Tab schließen und zu Apollo zurückkehren.</string>
-    <string name="native_login_page_failed">Anmeldung fehlgeschlagen. Du kannst diesen Tab schließen und es in Apollo erneut versuchen.</string>
+    <string name="native_login_page_signed_in">Angemeldet. Du kannst diesen Tab schließen und zu Iris zurückkehren.</string>
+    <string name="native_login_page_failed">Anmeldung fehlgeschlagen. Du kannst diesen Tab schließen und es in Iris erneut versuchen.</string>
     <string name="share_sign_in_first">Melde dich zuerst bei Hermes an und teile dann erneut.</string>
-    <string name="share_nothing_usable">Apollo kann diesen geteilten Inhalt nicht verwenden.</string>
-    <string name="theme_preset_apollo">Apollo</string>
+    <string name="share_nothing_usable">Iris kann diesen geteilten Inhalt nicht verwenden.</string>
+    <string name="theme_preset_iris">Iris</string>
     <string name="settings_about_developer">Entwickler</string>
     <string name="settings_about_upstream_credit">Basiert auf Hermes Mobile von Hy4ri (Apache-2.0): github.com/Hy4ri/hermes-mobile</string>
-    <string name="settings_about_unofficial">Apollo ist ein unabhängiger Open-Source-Android-Client für Hermes Agent, entwickelt von wutz.io. Nicht mit Nous Research verbunden und nicht von Nous Research unterstützt.</string>
-    <!-- Apollo i18n: UI strings moved out of Kotlin literals -->
+    <string name="settings_about_unofficial">Iris ist ein unabhängiger Open-Source-Android-Client für Hermes Agent, entwickelt von wutz.io. Nicht mit Nous Research verbunden und nicht von Nous Research unterstützt.</string>
+    <!-- Iris i18n: UI strings moved out of Kotlin literals -->
     <string name="notif_replied">Geantwortet</string>
     <string name="notif_reply_failed">Antwort nicht gesendet</string>
     <string name="notif_reply_failed_with_text">Antwort nicht gesendet: %1$s</string>
@@ -2165,7 +2165,7 @@
         <item quantity="one">%1$d Nutzung</item>
         <item quantity="other">%1$d Nutzungen</item>
     </plurals>
-    <!-- Apollo i18n (ViewModel messages, issue #10) -->
+    <!-- Iris i18n (ViewModel messages, issue #10) -->
     <!-- Keys -->
     <string name="keys_msg_load_failed">Schlüssel konnten nicht geladen werden: %1$s</string>
     <string name="keys_msg_key_value_required">Schlüssel und Wert sind erforderlich</string>

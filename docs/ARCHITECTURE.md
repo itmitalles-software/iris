@@ -1,7 +1,7 @@
 # Architecture conventions
 
-Inherited from the Hermes Mobile `AGENTS.md` (Apollo's origin) and still
-authoritative for Apollo's code. Apollo-specific rules live in the
+Inherited from the Hermes Mobile `AGENTS.md` (Iris's origin) and still
+authoritative for Iris's code. Iris-specific rules live in the
 root [AGENTS.md](../AGENTS.md).
 This complements [README.md](../README.md) (for humans) and [DESIGN.md](../DESIGN.md)
 (visual and interaction requirements) with agent-focused operational and
@@ -13,7 +13,7 @@ Flag conflicts between requirements and implementation instead of silently diver
 
 ## Project Overview
 
-**Apollo** (started as a fork of Hermes Mobile, independent since 2026-10-13) is a Jetpack Compose
+**Iris** (started as a fork of Hermes Mobile, independent since 2026-10-13) is a Jetpack Compose
 Android app — a mobile control panel for [Hermes Agent](https://hermes-agent.nousresearch.com). It
 talks to the Hermes dashboard's REST API and WebSocket TUI Gateway (JSON-RPC 2.0), normally over
 HTTPS through Tailscale Serve; plain HTTP is for trusted networks only.
@@ -276,12 +276,12 @@ for the current inset implementation.
 
 ### Theme
 
-`Theme.kt` uses a preset-based theme system with 8 built-in presets: Apollo (the
+`Theme.kt` uses a preset-based theme system with 8 built-in presets: Iris (the
 default, see [BRANDING.md](BRANDING.md)), Default, Monochrome, Gruvbox, Catppuccin,
 AMOLED, Nord, and Garnet. Each preset provides light and dark color schemes plus
 matching semantic status colors (AMOLED is dark-only — light mode falls back to the
-Default palette). Only the Apollo preset switches the display styles to Cinzel
-(`ApolloTypography`) and enables the Apollo chat accents.
+Default palette). Only the Iris preset switches the display styles to Cinzel
+(`IrisTypography`) and enables the Iris chat accents.
 Every preset is a `ThemePalette` template fill (`PaletteTemplate.kt`): raw
 `PaletteColors` + `HermesStatusColors` mapped into the Material 3
 `ColorScheme` slots, with the error slots derived from the status set.
@@ -428,8 +428,8 @@ io.wutz.apollo/
 ├── assistant/      digital-assistant role (voice interaction service and session)
 ├── notification/   ChatNotificationService, NotificationReplyReceiver
 ├── share/          ShareTargetActivity, ShareInbox (Android share sheet into a chat)
-├── theme/          Color, Theme, Motion, Spacing, Shapes, Type, ApolloType, SystemBars, HermesStatusColors
-│   └── presets/    Apollo, Default, Monochrome, Gruvbox, Catppuccin, AMOLED, Nord, Garnet
+├── theme/          Color, Theme, Motion, Spacing, Shapes, Type, IrisType, SystemBars, HermesStatusColors
+│   └── presets/    Iris, Default, Monochrome, Gruvbox, Catppuccin, AMOLED, Nord, Garnet
 ├── ui/
 │   ├── common/     HermesScaffold, StateViews, SharedComponents, DetailDialog, DetailRows
 │   └── 30 feature packages (achievements, analytics, authlogin, billing, bots,

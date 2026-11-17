@@ -5,7 +5,7 @@ import io.wutz.apollo.R
 import io.wutz.apollo.ui.common.UiText
 
 /**
- * Fixed texts of local system rows (Apollo, issue #8).
+ * Fixed texts of local system rows (Iris, issue #8).
  *
  * The English text is what gets stored in Room and compared against (session start markers, tests,
  * transcript merge), so it must never be localized at creation time. [displayResOf] maps a known

@@ -30,5 +30,5 @@
     <string name="notif_action_deny">Ablehnen</string>
     <string name="notif_approval_unlock_first">Entsperre dein Telefon, um diese Freigabe zu beantworten.</string>
     <string name="notif_approval_expired">Diese Freigabe ist nicht mehr offen.</string>
-    <string name="notif_approval_open_app">Deine Antwort konnte nicht gesendet werden. Öffne Apollo, um die Freigabe zu beantworten.</string>
+    <string name="notif_approval_open_app">Deine Antwort konnte nicht gesendet werden. Öffne Iris, um die Freigabe zu beantworten.</string>
 </resources>

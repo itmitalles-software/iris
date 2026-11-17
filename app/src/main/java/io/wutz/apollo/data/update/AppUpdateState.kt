@@ -40,7 +40,7 @@ sealed interface AppUpdateState {
     /** Install-from-unknown-sources not granted for this app yet. */
     data object NeedsUnknownSourcesPermission : AppUpdateState
 
-    /** [message] is one of the updater's own localized texts (Apollo, issue #10). */
+    /** [message] is one of the updater's own localized texts (Iris, issue #10). */
     data class Error(
         val message: UiText,
         val isCheckError: Boolean = false,

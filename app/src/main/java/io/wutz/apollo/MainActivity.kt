@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
             "io.wutz.apollo.ACTION_OPEN_CHAT_FROM_NOTIFICATION"
 
         /**
-         * Non-exported `<activity-alias>` of this activity. Only Apollo's own
+         * Non-exported `<activity-alias>` of this activity. Only Iris's own
          * notification PendingIntents can target it: a foreign app that names
          * it gets a SecurityException, and one that names MainActivity directly
          * keeps MainActivity as the component. The action alone is forgeable.

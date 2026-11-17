@@ -47,20 +47,20 @@
         </activity>
 
         <!-- Launcher shortcut / Quick Settings tile entry. Not exported: launchers start shortcuts
-             with Apollo's identity, other apps cannot reach these actions. -->
+             with Iris's identity, other apps cannot reach these actions. -->
         <activity-alias
             android:name=".ShortcutEntryAlias"
             android:exported="false"
             android:targetActivity=".MainActivity" />
 
-        <!-- Notification "open chat" entry. Not exported, so only Apollo's own
+        <!-- Notification "open chat" entry. Not exported, so only Iris's own
              PendingIntents can deliver a session id to MainActivity (issue #832). -->
         <activity-alias
             android:name=".NotificationEntryAlias"
             android:exported="false"
             android:targetActivity=".MainActivity" />
 
-        <!-- Apollo: share-sheet trampoline, forwards into MainActivity's task. -->
+        <!-- Iris: share-sheet trampoline, forwards into MainActivity's task. -->
         <activity
             android:name=".share.ShareTargetActivity"
             android:excludeFromRecents="true"

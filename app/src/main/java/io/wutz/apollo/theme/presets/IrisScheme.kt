@@ -6,7 +6,7 @@ import io.wutz.apollo.theme.PaletteColors
 import io.wutz.apollo.theme.buildTheme
 
 // ---------------------------------------------------------------------
-// Apollo — the app's default identity (see docs/BRANDING.md).
+// Iris — the app's default identity (see docs/BRANDING.md).
 //
 // Dark: true-black AMOLED floor, anthracite/graphite surfaces (#0B0B0D,
 // #17171B, #25252B), marble-white text and a restrained antique gold
@@ -16,7 +16,7 @@ import io.wutz.apollo.theme.buildTheme
 // text/surface pair is >= 4.5:1, enforced by ThemePaletteTest.
 // ---------------------------------------------------------------------
 
-val ApolloTheme =
+val IrisTheme =
     buildTheme(
         dark =
             PaletteColors(

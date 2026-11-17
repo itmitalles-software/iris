@@ -1,4 +1,4 @@
-# Apollo — owner decisions
+# Iris — owner decisions
 
 Durable decisions by the owner, with date and source. Verified state lives in
 `STATE.md`; open work lives in GitHub Issues. Add new decisions here instead of
@@ -6,6 +6,14 @@ burying them in dated log entries.
 
 ## Product and project
 
+- **Renamed from Apollo to Iris** (2026-10-17, owner: "es heisst nicht mehr
+  apollo"; scope confirmed 2026-11-17): everything user-visible, the code
+  identifiers and the brand art become Iris; the application ID and Kotlin
+  package `io.wutz.apollo` stay so installed apps keep updating, and persisted
+  keys keep their names. Repository `itmitalles-software/iris` (was
+  `wutz-io/apollo-hermes-android`). The emblem is a capital I over a gold
+  rainbow; the Apollo illustrations are replaced by an Iris batch
+  (`docs/brand/art/iris-art-spec.md`).
 - **Independent of Hermes Mobile** (2026-10-13). Apollo no longer merges
   upstream changes and has no `upstream` remote. Fixes from Hermes Mobile may be
   ported by hand with credit (`Ported from Hy4ri/hermes-mobile@<sha>`).
@@ -28,7 +36,7 @@ burying them in dated log entries.
   deliberately in the code review of that day).
 - **Keep the gold Apollo theme** (2026-10-14, art review
   `~/reviews/apollo-art-2026-10-13/review-decision.json`): the black-and-white-only
-  UI was dropped; `ApolloScheme` stays unchanged.
+  UI was dropped; `ApolloScheme` (now `IrisScheme`, the Iris theme) stays unchanged.
 - **Art direction** (same review): purple (#8D4BA3) engraving illustrations, drawn
   as lines on black in dark mode; the new vector emblem is the app icon; the
   painted gold logo is used on the website. Style references for the art are
@@ -36,12 +44,15 @@ burying them in dated log entries.
 
 ## Website
 
-- **`website/` stays unpublished** until the owner decides otherwise (2026-10-14,
-  same review: "merge only, website not live"). `website.yml` is manual only.
-  To go live: enable Pages (build type workflow, custom domain apollo.wutz.io),
-  add the Cloudflare CNAME apollo → wutz-io.github.io (DNS only, account
-  tim@itmitalles.de), add a push trigger for `website/**` on main, run the
-  workflow and verify HTTPS.
+- **Publish at iris.wutz.io after the rebrand** (2026-11-17, owner choice
+  "Erst Rebrand, dann live"). Imprint and privacy policy: the footer links
+  https://itmitalles.de/impressum and https://itmitalles.de/datenschutz; the
+  page's own privacy section covers the app (#33). The earlier hold
+  (2026-10-14, "merge only, website not live") ends with that go-live.
+  Go-live steps: enable Pages (build type workflow, custom domain
+  iris.wutz.io), Cloudflare CNAME iris → itmitalles-software.github.io (DNS
+  only, account tim@itmitalles.de), add a push trigger for `website/**` on
+  main, run the workflow and verify HTTPS.
 
 ## Code review 2026-10-14
 

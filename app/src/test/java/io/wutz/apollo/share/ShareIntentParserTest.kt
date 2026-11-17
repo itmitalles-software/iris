@@ -45,7 +45,7 @@ class ShareIntentParserTest {
     }
 
     @Test
-    fun `rejects file uris and apollo's own file provider`() {
+    fun `rejects file uris and iris's own file provider`() {
         assertFalse(ShareIntentParser.isAcceptedUri(uri("file", null), ownAuthority))
         assertFalse(ShareIntentParser.isAcceptedUri(uri("content", ownAuthority), ownAuthority))
         // A user-id prefix resolves to the same provider and must not bypass the guard.

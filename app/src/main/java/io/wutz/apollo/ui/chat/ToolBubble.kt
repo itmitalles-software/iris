@@ -140,7 +140,7 @@ internal fun ToolBubble(
     val chipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     val statusColors = LocalHermesStatusColors.current
-    val apolloAccent = LocalThemePreset.current == ThemePreset.APOLLO
+    val irisAccent = LocalThemePreset.current == ThemePreset.APOLLO
     val accentColor = MaterialTheme.colorScheme.primary
 
     val toolText = rememberToolText()
@@ -179,8 +179,8 @@ internal fun ToolBubble(
                 modifier =
                     Modifier
                         .then(
-                            // Apollo: a thin gold edge marks agent actions; brighter while running.
-                            if (apolloAccent) {
+                            // Iris: a thin gold edge marks agent actions; brighter while running.
+                            if (irisAccent) {
                                 Modifier.drawBehind {
                                     drawRect(
                                         color = accentColor.copy(alpha = if (message.isToolRunning) 0.9f else 0.45f),

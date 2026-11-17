@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn the owner-run Codex art batch into Apollo web/app assets.
+"""Turn the owner-run Codex art batch into Iris web/app assets.
 
 Input: the unchanged native outputs `<nn>-<id>.png` (see the art spec). Output:
 derived WebP files; the originals are never modified.

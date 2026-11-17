@@ -641,7 +641,7 @@ class BotsViewModel(
 }
 
 /**
- * Overlays the fields Apollo edits (title, description, avatar shape/color/icon, groups and the legacy `group`
+ * Overlays the fields Iris edits (title, description, avatar shape/color/icon, groups and the legacy `group`
  * scalar) onto the stored `hermes-bots` object. Everything else is kept, and avatar sub-fields are only
  * overwritten when [meta] sets them, so an uploaded avatar image or a Desktop-only field is not lost.
  */

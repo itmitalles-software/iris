@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Apollo</string>
+    <string name="app_name">Iris</string>
 
     <!-- Chat -->
     <string name="chat_send_desc">Send</string>
@@ -198,7 +198,7 @@
     <string name="notif_clarification_needed">Hermes needs a clarification</string>
     <string name="notif_input_needed">Hermes needs your input</string>
     <string name="notif_reply_placeholder">Type your reply\u2026</string>
-    <string name="notif_channel_service_name">Apollo background connection</string>
+    <string name="notif_channel_service_name">Iris background connection</string>
     <string name="notif_channel_service_desc">Keeps connection alive in the background</string>
     <string name="notif_channel_chat_name">Hermes Chat Replies</string>
     <string name="notif_channel_chat_desc">Alerts for new replies from Hermes</string>
@@ -353,12 +353,12 @@
     <string name="settings_action_test_connection">Test Connection</string>
     <string name="settings_sec_about">About</string>
     <string name="settings_sec_language">Language</string>
-    <string name="brand_wordmark" translatable="false">APOLLO</string>
+    <string name="brand_wordmark" translatable="false">IRIS</string>
     <string name="brand_lockup_subtitle" translatable="false">for hermes agent</string>
     <string name="brand_website" translatable="false">https://wutz.io</string>
     <string name="settings_about_developer">Developer</string>
     <string name="settings_about_upstream_credit">Based on Hermes Mobile by Hy4ri (Apache-2.0): github.com/Hy4ri/hermes-mobile</string>
-    <string name="settings_about_unofficial">Apollo is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research.</string>
+    <string name="settings_about_unofficial">Iris is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research.</string>
     <string name="settings_about_version">Version</string>
     <string name="settings_about_build">Build</string>
     <string name="settings_about_debug">Debug</string>
@@ -402,7 +402,7 @@
     <string name="settings_item_use_dynamic_colors">Dynamic Colors</string>
     <string name="settings_desc_use_dynamic_colors">Derive scheme from wallpaper (Android 12+)</string>
     <string name="settings_item_theme_preset">Preset Theme</string>
-    <string name="theme_preset_apollo">Apollo</string>
+    <string name="theme_preset_iris">Iris</string>
     <string name="theme_preset_default">Default</string>
     <string name="theme_preset_monochrome">Monochrome</string>
     <string name="theme_preset_gruvbox">Gruvbox</string>
@@ -416,10 +416,10 @@
     <string name="language_system">System</string>
     <string name="language_english">English</string>
     <string name="language_german">Deutsch</string>
-    <string name="native_login_page_signed_in">Signed in. You can close this tab and return to Apollo.</string>
-    <string name="native_login_page_failed">Sign-in failed. You can close this tab and try again in Apollo.</string>
+    <string name="native_login_page_signed_in">Signed in. You can close this tab and return to Iris.</string>
+    <string name="native_login_page_failed">Sign-in failed. You can close this tab and try again in Iris.</string>
     <string name="share_sign_in_first">Sign in to Hermes first, then share again.</string>
-    <string name="share_nothing_usable">Apollo can\'t use this shared content.</string>
+    <string name="share_nothing_usable">Iris can\'t use this shared content.</string>
     <string name="language_arabic">العربية</string>
     <string name="language_chinese">简体中文</string>
     <string name="language_korean">한국어</string>
@@ -1447,7 +1447,7 @@
     <string name="auth_login_error_unreachable">Dashboard unreachable — check IP and port</string>
     <string name="auth_login_action_browser">Sign in with %1$s</string>
     <string name="auth_login_browser_desc">This dashboard signs in with %1$s. A browser tab opens for the sign-in, then returns here.</string>
-    <string name="auth_login_browser_waiting">Finish signing in in the browser, then return to Apollo…</string>
+    <string name="auth_login_browser_waiting">Finish signing in in the browser, then return to Iris…</string>
     <string name="auth_login_error_browser_unsupported">This dashboard is too old for browser sign-in. Update Hermes Agent on the server.</string>
     <string name="auth_login_error_browser_no_browser">No browser available to open the sign-in page.</string>
     <string name="auth_login_error_browser_denied">Sign-in was not completed (%1$s).</string>
@@ -1483,7 +1483,7 @@
     <string name="action_close">Close</string>
 
     <!-- Update notice banner (issue #890) -->
-    <string name="update_notice_banner_text">Apollo %1$s is available</string>
+    <string name="update_notice_banner_text">Iris %1$s is available</string>
     <string name="update_notice_banner_action">Update</string>
     <string name="update_dialog_title">Update to %1$s</string>
     <string name="update_dialog_changelog_header">What\'s New</string>
@@ -1936,7 +1936,7 @@
     <string name="trust_user_cas_description">Trust system CAs and any CA installed in Android’s user certificate store for all connections. Any user-installed CA can authenticate servers for this app. Certificate and hostname checks remain enabled. Off by default.</string>
     <string name="trust_user_cas_save_failed">Could not save the trust setting. Please try again.</string>
     <string name="trust_user_cas_restart_required">Restart the app process to apply this change.</string>
-    <!-- Apollo i18n: UI strings moved out of Kotlin literals -->
+    <!-- Iris i18n: UI strings moved out of Kotlin literals -->
     <string name="notif_replied">Replied</string>
     <string name="notif_reply_failed">Reply not sent</string>
     <string name="notif_reply_failed_with_text">Reply not sent: %1$s</string>
@@ -2164,7 +2164,7 @@
         <item quantity="one">%1$d use</item>
         <item quantity="other">%1$d uses</item>
     </plurals>
-    <!-- Apollo i18n (ViewModel messages, issue #10) -->
+    <!-- Iris i18n (ViewModel messages, issue #10) -->
     <!-- Keys -->
     <string name="keys_msg_load_failed">Failed to load keys: %1$s</string>
     <string name="keys_msg_key_value_required">Key and value are required</string>

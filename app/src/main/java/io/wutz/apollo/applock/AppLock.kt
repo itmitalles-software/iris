@@ -13,7 +13,7 @@ data class AppLockSettings(
 )
 
 /**
- * Optional app lock (off by default): asks for the fingerprint, face or screen lock when Apollo
+ * Optional app lock (off by default): asks for the fingerprint, face or screen lock when Iris
  * opens and when it comes back after [AppLockSettings.timeoutSeconds] in the background.
  * The settings live in the server store next to the other app preferences.
  */

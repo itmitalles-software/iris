@@ -150,12 +150,12 @@ fun UserBubble(
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            // Apollo: a calm bronze bubble with a gold hairline instead of a solid gold slab.
-            val apolloBubble = LocalThemePreset.current == ThemePreset.APOLLO
+            // Iris: a calm bronze bubble with a gold hairline instead of a solid gold slab.
+            val irisBubble = LocalThemePreset.current == ThemePreset.APOLLO
             val primary =
-                if (apolloBubble) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
+                if (irisBubble) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
             val userBubbleTextColor =
-                if (apolloBubble) {
+                if (irisBubble) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else if (primary.luminance() > 0.5f) {
                     if (MaterialTheme.colorScheme.onPrimary.luminance() < 0.5f) {
@@ -178,7 +178,7 @@ fun UserBubble(
                             .clip(UserBubbleShape)
                             .background(color = primary)
                             .then(
-                                if (apolloBubble) {
+                                if (irisBubble) {
                                     Modifier.border(
                                         width = 1.dp,
                                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),

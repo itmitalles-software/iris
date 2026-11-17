@@ -35,7 +35,10 @@ data class UpdateInfo(
         val browserDownloadUrl: String = "",
     )
 
-    /** The release APK asset — release.yml ships `apollo-<tag>.apk`. */
+    /**
+     * The release APK asset. release.yml ships `iris-<tag>.apk`; releases published before the
+     * rename to Iris carry `apollo-<tag>.apk`. Any `.apk` asset is accepted, so both layouts match.
+     */
     val apkAsset: Asset?
         get() = assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
 }
@@ -162,7 +165,7 @@ fun isReleaseCandidateVersion(tag: String): Boolean =
  */
 open class AppUpdateChecker(
     private val client: OkHttpClient = OkHttpProvider.external,
-    private val apiBaseUrl: String = "https://api.github.com/repos/wutz-io/apollo-hermes-android",
+    private val apiBaseUrl: String = "https://api.github.com/repos/itmitalles-software/iris",
     /** Client for release metadata requests; the app passes the cached [OkHttpProvider.githubApi]. */
     private val apiClient: OkHttpClient = client,
 ) {

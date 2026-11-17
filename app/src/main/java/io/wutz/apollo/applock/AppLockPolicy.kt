@@ -7,7 +7,7 @@ package io.wutz.apollo.applock
  * - A process start with the lock enabled starts locked.
  * - Leaving the app records the time; coming back after [timeoutMs] or longer locks again.
  * - While locked, leaving and returning changes nothing: the lock stays until an unlock. That
- *   also covers the screen-lock confirmation activity, which itself sends Apollo to the background.
+ *   also covers the screen-lock confirmation activity, which itself sends Iris to the background.
  */
 internal class AppLockPolicy(
     private val clock: () -> Long,

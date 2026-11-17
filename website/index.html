@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apollo — Android client for Hermes Agent</title>
-  <meta name="description" content="Apollo is an independent open-source Android app for your own Hermes Agent: chat, approvals, sessions, files and automation, privately over Tailscale.">
-  <link rel="canonical" href="https://apollo.wutz.io/">
+  <title>Iris — Android client for Hermes Agent</title>
+  <meta name="description" content="Iris is an independent open-source Android app for your own Hermes Agent: chat, approvals, sessions, files and automation, privately over Tailscale.">
+  <link rel="canonical" href="https://iris.wutz.io/">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Apollo">
+  <meta property="og:site_name" content="Iris">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="de_DE">
-  <meta property="og:title" content="Apollo — Android client for Hermes Agent">
+  <meta property="og:title" content="Iris — Android client for Hermes Agent">
   <meta property="og:description" content="Your Hermes Agent in your pocket. Open source, no telemetry, by wutz.io.">
-  <meta property="og:image" content="https://apollo.wutz.io/assets/img/08-web-og.webp">
+  <meta property="og:image" content="https://iris.wutz.io/assets/img/08-web-og.webp">
   <meta property="og:image:type" content="image/webp">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Purple engraving of the head of Apollo with a laurel wreath and sun rays on black">
-  <meta property="og:url" content="https://apollo.wutz.io/">
+  <meta property="og:image:alt" content="Purple engraving illustration on black">
+  <meta property="og:url" content="https://iris.wutz.io/">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#000000">
-  <link rel="icon" href="assets/apollo-emblem-dark.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/iris-emblem-dark.svg" type="image/svg+xml">
   <link rel="icon" href="assets/apple-touch-icon.png" type="image/png" sizes="180x180">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/style.css">
@@ -28,7 +28,7 @@
     // Apply stored or system theme/language before first paint.
     (function () {
       var d = document.documentElement, t = null, l = null;
-      try { t = localStorage.getItem("apollo-theme"); l = localStorage.getItem("apollo-lang"); } catch (e) {}
+      try { t = localStorage.getItem("iris-theme"); l = localStorage.getItem("iris-lang"); } catch (e) {}
       d.dataset.theme = t || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
       d.lang = l || ((navigator.language || "en").toLowerCase().indexOf("de") === 0 ? "de" : "en");
     })();
@@ -37,16 +37,16 @@
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
   <header class="top">
-    <a class="brand" href="#" aria-label="Apollo">
-      <img class="emblem only-dark" src="assets/apollo-emblem-dark.svg" alt="" width="40" height="40">
-      <img class="emblem only-light" src="assets/apollo-emblem-light.svg" alt="" width="40" height="40">
-      <span class="wordmark">APOLLO</span>
+    <a class="brand" href="#" aria-label="Iris">
+      <img class="emblem only-dark" src="assets/iris-emblem-dark.svg" alt="" width="40" height="40">
+      <img class="emblem only-light" src="assets/iris-emblem-light.svg" alt="" width="40" height="40">
+      <span class="wordmark">IRIS</span>
     </a>
     <nav class="nav" aria-label="Main">
       <a href="#features" data-i18n="navFeatures">Features</a>
       <a href="#setup" data-i18n="navSetup">Setup</a>
       <a href="#privacy" data-i18n="navPrivacy">Privacy</a>
-      <a href="https://github.com/wutz-io/apollo-hermes-android">GitHub</a>
+      <a href="https://github.com/itmitalles-software/iris">GitHub</a>
     </nav>
     <div class="toggles">
       <button type="button" id="lang" class="toggle" lang="de" aria-label="DE – Auf Deutsch umschalten">DE</button>
@@ -59,9 +59,9 @@
       <div class="hero-text">
         <p class="eyebrow" data-i18n="eyebrow">Android client for Hermes Agent</p>
         <h1 data-i18n="heroTitle">Your agent. In your pocket.</h1>
-        <p class="lead" data-i18n="heroLead">Apollo connects your phone to the Hermes Agent running on your own computer. Chat, approve tools, resume sessions and share files from anywhere, privately over Tailscale.</p>
+        <p class="lead" data-i18n="heroLead">Iris connects your phone to the Hermes Agent running on your own computer. Chat, approve tools, resume sessions and share files from anywhere, privately over Tailscale.</p>
         <div class="actions">
-          <a class="button primary" href="https://github.com/wutz-io/apollo-hermes-android/releases/latest" data-i18n="download">Download APK</a>
+          <a class="button primary" href="https://github.com/itmitalles-software/iris/releases/latest" data-i18n="download">Download APK</a>
           <a class="button" href="#setup" data-i18n="setupCta">Set up Hermes</a>
         </div>
         <p class="small" data-i18n="heroNote">Free and open source. Android 8 or newer. No account, no cloud, no telemetry.</p>
@@ -94,7 +94,7 @@
       <article class="card">
         <p class="tag">#4 <span data-i18n="f4Tag">Remember</span></p>
         <h3 data-i18n="f4Title">Sessions that follow you</h3>
-        <p data-i18n="f4Text">Browse, search, pin and resume sessions, grouped by project. After a dropped connection Apollo replays what you missed.</p>
+        <p data-i18n="f4Text">Browse, search, pin and resume sessions, grouped by project. After a dropped connection Iris replays what you missed.</p>
         <figure class="art"><img src="assets/img/05-web-feature-sessions.webp" alt="" loading="lazy" width="1200" height="1200"></figure>
       </article>
       <article class="card">
@@ -106,7 +106,7 @@
       <article class="card">
         <p class="tag">#6 <span data-i18n="f6Tag">Organise</span></p>
         <h3 data-i18n="f6Title">Projects, Kanban, files</h3>
-        <p data-i18n="f6Text">Kanban boards, projects, skills, MCP servers and models. Share files into Apollo from any app or open what the agent created.</p>
+        <p data-i18n="f6Text">Kanban boards, projects, skills, MCP servers and models. Share files into Iris from any app or open what the agent created.</p>
         <figure class="art"><img src="assets/img/07-web-feature-projects.webp" alt="" loading="lazy" width="1200" height="1200"></figure>
       </article>
     </section>
@@ -122,9 +122,9 @@
           <h3 data-i18n="s2Title">Run the setup script</h3>
           <p data-i18n="s2Text">It creates a login (only a hash is stored) and runs the official Hermes backend as a user service on 127.0.0.1. Read it before you run it.</p>
           <div class="code">
-            <pre><code id="setup-code">curl -fsSLO https://raw.githubusercontent.com/wutz-io/apollo-hermes-android/main/scripts/server/setup-hermes-for-apollo.sh
-less setup-hermes-for-apollo.sh
-bash setup-hermes-for-apollo.sh</code></pre>
+            <pre><code id="setup-code">curl -fsSLO https://raw.githubusercontent.com/itmitalles-software/iris/main/scripts/server/setup-hermes-for-iris.sh
+less setup-hermes-for-iris.sh
+bash setup-hermes-for-iris.sh</code></pre>
             <button type="button" class="copy" data-copy="setup-code" data-i18n="copy">Copy</button>
           </div>
         </li>
@@ -137,21 +137,24 @@ bash setup-hermes-for-apollo.sh</code></pre>
           </div>
         </li>
         <li>
-          <h3 data-i18n="s4Title">Sign in with Apollo</h3>
+          <h3 data-i18n="s4Title">Sign in with Iris</h3>
           <p data-i18n="s4Text">Install the APK, tap “Sign in”, enter your computer's tailnet address (https://&lt;machine&gt;.&lt;tailnet&gt;.ts.net) and log in.</p>
         </li>
       </ol>
-      <p class="small"><span data-i18n="setupMore">Manual setup and systems without systemd:</span> <a href="https://github.com/wutz-io/apollo-hermes-android#connect-over-tailscale-recommended">README</a></p>
+      <p class="small"><span data-i18n="setupMore">Manual setup and systems without systemd:</span> <a href="https://github.com/itmitalles-software/iris#connect-over-tailscale-recommended">README</a></p>
     </section>
 
     <section id="privacy" class="privacy">
       <h2 data-i18n="privacyTitle">No cloud in between</h2>
       <ul class="facts">
-        <li data-i18n="p1">No telemetry, ads or trackers.</li>
-        <li data-i18n="p2">Credentials in storage encrypted with the Android Keystore.</li>
+        <li data-i18n="p1">Iris has no servers of its own and no analytics, telemetry, ads or tracking.</li>
+        <li data-i18n="p6">Your data goes only to the Hermes server you configure.</li>
+        <li data-i18n="p2">Credentials stay on your device, encrypted with the Android Keystore.</li>
+        <li data-i18n="p7">The microphone (RECORD_AUDIO) is used only while you use voice input or a voice conversation.</li>
         <li data-i18n="p3">Regular TLS verification, no open ports needed.</li>
         <li data-i18n="p4">Uses only the official Hermes dashboard and backend APIs.</li>
-        <li data-i18n="p5">The only other request is the optional update check on GitHub.</li>
+        <li data-i18n="p5">The optional update check contacts the GitHub API; the app sends no other data to third parties.</li>
+        <li data-i18n="p8">This website is hosted on GitHub Pages, which may log IP addresses, and loads no third-party trackers, fonts or scripts.</li>
       </ul>
     </section>
   </main>
@@ -159,10 +162,11 @@ bash setup-hermes-for-apollo.sh</code></pre>
 
   <footer class="foot">
     <img class="foot-logo only-dark" src="assets/img/14-logo-gold-trippy.webp" alt="" width="160" height="160" loading="lazy">
-    <img class="foot-logo only-light" src="assets/apollo-emblem-light.svg" alt="" width="120" height="120" loading="lazy">
-    <p class="disclaimer" data-i18n="disclaimer">Apollo is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research.</p>
+    <img class="foot-logo only-light" src="assets/iris-emblem-light.svg" alt="" width="120" height="120" loading="lazy">
+    <p class="disclaimer" data-i18n="disclaimer">Iris is an independent open-source Android client for Hermes Agent, developed by wutz.io. Not affiliated with or endorsed by Nous Research.</p>
     <p class="small" data-i18n-html="credit">Based on <a href="https://github.com/Hy4ri/hermes-mobile">Hermes Mobile</a> by Hy4ri (Apache-2.0).</p>
-    <p class="small"><a href="https://github.com/wutz-io/apollo-hermes-android">GitHub</a> · <a href="https://github.com/wutz-io/apollo-hermes-android/blob/main/LICENSE" data-i18n="license">License</a> · <a href="https://wutz.io">wutz.io</a></p>
+    <p class="small"><a href="https://github.com/itmitalles-software/iris">GitHub</a> · <a href="https://github.com/itmitalles-software/iris/blob/main/LICENSE" data-i18n="license">License</a> · <a href="https://wutz.io">wutz.io</a></p>
+    <p class="small"><a href="https://itmitalles.de/impressum" data-i18n="imprint">Imprint</a> · <a href="https://itmitalles.de/datenschutz" data-i18n="privacyLink">Privacy</a></p>
   </footer>
   <script src="assets/app.js"></script>
 </body>

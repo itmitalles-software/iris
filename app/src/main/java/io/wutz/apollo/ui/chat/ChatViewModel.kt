@@ -671,7 +671,7 @@ class ChatViewModel(
     private var latestPaging = false
 
     /**
-     * Apollo (#5): whether hydration has probed this session's paging protocol. A session created
+     * Iris (#5): whether hydration has probed this session's paging protocol. A session created
      * in this app is never hydrated, and syncing it with absolute positions persists `rest-<sid>-<n>`
      * ids that never match the stable row ids a later cold start loads, so every turn showed twice.
      */
@@ -5793,7 +5793,7 @@ class ChatViewModel(
                     ?.plus(1)
                     ?: loadedMessageOffset
             }
-        // Apollo (#5): a session created in this app was never hydrated, so its paging protocol is
+        // Iris (#5): a session created in this app was never hydrated, so its paging protocol is
         // still unknown. Probe it once like hydration does: absolute positions would persist
         // rest-<sid>-<n> ids that never match the stable row ids a later cold start loads.
         val probeLatest = !useLatest && !pagingProtocolProbed

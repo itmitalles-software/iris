@@ -1,4 +1,4 @@
-// apollo.wutz.io: language and theme toggles (both persisted), copy buttons.
+// iris.wutz.io: language and theme toggles (both persisted), copy buttons.
 (function () {
   "use strict";
 
@@ -10,7 +10,7 @@
     themeToggle: "Dunkelmodus",
     eyebrow: "Android-Client für Hermes Agent",
     heroTitle: "Dein Agent. In deiner Tasche.",
-    heroLead: "Apollo verbindet dein Handy mit dem Hermes Agent auf deinem eigenen Rechner. Chatte, gib Tools frei, setze Sitzungen fort und teile Dateien von überall, privat über Tailscale.",
+    heroLead: "Iris verbindet dein Handy mit dem Hermes Agent auf deinem eigenen Rechner. Chatte, gib Tools frei, setze Sitzungen fort und teile Dateien von überall, privat über Tailscale.",
     download: "APK herunterladen",
     setupCta: "Hermes einrichten",
     heroNote: "Kostenlos und Open Source. Ab Android 8. Kein Konto, keine Cloud, keine Telemetrie.",
@@ -25,13 +25,13 @@
     f3Text: "Gib Tool-Aufrufe frei, beantworte Rückfragen, Sudo- und Geheimnis-Abfragen im Chat oder direkt aus der Benachrichtigung.",
     f4Tag: "Erinnern",
     f4Title: "Sitzungen, die dir folgen",
-    f4Text: "Sitzungen durchsuchen, anheften und fortsetzen, nach Projekt gruppiert. Nach einem Verbindungsabbruch holt Apollo nach, was du verpasst hast.",
+    f4Text: "Sitzungen durchsuchen, anheften und fortsetzen, nach Projekt gruppiert. Nach einem Verbindungsabbruch holt Iris nach, was du verpasst hast.",
     f5Tag: "Automatisieren",
     f5Title: "Cron und Webhooks",
     f5Text: "Geplante Jobs und Webhooks anlegen und beobachten, mit Benachrichtigung, wenn eine Aufgabe fertig ist.",
     f6Tag: "Ordnen",
     f6Title: "Projekte, Kanban, Dateien",
-    f6Text: "Kanban-Boards, Projekte, Skills, MCP-Server und Modelle. Teile Dateien aus jeder App mit Apollo oder öffne, was der Agent erstellt hat.",
+    f6Text: "Kanban-Boards, Projekte, Skills, MCP-Server und Modelle. Teile Dateien aus jeder App mit Iris oder öffne, was der Agent erstellt hat.",
     setupTitle: "In vier Schritten eingerichtet",
     s1Title: "Hermes und Tailscale installieren",
     s1Text: 'Installiere <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> auf deinem Rechner. Installiere dann Tailscale auf diesem Rechner und auf deinem Handy und melde beide im selben Tailnet an.',
@@ -39,7 +39,7 @@
     s2Text: "Es legt einen Login an (gespeichert wird nur ein Hash) und startet das offizielle Hermes-Backend als Benutzerdienst auf 127.0.0.1. Lies es vor dem Ausführen.",
     s3Title: "Im Tailnet veröffentlichen",
     s3Text: "Tailscale Serve ergänzt HTTPS mit gültigem Zertifikat, erreichbar nur in deinem Tailnet.",
-    s4Title: "Mit Apollo anmelden",
+    s4Title: "Mit Iris anmelden",
     s4Text: "Installiere die APK, tippe auf „Anmelden“, gib die Tailnet-Adresse deines Rechners ein (https://<rechner>.<tailnet>.ts.net) und melde dich an.",
     setupMore: "Manuelle Einrichtung und Systeme ohne systemd:",
     copy: "Kopieren",
@@ -48,15 +48,20 @@
     copiedStatus: "Befehl in die Zwischenablage kopiert",
     langLabel: "EN – Switch to English",
     privacyTitle: "Keine Cloud dazwischen",
-    p1: "Keine Telemetrie, Werbung oder Tracker.",
-    p2: "Zugangsdaten verschlüsselt mit dem Android Keystore.",
+    p1: "Iris hat keine eigenen Server und keine Analyse, Telemetrie, Werbung oder Tracking.",
+    p6: "Deine Daten gehen nur an den Hermes-Server, den du einrichtest.",
+    p2: "Zugangsdaten bleiben auf deinem Gerät, verschlüsselt mit dem Android Keystore.",
+    p7: "Das Mikrofon (RECORD_AUDIO) wird nur genutzt, solange du Spracheingabe oder ein Sprachgespräch verwendest.",
     p3: "Normale TLS-Prüfung, keine offenen Ports nötig.",
     p4: "Nutzt nur die offiziellen Hermes-Dashboard- und Backend-Schnittstellen.",
-    p5: "Die einzige andere Anfrage ist die optionale Update-Prüfung bei GitHub.",
-    disclaimer: "Apollo ist ein unabhängiger Open-Source-Android-Client für Hermes Agent, entwickelt von wutz.io. Nicht mit Nous Research verbunden und nicht von Nous Research unterstützt.",
+    p5: "Die optionale Update-Prüfung kontaktiert die GitHub-API; die App sendet keine anderen Daten an Dritte.",
+    p8: "Diese Website wird bei GitHub Pages gehostet, das IP-Adressen protokollieren kann, und lädt keine Tracker, Schriften oder Skripte von Dritten.",
+    disclaimer: "Iris ist ein unabhängiger Open-Source-Android-Client für Hermes Agent, entwickelt von wutz.io. Nicht mit Nous Research verbunden und nicht von Nous Research unterstützt.",
     credit: 'Basiert auf <a href="https://github.com/Hy4ri/hermes-mobile">Hermes Mobile</a> von Hy4ri (Apache-2.0).',
     license: "Lizenz",
-    title: "Apollo — Android-Client für Hermes Agent"
+    imprint: "Impressum",
+    privacyLink: "Datenschutz",
+    title: "Iris — Android-Client für Hermes Agent"
   };
 
   var root = document.documentElement;
@@ -89,18 +94,18 @@
   function applyTheme() {
     document.querySelector('meta[name="theme-color"]').content = root.dataset.theme === "light" ? "#F7F4EE" : "#000000";
     document.querySelector('link[rel="icon"]').href =
-      root.dataset.theme === "light" ? "assets/apollo-emblem-light.svg" : "assets/apollo-emblem-dark.svg";
+      root.dataset.theme === "light" ? "assets/iris-emblem-light.svg" : "assets/iris-emblem-dark.svg";
     document.getElementById("theme").setAttribute("aria-pressed", root.dataset.theme === "light" ? "false" : "true");
   }
 
   document.getElementById("lang").addEventListener("click", function () {
     root.lang = root.lang === "de" ? "en" : "de";
-    store("apollo-lang", root.lang);
+    store("iris-lang", root.lang);
     applyLang();
   });
   document.getElementById("theme").addEventListener("click", function () {
     root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
-    store("apollo-theme", root.dataset.theme);
+    store("iris-theme", root.dataset.theme);
     applyTheme();
   });
   var status = document.getElementById("copy-status");

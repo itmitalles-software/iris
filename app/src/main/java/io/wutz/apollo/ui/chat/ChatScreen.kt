@@ -178,7 +178,7 @@ internal fun canStartAttachmentSave(
     savingAttachmentPath: String?,
 ): Boolean = pendingSavePath == null && savingAttachmentPath == null
 
-/** Apollo: maximum width of the chat column on large screens. */
+/** Iris: maximum width of the chat column on large screens. */
 private val CHAT_MAX_CONTENT_WIDTH = 840.dp
 
 /**
@@ -707,7 +707,7 @@ fun ChatScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
                     .imePadding()
-                    // Apollo: keep a readable line length on tablets and unfolded foldables.
+                    // Iris: keep a readable line length on tablets and unfolded foldables.
                     .wrapContentWidth(Alignment.CenterHorizontally)
                     .widthIn(max = CHAT_MAX_CONTENT_WIDTH),
         ) {
@@ -892,7 +892,7 @@ fun ChatScreen(
                                             scrollScope.launch { snackbarHostState.showSnackbar(copiedMessage) }
                                         },
                                         onShare = { details ->
-                                            val report = "Apollo ${BuildConfig.VERSION_NAME}\n\n$details"
+                                            val report = "Iris ${BuildConfig.VERSION_NAME}\n\n$details"
                                             val intent =
                                                 Intent(Intent.ACTION_SEND).apply {
                                                     type = "text/plain"

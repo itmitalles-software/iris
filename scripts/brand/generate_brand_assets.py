@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Generate Apollo's brand assets from one geometric source.
+"""Generate Iris's brand assets from one geometric source.
 
 Outputs (paths relative to the repository root):
   app/src/main/res/drawable/ic_launcher_{background,foreground,monochrome}.xml
   app/src/main/res/drawable/ic_notification.xml
-  app/src/main/res/drawable/ic_apollo_mark.xml       (tintable emblem)
-  app/src/main/res/drawable/ic_apollo_emblem.xml     (full-colour emblem, dark surfaces)
-  app/src/main/res/drawable/ic_apollo_emblem_light.xml (full-colour emblem, light surfaces)
-  app/src/main/res/drawable/splash_branding.xml      (Android 12+ splash: APOLLO / for hermes agent)
+  app/src/main/res/drawable/ic_iris_mark.xml       (tintable emblem)
+  app/src/main/res/drawable/ic_iris_emblem.xml     (full-colour emblem, dark surfaces)
+  app/src/main/res/drawable/ic_iris_emblem_light.xml (full-colour emblem, light surfaces)
+  app/src/main/res/drawable/splash_branding.xml      (Android 12+ splash: IRIS / for hermes agent)
   docs/brand/*.svg                                   (icon, mark, wordmark, banner, feature graphic)
 
 The wordmark and tagline outlines come from Cinzel (SIL OFL 1.1, bundled at
@@ -15,7 +15,7 @@ app/src/main/res/font/cinzel.ttf). Requires fontTools:
 
     python3 scripts/brand/generate_brand_assets.py
 
-All artwork is original to Apollo (wutz.io); it uses no Nous Research or
+All artwork is original to Iris (wutz.io); it uses no Nous Research or
 Hermes Agent logos or illustrations.
 """
 
@@ -36,14 +36,14 @@ BRAND = ROOT / "docs/brand"
 WEBSITE = ROOT / "website/assets"
 FONT = ROOT / "app/src/main/res/font/cinzel.ttf"
 
-# Palette (mirrors theme/presets/ApolloScheme.kt).
+# Palette (mirrors theme/presets/IrisScheme.kt).
 INK = "#0B0B0D"
 INK_GLOW = "#1E1E23"
 GOLD = "#D4AF72"
 GOLD_LIGHT = "#F2DDAE"
 GOLD_DEEP = "#A47C45"
 MARBLE = "#ECE8E1"
-MARBLE_LIGHT = "#F7F4EE"  # light-theme background (ApolloScheme light surface)
+MARBLE_LIGHT = "#F7F4EE"  # light-theme background (IrisScheme light surface)
 MUTED = "#A8A49C"
 
 GOLD_STOPS = [(0.0, GOLD_LIGHT), (0.5, GOLD), (1.0, GOLD_DEEP)]
@@ -60,65 +60,34 @@ def poly(points) -> str:
     return "M" + " L".join(f"{x:.2f},{y:.2f}" for x, y in points) + " Z"
 
 
-def crown_spikes(count_side: int = 4) -> str:
-    """Radiate crown: tapered rays fanning above the A (Apollo's sun crown)."""
-    cx, cy = 54.0, 63.0
-    spikes = []
-    for step in range(-count_side, count_side + 1):
-        angle = -90 + step * 20
-        t = math.radians(angle)
-        normal = (-math.sin(t), math.cos(t))
-        center = step == 0
-        r0 = 23.0
-        r1 = 36.5 if center else (33.5 if step % 2 == 0 else 30.0)
-        half = 2.4 if center else 1.9
-        base = (cx + r0 * math.cos(t), cy + r0 * math.sin(t))
-        tip = (cx + r1 * math.cos(t), cy + r1 * math.sin(t))
-        spikes.append(
-            poly(
-                [
-                    (base[0] + normal[0] * half, base[1] + normal[1] * half),
-                    tip,
-                    (base[0] - normal[0] * half, base[1] - normal[1] * half),
-                ],
-            ),
+def rainbow_bands() -> list[str]:
+    """Iris's rainbow: three concentric half-ring bands arching over the I (outer to inner)."""
+    cx, cy = 54.0, 67.0
+    bands = []
+    for r_out, r_in in ((27.6, 25.0), (23.0, 20.4), (18.4, 15.8)):
+        bands.append(
+            f"M{cx - r_out:.2f},{cy:.2f} A{r_out},{r_out} 0 0,1 {cx + r_out:.2f},{cy:.2f} "
+            f"L{cx + r_in:.2f},{cy:.2f} A{r_in},{r_in} 0 0,0 {cx - r_in:.2f},{cy:.2f} Z",
         )
-    return " ".join(spikes)
+    return bands
 
 
-def diadem() -> str:
-    cx, cy, r = 54.0, 63.0, 23.0
-    a0, a1 = math.radians(-172), math.radians(-8)
-    p0 = (cx + r * math.cos(a0), cy + r * math.sin(a0))
-    p1 = (cx + r * math.cos(a1), cy + r * math.sin(a1))
-    return f"M{p0[0]:.2f},{p0[1]:.2f} A{r},{r} 0 0,1 {p1[0]:.2f},{p1[1]:.2f}"
-
-
-def roman_a() -> str:
-    """Classical capital A: thin left stem, heavy right stem, slab serifs."""
-    top, base = 40.0, 80.0
-    left_outer, apex_left, apex_right, right_outer = (36.5, base), (52.6, top), (55.4, top), (73.5, base)
-    left_inner, right_inner = (41.0, base), (64.6, base)
-    right_apex_inner = (apex_right[0] - 6.0, top)
-
-    def x_at(p, q, y):
-        (x1, y1), (x2, y2) = p, q
-        return x1 + (x2 - x1) * (y - y1) / (y2 - y1)
-
-    left_stem = poly([left_outer, apex_left, (apex_left[0] + 4.2, top), left_inner])
-    right_stem = poly([right_apex_inner, apex_right, right_outer, right_inner])
-    y0, y1 = 64.0, 67.4
-    bar = poly(
+def roman_i() -> str:
+    """Classical capital I: a column-like stem with bracketed slab serifs."""
+    top, base = 31.5, 80.0
+    stem_l, stem_r = 49.9, 58.1
+    serif_l, serif_r, serif_h, bracket = 43.4, 64.6, 1.9, 2.4
+    return poly(
         [
-            (x_at(left_outer, apex_left, y0) + 1.0, y0),
-            (x_at(right_inner, right_apex_inner, y0) + 1.0, y0),
-            (x_at(right_inner, right_apex_inner, y1) + 1.0, y1),
-            (x_at(left_outer, apex_left, y1) + 1.0, y1),
+            (serif_l, top), (serif_r, top), (serif_r, top + serif_h),
+            (stem_r + bracket, top + serif_h), (stem_r, top + serif_h + bracket),
+            (stem_r, base - serif_h - bracket), (stem_r + bracket, base - serif_h),
+            (serif_r, base - serif_h), (serif_r, base), (serif_l, base), (serif_l, base - serif_h),
+            (stem_l - bracket, base - serif_h), (stem_l, base - serif_h - bracket),
+            (stem_l, top + serif_h + bracket), (stem_l - bracket, top + serif_h),
+            (serif_l, top + serif_h),
         ],
     )
-    serif_left = poly([(32.8, base - 1.8), (44.6, base - 1.8), (44.6, base), (32.8, base)])
-    serif_right = poly([(61.0, base - 1.8), (77.2, base - 1.8), (77.2, base), (61.0, base)])
-    return " ".join([left_stem, right_stem, bar, serif_left, serif_right])
 
 
 def dial_ticks() -> str:
@@ -138,16 +107,16 @@ def ring() -> str:
     return f"M{54 - r},54 A{r},{r} 0 1,1 {54 + r},54 A{r},{r} 0 1,1 {54 - r},54"
 
 
-def sunburst(count: int = 144) -> str:
-    """Fine radiating lines behind the crown (the "trippy" layer since 2026-10-13)."""
-    cx, cy = 54.0, 63.0
+def sunburst(count: int = 120) -> str:
+    """Fine rays of light behind the I, inside the inner rainbow band (the "trippy" layer)."""
+    cx, cy = 54.0, 67.0
     lines = []
     for i in range(count):
         t = math.radians(-180 + i * 360 / count)
-        if math.sin(t) > -0.02:  # rays only above the horizon, like the crown
+        if math.sin(t) > -0.02:  # only above the horizon, like the rainbow
             continue
-        r0 = 24.5
-        r1 = 31.5 if i % 4 == 0 else (29.5 if i % 2 == 0 else 27.5)
+        r0 = 6.0
+        r1 = 14.4 if i % 4 == 0 else (12.4 if i % 2 == 0 else 10.4)
         lines.append(
             f"M{cx + r0 * math.cos(t):.2f},{cy + r0 * math.sin(t):.2f} "
             f"L{cx + r1 * math.cos(t):.2f},{cy + r1 * math.sin(t):.2f}",
@@ -165,7 +134,14 @@ def wave_ring(r: float, amplitude: float, waves: int, steps: int = 180) -> str:
     return poly(pts)
 
 
-SPIKES, DIADEM, LETTER_A, TICKS, RING = crown_spikes(), diadem(), roman_a(), dial_ticks(), ring()
+BANDS, LETTER_I, TICKS, RING = rainbow_bands(), roman_i(), dial_ticks(), ring()
+BANDS_ALL = " ".join(BANDS)
+# Outer band brightest, inner band deepest: a gold rainbow.
+BAND_STOPS = [
+    [(0.0, GOLD_LIGHT), (1.0, GOLD)],
+    [(0.0, GOLD), (1.0, GOLD_DEEP)],
+    [(0.0, GOLD_DEEP), (1.0, "#7E5C30")],
+]
 BURST, HALO_A, HALO_B = sunburst(), wave_ring(28.6, 0.55, 18), wave_ring(29.8, 0.45, 24)
 
 
@@ -207,9 +183,9 @@ def scaled_group_svg(d: str, bounds, x: float, y_top: float, height: float, fill
 # ---------------------------------------------------------------------------
 
 
-def gold_gradient_xml(attr: str, x: float, y0: float, y1: float) -> str:
+def gold_gradient_xml(attr: str, x: float, y0: float, y1: float, stops=GOLD_STOPS) -> str:
     items = "\n".join(
-        f'                <item android:offset="{o}" android:color="#FF{c[1:]}" />' for o, c in GOLD_STOPS
+        f'                <item android:offset="{o}" android:color="#FF{c[1:]}" />' for o, c in stops
     )
     return (
         f'        <aapt:attr name="{attr}">\n'
@@ -267,10 +243,10 @@ def emblem_layers(knockout: str, tech: bool) -> str:
         body += path_xml(HALO_A, stroke=GOLD, width=0.3, alpha=0.30)
         body += path_xml(HALO_B, stroke=GOLD_LIGHT, width=0.25, alpha=0.20)
         body += path_xml(BURST, stroke=GOLD, width=0.28, alpha=0.55)
-    body += path_xml(SPIKES, gradient=gold_gradient_xml("android:fillColor", 54, 26, 63))
-    body += path_xml(DIADEM, gradient=gold_gradient_xml("android:strokeColor", 54, 40, 63), extra='android:strokeWidth="1.6"')
-    body += path_xml(LETTER_A, fill=knockout, stroke=knockout, width=3.6, extra='android:strokeLineJoin="miter"')
-    body += path_xml(LETTER_A, gradient=gold_gradient_xml("android:fillColor", 54, 40, 80))
+    for band, stops in zip(BANDS, BAND_STOPS):
+        body += path_xml(band, gradient=gold_gradient_xml("android:fillColor", 54, 39, 67, stops))
+    body += path_xml(LETTER_I, fill=knockout, stroke=knockout, width=3.6, extra='android:strokeLineJoin="miter"')
+    body += path_xml(LETTER_I, gradient=gold_gradient_xml("android:fillColor", 54, 31, 80))
     return body
 
 
@@ -285,31 +261,31 @@ def android_assets(font: TTFont) -> None:
                f"                <item android:offset=\"0\" android:color=\"#FF{INK_GLOW[1:]}\" />\n"
                f"                <item android:offset=\"1\" android:color=\"#FF{INK[1:]}\" />\n"
                "            </gradient>\n        </aapt:attr>\n    </path>\n",
-               aapt=True, comment="Apollo launcher background: near-black with a soft central glow."),
+               aapt=True, comment="Iris launcher background: near-black with a soft central glow."),
     )
     write(
         DRAWABLE / "ic_launcher_foreground.xml",
         vector(108, 108, 108, 108, emblem_layers(INK, tech=True), aapt=True,
-               comment="Apollo emblem: radiate sun crown over a classical capital A, inside a technical dial."),
+               comment="Iris emblem: a gold rainbow arching over a classical capital I, inside a technical dial."),
     )
-    mono = path_xml(SPIKES, fill="#FFFFFFFF") + path_xml(LETTER_A, fill="#FFFFFFFF")
+    mono = path_xml(BANDS_ALL, fill="#FFFFFFFF") + path_xml(LETTER_I, fill="#FFFFFFFF")
     write(DRAWABLE / "ic_launcher_monochrome.xml",
-          vector(108, 108, 108, 108, mono, comment="Themed-icon layer (Android 13+): crown and A only."))
+          vector(108, 108, 108, 108, mono, comment="Themed-icon layer (Android 13+): rainbow and I only."))
     # Cropped viewport around the emblem for in-app use and notifications.
     crop = (17.0, 17.0, 74.0, 74.0)
     group_open = f'    <group android:translateX="{-crop[0]}" android:translateY="{-crop[1]}">\n'
-    write(DRAWABLE / "ic_apollo_mark.xml",
+    write(DRAWABLE / "ic_iris_mark.xml",
           vector(24, 24, crop[2], crop[3], group_open + mono.replace("\n    <path", "\n        <path") + "    </group>\n",
-                 comment="Tintable Apollo mark for in-app use (tint with the theme's primary colour)."))
+                 comment="Tintable Iris mark for in-app use (tint with the theme's primary colour)."))
     write(DRAWABLE / "ic_notification.xml",
           vector(24, 24, crop[2], crop[3], group_open + mono + "    </group>\n", tint="#FFFFFF",
                  comment="Status-bar notification icon (white silhouette)."))
-    write(DRAWABLE / "ic_apollo_emblem.xml",
+    write(DRAWABLE / "ic_iris_emblem.xml",
           vector(96, 96, crop[2], crop[3], group_open + emblem_layers(INK, tech=True) + "    </group>\n", aapt=True,
-                 comment="Full-colour Apollo emblem for dark surfaces (landing, login, About)."))
-    write(DRAWABLE / "ic_apollo_emblem_light.xml",
+                 comment="Full-colour Iris emblem for dark surfaces (landing, login, About)."))
+    write(DRAWABLE / "ic_iris_emblem_light.xml",
           vector(96, 96, crop[2], crop[3], group_open + emblem_layers(MARBLE_LIGHT, tech=True) + "    </group>\n",
-                 aapt=True, comment="Full-colour Apollo emblem for light surfaces (knock-out in marble, not ink)."))
+                 aapt=True, comment="Full-colour Iris emblem for light surfaces (knock-out in marble, not ink)."))
 
     # Android 12+ splash branding image: 200 x 80 dp box.
     cap_units = 719.0  # Cinzel cap height in font units
@@ -321,10 +297,10 @@ def android_assets(font: TTFont) -> None:
                 + path_xml(d, fill=fill)
                 + "    </group>\n")
 
-    splash = (placed("APOLLO", 0.16, 20, 18, f"#FF{MARBLE[1:]}")
+    splash = (placed("IRIS", 0.16, 20, 18, f"#FF{MARBLE[1:]}")
               + placed("for hermes agent", 0.12, 9, 50, f"#FF{MUTED[1:]}"))
     # Glyph outlines stay long even when rounded; the image renders once per cold start.
-    branding = vector(200, 80, 200, 80, splash, comment="APOLLO / for hermes agent (splash brand line).")
+    branding = vector(200, 80, 200, 80, splash, comment="IRIS / for hermes agent (splash brand line).")
     branding = branding.replace(
         'xmlns:android="http://schemas.android.com/apk/res/android"',
         'xmlns:android="http://schemas.android.com/apk/res/android"\n    xmlns:tools="http://schemas.android.com/tools"\n'
@@ -343,7 +319,13 @@ def svg_gold_defs(prefix: str = "") -> str:
     stops = "".join(f'<stop offset="{o}" stop-color="{c}"/>' for o, c in GOLD_STOPS)
     return (f'<linearGradient id="{prefix}gold" x1="0" y1="0" x2="0" y2="1">{stops}</linearGradient>'
             f'<radialGradient id="{prefix}bg" cx="50%" cy="40%" r="72%"><stop offset="0" stop-color="{INK_GLOW}"/>'
-            f'<stop offset="1" stop-color="{INK}"/></radialGradient>')
+            f'<stop offset="1" stop-color="{INK}"/></radialGradient>'
+            + "".join(
+                f'<linearGradient id="{prefix}band{i}" gradientUnits="userSpaceOnUse" x1="54" y1="39" x2="54" y2="67">'
+                + "".join(f'<stop offset="{o}" stop-color="{c}"/>' for o, c in stops)
+                + "</linearGradient>"
+                for i, stops in enumerate(BAND_STOPS)
+            ))
 
 
 def svg_emblem(prefix: str = "", tech: bool = True, knockout: str = INK) -> str:
@@ -354,10 +336,9 @@ def svg_emblem(prefix: str = "", tech: bool = True, knockout: str = INK) -> str:
         s += f'<path d="{HALO_A}" fill="none" stroke="{GOLD}" stroke-opacity="0.30" stroke-width="0.3"/>'
         s += f'<path d="{HALO_B}" fill="none" stroke="{GOLD_LIGHT}" stroke-opacity="0.20" stroke-width="0.25"/>'
         s += f'<path d="{BURST}" fill="none" stroke="{GOLD}" stroke-opacity="0.55" stroke-width="0.28"/>'
-    s += f'<path d="{SPIKES}" fill="url(#{prefix}gold)"/>'
-    s += f'<path d="{DIADEM}" fill="none" stroke="url(#{prefix}gold)" stroke-width="1.6"/>'
-    s += f'<path d="{LETTER_A}" fill="{knockout}" stroke="{knockout}" stroke-width="3.6" stroke-linejoin="miter"/>'
-    s += f'<path d="{LETTER_A}" fill="url(#{prefix}gold)"/>'
+    s += "".join(f'<path d="{band}" fill="url(#{prefix}band{i})"/>' for i, band in enumerate(BANDS))
+    s += f'<path d="{LETTER_I}" fill="{knockout}" stroke="{knockout}" stroke-width="3.6" stroke-linejoin="miter"/>'
+    s += f'<path d="{LETTER_I}" fill="url(#{prefix}gold)"/>'
     return s
 
 
@@ -375,14 +356,17 @@ def meander(x0: float, y0: float, length: float, unit: float = 12.0) -> str:
 
 
 def banner_svg(font: TTFont, width: int, height: int, emblem_size: float) -> str:
-    word, word_b = text_outline(font, "APOLLO", 0.16)
+    word, word_b = text_outline(font, "IRIS", 0.16)
     tag, tag_b = text_outline(font, "FOR HERMES AGENT", 0.22)
     credit, credit_b = text_outline(font, "BY WUTZ.IO", 0.22)
     ex = width * 0.09
     ey = (height - emblem_size) / 2
     tx = ex + emblem_size + width * 0.05
     word_aspect = (word_b[2] - word_b[0]) / (word_b[3] - word_b[1])
-    cap = min(height * 0.2, (width - tx - width * 0.07) / word_aspect)
+    tag_aspect = (tag_b[2] - tag_b[0]) / (tag_b[3] - tag_b[1])
+    room = width - tx - width * 0.07
+    # A short wordmark (IRIS) would make the tagline, at 0.28 of the cap height, overflow.
+    cap = min(height * 0.2, room / word_aspect, room / (tag_aspect * 0.28))
     word_y = height * 0.30
     grid = "".join(
         f'<path d="M{x},0 V{height}" stroke="{GOLD}" stroke-opacity="0.045"/>' for x in range(0, width + 1, 40)
@@ -396,7 +380,7 @@ def banner_svg(font: TTFont, width: int, height: int, emblem_size: float) -> str
     s = emblem_size / 108
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
-        f"<title>APOLLO — For Hermes Agent — by wutz.io</title>"
+        f"<title>IRIS — For Hermes Agent — by wutz.io</title>"
         f"<defs>{svg_gold_defs('b')}{marble}</defs>"
         f'<rect width="{width}" height="{height}" fill="{INK}"/>{grid}'
         f'<rect width="{width}" height="{height}" fill="url(#marble)"/>'
@@ -413,24 +397,24 @@ def banner_svg(font: TTFont, width: int, height: int, emblem_size: float) -> str
 
 def svg_assets(font: TTFont) -> None:
     icon = (f'<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">'
-            f"<title>Apollo app icon</title><defs>{svg_gold_defs()}</defs>"
+            f"<title>Iris app icon</title><defs>{svg_gold_defs()}</defs>"
             f'<rect width="108" height="108" fill="url(#bg)"/>{svg_emblem()}</svg>')
-    write(BRAND / "apollo-icon.svg", icon)
+    write(BRAND / "iris-icon.svg", icon)
     mark = (f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="17 17 74 74">'
-            f'<title>Apollo mark</title><path d="{SPIKES}" fill="{GOLD}"/><path d="{LETTER_A}" fill="{GOLD}"/></svg>')
-    write(BRAND / "apollo-mark.svg", mark)
-    word, b = text_outline(font, "APOLLO", 0.16)
+            f'<title>Iris mark</title><path d="{BANDS_ALL}" fill="{GOLD}"/><path d="{LETTER_I}" fill="{GOLD}"/></svg>')
+    write(BRAND / "iris-mark.svg", mark)
+    word, b = text_outline(font, "IRIS", 0.16)
     w, h = b[2] - b[0], b[3] - b[1]
-    write(BRAND / "apollo-wordmark.svg",
+    write(BRAND / "iris-wordmark.svg",
           f'<svg xmlns="http://www.w3.org/2000/svg" width="{w / 10:.0f}" height="{h / 10:.0f}" '
-          f'viewBox="{b[0]} {b[1]} {w} {h}"><title>APOLLO</title><path d="{word}" fill="{GOLD}"/></svg>')
-    write(BRAND / "apollo-banner.svg", banner_svg(font, 1280, 400, 300))
-    write(BRAND / "apollo-feature-graphic.svg", banner_svg(font, 1024, 500, 330))
-    # Transparent emblems for the website (apollo.wutz.io) and its favicon.
-    for name, knockout in (("apollo-emblem-dark.svg", "#000000"), ("apollo-emblem-light.svg", MARBLE_LIGHT)):
+          f'viewBox="{b[0]} {b[1]} {w} {h}"><title>IRIS</title><path d="{word}" fill="{GOLD}"/></svg>')
+    write(BRAND / "iris-banner.svg", banner_svg(font, 1280, 400, 300))
+    write(BRAND / "iris-feature-graphic.svg", banner_svg(font, 1024, 500, 330))
+    # Transparent emblems for the website (iris.wutz.io) and its favicon.
+    for name, knockout in (("iris-emblem-dark.svg", "#000000"), ("iris-emblem-light.svg", MARBLE_LIGHT)):
         write(WEBSITE / name,
               f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="17 17 74 74">'
-              f"<title>Apollo</title><defs>{svg_gold_defs()}</defs>{svg_emblem(knockout=knockout)}</svg>")
+              f"<title>Iris</title><defs>{svg_gold_defs()}</defs>{svg_emblem(knockout=knockout)}</svg>")
 
 
 def main() -> None:

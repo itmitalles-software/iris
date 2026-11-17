@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Security problems:** do not report them here; use [private vulnerability reporting](https://github.com/wutz-io/apollo-hermes-android/security/advisories/new) (see SECURITY.md).
+        **Security problems:** do not report them here; use [private vulnerability reporting](https://github.com/itmitalles-software/iris/security/advisories/new) (see SECURITY.md).
 
         **Before you paste logs or screenshots, remove** host names (including tailnet names such as `<machine>.<tailnet>.ts.net`), IP addresses, tokens, cookies, passwords and certificates. This issue is public.
   - type: textarea
@@ -30,7 +30,7 @@ body:
   - type: input
     id: app-version
     attributes:
-      label: Apollo version
+      label: Iris version
       description: Settings → About → Version (and Commit for debug builds).
       placeholder: '0.1.6'
     validations:
@@ -42,7 +42,7 @@ body:
       options:
         - GitHub release APK
         - Google Play
-        - Debug build (Apollo Dev)
+        - Debug build (Iris Dev)
         - Built from source (release)
     validations:
       required: true
@@ -82,7 +82,7 @@ body:
     id: hermes-version
     attributes:
       label: Hermes Agent version
-      description: In Apollo under System → Hermes, or `hermes --version` on the server.
+      description: In Iris under System → Hermes, or `hermes --version` on the server.
       placeholder: 'v0.21.6'
     validations:
       required: false
@@ -91,4 +91,4 @@ body:
     attributes:
       label: Additional context
       description: |
-        Logs, screenshots, or anything else relevant (redacted, see above). For image problems, the filtered debug log from [docs/image-attachment-diagnostics.md](https://github.com/wutz-io/apollo-hermes-android/blob/main/docs/image-attachment-diagnostics.md) helps.
+        Logs, screenshots, or anything else relevant (redacted, see above). For image problems, the filtered debug log from [docs/image-attachment-diagnostics.md](https://github.com/itmitalles-software/iris/blob/main/docs/image-attachment-diagnostics.md) helps.

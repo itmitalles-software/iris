@@ -1,6 +1,6 @@
 # Themes
 
-How theming works in Apollo, and how to add or edit a theme.
+How theming works in Iris, and how to add or edit a theme.
 
 This is the implementation guide. [DESIGN.md](../../../../../../../../DESIGN.md)
 defines visual and interaction requirements; the Kotlin sources define the actual
@@ -18,11 +18,11 @@ app/src/main/java/io/wutz/apollo/theme/
 ├── Color.kt                       # shared tokens for non-theme code (status fallbacks, code blocks, …)
 ├── HermesStatusColors.kt          # semantic status color model (success/warning/error/info + on*)
 ├── Type.kt / Shapes.kt            # typography + shape tokens
-├── ApolloType.kt                  # Cinzel display styles + wordmark (Apollo preset only)
+├── IrisType.kt                  # Cinzel display styles + wordmark (Iris preset only)
 ├── Spacing.kt / Motion.kt         # spacing + motion tokens
 ├── SystemBars.kt                  # system bar icons/scrims follow the in-app light/dark choice
 └── presets/                       # one file per ThemePreset — same skeleton everywhere
-    ├── ApolloScheme.kt            # the default preset (docs/BRANDING.md)
+    ├── IrisScheme.kt            # the default preset (docs/BRANDING.md)
     ├── DefaultScheme.kt
     ├── MonochromeScheme.kt
     ├── GruvboxScheme.kt
@@ -109,12 +109,12 @@ Outlines must contrast against both surface and the unchecked switch track
 (`surfaceContainerHighest`). Named palettes may need documented derived primary
 or error tones for direct text; fixed roles still preserve their upstream accents.
 
-## Apollo
+## Iris
 
-Apollo is the default preset (`ThemePreset.APOLLO`) and the app's brand
+Iris is the default preset (`ThemePreset.APOLLO`) and the app's brand
 identity: true-black and anthracite surfaces with antique gold in dark mode,
 warm marble with a deepened gold in light mode. Only while it is active, the
-app also uses the Cinzel display styles (`ApolloTypography`) and the Apollo
+app also uses the Cinzel display styles (`IrisTypography`) and the Iris
 component accents (bronze user bubbles with a gold hairline, gold tool edge).
 The palette, typography and accents are documented in
 [docs/BRANDING.md](../../../../../../../../docs/BRANDING.md).

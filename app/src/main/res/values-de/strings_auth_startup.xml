@@ -9,16 +9,16 @@
 
     <!-- App lock -->
     <string name="app_lock_title">App-Sperre</string>
-    <string name="app_lock_desc">Beim Öffnen von Apollo Fingerabdruck, Gesicht oder Displaysperre abfragen.</string>
+    <string name="app_lock_desc">Beim Öffnen von Iris Fingerabdruck, Gesicht oder Displaysperre abfragen.</string>
     <string name="app_lock_needs_screen_lock">Richte zuerst in den Android-Einstellungen eine Displaysperre ein.</string>
     <string name="app_lock_timeout_title">Sperren nach</string>
-    <string name="app_lock_timeout_desc">Wie lange Apollo im Hintergrund sein darf, bevor es erneut fragt.</string>
+    <string name="app_lock_timeout_desc">Wie lange Iris im Hintergrund sein darf, bevor es erneut fragt.</string>
     <string name="app_lock_timeout_30s">30 Sekunden</string>
     <string name="app_lock_timeout_1m">1 Minute</string>
     <string name="app_lock_timeout_5m">5 Minuten</string>
     <string name="app_lock_timeout_15m">15 Minuten</string>
-    <string name="app_lock_locked_title">Apollo ist gesperrt</string>
+    <string name="app_lock_locked_title">Iris ist gesperrt</string>
     <string name="app_lock_unlock">Entsperren</string>
-    <string name="app_lock_prompt_title">Apollo entsperren</string>
+    <string name="app_lock_prompt_title">Iris entsperren</string>
     <string name="app_lock_use_screen_lock">Displaysperre verwenden</string>
 </resources>

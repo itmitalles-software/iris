@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Apollo</string>
+    <string name="app_name">Iris</string>
 
     <!-- Chat -->
     <string name="chat_send_desc">전송</string>

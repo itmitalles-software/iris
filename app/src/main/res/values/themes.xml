@@ -2,7 +2,7 @@
 <resources>
 
     <!--
-        Apollo launches dark (brand ink with the emblem) so there is no white flash
+        Iris launches dark (brand ink with the emblem) so there is no white flash
         before Compose draws. Android 12+ uses the system splash (values-v31).
     -->
     <style name="Theme.HermesControl" parent="android:Theme.Material.NoActionBar">

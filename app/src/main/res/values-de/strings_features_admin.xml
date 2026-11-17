@@ -80,12 +80,12 @@
 
     <!-- Settings → About: open-source licenses -->
     <string name="licenses_title">Open-Source-Lizenzen</string>
-    <string name="licenses_about_value">Apollo, Cinzel-Schrift, Bibliotheken</string>
+    <string name="licenses_about_value">Iris, Cinzel-Schrift, Bibliotheken</string>
     <string name="licenses_open">Lizenzen öffnen</string>
     <string name="licenses_expand">Lizenztext anzeigen</string>
     <string name="licenses_collapse">Lizenztext ausblenden</string>
-    <string name="licenses_apollo_title">Apollo</string>
-    <string name="licenses_apollo_summary">Apache License 2.0</string>
+    <string name="licenses_iris_title">Iris</string>
+    <string name="licenses_iris_summary">Apache License 2.0</string>
     <string name="licenses_notice_title">Hinweis (NOTICE)</string>
     <string name="licenses_notice_summary">Herkunft, Urheber und gebündelte Werke</string>
     <string name="licenses_cinzel_title">Schrift Cinzel</string>

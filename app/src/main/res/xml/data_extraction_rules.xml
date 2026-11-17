@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Apollo stores credentials in EncryptedSharedPreferences and chat history in a
+    Iris stores credentials in EncryptedSharedPreferences and chat history in a
     SQLCipher database. Both are keyed by the Android Keystore, which never leaves
     the device, so restored copies are undecryptable. Exclude every domain from
     cloud backup AND device-to-device transfer (allowBackup="false" no longer

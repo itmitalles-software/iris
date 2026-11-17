@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Android 12+ system splash: emblem plus the APOLLO / For Hermes Agent / by wutz.io line. -->
+    <!-- Android 12+ system splash: emblem plus the IRIS / For Hermes Agent / by wutz.io line. -->
     <style name="Theme.HermesControl" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/apollo_ink</item>
-        <item name="android:windowSplashScreenBackground">@color/apollo_ink</item>
+        <item name="android:windowBackground">@color/iris_ink</item>
+        <item name="android:windowSplashScreenBackground">@color/iris_ink</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="android:windowSplashScreenBrandingImage">@drawable/splash_branding</item>
     </style>
