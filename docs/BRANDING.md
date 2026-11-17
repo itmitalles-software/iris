@@ -121,7 +121,8 @@ Engraving-style illustrations in one colour, purple `#8D4BA3`, complement the
 gold emblem: classical motifs (Iris with feathered wings and rainbow halo, her
 pitcher, the rainbow bridge, laurel, temple, columns) drawn with fine op-art
 linework. The Iris motifs replace the Apollo ones (bust, lyre, sun chariot) from
-the 2026-11-17 batch (`docs/brand/art/iris-art-spec.md`). They are original artwork from an
+the 2026-11-17 Codex batch (`docs/brand/art/iris-art-spec.md`, provenance in
+`docs/brand/art/iris-art-provenance.md`). They are original artwork from an
 owner-run image batch, used only as decoration.
 
 - Pipeline: `scripts/brand/process_art.py <batch folder>` re-inks every

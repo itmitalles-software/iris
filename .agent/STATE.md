@@ -141,11 +141,11 @@ conventions are in `docs/ARCHITECTURE.md`.
   (needs fontTools); store PNGs are rendered from `docs/brand/*.svg` with
   headless Chrome. `scripts/brand/process_art.py <codex-out>` derives the
   transparent WebPs for app and website from native Codex outputs.
-- Iris art batch: spec and prompt in `docs/brand/art/`, native outputs in
-  `~/reviews-local/iris-art-2026-11-17/codex-out/` (local only). Until it is
-  ingested, the Apollo motifs (bust, lyre, sun chariot, gold "A" logo) remain
-  in `website/assets/img/` and `drawable-nodpi/`. The 2026-10-13 Apollo batch
-  lived in `~/reviews/`, which is on the encrypted Data disk.
+- Iris art batch (2026-11-17): spec and prompt in `docs/brand/art/`,
+  provenance in `docs/brand/art/iris-art-provenance.md`, native outputs in
+  `~/reviews-local/iris-art-2026-11-17/codex-out/` (local only; the `.jpg`
+  files there are Antigravity alternatives for 02/06/08). The 2026-10-13
+  Apollo batch lived in `~/reviews/`, which is on the encrypted Data disk.
 - Local toolchain without the Data disk: SDK `~/.cache/codex-toolchains/android-sdk`
   (platform 37.0, build-tools 37, emulator, AVD `iris_api37` in
   `~/.cache/codex-toolchains/avd`), JDK 25 for Gradle (foojay provisions 21).
