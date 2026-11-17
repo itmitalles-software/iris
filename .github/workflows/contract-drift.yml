@@ -21,7 +21,7 @@ concurrency:
 jobs:
   drift:
     name: Contract Drift
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER == 'home' && fromJSON('["self-hosted","home"]') || 'ubuntu-24.04' }}
     timeout-minutes: 30
     permissions:
       contents: read

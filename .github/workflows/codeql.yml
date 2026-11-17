@@ -1,32 +1,11 @@
 name: "CodeQL Analysis"
 
+# Weekly (and on demand) only: the Kotlin/Gradle build behind CodeQL is expensive
+# and no ruleset or required check depends on it. Android CI covers push and PR.
 on:
-  push:
-    branches: [ "main" ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
-      - 'LICENSE'
-      - 'fastlane/**'
-      - '.gitignore'
-      - '.editorconfig'
-      - '.envrc'
-      - '*.html'
-  pull_request:
-    branches: [ "main" ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
-      - 'LICENSE'
-      - 'fastlane/**'
-      - '.gitignore'
-      - '.editorconfig'
-      - '.envrc'
-      - '*.html'
   schedule:
     - cron: '30 3 * * 1' # Runs at 03:30 UTC every Monday
+  workflow_dispatch:
 
 # Rapid merges to main end in one analysis of the newest commit.
 concurrency:
@@ -39,7 +18,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER == 'home' && fromJSON('["self-hosted","home"]') || 'ubuntu-24.04' }}
     permissions:
       actions: read
       contents: read
