@@ -1,11 +1,15 @@
 name: Website
 
-# Publishes website/ (static, no build step) to GitHub Pages at iris.wutz.io.
-# Manual only until the owner decides to take the site live (2026-10-14); then
-# enable Pages (build type "workflow"), add the iris CNAME in Cloudflare and
-# add a push trigger for website/** on main.
+# Publishes website/ (static, no build step) to GitHub Pages at iris.wutz.io
+# (live since 2026-11-17; Pages build type "workflow", Cloudflare CNAME
+# iris -> itmitalles-software.github.io, DNS only).
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".github/workflows/website.yml"
   workflow_dispatch: {}
 
 permissions:

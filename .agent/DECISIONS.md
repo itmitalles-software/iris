@@ -44,15 +44,15 @@ burying them in dated log entries.
 
 ## Website
 
-- **Publish at iris.wutz.io after the rebrand** (2026-11-17, owner choice
-  "Erst Rebrand, dann live"). Imprint and privacy policy: the footer links
+- **Live at iris.wutz.io** (2026-11-17, owner: "schalt sie live unter
+  iris.wutz.io", after the rebrand and before the Iris art batch; the Apollo
+  illustrations are swapped once the batch is ingested). Imprint and privacy policy: the footer links
   https://itmitalles.de/impressum and https://itmitalles.de/datenschutz; the
   page's own privacy section covers the app (#33). The earlier hold
   (2026-10-14, "merge only, website not live") ends with that go-live.
-  Go-live steps: enable Pages (build type workflow, custom domain
-  iris.wutz.io), Cloudflare CNAME iris → itmitalles-software.github.io (DNS
-  only, account tim@itmitalles.de), add a push trigger for `website/**` on
-  main, run the workflow and verify HTTPS.
+  Setup: Pages build type workflow, custom domain iris.wutz.io, Cloudflare
+  CNAME iris → itmitalles-software.github.io (DNS only, account
+  tim@itmitalles.de); `website.yml` deploys on pushes to `website/**` on main.
 
 ## Code review 2026-10-14
 
