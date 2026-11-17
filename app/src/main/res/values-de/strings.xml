@@ -1423,7 +1423,7 @@
     <string name="settings_logout">Abmelden</string>
 
     <!-- Auth Login Screen -->
-    <string name="auth_login_title">Auth-Login</string>
+    <string name="auth_login_title">Anmelden</string>
     <string name="auth_login_desc">Mit deinem Hermes Dashboard verbinden</string>
     <string name="auth_login_base_url_label">Server-URL</string>
     <string name="auth_login_token_label">Sitzungs-Token</string>

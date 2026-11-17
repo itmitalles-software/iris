@@ -1432,7 +1432,7 @@
     <string name="settings_logout">Logout</string>
 
     <!-- Auth Login Screen -->
-    <string name="auth_login_title">Auth Login</string>
+    <string name="auth_login_title">Sign in</string>
     <string name="auth_login_desc">Connect to your Hermes dashboard</string>
     <string name="auth_login_base_url_label">Server URL</string>
     <string name="auth_login_token_label">Session Token</string>

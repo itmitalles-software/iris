@@ -304,6 +304,12 @@ fun MainNavigation(sessionId: String? = null) {
         NavigationController.goBack()
     }
 
+    // Registered last so it wins: back closes an open modal drawer before it reaches the
+    // double-back-to-exit handler above.
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch { drawerState.close() }
+    }
+
     val drawerItems: @Composable ColumnScope.() -> Unit = {
         val connectionStatus by HermesWsClient.connectionStatus.collectAsState()
         val statusColor =
