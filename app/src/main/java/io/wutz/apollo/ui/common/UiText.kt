@@ -9,7 +9,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalResources
 
 /**
- * A user-visible message that is resolved to text only when it is shown (Apollo, issue #10).
+ * A user-visible message that is resolved to text only when it is shown (Iris, issue #10).
  *
  * ViewModels and pure formatters return [UiText] instead of built English strings, so the UI
  * renders them in the current locale and unit tests can assert the resource id and arguments.

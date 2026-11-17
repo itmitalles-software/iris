@@ -71,7 +71,7 @@ import androidx.navigation3.ui.NavDisplay
 import io.wutz.apollo.data.local.AuthManager
 import io.wutz.apollo.data.ws.ConnectionStatus
 import io.wutz.apollo.data.ws.HermesWsClient
-import io.wutz.apollo.theme.ApolloWordmarkStyle
+import io.wutz.apollo.theme.IrisWordmarkStyle
 import io.wutz.apollo.theme.LocalHermesStatusColors
 import io.wutz.apollo.ui.common.DisableDrawerGestures
 import io.wutz.apollo.ui.common.DrawerGestureController
@@ -256,7 +256,7 @@ fun MainNavigation(sessionId: String? = null) {
             DrawerGestureController(drawerState, scope)
         }
 
-    // Apollo: tablets, unfolded foldables and large landscape windows get a
+    // Iris: tablets, unfolded foldables and large landscape windows get a
     // persistent sidebar instead of the modal drawer; the menu button then
     // shows or hides that sidebar.
     val windowWidthDp =
@@ -324,7 +324,7 @@ fun MainNavigation(sessionId: String? = null) {
             modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 2.dp),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_apollo_mark),
+                painter = painterResource(R.drawable.ic_iris_mark),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp),
@@ -332,7 +332,7 @@ fun MainNavigation(sessionId: String? = null) {
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = stringResource(R.string.brand_wordmark),
-                style = ApolloWordmarkStyle.copy(fontSize = 22.sp),
+                style = IrisWordmarkStyle.copy(fontSize = 22.sp),
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.width(8.dp))

@@ -53,13 +53,13 @@ internal data class LicenseEntry(
     @param:RawRes val text: Int,
 )
 
-/** The texts Apollo ships with: its own license and notice, the bundled font and the libraries. */
+/** The texts Iris ships with: its own license and notice, the bundled font and the libraries. */
 internal val OPEN_SOURCE_LICENSES =
     listOf(
         LicenseEntry(
-            "apollo",
-            R.string.licenses_apollo_title,
-            R.string.licenses_apollo_summary,
+            "iris",
+            R.string.licenses_iris_title,
+            R.string.licenses_iris_summary,
             R.raw.license_apache_2_0,
         ),
         LicenseEntry("notice", R.string.licenses_notice_title, R.string.licenses_notice_summary, R.raw.notice),

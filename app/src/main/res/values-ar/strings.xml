@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-<string name="app_name">Apollo</string>
+<string name="app_name">Iris</string>
 <string name="chat_send_desc">إرسال</string>
 <string name="chat_mic_listening">جارٍ الاستماع…</string>
 <string name="stt_permission_denied">يلزم الحصول على إذن الميكروفون للإدخال الصوتي</string>
@@ -1177,7 +1177,7 @@
 <string name="action_dismiss">تجاهل</string>
 <string name="action_done">تم</string>
 <string name="action_close">إغلاق</string>
-<string name="update_notice_banner_text">يتوفر إصدار جديد من Apollo %1$s</string>
+<string name="update_notice_banner_text">يتوفر إصدار جديد من Iris %1$s</string>
 <string name="update_notice_banner_action">تحديث</string>
 <string name="update_dialog_title">التحديث إلى %1$s</string>
 <string name="update_dialog_changelog_header">ما الجديد</string>

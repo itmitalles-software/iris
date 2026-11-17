@@ -11,7 +11,7 @@ import io.wutz.apollo.data.model.Attachment
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Content another app shared into Apollo through the Android share sheet
+ * Content another app shared into Iris through the Android share sheet
  * (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`). It is staged in a new chat's
  * composer and never sent automatically.
  */
@@ -77,8 +77,8 @@ object ShareIntentParser {
      * not a share or carries nothing usable.
      *
      * Only `content://` URIs from other apps are accepted. `file://` URIs and
-     * URIs served by Apollo's own FileProvider ([ownAuthority]) are dropped so
-     * a malicious sender cannot make Apollo upload its private files.
+     * URIs served by Iris's own FileProvider ([ownAuthority]) are dropped so
+     * a malicious sender cannot make Iris upload its private files.
      */
     fun parse(
         intent: Intent,

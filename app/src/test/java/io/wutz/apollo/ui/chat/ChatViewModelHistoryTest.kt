@@ -495,7 +495,7 @@ class ChatViewModelHistoryTest : ChatViewModelTestBase() {
     @Test
     fun sync_newSessionProbesLatestPagingSoColdStartIdsMatch() =
         runTest {
-            // Apollo #5: a chat created in the app was never hydrated. Its first sync used the
+            // Iris #5: a chat created in the app was never hydrated. Its first sync used the
             // absolute-position protocol and persisted rest-<sid>-0/1, which never matched the
             // stable rest-<sid>-<row id> a cold start loads, so every turn rendered twice.
             val (vm, session) = createViewModelWithSession()
@@ -560,7 +560,7 @@ class ChatViewModelHistoryTest : ChatViewModelTestBase() {
     @Test
     fun sync_failedLatestProbeFallsBackToAbsolutePositions() =
         runTest {
-            // Apollo #5: a failing order=latest probe must not break the sync of a new session.
+            // Iris #5: a failing order=latest probe must not break the sync of a new session.
             val (vm, session) = createViewModelWithSession()
             every { HermesWsClient.sendMessage(session, "hello", any(), any()) } answers {
                 arg<((String) -> Unit)?>(2)?.invoke("hello-submit")

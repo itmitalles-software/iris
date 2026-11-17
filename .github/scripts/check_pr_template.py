@@ -75,7 +75,7 @@ def validate(body, ui_files=(), title=None, base=None):
                 "Types: feat, fix, refactor, docs, test, ci, chore, perf, i18n, build.",
             )
         )
-    # Apollo develops on `main` (upstream Hermes Mobile uses `dev`).
+    # Iris develops on `main` (upstream Hermes Mobile uses `dev`).
     if base is not None and base != "main":
         problems.append(
             (

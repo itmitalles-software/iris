@@ -1,5 +1,5 @@
 {
-  description = "Apollo - Android client for Hermes Agent";
+  description = "Iris - Android client for Hermes Agent";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -80,7 +80,7 @@
           # own cache and daemon pool, and idle daemons piled up in RAM.
 
           shellHook = ''
-            echo " Apollo Android dev shell"
+            echo " Iris Android dev shell"
             echo "   Java:         $(java -version 2>&1 | head -1)"
             echo "   Gradle:       $(gradle --version 2>/dev/null | grep -m1 Gradle || echo "gradle $(gradle --version 2>&1 | head -1)")"
             echo "   ANDROID_HOME: $ANDROID_HOME"
@@ -109,7 +109,7 @@
 
             alias avd-reset='adb shell wm size reset && adb shell wm density reset'
 
-            # Apollo app logcat (filtered to the app process only)
+            # Iris app logcat (filtered to the app process only)
             alias logcat-app='adb logcat --pid=$(adb shell pidof io.wutz.apollo)'
 
             echo "Display Presets Loaded:"
@@ -118,7 +118,7 @@
             echo "  avd-tablet       -> 1600x2560 (320 DPI) [Portrait Tablet]"
             echo "  avd-tablet-land  -> 2560x1600 (320 DPI) [Landscape Tablet]"
             echo "  avd-reset        -> Reset size & density back to AVD defaults"
-            echo "  logcat-app       -> Logcat for the Apollo app process only"
+            echo "  logcat-app       -> Logcat for the Iris app process only"
             echo ""
           '';
         };

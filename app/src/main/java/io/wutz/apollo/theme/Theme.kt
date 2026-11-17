@@ -88,7 +88,7 @@ fun HermesControlTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = if (themePreset == ThemePreset.APOLLO) ApolloTypography else Typography,
+            typography = if (themePreset == ThemePreset.APOLLO) IrisTypography else Typography,
             shapes = HermesShapes,
             content = content,
         )

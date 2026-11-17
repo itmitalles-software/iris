@@ -8,7 +8,7 @@ import io.wutz.apollo.MainActivity
 /**
  * Share-sheet entry point. The system launches share targets inside the
  * sender's task, which would create a second [MainActivity] next to the one
- * already running. This invisible trampoline forwards the share into Apollo's
+ * already running. This invisible trampoline forwards the share into Iris's
  * own task instead and re-grants read access to the shared URIs, which
  * otherwise end with this activity.
  */

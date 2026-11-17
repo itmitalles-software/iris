@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Apollo</string>
+    <string name="app_name">Iris</string>
     <string name="chat_send_desc">Invia</string>
     <string name="chat_mic_listening">In ascolto…</string>
     <string name="chat_voice_cancel">Annulla</string>
@@ -1264,7 +1264,7 @@
     <string name="action_dismiss">Ignora</string>
     <string name="action_done">Fine</string>
     <string name="action_close">Chiudi</string>
-    <string name="update_notice_banner_text">È disponibile Apollo %1$s</string>
+    <string name="update_notice_banner_text">È disponibile Iris %1$s</string>
     <string name="update_notice_banner_action">Aggiorna</string>
     <string name="update_dialog_title">Aggiorna a %1$s</string>
     <string name="update_dialog_changelog_header">Novità</string>

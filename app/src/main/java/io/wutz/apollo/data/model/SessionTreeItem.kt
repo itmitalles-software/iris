@@ -21,7 +21,7 @@ data class SessionTreeItem(
     val displayTitle: String,
     /**
      * Set when [displayTitle] is the English "branch N" fallback for an untitled fork; the UI shows a
-     * translated label for it (Apollo, issue #10).
+     * translated label for it (Iris, issue #10).
      */
     val branchNumber: Int? = null,
 )

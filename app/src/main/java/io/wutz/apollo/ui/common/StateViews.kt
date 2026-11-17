@@ -109,7 +109,7 @@ fun ErrorState(
     message: String,
     onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    art: ApolloArt? = ApolloArt.OFFLINE,
+    art: IrisArt? = IrisArt.OFFLINE,
 ) {
     val spacing = LocalSpacing.current
     val clipboard = LocalClipboard.current
@@ -180,7 +180,7 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    art: ApolloArt? = ApolloArt.EMPTY,
+    art: IrisArt? = IrisArt.EMPTY,
 ) {
     val spacing = LocalSpacing.current
     Column(
@@ -227,21 +227,21 @@ fun EmptyState(
 }
 
 /**
- * Shows the Apollo illustration when the Apollo theme is active and the state
+ * Shows the Iris illustration when the Iris theme is active and the state
  * has room for it (at least [MIN_ART_SPACE] tall); otherwise the plain [icon].
  */
 @Composable
 private fun StateArtOrIcon(
-    art: ApolloArt?,
+    art: IrisArt?,
     icon: @Composable () -> Unit,
 ) {
-    if (art == null || !apolloArtEnabled()) {
+    if (art == null || !irisArtEnabled()) {
         icon()
         return
     }
     BoxWithConstraints(contentAlignment = Alignment.Center) {
         if (maxHeight >= MIN_ART_SPACE) {
-            ApolloIllustration(art = art, modifier = Modifier.size(ART_SIZE))
+            IrisIllustration(art = art, modifier = Modifier.size(ART_SIZE))
         } else {
             icon()
         }

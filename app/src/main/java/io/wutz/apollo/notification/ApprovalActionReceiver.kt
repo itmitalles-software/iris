@@ -134,7 +134,7 @@ internal class ApprovalNotificationResponder(
  * Receives the "Approve once" / "Deny" notification actions. On Android 12+ the actions require
  * the device to be unlocked before they fire (`setAuthenticationRequired`); older versions are
  * guarded by a keyguard check here. When the app is not connected, the notification asks the
- * user to open Apollo instead (Android 12+ forbids starting the app from a notification action).
+ * user to open Iris instead (Android 12+ forbids starting the app from a notification action).
  */
 class ApprovalActionReceiver : BroadcastReceiver() {
     override fun onReceive(

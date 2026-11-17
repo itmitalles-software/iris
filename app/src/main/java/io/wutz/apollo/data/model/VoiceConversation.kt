@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  *
  * The server answers `{"ok": true, "stt": {...}, "tts": {...}}`. A direction is either
  * `{"mode": "relay", "reason": "..."}` or `{"mode": "direct", ..., "api_key": "..."}` for
- * desktop client-direct synthesis. Apollo always uses the relay endpoints, so this model
+ * desktop client-direct synthesis. Iris always uses the relay endpoints, so this model
  * deliberately has no key fields: provider credentials are never deserialized, stored or logged.
  */
 @Serializable

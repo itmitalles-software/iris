@@ -1,6 +1,6 @@
 # Image diagnostics (debug builds)
 
-Debug builds of Apollo log how chat images are loaded and merged under the
+Debug builds of Iris log how chat images are loaded and merged under the
 logcat tag `ChatImageDiag` (`ui/chat/ChatImageDiagnostics.kt`). Use it when an
 image in a chat stays blank, shows **Could not load image**, or disappears after
 scrolling or reopening a session. Release and Play builds do not write these
@@ -11,7 +11,7 @@ Hy4ri/hermes-mobile#1459.
 
 ## Capture on the affected device
 
-1. Install the debug APK (`io.wutz.apollo.dev`, "Apollo Dev"; see
+1. Install the debug APK (`io.wutz.apollo.dev`, "Iris Dev"; see
    [BUILD.md](../BUILD.md)). It installs next to the release app. Configure the
    same server and login in it. Do not uninstall the release app or clear its
    data.

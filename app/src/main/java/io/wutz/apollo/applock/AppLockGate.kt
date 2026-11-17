@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.wutz.apollo.R
-import io.wutz.apollo.ui.common.ApolloBrandLockup
+import io.wutz.apollo.ui.common.IrisBrandLockup
 
 /**
  * Draws [content] and, while [AppLock] is locked, an opaque lock screen above it. The content
@@ -94,7 +94,7 @@ private fun AppLockScreen(onUnlock: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ApolloBrandLockup()
+            IrisBrandLockup()
             Text(
                 text = stringResource(R.string.app_lock_locked_title),
                 style = MaterialTheme.typography.titleMedium,

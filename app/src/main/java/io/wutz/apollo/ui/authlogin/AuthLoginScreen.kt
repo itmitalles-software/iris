@@ -154,7 +154,7 @@ fun AuthLoginScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_apollo_mark),
+                    painter = painterResource(R.drawable.ic_iris_mark),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(56.dp),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up a Hermes Agent host so the Apollo Android app can connect to it.
+# Set up a Hermes Agent host so the Iris Android app can connect to it.
 #
 # What it does (Linux, systemd user session):
 #   1. creates a dashboard login (username + scrypt password hash + token secret),
@@ -10,7 +10,7 @@
 # Run it again at any time: it updates the service and keeps an existing login
 # unless you pass --new-login. `--uninstall` removes everything it created.
 #
-# Usage: scripts/server/setup-hermes-for-apollo.sh [options]
+# Usage: scripts/server/setup-hermes-for-iris.sh [options]
 #   --user NAME            login name (default: $USER)
 #   --password-stdin       read the password from stdin instead of prompting
 #   --generate-password    create a random password and save it to the login file
@@ -18,7 +18,8 @@
 #   --public-url URL       HTTPS origin the phone uses (default: https://<tailscale name>)
 #   --port PORT            loopback port for hermes serve (default: 9119)
 #   --service-name NAME    systemd user unit name (default: hermes-serve)
-#   --config-dir DIR       where the env/login files go (default: ~/.config/apollo)
+#   --config-dir DIR       where the env/login files go (default: ~/.config/iris; an existing
+#                          ~/.config/apollo from before the rename is reused)
 #   --no-service           only write the env file and print how to run hermes serve
 #   --uninstall            stop and remove the service and the files it created
 #   -h, --help             show this help
@@ -30,7 +31,10 @@ NEW_LOGIN=0
 PUBLIC_URL=""
 PORT=9119
 SERVICE_NAME="hermes-serve"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/apollo"
+CONFIG_BASE="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_DIR="$CONFIG_BASE/iris"
+# Hosts set up before the rename to Iris keep their login and env file in the old directory.
+if [ ! -d "$CONFIG_DIR" ] && [ -d "$CONFIG_BASE/apollo" ]; then CONFIG_DIR="$CONFIG_BASE/apollo"; fi
 INSTALL_SERVICE=1
 UNINSTALL=0
 
@@ -118,7 +122,7 @@ else
         stdin) IFS= read -r PASSWORD || [ -n "$PASSWORD" ] ;;
         generate) PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')" ;;
         prompt)
-            read -r -s -p "Password for Apollo login '$LOGIN_USER': " PASSWORD; echo
+            read -r -s -p "Password for Iris login '$LOGIN_USER': " PASSWORD; echo
             read -r -s -p "Repeat password: " PASSWORD2; echo
             [ "$PASSWORD" = "$PASSWORD2" ] || die "passwords do not match"
             ;;
@@ -138,7 +142,7 @@ PY
     PASSWORD_HASH="$(printf '%s\n' "$CREDENTIALS" | sed -n 1p)"
     TOKEN_SECRET="$(printf '%s\n' "$CREDENTIALS" | sed -n 2p)"
     {
-        echo "# Hermes dashboard login for Apollo. Written by setup-hermes-for-apollo.sh."
+        echo "# Hermes dashboard login for Iris. Written by setup-hermes-for-iris.sh."
         echo "# Loaded only by the $SERVICE_NAME user service; config.yaml stays untouched."
         echo "# Values are single-quoted: the hash contains '\$' and must not be expanded."
         echo "HERMES_DASHBOARD_PUBLIC_URL='$PUBLIC_URL'"
@@ -149,7 +153,7 @@ PY
     chmod 600 "$ENV_FILE"
     info "Wrote $ENV_FILE"
     if [ "$PASSWORD_MODE" = generate ]; then
-        printf 'Apollo login for Hermes\nServer URL: %s\nUsername:   %s\nPassword:   %s\n' \
+        printf 'Iris login for Hermes\nServer URL: %s\nUsername:   %s\nPassword:   %s\n' \
             "$PUBLIC_URL" "$LOGIN_USER" "$PASSWORD" >"$LOGIN_FILE"
         chmod 600 "$LOGIN_FILE"
         info "Saved the generated password to $LOGIN_FILE"
@@ -165,9 +169,9 @@ if [ "$INSTALL_SERVICE" = 0 ]; then
 else
     mkdir -p "$UNIT_DIR"
     {
-        echo "# Hermes backend for the Apollo Android app. Written by setup-hermes-for-apollo.sh."
+        echo "# Hermes backend for the Iris Android app. Written by setup-hermes-for-iris.sh."
         echo "[Unit]"
-        echo "Description=Hermes Agent backend for Apollo (127.0.0.1:$PORT)"
+        echo "Description=Hermes Agent backend for Iris (127.0.0.1:$PORT)"
         echo "After=network-online.target"
         echo "Wants=network-online.target"
         echo
@@ -228,4 +232,4 @@ if [ "$INSTALL_SERVICE" = 1 ] && command -v loginctl >/dev/null &&
     echo "To keep Hermes reachable (e.g. on a headless machine), run once: loginctl enable-linger $USER"
 fi
 echo
-echo "In Apollo: Sign in -> $PUBLIC_URL -> user '$LOGIN_USER' and your password."
+echo "In Iris: Sign in -> $PUBLIC_URL -> user '$LOGIN_USER' and your password."

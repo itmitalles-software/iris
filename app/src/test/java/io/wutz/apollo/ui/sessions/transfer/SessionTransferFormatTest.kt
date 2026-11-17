@@ -110,8 +110,8 @@ class SessionTransferFormatTest {
 
     @Test
     fun `export file names are safe`() {
-        assertEquals("apollo-Trip-plan-März.json", SessionTransferFormat.exportFileName("Trip plan / März?", "s1"))
-        assertEquals("apollo-20260101_abc.json", SessionTransferFormat.exportFileName("  ", "20260101_abc"))
-        assertEquals("apollo-a-b.json", SessionTransferFormat.exportFileName(null, "a/b"))
+        assertEquals("iris-Trip-plan-März.json", SessionTransferFormat.exportFileName("Trip plan / März?", "s1"))
+        assertEquals("iris-20260101_abc.json", SessionTransferFormat.exportFileName("  ", "20260101_abc"))
+        assertEquals("iris-a-b.json", SessionTransferFormat.exportFileName(null, "a/b"))
     }
 }

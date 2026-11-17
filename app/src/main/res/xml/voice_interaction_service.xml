@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Registers Apollo as a candidate for the Android digital-assistant
+    Registers Iris as a candidate for the Android digital-assistant
     role (Settings > Apps > Default apps > Digital assistant app).
 
     Both sessionService and recognitionService are REQUIRED by the framework

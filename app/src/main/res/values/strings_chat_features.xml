@@ -30,5 +30,5 @@
     <string name="notif_action_deny">Deny</string>
     <string name="notif_approval_unlock_first">Unlock your phone to answer this approval.</string>
     <string name="notif_approval_expired">This approval is no longer open.</string>
-    <string name="notif_approval_open_app">Your answer could not be sent. Open Apollo to answer the approval.</string>
+    <string name="notif_approval_open_app">Your answer could not be sent. Open Iris to answer the approval.</string>
 </resources>

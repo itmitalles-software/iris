@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for coding agents (and humans) working on Apollo. Keep changes small
+Rules for coding agents (and humans) working on Iris. Keep changes small
 and tested.
 
 ## Read first
@@ -10,13 +10,13 @@ and tested.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): navigation, ViewModel scope,
   drawer gestures, WebSocket/RPC conventions (inherited from Hermes Mobile, binding)
 - [DESIGN.md](DESIGN.md) for UI work
-- [ORIGIN.md](ORIGIN.md): Apollo started as a fork of Hermes Mobile and is
+- [ORIGIN.md](ORIGIN.md): Iris started as a fork of Hermes Mobile and is
   independent since 2026-10-13 (no upstream merges)
 - Open work lives in GitHub Issues, not in TODO files.
 
 ## Principles
 
-- Apollo is a client only. Use documented Hermes dashboard/`hermes serve`
+- Iris is a client only. Use documented Hermes dashboard/`hermes serve`
   endpoints that exist in `hermes-agent`, and verify new calls against its
   source or the vendored contract (`app/src/test/resources/gateway-contract`).
   Never invent APIs or ship UI placeholders for missing server features.
@@ -30,7 +30,10 @@ and tested.
 
 ## Conventions
 
-- Package `io.wutz.apollo`; never reintroduce `com.m57.hermescontrol`.
+- Package `io.wutz.apollo` (kept after the rename to Iris so installed apps
+  update); never reintroduce `com.m57.hermescontrol`. Persisted names (preference
+  files, DataStore/DB names, `ThemePreset.APOLLO`, notification channel IDs,
+  intent extras) keep their `apollo` spelling.
 - Every user-visible string goes into `values/strings.xml` **and**
   `values-de/strings.xml`. The other locales are unmaintained and fall back to English.
 - Colors come from the theme (`MaterialTheme.colorScheme`,
@@ -49,7 +52,7 @@ testDebugUnitTest, lintDebug, assembleDebug, compileDebugAndroidTestKotlin,
 compileReleaseKotlin and checkPlayPermissions (see [BUILD.md](BUILD.md)).
 
 If you touch shell scripts, run `shellcheck scripts/**/*.sh`; the server
-setup script (`scripts/server/setup-hermes-for-apollo.sh`) must also be tried
+setup script (`scripts/server/setup-hermes-for-iris.sh`) must also be tried
 with an isolated `--service-name/--port/--config-dir` and `--uninstall`.
 
 For UI changes, also run the app (emulator or device) and check light and

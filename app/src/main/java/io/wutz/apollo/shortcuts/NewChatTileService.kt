@@ -8,7 +8,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
 /**
- * Quick Settings tile that opens Apollo with a new chat. It is an action tile without on/off
+ * Quick Settings tile that opens Iris with a new chat. It is an action tile without on/off
  * state; on a locked device the system asks to unlock first.
  */
 class NewChatTileService : TileService() {

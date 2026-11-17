@@ -76,9 +76,9 @@ sealed interface NativeCallback {
 
 /** Text of the page the browser shows after the sign-in redirect (localized by the caller). */
 data class CallbackPageText(
-    val title: String = "Apollo",
-    val signedIn: String = "Signed in. You can close this tab and return to Apollo.",
-    val failed: String = "Sign-in failed. You can close this tab and try again in Apollo.",
+    val title: String = "Iris",
+    val signedIn: String = "Signed in. You can close this tab and return to Iris.",
+    val failed: String = "Sign-in failed. You can close this tab and try again in Iris.",
 )
 
 /**

@@ -35,11 +35,11 @@ import io.wutz.apollo.OpenSourceLicensesScreen
 import io.wutz.apollo.R
 import io.wutz.apollo.data.update.AppUpdateState
 import io.wutz.apollo.data.update.UpdateNoticeManager
-import io.wutz.apollo.ui.common.ApolloArt
-import io.wutz.apollo.ui.common.ApolloBrandLockup
-import io.wutz.apollo.ui.common.ApolloIllustration
-import io.wutz.apollo.ui.common.apolloArtEnabled
+import io.wutz.apollo.ui.common.IrisArt
+import io.wutz.apollo.ui.common.IrisBrandLockup
+import io.wutz.apollo.ui.common.IrisIllustration
 import io.wutz.apollo.ui.common.asString
+import io.wutz.apollo.ui.common.irisArtEnabled
 import io.wutz.apollo.ui.settings.InfoRow
 import io.wutz.apollo.ui.settings.SectionCard
 
@@ -57,14 +57,14 @@ internal fun AboutSection(
     val websiteUrl = stringResource(R.string.brand_website)
     val openLinkLabel = stringResource(R.string.a11y_open_link)
     SectionCard {
-        if (apolloArtEnabled()) {
-            ApolloIllustration(
-                art = ApolloArt.ABOUT_BANNER,
+        if (irisArtEnabled()) {
+            IrisIllustration(
+                art = IrisArt.ABOUT_BANNER,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(MaterialTheme.shapes.medium),
             )
         }
-        ApolloBrandLockup(
+        IrisBrandLockup(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             emblemSize = 88.dp,
             wordmarkSize = 30f,
@@ -334,7 +334,7 @@ private fun ReleaseCandidateRow(
     }
 }
 
-private const val REPOSITORY_URL = "https://github.com/wutz-io/apollo-hermes-android"
+private const val REPOSITORY_URL = "https://github.com/itmitalles-software/iris"
 private const val UPSTREAM_URL = "https://github.com/Hy4ri/hermes-mobile"
 
 /** A tappable link line with a 48dp minimum height and a TalkBack action label. */

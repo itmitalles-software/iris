@@ -29,10 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.wutz.apollo.R
-import io.wutz.apollo.ui.common.ApolloArt
-import io.wutz.apollo.ui.common.ApolloBrandLockup
-import io.wutz.apollo.ui.common.ApolloIllustration
-import io.wutz.apollo.ui.common.apolloArtEnabled
+import io.wutz.apollo.ui.common.IrisArt
+import io.wutz.apollo.ui.common.IrisBrandLockup
+import io.wutz.apollo.ui.common.IrisIllustration
+import io.wutz.apollo.ui.common.irisArtEnabled
 
 @Composable
 fun LandingScreen(
@@ -57,14 +57,14 @@ fun LandingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (apolloArtEnabled()) {
-                ApolloIllustration(
-                    art = ApolloArt.LANDING,
+            if (irisArtEnabled()) {
+                IrisIllustration(
+                    art = IrisArt.LANDING,
                     modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
                 )
-                ApolloBrandLockup(emblemSize = 72.dp, wordmarkSize = 34f)
+                IrisBrandLockup(emblemSize = 72.dp, wordmarkSize = 34f)
             } else {
-                ApolloBrandLockup()
+                IrisBrandLockup()
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -91,4 +91,4 @@ fun LandingScreen(
 
 /** README section that walks through installing Hermes and reaching it over Tailscale. */
 internal const val SERVER_SETUP_URL =
-    "https://github.com/wutz-io/apollo-hermes-android#connect-over-tailscale-recommended"
+    "https://github.com/itmitalles-software/iris#connect-over-tailscale-recommended"

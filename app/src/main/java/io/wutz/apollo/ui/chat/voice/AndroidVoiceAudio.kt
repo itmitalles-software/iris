@@ -71,7 +71,7 @@ class AudioTrackPcmSink(
                 ).setBufferSizeInBytes(bufferBytes)
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
-        Thread(::writeLoop, "apollo-voice-playback").apply { isDaemon = true }.start()
+        Thread(::writeLoop, "iris-voice-playback").apply { isDaemon = true }.start()
     }
 
     override fun write(bytes: ByteArray) {
@@ -229,7 +229,7 @@ class MicCapture(
         attachEffects(audioRecord.audioSessionId)
         running = true
         thread =
-            Thread({ readLoop(audioRecord, rate / FRAMES_PER_SECOND) }, "apollo-voice-mic")
+            Thread({ readLoop(audioRecord, rate / FRAMES_PER_SECOND) }, "iris-voice-mic")
                 .apply { isDaemon = true }
                 .also { it.start() }
         return true

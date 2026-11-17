@@ -1,8 +1,8 @@
-Third-party software in Apollo
+Third-party software in Iris
 
-Apollo bundles the libraries below. Their license terms are reproduced or
+Iris bundles the libraries below. Their license terms are reproduced or
 referenced here. "Apache License 2.0" means the license text shown under
-"Apollo" in this screen (also at https://www.apache.org/licenses/LICENSE-2.0).
+"Iris" in this screen (also at https://www.apache.org/licenses/LICENSE-2.0).
 
 Apache License 2.0
 ------------------

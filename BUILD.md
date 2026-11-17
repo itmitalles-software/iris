@@ -1,4 +1,4 @@
-# Building Apollo
+# Building Iris
 
 ## Requirements
 
@@ -51,7 +51,7 @@ For UI changes, also run the changed flow on a device or emulator.
 ```
 
 The debug build installs side by side with a release build as
-`io.wutz.apollo.dev` ("Apollo Dev"). It is signed with the committed
+`io.wutz.apollo.dev` ("Iris Dev"). It is signed with the committed
 `app/debug.keystore` (public password `android`), so CI debug APKs can be
 installed over each other.
 
@@ -63,7 +63,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Versioning
 
-Apollo uses Semantic Versioning with Git tags `vMAJOR.MINOR.PATCH`
+Iris uses Semantic Versioning with Git tags `vMAJOR.MINOR.PATCH`
 (pre-releases: `v0.2.0-rc.1`). The release workflow derives
 
 - `versionName` = tag without the leading `v`
@@ -74,7 +74,7 @@ Local builds without `-PversionName/-PversionCode` report `1.0-dev`.
 
 ## Releases
 
-Apollo has two distributions, both with the application ID `io.wutz.apollo`:
+Iris has two distributions, both with the application ID `io.wutz.apollo`:
 
 | Build | Task | Output | Self-updater |
 | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ It sets `BuildConfig.SELF_UPDATE_ENABLED = false` and its manifest
    `scripts/release-notes.sh 0.2.0`. A pre-release (`0.2.0-rc.1`) uses its own
    section if there is one, otherwise the `0.2.0` section.
 2. Wait until **CI Summary** is green on that `main` commit, then tag it:
-   `git tag -a v0.2.0 -m "Apollo 0.2.0" && git push origin v0.2.0`.
+   `git tag -a v0.2.0 -m "Iris 0.2.0" && git push origin v0.2.0`.
 
 The tag runs `.github/workflows/release.yml`:
 
@@ -106,7 +106,7 @@ The tag runs `.github/workflows/release.yml`:
   keystore, and fails unless the signing certificate matches
   `.github/release-cert.sha256` and `aapt2` shows the expected
   `versionName`/`versionCode`.
-- `publish` has no secrets. It attaches `apollo-<tag>.apk` and `SHA256SUMS`
+- `publish` has no secrets. It attaches `iris-<tag>.apk` and `SHA256SUMS`
   to the GitHub release and records a build provenance attestation.
 
 The in-app update checker then offers the APK to installed release builds.
@@ -119,13 +119,13 @@ The release key never goes into the repository. Create it locally and keep a
 backup somewhere safe; losing it means users must uninstall to update.
 
 ```bash
-keytool -genkeypair -v -keystore apollo-release.jks -alias apollo \
+keytool -genkeypair -v -keystore iris-release.jks -alias apollo \
   -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Apollo,O=wutz.io,C=DE"
 
-gh secret set KEYSTORE_BASE64   -R wutz-io/apollo-hermes-android --env release < <(base64 -w0 apollo-release.jks)
-gh secret set KEYSTORE_PASSWORD -R wutz-io/apollo-hermes-android --env release
-gh secret set KEY_ALIAS         -R wutz-io/apollo-hermes-android --env release --body apollo
-gh secret set KEY_PASSWORD      -R wutz-io/apollo-hermes-android --env release
+gh secret set KEYSTORE_BASE64   -R itmitalles-software/iris --env release < <(base64 -w0 iris-release.jks)
+gh secret set KEYSTORE_PASSWORD -R itmitalles-software/iris --env release
+gh secret set KEY_ALIAS         -R itmitalles-software/iris --env release --body apollo
+gh secret set KEY_PASSWORD      -R itmitalles-software/iris --env release
 ```
 
 The secrets belong to the `release` environment, which only `v*` tags may
@@ -139,7 +139,7 @@ debug APK from the CI artifacts (or a local `assembleDebug`) in the meantime.
 To sign a release locally:
 
 ```bash
-KEYSTORE_PATH=$PWD/apollo-release.jks KEYSTORE_PASSWORD=… KEY_ALIAS=apollo KEY_PASSWORD=… \
+KEYSTORE_PATH=$PWD/iris-release.jks KEYSTORE_PASSWORD=… KEY_ALIAS=apollo KEY_PASSWORD=… \
   ./gradlew assembleRelease -PversionName=0.1.0 -PversionCode=100
 ```
 
@@ -153,7 +153,7 @@ automation; uploads are manual in the Play Console.
 Build the App Bundle with the Play build type (issue #7):
 
 ```bash
-KEYSTORE_PATH=$PWD/apollo-release.jks KEYSTORE_PASSWORD=… KEY_ALIAS=apollo KEY_PASSWORD=… \
+KEYSTORE_PATH=$PWD/iris-release.jks KEYSTORE_PASSWORD=… KEY_ALIAS=apollo KEY_PASSWORD=… \
   ./gradlew bundlePlay -PversionName=0.2.0 -PversionCode=200
 ```
 
@@ -171,10 +171,10 @@ key*; you sign uploads with an *upload key*. Never commit either key or put
 the app signing key into CI.
 
 - Option A (default): let Google generate the app signing key and use the
-  existing Apollo release key as the upload key. Play installs and GitHub
+  existing Iris release key as the upload key. Play installs and GitHub
   APKs then have different signatures, so users must uninstall to switch
   between them (losing local data).
-- Option B: upload the existing Apollo release key as the app signing key
+- Option B: upload the existing Iris release key as the app signing key
   (the Play Console's PEPK tool encrypts it) and create a new upload key. Play
   installs and GitHub APKs then share a signature and update each other.
   Keep the offline backup of the release key either way.

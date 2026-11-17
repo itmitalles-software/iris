@@ -34,7 +34,7 @@ import io.wutz.apollo.R
 import io.wutz.apollo.applock.AppLock
 import io.wutz.apollo.ui.settings.SectionCard
 
-/** Opt-in app lock: the switch and, when it is on, how long Apollo may stay in the background. */
+/** Opt-in app lock: the switch and, when it is on, how long Iris may stay in the background. */
 @Composable
 internal fun AppLockSection() {
     val context = LocalContext.current

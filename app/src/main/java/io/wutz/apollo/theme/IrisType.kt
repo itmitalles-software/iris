@@ -10,11 +10,11 @@ import androidx.compose.ui.unit.em
 import io.wutz.apollo.R
 
 /**
- * Apollo's display face: Cinzel (SIL OFL 1.1, docs/licenses/Cinzel-OFL.txt),
+ * Iris's display face: Cinzel (SIL OFL 1.1, docs/licenses/Cinzel-OFL.txt),
  * classical Roman capitals. Reserved for brand surfaces (wordmark, hero
  * titles); body, chat and code keep the system faces for readability.
  */
-val ApolloDisplayFamily =
+val IrisDisplayFamily =
     FontFamily(
         Font(
             R.font.cinzel,
@@ -24,17 +24,17 @@ val ApolloDisplayFamily =
     )
 
 /** Wordmark style: tracked capitals, as in docs/brand/apollo-wordmark.svg. */
-val ApolloWordmarkStyle =
+val IrisWordmarkStyle =
     TextStyle(
-        fontFamily = ApolloDisplayFamily,
+        fontFamily = IrisDisplayFamily,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.16.em,
     )
 
 /** [Typography] with Cinzel display styles; everything else is unchanged. */
-internal val ApolloTypography: Typography =
+internal val IrisTypography: Typography =
     Typography.copy(
-        displayLarge = Typography.displayLarge.merge(ApolloWordmarkStyle),
-        displayMedium = Typography.displayMedium.merge(ApolloWordmarkStyle),
-        displaySmall = Typography.displaySmall.merge(ApolloWordmarkStyle),
+        displayLarge = Typography.displayLarge.merge(IrisWordmarkStyle),
+        displayMedium = Typography.displayMedium.merge(IrisWordmarkStyle),
+        displaySmall = Typography.displaySmall.merge(IrisWordmarkStyle),
     )

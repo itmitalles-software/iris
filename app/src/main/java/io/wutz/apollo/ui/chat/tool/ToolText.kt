@@ -12,7 +12,7 @@ import io.wutz.apollo.ui.common.resolve
 
 /**
  * Resolves the tool-display engine's own texts (titles, labels, fallbacks) in the current locale
- * (Apollo, issue #10).
+ * (Iris, issue #10).
  *
  * Renderers and [ToolViewBuilder] stay pure: they receive a [ToolText] and build their strings
  * from resource ids, so a unit test can pass a recording or English resolver. Tool output, paths,

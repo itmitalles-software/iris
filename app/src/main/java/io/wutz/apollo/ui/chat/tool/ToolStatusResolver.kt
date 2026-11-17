@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
  *   when the command produced no real output to show.
  * - a rejected memory write is a budget negotiation → WARNING, not ERROR
  *
- * [errorText] returns tool/server text as [UiText.Raw] and Apollo's own fallbacks as string
+ * [errorText] returns tool/server text as [UiText.Raw] and Iris's own fallbacks as string
  * resources, so the builder resolves them in the current locale (issue #10).
  */
 internal object ToolStatusResolver {

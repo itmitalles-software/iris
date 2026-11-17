@@ -5,7 +5,7 @@ import android.content.Intent
 import io.wutz.apollo.data.local.DataScope
 import java.security.MessageDigest
 
-/** What a launcher shortcut, a session shortcut or the Quick Settings tile asks Apollo to open. */
+/** What a launcher shortcut, a session shortcut or the Quick Settings tile asks Iris to open. */
 sealed interface ShortcutRequest {
     data object NewChat : ShortcutRequest
 
@@ -23,7 +23,7 @@ sealed interface ShortcutRequest {
  * Entry points from outside the app UI: static launcher shortcuts (res/xml/shortcuts.xml), dynamic
  * session shortcuts ([SessionShortcuts]) and the Quick Settings tile ([NewChatTileService]).
  *
- * They all target the non-exported [SHORTCUT_ENTRY_ALIAS]. Launchers start shortcuts with Apollo's
+ * They all target the non-exported [SHORTCUT_ENTRY_ALIAS]. Launchers start shortcuts with Iris's
  * own identity, so the alias is reachable for them, while other apps can only reach the exported
  * launcher activity and cannot, for example, start a voice conversation through an explicit intent.
  */

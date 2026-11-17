@@ -1,4 +1,4 @@
-# Apollo Design System
+# Iris Design System
 
 ## Scope and sources of truth
 
@@ -11,8 +11,8 @@ do not silently redesign unrelated screens.
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution workflow and verification.
 - [AGENTS.md](AGENTS.md): rules for contributors and agents;
   [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): architecture conventions.
-- [docs/BRANDING.md](docs/BRANDING.md): the Apollo brand (palette, Cinzel display type, emblem,
-  illustrations) and the Apollo-only component accents.
+- [docs/BRANDING.md](docs/BRANDING.md): the Iris brand (palette, Cinzel display type, emblem,
+  illustrations) and the Iris-only component accents.
 - [THEMES.md](app/src/main/java/io/wutz/apollo/theme/THEMES.md): theme implementation and extension guide.
 
 Kotlin sources are authoritative for implemented token values and component APIs.
@@ -31,12 +31,12 @@ Android layout dimensions use `dp`; text sizes, line heights, and tracking use `
 | Palette values | [presets/](app/src/main/java/io/wutz/apollo/theme/presets/) |
 | Semantic status model | [HermesStatusColors.kt](app/src/main/java/io/wutz/apollo/theme/HermesStatusColors.kt) |
 | Terminal, code, and diff colors | [Color.kt](app/src/main/java/io/wutz/apollo/theme/Color.kt) |
-| Typography | [Type.kt](app/src/main/java/io/wutz/apollo/theme/Type.kt), [ApolloType.kt](app/src/main/java/io/wutz/apollo/theme/ApolloType.kt) (Cinzel display styles) |
+| Typography | [Type.kt](app/src/main/java/io/wutz/apollo/theme/Type.kt), [IrisType.kt](app/src/main/java/io/wutz/apollo/theme/IrisType.kt) (Cinzel display styles) |
 | Spacing and shapes | [Spacing.kt](app/src/main/java/io/wutz/apollo/theme/Spacing.kt), [Shapes.kt](app/src/main/java/io/wutz/apollo/theme/Shapes.kt) |
 | Motion | [Motion.kt](app/src/main/java/io/wutz/apollo/theme/Motion.kt) |
 
 ## Overview
-Apollo (`io.wutz.apollo`, started as a fork of Hermes Mobile, see [ORIGIN.md](ORIGIN.md)) is a native Android client for the Hermes Agent platform. Prioritize useful information density, clear touch interactions, and timely, honest feedback over decorative visual noise. Density must not compromise accessibility.
+Iris (`io.wutz.apollo`, started as a fork of Hermes Mobile, see [ORIGIN.md](ORIGIN.md)) is a native Android client for the Hermes Agent platform. Prioritize useful information density, clear touch interactions, and timely, honest feedback over decorative visual noise. Density must not compromise accessibility.
 
 The visual language follows Material 3 guidelines strictly adapted for developer utilities:
 - **Tone**: Technical, focused, utilitarian, crisp.
@@ -44,14 +44,14 @@ The visual language follows Material 3 guidelines strictly adapted for developer
 - **Core Principle**: Zero fluff. Fast render cycles, explicit states, flat surfaces, and zero visual ambiguity.
 
 ## Colors
-The app supports 8 built-in presets: `Apollo` (the default: true-black and antique gold, see [docs/BRANDING.md](docs/BRANDING.md)), `Default/Slate`, `Monochrome`, `Gruvbox`, `Catppuccin`, `AMOLED`, `Nord` and `Garnet`, plus optional Android 12+ wallpaper theming. The app starts in dark mode. `Theme.kt` selects the preset; `PaletteTemplate.kt` maps its colors to Material slots. AMOLED is dark-only; light mode falls back to Default.
+The app supports 8 built-in presets: `Iris` (the default: true-black and antique gold, see [docs/BRANDING.md](docs/BRANDING.md)), `Default/Slate`, `Monochrome`, `Gruvbox`, `Catppuccin`, `AMOLED`, `Nord` and `Garnet`, plus optional Android 12+ wallpaper theming. The app starts in dark mode. `Theme.kt` selects the preset; `PaletteTemplate.kt` maps its colors to Material slots. AMOLED is dark-only; light mode falls back to Default.
 
 1. **Surfaces**:
    - `MaterialTheme.colorScheme.background`: Main canvas and full-bleed chat background.
    - `surface` and `surfaceContainer*`: Use the existing component's semantic surface tier for bars, panels, cards, and sheets.
    - Pair surfaces with their corresponding foreground tokens; do not assume Default Dark values apply to light or dynamic themes.
 2. **Accents & Tints**:
-   - Primary accent is reserved for interactive controls, user bubbles, selected drawer icons, and active tabs. In the Apollo preset, user bubbles use the bronze `primaryContainer` with a gold hairline instead (see Components).
+   - Primary accent is reserved for interactive controls, user bubbles, selected drawer icons, and active tabs. In the Iris preset, user bubbles use the bronze `primaryContainer` with a gold hairline instead (see Components).
    - Selected navigation drawer items MUST tint icons directly to `primary` to prevent low-contrast grey-on-grey visual loss.
 3. **Semantic Status Colors (`HermesStatusColors`)**:
    - Access semantic status colors through `LocalHermesStatusColors.current`, including when dynamic Material colors are active. Do not substitute Material accent colors for success/warning/error/info.
@@ -60,7 +60,7 @@ The app supports 8 built-in presets: `Apollo` (the default: true-black and antiq
 
 ## Typography
 - **UI Fonts**: `FontFamily.Default`, using Material typography roles. Do not assume a particular system font on every device.
-- **Display face (Apollo preset only)**: the bundled Cinzel (`theme/ApolloType.kt`, SIL OFL 1.1) replaces the `display*` styles and the wordmark. Use it only for brand surfaces (wordmark, hero titles), never for body, chat or code.
+- **Display face (Iris preset only)**: the bundled Cinzel (`theme/IrisType.kt`, SIL OFL 1.1) replaces the `display*` styles and the wordmark. Use it only for brand surfaces (wordmark, hero titles), never for body, chat or code.
 - **Code & Logs**: `FontFamily.Monospace`; do not promise JetBrains Mono or another named face without a bundled font and explicit wiring.
 - **Scale Discipline (`Type.kt`)**:
   - Screen titles: `20sp` (`title-large`) with 0.1sp tracking.
@@ -90,7 +90,7 @@ The app supports 8 built-in presets: `Apollo` (the default: true-black and antiq
 - **Elevation Language**: Surface luminance layering (`surfaceContainer` tiers) and restrained `dp` borders (`outline` / `outlineVariant`) replace heavy drop shadows.
 - **Flat Surface Rule**:
   - Chat background is flat `colorScheme.background`.
-  - User message bubbles use solid `colorScheme.primary` (no multi-color gradients). The Apollo preset uses the bronze `primaryContainer` with a 1dp gold hairline instead.
+  - User message bubbles use solid `colorScheme.primary` (no multi-color gradients). The Iris preset uses the bronze `primaryContainer` with a 1dp gold hairline instead.
   - Shimmer effects (`StateViews.kt`) are used strictly as animated loading states, never as static background decorations.
 
 ## Shapes
@@ -105,9 +105,9 @@ The app supports 8 built-in presets: `Apollo` (the default: true-black and antiq
 ## Components
 - **Top App Bar**: Flat surface; reuse `HermesScaffold` and its supported slots instead of duplicating dimensions or controls.
 - **Chat Timeline**:
-  - **User Bubbles**: Right-aligned, solid primary fill, high-contrast text (`onPrimary`). Apollo preset: bronze `primaryContainer` fill, `onPrimaryContainer` text and a 1dp gold hairline (`ui/chat/UserBubble.kt`).
+  - **User Bubbles**: Right-aligned, solid primary fill, high-contrast text (`onPrimary`). Iris preset: bronze `primaryContainer` fill, `onPrimaryContainer` text and a 1dp gold hairline (`ui/chat/UserBubble.kt`).
   - **Assistant Content**: Preserve the active renderer's layout. Full-bleed prose renders on the chat background; do not force every assistant message into a filled card. Reuse the existing Markdown renderer.
-  - **Tool Bubbles**: Expandable rows with tool vector icon, execution state indicator, parameter summary, and full payload bottom sheet. Apollo preset: a 2dp gold edge that brightens while the tool runs (`ui/chat/ToolBubble.kt`).
+  - **Tool Bubbles**: Expandable rows with tool vector icon, execution state indicator, parameter summary, and full payload bottom sheet. Iris preset: a 2dp gold edge that brightens while the tool runs (`ui/chat/ToolBubble.kt`).
 - **Action & Filter Chips**:
   - Must represent real system state (e.g., active model, selected profile, filter criteria).
   - Active chips: `primaryContainer` fill with `onPrimaryContainer` text/icon.

@@ -12,9 +12,9 @@ private val LightNavigationScrim = Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
 private val DarkNavigationScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
 
 /**
- * Apollo: style the system bars from the in-app light/dark choice. enableEdgeToEdge() alone
+ * Iris: style the system bars from the in-app light/dark choice. enableEdgeToEdge() alone
  * follows the device night mode, which inverts icons (and, on API 26-28, the navigation scrim)
- * when the app theme differs, e.g. Apollo's default dark theme on a light-mode device.
+ * when the app theme differs, e.g. Iris's default dark theme on a light-mode device.
  */
 @Composable
 fun ComponentActivity.SystemBarsForTheme(darkTheme: Boolean) {

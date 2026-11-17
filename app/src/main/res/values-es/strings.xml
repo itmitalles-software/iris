@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Apollo</string>
+    <string name="app_name">Iris</string>
 
     <!-- Chat -->
     <string name="chat_send_desc">Enviar</string>
@@ -1379,7 +1379,7 @@
     <string name="action_close">Cerrar</string>
 
     <!-- Update notice banner (issue #890) -->
-    <string name="update_notice_banner_text">Apollo%1$sestá disponible</string>
+    <string name="update_notice_banner_text">Iris%1$sestá disponible</string>
     <string name="update_notice_banner_action">Actualizar</string>
     <string name="update_dialog_title">Actualizar a%1$s</string>
     <string name="update_dialog_changelog_header">Novedades</string>
